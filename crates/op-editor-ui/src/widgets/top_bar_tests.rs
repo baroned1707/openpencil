@@ -276,7 +276,7 @@ fn for_editor_ui_uses_transient_host_theme_for_paint() {
     };
     let bar = TopBar::for_editor_ui(&ui);
     assert_eq!(bar.theme_mode, op_editor_core::ThemeMode::Dark);
-    assert!(bar.theme.background.r < 0.1);
+    assert!(bar.theme.background.r < 0.25);
     assert_eq!(ui.theme_mode, op_editor_core::ThemeMode::Light);
 }
 

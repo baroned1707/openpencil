@@ -86,7 +86,7 @@ fn selected_hovered_and_resting_segments_are_visually_distinct() {
     assert_eq!(selected_hovered.round_fills.len(), 2);
     let lifted = selected_hovered.round_fills[1].2;
     assert_ne!(lifted, selected_fill, "a hovered selection must respond");
-    assert!(lifted.r > selected_fill.r && lifted.b > selected_fill.b);
+    assert!(lifted.r > selected_fill.r, "hover lightens the selection");
 }
 
 /// The trough has to read as inset against the surface it sits on, or the
@@ -191,7 +191,7 @@ fn the_accent_button_rides_the_same_pointer_ladder_as_the_selection() {
     let pressed = fills(false, true);
 
     assert_eq!(resting, theme.primary);
-    assert!(hovered.b > resting.b, "hover must lighten a saturated fill");
+    assert!(hovered.r > resting.r, "hover must lighten a saturated fill");
     assert!(pressed.b < resting.b, "press must darken it");
 }
 

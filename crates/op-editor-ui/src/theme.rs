@@ -1,4 +1,4 @@
-//! OpenPencil editor theme tokens — Step 4 visual lift.
+//! OpenPencil editor theme tokens — Figma UI3 palette, borderless shell.
 //!
 //! Mirrors the TS app's shadcn-dark palette (apps/web/src/styles.css) so
 //! the Rust shell renders the same color semantics without literal hex
@@ -103,31 +103,34 @@ impl Theme {
     /// the screenshot + apps/web/src/styles.css `.dark` block — exact
     /// hex parity isn't a goal, semantic parity is.
     pub const fn dark() -> Self {
+        // Figma UI3 dark: panels #2C2C2C over a #1E1E1E canvas, white text,
+        // #0D99FF selection. `border` equals the panel colour on purpose —
+        // the shell separates surfaces by tone, never by hairlines.
         Self {
-            background: rgb(0x12, 0x12, 0x12),
-            foreground: rgb(0xfa, 0xfa, 0xfa),
-            card: rgb(0x1e, 0x1e, 0x1e),
-            card_foreground: rgb(0xfa, 0xfa, 0xfa),
-            popover: rgb(0x18, 0x18, 0x18),
-            popover_foreground: rgb(0xfa, 0xfa, 0xfa),
-            primary: rgb(0x3b, 0x82, 0xf6),
+            background: rgb(0x2c, 0x2c, 0x2c),
+            foreground: rgb(0xff, 0xff, 0xff),
+            card: rgb(0x2c, 0x2c, 0x2c),
+            card_foreground: rgb(0xff, 0xff, 0xff),
+            popover: rgb(0x2c, 0x2c, 0x2c),
+            popover_foreground: rgb(0xff, 0xff, 0xff),
+            primary: rgb(0x0d, 0x99, 0xff),
             primary_foreground: rgb(0xff, 0xff, 0xff),
-            muted: rgb(0x27, 0x27, 0x27),
-            muted_foreground: rgb(0xa3, 0xa3, 0xa3),
-            border: rgb(0x31, 0x31, 0x31),
-            accent: rgb(0x2d, 0x2d, 0x2d),
-            accent_foreground: rgb(0xfa, 0xfa, 0xfa),
-            destructive: rgb(0xef, 0x44, 0x44),
-            destructive_foreground: rgb(0xfa, 0xfa, 0xfa),
-            secondary: rgb(0x2a, 0x2a, 0x2a),
-            secondary_foreground: rgb(0xfa, 0xfa, 0xfa),
-            input: rgb(0x34, 0x34, 0x34),
-            ring: rgb(0x3b, 0x82, 0xf6),
-            button_hover: rgba(0xff, 0xff, 0xff, 0.06),
-            row_selected: rgb(0x30, 0x30, 0x30),
-            row_selected_primary: rgba(0x3b, 0x82, 0xf6, 0.22),
-            // Pencil-like dark canvas, kept slightly warmer/lighter than the shell.
-            canvas_surface: rgb(0x1b, 0x1b, 0x1b),
+            muted: rgb(0x38, 0x38, 0x38),
+            muted_foreground: rgb(0xb3, 0xb3, 0xb3),
+            border: rgb(0x2c, 0x2c, 0x2c),
+            accent: rgb(0x40, 0x40, 0x40),
+            accent_foreground: rgb(0xff, 0xff, 0xff),
+            destructive: rgb(0xf2, 0x48, 0x22),
+            destructive_foreground: rgb(0xff, 0xff, 0xff),
+            secondary: rgb(0x38, 0x38, 0x38),
+            secondary_foreground: rgb(0xff, 0xff, 0xff),
+            input: rgb(0x38, 0x38, 0x38),
+            ring: rgb(0x0d, 0x99, 0xff),
+            button_hover: rgba(0xff, 0xff, 0xff, 0.08),
+            row_selected: rgb(0x48, 0x48, 0x48),
+            row_selected_primary: rgba(0x0d, 0x99, 0xff, 0.30),
+            // Figma dark canvas (help.figma.com: off-black #1E1E1E).
+            canvas_surface: rgb(0x1e, 0x1e, 0x1e),
             user_bubble: rgb(0x50, 0x52, 0x60),
             user_bubble_foreground: rgb(0xff, 0xff, 0xff),
             // GitHub-style success green ~#3FB950 for completed ✓ rings.
@@ -143,31 +146,33 @@ impl Theme {
     /// kept so the TopBar's theme toggle has somewhere to land in
     /// Step 5 without another schema change.
     pub const fn light() -> Self {
+        // Figma UI3 light: white panels over a #E5E5E5 canvas, near-black
+        // text, #0D99FF selection. `border` equals the panel colour (see dark).
         Self {
-            background: rgb(0xef, 0xef, 0xef),
-            foreground: rgb(0x1d, 0x1d, 0x1f),
-            card: rgb(0xf7, 0xf7, 0xf7),
-            card_foreground: rgb(0x1d, 0x1d, 0x1f),
+            background: rgb(0xff, 0xff, 0xff),
+            foreground: rgb(0x1a, 0x1a, 0x1a),
+            card: rgb(0xff, 0xff, 0xff),
+            card_foreground: rgb(0x1a, 0x1a, 0x1a),
             popover: rgb(0xff, 0xff, 0xff),
-            popover_foreground: rgb(0x1d, 0x1d, 0x1f),
-            primary: rgb(0x3b, 0x82, 0xf6),
+            popover_foreground: rgb(0x1a, 0x1a, 0x1a),
+            primary: rgb(0x0d, 0x99, 0xff),
             primary_foreground: rgb(0xff, 0xff, 0xff),
-            muted: rgb(0xe9, 0xe9, 0xe9),
-            muted_foreground: rgb(0x68, 0x68, 0x6d),
-            border: rgb(0xd8, 0xd8, 0xda),
-            accent: rgb(0xe8, 0xe8, 0xea),
-            accent_foreground: rgb(0x1d, 0x1d, 0x1f),
-            destructive: rgb(0xef, 0x44, 0x44),
-            destructive_foreground: rgb(0xfa, 0xfa, 0xfa),
-            secondary: rgb(0xea, 0xea, 0xec),
-            secondary_foreground: rgb(0x1d, 0x1d, 0x1f),
-            input: rgb(0xe1, 0xe1, 0xe4),
-            ring: rgb(0x3b, 0x82, 0xf6),
+            muted: rgb(0xf5, 0xf5, 0xf5),
+            muted_foreground: rgb(0x6e, 0x6e, 0x6e),
+            border: rgb(0xff, 0xff, 0xff),
+            accent: rgb(0xeb, 0xeb, 0xeb),
+            accent_foreground: rgb(0x1a, 0x1a, 0x1a),
+            destructive: rgb(0xf2, 0x48, 0x22),
+            destructive_foreground: rgb(0xff, 0xff, 0xff),
+            secondary: rgb(0xf5, 0xf5, 0xf5),
+            secondary_foreground: rgb(0x1a, 0x1a, 0x1a),
+            input: rgb(0xf5, 0xf5, 0xf5),
+            ring: rgb(0x0d, 0x99, 0xff),
             button_hover: rgba(0x00, 0x00, 0x00, 0.06),
-            row_selected: rgb(0xe4, 0xe4, 0xe7),
-            row_selected_primary: rgba(0x3b, 0x82, 0xf6, 0.18),
-            // Pencil-like light canvas, distinct from side panels but not stark white.
-            canvas_surface: rgb(0xf3, 0xf3, 0xf3),
+            row_selected: rgb(0xe5, 0xe5, 0xe5),
+            row_selected_primary: rgba(0x0d, 0x99, 0xff, 0.12),
+            // Figma light canvas.
+            canvas_surface: rgb(0xe5, 0xe5, 0xe5),
             user_bubble: rgb(0x5f, 0x62, 0x70),
             user_bubble_foreground: rgb(0xff, 0xff, 0xff),
             // Success green is the same in both themes.
@@ -209,20 +214,17 @@ mod tests {
     }
 
     #[test]
-    fn light_theme_uses_pencil_like_neutral_shell() {
+    fn light_theme_uses_figma_ui3_shell() {
         let t = Theme::light();
-        assert!(t.background.r > 0.90 && t.background.r < 0.97);
-        assert!(t.canvas_surface.r > t.background.r);
-        assert!(t.card.r > t.background.r);
-        assert!(t.border.r < t.card.r);
+        assert!(t.canvas_surface.r < t.card.r, "canvas sits below white panels");
+        assert_eq!(t.border, t.card, "borderless shell: border equals panel tone");
     }
 
     #[test]
-    fn dark_theme_uses_pencil_like_neutral_shell() {
+    fn dark_theme_uses_figma_ui3_shell() {
         let t = Theme::dark();
-        assert!(t.background.r > 0.05 && t.background.r < t.card.r);
-        assert!(t.canvas_surface.r > t.background.r);
-        assert!(t.border.r > t.card.r);
+        assert!(t.canvas_surface.r < t.card.r, "canvas is darker than panels");
+        assert_eq!(t.border, t.card, "borderless shell: border equals panel tone");
     }
 
     #[test]
@@ -239,6 +241,6 @@ mod tests {
     #[test]
     fn default_is_dark() {
         let t = Theme::default();
-        assert!(t.background.r < 0.1, "default theme should be dark");
+        assert!(t.background.r < 0.25, "default theme should be dark");
     }
 }

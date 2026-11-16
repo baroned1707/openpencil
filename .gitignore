@@ -13,6 +13,7 @@ todos.json
 .superpowers/
 .playwright-cli/
 .playwright-mcp/
+.proof-of-work/
 editor-*.png
 scripts/ab-corpus/runs/
 

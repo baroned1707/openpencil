@@ -1,0 +1,3 @@
+stroke_sites=291
+border_token=253
+literal_colours=12
