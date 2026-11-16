@@ -342,3 +342,29 @@ fn empty_state_proof() {
         }
     }
 }
+
+/// The whole workspace in one frame: the Projects tab on the left and the
+/// open files as tabs in the top bar, for the same three projects.
+#[test]
+fn projects_and_file_tabs_together_proof() {
+    use op_editor_core::DocumentTabView;
+    let tab = |n: u64, label: &str, project: &str, status, dirty, active| DocumentTabView {
+        id: DocumentId(n),
+        label: label.to_string(),
+        project: project.to_string(),
+        dirty,
+        status,
+        active,
+    };
+    use DocumentTabStatus::*;
+    for mode in BOTH {
+        let mut host = seeded(mode, mixed_projects());
+        host.editor_state_mut().editor_ui.document_tabs = vec![
+            tab(1, "checkout.op", "storefront", Running, false, true),
+            tab(2, "cart.op", "storefront", NeedsReview, true, false),
+            tab(3, "thank-you-page.op", "storefront", Error, false, false),
+            tab(4, "onboarding.op", "mobile-app", Done, false, false),
+        ];
+        render_probes(&mut host, "91-workspace-projects-and-tabs", &[(700, 470)]);
+    }
+}
