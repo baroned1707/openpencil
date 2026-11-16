@@ -93,6 +93,7 @@ mod persistence_export_pptx;
 mod persistence_image;
 mod persistence_replace_guard;
 mod persistence_share;
+mod projects_host;
 mod prompt_center_store;
 mod provider_probe_host;
 mod reduced_motion;
@@ -242,6 +243,7 @@ struct DesktopApp {
     /// Every open document. The on-screen one lives in `host`; the rest are
     /// parked here with the path, Git binding and fork saves that belong to them.
     documents: document_registry::DocumentRegistry,
+    projects_host: projects_host::ProjectsHostState,
     /// Documents open at the last quit, reopened once the window is ready.
     pending_session_restore: Vec<op_editor_core::SessionDocument>,
     /// At most one background document serialization / atomic write. Keeping

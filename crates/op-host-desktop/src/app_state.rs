@@ -171,6 +171,7 @@ impl DesktopApp {
             rotate_cursor: None,
             current_path: None,
             documents: crate::document_registry::DocumentRegistry::new(),
+            projects_host: Default::default(),
             pending_session_restore,
             save_session: save_session::SaveSession::new(),
             collab_fork_saves: Vec::new(),

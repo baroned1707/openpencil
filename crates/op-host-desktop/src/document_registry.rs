@@ -253,6 +253,14 @@ impl DocumentRegistry {
             .collect()
     }
 
+    /// The file bound to each tab, in tab order (`None` for untitled).
+    pub fn slot_paths(&self) -> Vec<Option<PathBuf>> {
+        self.slots
+            .iter()
+            .map(|slot| slot.local.path.clone())
+            .collect()
+    }
+
     /// Every file open in some tab, on screen or parked.
     pub fn open_paths(&self) -> Vec<PathBuf> {
         self.slots

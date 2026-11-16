@@ -46,6 +46,9 @@ impl DesktopApp {
         if self.pump_document_tabs() {
             self.redraw_dirty = true;
         }
+        if self.pump_projects() {
+            self.redraw_dirty = true;
+        }
         // Auth and catalog invalidation must precede every queued AI launch
         // and result pump so an expired Hosted selection cannot adopt fallback.
         if self.poll_auth_flow() {
