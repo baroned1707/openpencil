@@ -13,20 +13,19 @@
 
 use crate::theme::Theme;
 use crate::widgets::icons::{draw_icon, Icon};
-use crate::widgets::menu_paint;
 use crate::widgets::{LayoutBox, LayoutCx, PaintCx, Widget, WidgetId};
 use crate::{Color, Point2D, Rect, TextLayout};
 
+use super::popup;
 use super::{
     t, FileMenu, RecentEntry, DIVIDER_GAP, FONT_FAMILY, HEADER_HEIGHT, ICON_SIZE, MENU_WIDTH,
     PAD_X, PAD_Y, ROW_HEIGHT, SHORTCUT_FONT,
 };
 
-// Shared menu-row paint bodies live in `menu_paint` (see its doc for the
-// hover-tint colour rationale); this thin wrapper binds this menu's
-// width/row constants.
+// Hover wash and divider come from the shared UI3 popup chrome; these thin
+// wrappers bind this menu's width/row constants.
 fn paint_row_tint(cx: &mut PaintCx<'_>, theme: &Theme, x: f32, y: f32) {
-    menu_paint::paint_row_tint(cx, theme, x, y, MENU_WIDTH, ROW_HEIGHT);
+    popup::paint_row_hover(cx.backend, theme, x, y, MENU_WIDTH, ROW_HEIGHT);
 }
 
 impl<'a> Widget for FileMenu<'a> {
@@ -44,9 +43,7 @@ impl<'a> Widget for FileMenu<'a> {
     }
 
     fn paint(&self, cx: &mut PaintCx<'_>, rect: Rect) {
-        cx.backend.fill_round_rect(rect, 10.0, self.theme.card);
-        cx.backend
-            .stroke_round_rect(rect, 10.0, self.theme.border, 1.0);
+        popup::paint_popup_surface(cx.backend, &self.theme, rect, popup::MENU_RADIUS);
         let h = |row: usize| self.menu.hover == Some(row);
         let mut y = rect.origin.y + PAD_Y;
         paint_row(
@@ -468,5 +465,5 @@ fn paint_header(cx: &mut PaintCx<'_>, theme: &Theme, x: f32, y: f32, label: &str
 }
 
 fn paint_divider(cx: &mut PaintCx<'_>, theme: &Theme, rect: Rect, y: f32) -> f32 {
-    menu_paint::paint_divider(cx, theme, rect, y, MENU_WIDTH, PAD_X, DIVIDER_GAP)
+    popup::paint_group_divider(cx.backend, theme, rect, y, PAD_X, DIVIDER_GAP)
 }

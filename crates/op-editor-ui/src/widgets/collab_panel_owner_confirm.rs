@@ -77,7 +77,7 @@ impl CollabPanel<'_> {
         };
         // Separator: everything below it is the peer's own claim about itself.
         cx.backend
-            .fill_rect(Rect::xywh(left, row_y + 2.0, width, 1.0), self.theme.border);
+            .fill_rect(Rect::xywh(left, row_y + 2.0, width, 1.0), self.theme.muted);
         paint_text(
             cx,
             &claimed.label,

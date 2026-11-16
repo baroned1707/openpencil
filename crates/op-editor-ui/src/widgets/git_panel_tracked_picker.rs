@@ -10,6 +10,7 @@
 //! between paint + hit-test through the `*_rects` helpers.
 
 use crate::widgets::button::paint_button_feedback_wash;
+use crate::widgets::file_menu::popup;
 use crate::widgets::git_panel::{truncate, GitPanel, GitPanelHit, PAD};
 use crate::widgets::icons::{draw_icon, Icon};
 use crate::widgets::text_metrics;
@@ -157,8 +158,7 @@ impl GitPanel<'_> {
     pub(super) fn paint_tracked_picker(&self, cx: &mut PaintCx<'_>, panel_rect: Rect) {
         let t = self.theme;
         let p = self.tracked_picker_panel(panel_rect);
-        cx.backend.fill_round_rect(p, 8.0, t.popover);
-        cx.backend.stroke_round_rect(p, 8.0, t.border, 1.0);
+        popup::paint_popup_surface(cx.backend, &t, p, popup::MENU_RADIUS);
 
         if self.state.candidate_files.is_empty() {
             self.paint_picker_empty(cx, panel_rect);
@@ -188,22 +188,16 @@ impl GitPanel<'_> {
         {
             let selected = self.state.tracked_picker_selected == Some(i);
             let hovered = self.state.tracked_picker.hover == Some(i);
-            let border = if selected {
-                t.primary
-            } else {
-                alpha(t.border, 0.70)
-            };
             let bg = if selected {
-                alpha(t.primary, 0.06)
+                t.row_selected_primary
             } else {
-                t.card
+                t.muted
             };
             cx.backend.fill_round_rect(*row, 8.0, bg);
             let pressed = self.state.tracked_picker.pressed == Some(i);
             if hovered || pressed {
                 paint_button_feedback_wash(cx.backend, &self.theme, *row, 8.0, hovered, pressed);
             }
-            cx.backend.stroke_round_rect(*row, 8.0, border, 1.0);
             // Leading icon — Check when selected, else FileText.
             let icon = if selected {
                 Icon::Check

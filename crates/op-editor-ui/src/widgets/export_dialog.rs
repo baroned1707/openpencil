@@ -11,6 +11,7 @@
 
 use crate::theme::Theme;
 use crate::widgets::editor_state_ext::{doc_export_format, export_format};
+use crate::widgets::file_menu::popup;
 use crate::widgets::text_metrics;
 use crate::{Color, Point2D, Rect, RenderBackend, TextLayout};
 use op_editor_core::editor_ui_state::EditorUiState;
@@ -21,7 +22,7 @@ const PAD: f32 = 20.0;
 const ROW_GAP: f32 = 20.0;
 const PILL_HEIGHT: f32 = 32.0;
 const PILL_GAP: f32 = 8.0;
-const PILL_RADIUS: f32 = 8.0;
+const PILL_RADIUS: f32 = 6.0;
 const SCALE_PILL_WIDTH: f32 = 64.0;
 const BUTTON_HEIGHT: f32 = 34.0;
 const BUTTON_WIDTH: f32 = 88.0;
@@ -97,8 +98,7 @@ impl ExportDialog {
 
     pub fn paint(&self, backend: &mut dyn RenderBackend, theme: &Theme, ui: &EditorUiState) {
         let tr = |key: &'static str| op_i18n::translate(ui.effective_locale(), key);
-        backend.fill_round_rect(self.rect, CORNER, theme.popover);
-        backend.stroke_round_rect(self.rect, CORNER, theme.border, 1.0);
+        popup::paint_popup_surface(backend, theme, self.rect, CORNER);
 
         // Header label.
         let header = TextLayout::single_run(
@@ -181,8 +181,8 @@ impl ExportDialog {
             );
         }
 
-        // Footer buttons — Cancel as an outline (border + hover wash), Export
-        // as the primary CTA. jian Button owns the fill / border / feedback.
+        // Footer buttons — Cancel as a filled secondary, Export as the primary
+        // CTA. jian Button owns the fill / feedback.
         let (cancel, export) = self.button_rects();
         let tokens = crate::widgets::button::tokens_from_theme(theme);
         use jian_widgets::components::button::{Button, ButtonVariant};
@@ -190,7 +190,7 @@ impl ExportDialog {
         Button {
             label: tr("common.cancel"),
             icon_paths: None,
-            variant: ButtonVariant::Outline,
+            variant: ButtonVariant::Secondary,
             enabled: true,
             hovered: ui.export_dialog_hover == Some(ExportDialogButton::Cancel),
             pressed: export_dialog_pressed(ui, ExportDialogButton::Cancel),
@@ -217,7 +217,6 @@ impl ExportDialog {
         label: &str,
     ) {
         backend.fill_round_rect(rect, PILL_RADIUS, theme.muted);
-        backend.stroke_round_rect(rect, PILL_RADIUS, theme.border, 1.0);
         // Muted-foreground signals "not pickable" without a hard
         // disabled overlay. Honest UI: still shows what's coming.
         paint_centered_label(backend, label, 12.0, theme.muted_foreground, rect);
@@ -244,7 +243,6 @@ impl ExportDialog {
             hovered,
             pressed,
         );
-        backend.stroke_round_rect(rect, PILL_RADIUS, theme.border, 1.0);
         let color = if selected {
             theme.primary_foreground
         } else {

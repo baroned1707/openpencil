@@ -97,8 +97,7 @@ impl GitPanel<'_> {
     pub(in crate::widgets) fn paint_overflow_menu(&self, cx: &mut PaintCx<'_>, panel_rect: Rect) {
         let t = self.theme;
         let panel = self.overflow_panel(panel_rect);
-        cx.backend.fill_round_rect(panel, 8.0, t.popover);
-        cx.backend.stroke_round_rect(panel, 8.0, t.border, 1.0);
+        popup::paint_popup_surface(cx.backend, &t, panel, popup::MENU_RADIUS);
         let rows = self.overflow_row_rects(panel_rect);
         for (i, (item, row)) in self.overflow_items().iter().zip(rows.iter()).enumerate() {
             let hovered = self.state.overflow_menu.hover == Some(i);
@@ -144,7 +143,7 @@ impl GitPanel<'_> {
                         origin: Point2D::new(panel.origin.x + MENU_PAD, dy),
                         size: Point2D::new(panel.size.x - MENU_PAD * 2.0, 1.0),
                     },
-                    alpha(t.border, 0.50),
+                    t.muted,
                 );
             }
         }

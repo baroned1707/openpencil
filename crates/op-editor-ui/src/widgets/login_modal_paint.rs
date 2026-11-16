@@ -28,33 +28,8 @@ pub(super) fn paint_primary_action(
         0.0
     };
     let state_color = if pressed { Color::BLACK } else { Color::WHITE };
-    let first = mix(
-        mix(theme.primary, Color::WHITE, 0.06),
-        state_color,
-        state_mix,
-    );
-    let second = mix(
-        mix(theme.primary, Color::rgb_u8(79, 70, 229), 0.28),
-        state_color,
-        state_mix,
-    );
-
-    if !pressed {
-        let shadow = Rect::xywh(
-            button.origin.x,
-            button.origin.y + 3.0,
-            button.size.x,
-            button.size.y,
-        );
-        backend.fill_drop_shadow(
-            shadow,
-            11.0,
-            if hovered { 12.0 } else { 8.0 },
-            theme.primary.with_alpha(if hovered { 0.26 } else { 0.18 }),
-        );
-    }
-    backend.fill_round_rect_linear_gradient(button, 11.0, &[(0.0, first), (1.0, second)], 0.0, 1.0);
-    backend.stroke_round_rect(button, 11.0, theme.primary_foreground.with_alpha(0.18), 1.0);
+    // Flat primary fill; hover lightens and press darkens it.
+    backend.fill_round_rect(button, 6.0, mix(theme.primary, state_color, state_mix));
 
     let content_offset_y = if pressed { 1.0 } else { 0.0 };
     // Web: the plain "Sign in" label — "with browser" is redundant when
@@ -126,27 +101,24 @@ pub(super) fn paint_status_note(
     } else {
         ("account.waitingForBrowser", "account.waitingForApproval")
     };
-    let (icon, text, background, border, color) = if let Some(flow) = flow_status {
+    let (icon, text, background, color) = if let Some(flow) = flow_status {
         match flow {
             LoginFlowStatus::WaitingBrowser => (
                 Icon::Globe,
                 t(locale, waiting_key),
                 theme.row_selected_primary,
-                theme.primary.with_alpha(0.32),
                 theme.foreground,
             ),
             LoginFlowStatus::WaitingApproval => (
                 Icon::Globe,
                 t(locale, approval_key),
                 theme.row_selected_primary,
-                theme.primary.with_alpha(0.32),
                 theme.foreground,
             ),
             LoginFlowStatus::Exchanging => (
                 Icon::Loader,
                 t(locale, "account.signingIn"),
                 theme.row_selected_primary,
-                theme.primary.with_alpha(0.32),
                 theme.foreground,
             ),
             LoginFlowStatus::Failed(error) => (
@@ -158,7 +130,6 @@ pub(super) fn paint_status_note(
                     LoginFlowError::Unavailable => t(locale, "account.signInFailed"),
                 },
                 theme.destructive.with_alpha(0.14),
-                theme.destructive.with_alpha(0.4),
                 theme.foreground,
             ),
         }
@@ -167,7 +138,6 @@ pub(super) fn paint_status_note(
             Icon::Info,
             t(locale, "account.signInComingSoon"),
             theme.row_selected_primary,
-            theme.primary.with_alpha(0.32),
             theme.foreground,
         )
     } else {
@@ -175,12 +145,10 @@ pub(super) fn paint_status_note(
             Icon::Lock,
             security_note(locale),
             theme.muted.with_alpha(0.72),
-            theme.border.with_alpha(0.72),
             theme.muted_foreground,
         )
     };
-    backend.fill_round_rect(status, 11.0, background);
-    backend.stroke_round_rect(status, 11.0, border, 1.0);
+    backend.fill_round_rect(status, 6.0, background);
 
     let font_size = 10.5;
     let icon_size = 13.0;

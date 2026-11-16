@@ -10,6 +10,7 @@
 use crate::theme::Theme;
 use crate::widgets::editor_state_ext::theme_for;
 use crate::widgets::export_menu_rows;
+use crate::widgets::file_menu::popup;
 use crate::widgets::icons::{draw_icon, Icon};
 use crate::widgets::menu_paint;
 use crate::widgets::{LayoutBox, LayoutCx, PaintCx, Widget, WidgetId};
@@ -151,15 +152,13 @@ impl<'a> Widget for ExportQuickMenu<'a> {
     }
 
     fn paint(&self, cx: &mut PaintCx<'_>, rect: Rect) {
-        cx.backend.fill_round_rect(rect, 10.0, self.theme.card);
-        cx.backend
-            .stroke_round_rect(rect, 10.0, self.theme.border, 1.0);
+        popup::paint_popup_surface(cx.backend, &self.theme, rect, popup::MENU_RADIUS);
         let mut y = rect.origin.y + PAD_Y;
         for row in &self.rows {
             let hovered = self.ui.export_quick_menu_hover == Some(*row);
             if hovered {
-                menu_paint::paint_row_tint(
-                    cx,
+                popup::paint_row_hover(
+                    cx.backend,
                     &self.theme,
                     rect.origin.x,
                     y,

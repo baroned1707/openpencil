@@ -16,6 +16,7 @@
 
 use crate::theme::Theme;
 use crate::widgets::editor_state_ext::theme_for;
+use crate::widgets::file_menu::popup;
 use crate::widgets::icons::{draw_icon, Icon};
 use crate::widgets::text_metrics;
 use crate::widgets::PaintCx;
@@ -227,9 +228,7 @@ impl ThemePresetMenu {
 
     pub fn paint(&self, cx: &mut PaintCx<'_>, menu: Rect) {
         let theme = self.theme;
-        cx.backend.fill_round_rect(menu, RADIUS, theme.popover);
-        cx.backend
-            .stroke_round_rect(menu, RADIUS, theme.border, 1.0);
+        popup::paint_popup_surface(cx.backend, &theme, menu, RADIUS);
 
         // Hovered-row wash (inset a few px so it reads as a padded highlight,
         // not edge-to-edge) — drawn under the row content, jian-consistent.
@@ -238,7 +237,7 @@ impl ThemePresetMenu {
                 origin: Point2D::new(hr.origin.x + 4.0, hr.origin.y + 1.0),
                 size: Point2D::new(hr.size.x - 8.0, hr.size.y - 2.0),
             };
-            cx.backend.fill_round_rect(wash, 6.0, theme.button_hover);
+            cx.backend.fill_round_rect(wash, 6.0, theme.accent);
         }
 
         // Save row — button or inline name input.
@@ -392,7 +391,7 @@ fn separator(cx: &mut PaintCx<'_>, theme: Theme, menu: Rect, y: f32) {
             origin: Point2D::new(menu.origin.x + 1.0, y),
             size: Point2D::new(menu.size.x - 2.0, 1.0),
         },
-        (theme.border).with_alpha(0.5),
+        theme.muted,
     );
 }
 

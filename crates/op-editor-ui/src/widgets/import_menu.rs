@@ -7,6 +7,7 @@
 
 use crate::theme::Theme;
 use crate::widgets::editor_state_ext::theme_for;
+use crate::widgets::file_menu::popup;
 use crate::widgets::text_metrics;
 use crate::widgets::{LayoutBox, LayoutCx, PaintCx, Widget, WidgetId};
 use crate::{Point2D, Rect, TextLayout};
@@ -132,6 +133,10 @@ impl ImportMenu {
 
     pub fn paint_select(&self, cx: &mut PaintCx<'_>, anchor: Rect, viewport: Rect) {
         let items = self.items();
+        if self.state.open {
+            let popup_rect = self.popup_rect(anchor, viewport);
+            popup::paint_soft_shadow(cx.backend, &self.theme, popup_rect, popup::SELECT_RADIUS);
+        }
         let select = Select {
             state: &self.state,
             items: &items,
@@ -186,7 +191,7 @@ impl ImportMenu {
 }
 
 fn tokens_from_theme(theme: &Theme) -> Tokens {
-    crate::widgets::button::tokens_from_theme(theme)
+    popup::borderless_tokens(theme)
 }
 
 impl Widget for ImportMenu {

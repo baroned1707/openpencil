@@ -26,7 +26,7 @@ mod disabled_action;
 
 pub const MODAL_WIDTH: f32 = 408.0;
 pub const MODAL_HEIGHT: f32 = 306.0;
-const PANEL_RADIUS: f32 = 18.0;
+const PANEL_RADIUS: f32 = 12.0;
 const SIGN_IN_BTN_W: f32 = 336.0;
 const SIGN_IN_BTN_H: f32 = 48.0;
 // Keep the CTA center at `panel.bottom - 56`, matching the established
@@ -267,30 +267,6 @@ impl Widget for LoginModal {
         cx.backend
             .fill_round_rect(rect, PANEL_RADIUS, self.theme.popover);
 
-        let header_glow = Rect::xywh(
-            rect.origin.x + 1.0,
-            rect.origin.y + 1.0,
-            rect.size.x - 2.0,
-            116.0,
-        );
-        cx.backend.fill_round_rect_linear_gradient_per_corner(
-            header_glow,
-            [PANEL_RADIUS - 1.0, PANEL_RADIUS - 1.0, 0.0, 0.0],
-            &[
-                (0.0, self.theme.primary.with_alpha(0.0)),
-                (0.5, self.theme.primary.with_alpha(0.10)),
-                (1.0, self.theme.primary.with_alpha(0.0)),
-            ],
-            90.0,
-            1.0,
-        );
-        cx.backend.stroke_round_rect(
-            rect,
-            PANEL_RADIUS,
-            mix(self.theme.border, self.theme.primary, 0.10),
-            1.0,
-        );
-
         let close = close_rect(rect, self.touch);
         jian_widgets::components::icon_button::IconButton {
             icon_paths: Icon::Close.paths(),
@@ -447,14 +423,14 @@ mod tests {
         (modal, panel, backend)
     }
 
-    fn button_gradient(backend: &CaptureBackend, panel: Rect) -> Vec<(f32, Color)> {
+    /// The flat fill the primary button was painted with.
+    fn button_fill(backend: &CaptureBackend, panel: Rect) -> Color {
         backend
-            .gradients
+            .fills
             .iter()
-            .find(|(rect, _)| *rect == sign_in_rect(panel))
-            .expect("primary button should use a gradient")
-            .1
-            .clone()
+            .find(|(rect, _, _)| *rect == sign_in_rect(panel))
+            .expect("primary button should be a flat fill")
+            .2
     }
 
     #[test]
@@ -530,12 +506,12 @@ mod tests {
         let (_, _, pressed_paint) = paint_modal(&pressed);
 
         assert_ne!(
-            button_gradient(&idle_paint, panel),
-            button_gradient(&hover_paint, panel)
+            button_fill(&idle_paint, panel),
+            button_fill(&hover_paint, panel)
         );
         assert_ne!(
-            button_gradient(&hover_paint, panel),
-            button_gradient(&pressed_paint, panel)
+            button_fill(&hover_paint, panel),
+            button_fill(&pressed_paint, panel)
         );
     }
 

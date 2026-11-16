@@ -3,8 +3,7 @@
 use crate::{Point2D, Rect, RenderBackend, TextLayout, Theme};
 
 pub(super) fn paint(backend: &mut dyn RenderBackend, theme: &Theme, button: Rect, label: &str) {
-    backend.fill_round_rect(button, 11.0, theme.muted);
-    backend.stroke_round_rect(button, 11.0, theme.border, 1.0);
+    backend.fill_round_rect(button, 6.0, theme.muted);
     let font_size = 12.0;
     let weight = 600;
     let width = backend.measure_text_weighted(label, font_size, weight);

@@ -13,6 +13,7 @@
 //! bubble rather than inline at the caret; inline rendering would
 //! need per-input paint surgery across ten input surfaces.
 
+use crate::widgets::file_menu::popup;
 use crate::widgets::text_metrics;
 use crate::widgets::PaintCx;
 use crate::{Color, Point2D, Rect, TextLayout, Theme};
@@ -20,7 +21,7 @@ use crate::{Color, Point2D, Rect, TextLayout, Theme};
 const PAD_X: f32 = 10.0;
 const PAD_Y: f32 = 6.0;
 const FONT_SIZE: f32 = 13.0;
-const RADIUS: f32 = 6.0;
+const RADIUS: f32 = 8.0;
 
 /// Paint the preedit bubble. `anchor` is the focused input's rect
 /// (bubble sits just below its bottom-left corner); `None` falls
@@ -61,9 +62,7 @@ pub fn paint_ime_preedit(
         origin: Point2D::new(x, y),
         size: Point2D::new(w, h),
     };
-    cx.backend.fill_round_rect(rect, RADIUS, theme.card);
-    cx.backend
-        .stroke_round_rect(rect, RADIUS, theme.border, 1.0);
+    popup::paint_popup_surface(cx.backend, theme, rect, RADIUS);
     let origin = Point2D::new(x + PAD_X, y + PAD_Y);
     cx.backend.draw_text(
         &TextLayout::single_run(

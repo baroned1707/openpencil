@@ -7,6 +7,7 @@
 //! drag events.
 
 use crate::theme::Theme;
+use crate::widgets::file_menu::popup;
 use crate::widgets::icons::{draw_icon, Icon};
 use crate::widgets::text_metrics;
 use crate::{Color, Point2D, Rect, RenderBackend, TextLayout};
@@ -77,8 +78,7 @@ pub fn paint_file_drop_overlay(
         origin: Point2D::new(cx - card_w / 2.0, cy - card_h / 2.0),
         size: Point2D::new(card_w, card_h),
     };
-    backend.fill_round_rect(card, 14.0, theme.popover);
-    backend.stroke_round_rect(card, 14.0, theme.border, 1.0);
+    popup::paint_popup_surface(backend, theme, card, popup::DIALOG_RADIUS);
 
     // Download glyph (arrow into a tray) reads as "drop here".
     let icon = 30.0;

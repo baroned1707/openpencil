@@ -13,6 +13,7 @@
 
 use crate::theme::Theme;
 use crate::widgets::editor_state_ext::{theme_for, translate};
+use crate::widgets::file_menu::popup;
 use crate::widgets::text_metrics;
 use crate::widgets::{LayoutBox, LayoutCx, PaintCx, Widget, WidgetId};
 use crate::{Point2D, Rect, TextLayout};
@@ -322,7 +323,7 @@ fn paint_text(
 
 fn paint_button(cx: &mut PaintCx<'_>, theme: &Theme, rect: Rect, label: &str, hovered: bool) {
     if hovered {
-        cx.backend.fill_round_rect(rect, 6.0, theme.border);
+        cx.backend.fill_round_rect(rect, 6.0, theme.accent);
     }
     paint_text(
         cx,
@@ -369,9 +370,7 @@ impl Widget for HtmlImportDiagnosticsPanel<'_> {
     }
 
     fn paint(&self, cx: &mut PaintCx<'_>, panel: Rect) {
-        cx.backend.fill_round_rect(panel, 12.0, self.theme.card);
-        cx.backend
-            .stroke_round_rect(panel, 12.0, self.theme.border, 1.0);
+        popup::paint_popup_surface(cx.backend, &self.theme, panel, popup::DIALOG_RADIUS);
 
         paint_text(
             cx,
@@ -432,7 +431,7 @@ impl Widget for HtmlImportDiagnosticsPanel<'_> {
                         origin: Point2D::new(row.origin.x + HORIZONTAL_PAD, row.origin.y),
                         size: Point2D::new(row.size.x - HORIZONTAL_PAD * 2.0, 1.0),
                     },
-                    self.theme.border,
+                    self.theme.muted,
                 );
             }
             let Some(diagnostic) = self.rows().get(index) else {

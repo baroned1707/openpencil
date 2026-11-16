@@ -111,8 +111,7 @@ impl GitPanel<'_> {
     pub(in crate::widgets) fn paint_branch_picker(&self, cx: &mut PaintCx<'_>, panel_rect: Rect) {
         let t = self.theme;
         let panel = self.branch_picker_panel(panel_rect);
-        cx.backend.fill_round_rect(panel, 8.0, t.popover);
-        cx.backend.stroke_round_rect(panel, 8.0, t.border, 1.0);
+        popup::paint_popup_surface(cx.backend, &t, panel, popup::MENU_RADIUS);
 
         let mode = self.state.branch_picker_mode;
         // Header label per mode (TS list / create / merge headings). Merge
@@ -285,7 +284,7 @@ impl GitPanel<'_> {
                     origin: Point2D::new(panel.origin.x + MENU_PAD, create_r.origin.y - 5.0),
                     size: Point2D::new(panel.size.x - MENU_PAD * 2.0, 1.0),
                 },
-                alpha(t.border, 0.60),
+                t.muted,
             );
             self.text(
                 cx,

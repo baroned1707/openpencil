@@ -71,6 +71,11 @@ const RECENT_COLUMN_GAP: f32 = 10.0;
 #[path = "file_menu_paint.rs"]
 mod paint;
 
+// Figma UI3 floating-surface chrome (shadow, row hover, divider), shared by
+// every menu / dialog in the restyle — see the module doc.
+#[path = "file_menu_popup.rs"]
+pub(crate) mod popup;
+
 // The paint bodies moved to `file_menu_paint.rs` at the 800-line cap. The
 // re-export keeps `file_menu::truncate_to_width` at the path its callers
 // already use; the row-column geometry and the measured truncation core

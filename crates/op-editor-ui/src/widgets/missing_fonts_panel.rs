@@ -2,6 +2,7 @@
 
 use crate::theme::Theme;
 use crate::widgets::editor_state_ext::{theme_for, translate};
+use crate::widgets::file_menu::popup;
 use crate::widgets::property_panel_typography::{
     font_picker_action_in_layout, font_picker_entries, font_picker_hit_in_layout,
     font_picker_import_hover_in_layout, font_picker_layout_at, paint_font_picker_at,
@@ -368,7 +369,7 @@ pub(crate) fn paint_missing_font_row(
                 origin: row.origin,
                 size: Point2D::new(row.size.x, 1.0),
             },
-            theme.border,
+            theme.muted,
         );
     }
     let text_rect = row_text_rect(row, ui);
@@ -443,9 +444,8 @@ pub(crate) fn paint_missing_font_row(
             theme.primary,
         );
     } else {
-        // Use `border` because `accent` and `muted` are identical in both palettes.
         let bg = if choose_hovered {
-            theme.border
+            theme.row_selected
         } else {
             theme.muted
         };
@@ -482,9 +482,7 @@ impl Widget for MissingFontsPanel<'_> {
     }
 
     fn paint(&self, cx: &mut PaintCx<'_>, panel: Rect) {
-        cx.backend.fill_round_rect(panel, 14.0, self.theme.card);
-        cx.backend
-            .stroke_round_rect(panel, 14.0, self.theme.border, 1.0);
+        popup::paint_popup_surface(cx.backend, &self.theme, panel, popup::DIALOG_RADIUS);
 
         paint_text(
             cx,
@@ -522,7 +520,7 @@ impl Widget for MissingFontsPanel<'_> {
         let dismiss_hovered = self.ui.missing_fonts_hover
             == Some(op_editor_core::missing_fonts::MissingFontsHover::Dismiss);
         if dismiss_hovered {
-            cx.backend.fill_round_rect(dismiss, 6.0, self.theme.border);
+            cx.backend.fill_round_rect(dismiss, 6.0, self.theme.accent);
         }
         paint_text(
             cx,

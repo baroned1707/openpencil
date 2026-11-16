@@ -14,9 +14,10 @@
 
 use crate::theme::Theme;
 use crate::widgets::editor_state_ext::theme_for;
+use crate::widgets::file_menu::popup;
 use crate::widgets::icons::{draw_icon, Icon};
 use crate::widgets::{LayoutBox, LayoutCx, PaintCx, Widget, WidgetId};
-use crate::{Color, Point2D, Rect, TextLayout};
+use crate::{Point2D, Rect, TextLayout};
 pub use jian_widgets::components::menu::MenuHit;
 use op_editor_core::editor_ui_state::{LayerContextMenuState, LayerContextTarget};
 use op_editor_core::EditorState;
@@ -310,15 +311,8 @@ impl Widget for LayerContextMenu {
         LayoutBox { rect: self.rect() }
     }
     fn paint(&self, cx: &mut PaintCx<'_>, rect: Rect) {
-        cx.backend.fill_round_rect(rect, 8.0, self.theme.card);
-        cx.backend
-            .stroke_round_rect(rect, 8.0, self.theme.border, 1.0);
-        let destructive_color = Color {
-            r: 0.94,
-            g: 0.32,
-            b: 0.32,
-            a: 1.0,
-        };
+        popup::paint_popup_surface(cx.backend, &self.theme, rect, popup::MENU_RADIUS);
+        let destructive_color = self.theme.destructive;
         let mut y = rect.origin.y + PAD_Y;
         for (i, row) in self.rows.iter().enumerate() {
             let row_rect = Rect {
@@ -331,7 +325,7 @@ impl Widget for LayerContextMenu {
                     size: Point2D::new(rect.size.x - 8.0, ROW_HEIGHT - 4.0),
                 };
                 cx.backend
-                    .fill_round_rect(hover_rect, 4.0, self.theme.row_selected);
+                    .fill_round_rect(hover_rect, 6.0, self.theme.accent);
             }
             let fg = if row.destructive {
                 destructive_color

@@ -6,6 +6,7 @@
 //! phone screen) never hides the field being edited. Desktop never opens
 //! it — its Save flow keeps the native `rfd` picker.
 
+use crate::widgets::file_menu::popup;
 use crate::widgets::text_metrics;
 use crate::{Color, Point2D, Rect, RenderBackend, TextLayout};
 use op_editor_core::editor_ui_state::EditorUiState;
@@ -17,7 +18,7 @@ const HEADER_HEIGHT: f32 = 48.0;
 const INPUT_HEIGHT: f32 = 40.0;
 const BUTTON_HEIGHT: f32 = 36.0;
 const BUTTON_WIDTH: f32 = 96.0;
-const CORNER: f32 = 14.0;
+const CORNER: f32 = popup::DIALOG_RADIUS;
 const TOP_MARGIN: f32 = 24.0;
 const FONT_FAMILY: &str = "system-ui";
 
@@ -95,9 +96,7 @@ impl SaveNameDialog {
         let tr = |key: &'static str| op_i18n::translate(ui.effective_locale(), key);
         let dialog = &ui.save_name_dialog;
 
-        cx.backend.fill_round_rect(self.rect, CORNER, theme.popover);
-        cx.backend
-            .stroke_round_rect(self.rect, CORNER, theme.border, 1.0);
+        popup::paint_popup_surface(cx.backend, &theme, self.rect, CORNER);
 
         // Title.
         let title = tr("dialog.pickerSaveTitle");
@@ -115,8 +114,10 @@ impl SaveNameDialog {
 
         // File-name field — always focused while the modal is open.
         let input = self.input_rect();
-        cx.backend.fill_round_rect(input, 8.0, theme.input);
-        cx.backend.stroke_round_rect(input, 8.0, theme.ring, 1.0);
+        cx.backend
+            .fill_round_rect(input, popup::CONTROL_RADIUS, theme.input);
+        cx.backend
+            .stroke_round_rect(input, popup::CONTROL_RADIUS, theme.ring, 1.0);
         crate::widgets::property_panel_text_input::paint_text_input_view(
             cx,
             &theme,
@@ -130,10 +131,10 @@ impl SaveNameDialog {
             true,
         );
 
-        // Footer: Cancel (outline) + Save (primary; muted when blank).
+        // Footer: Cancel (filled secondary) + Save (primary; muted when blank).
         let (cancel, confirm) = self.button_rects();
-        cx.backend.fill_round_rect(cancel, 8.0, theme.card);
-        cx.backend.stroke_round_rect(cancel, 8.0, theme.border, 1.0);
+        cx.backend
+            .fill_round_rect(cancel, popup::CONTROL_RADIUS, theme.secondary);
         paint_centered_label(
             cx.backend,
             tr("common.cancel"),
@@ -147,9 +148,8 @@ impl SaveNameDialog {
         } else {
             (theme.muted, theme.muted_foreground)
         };
-        cx.backend.fill_round_rect(confirm, 8.0, confirm_bg);
         cx.backend
-            .stroke_round_rect(confirm, 8.0, theme.border, 1.0);
+            .fill_round_rect(confirm, popup::CONTROL_RADIUS, confirm_bg);
         paint_centered_label(cx.backend, tr("common.save"), 13.0, confirm_fg, confirm);
     }
 }

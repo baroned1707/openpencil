@@ -8,6 +8,7 @@
 
 use crate::theme::Theme;
 use crate::widgets::editor_state_ext::theme_for;
+use crate::widgets::file_menu::popup;
 use crate::widgets::icons::{draw_icon, Icon};
 use crate::widgets::text_metrics;
 use crate::widgets::{LayoutBox, LayoutCx, PaintCx, Widget, WidgetId};
@@ -81,9 +82,7 @@ impl Widget for ImportProgressOverlay {
     }
 
     fn paint(&self, cx: &mut PaintCx<'_>, rect: Rect) {
-        cx.backend.fill_round_rect(rect, 12.0, self.theme.card);
-        cx.backend
-            .stroke_round_rect(rect, 12.0, self.theme.border, 1.0);
+        popup::paint_popup_surface(cx.backend, &self.theme, rect, popup::DIALOG_RADIUS);
 
         // Source glyph, top-centre of the card.
         let glyph_size = 32.0;

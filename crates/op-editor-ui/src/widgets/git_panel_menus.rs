@@ -11,6 +11,7 @@
 //! pure-geometry hit-test agrees with paint.
 
 use crate::widgets::button::paint_button_feedback_wash;
+use crate::widgets::file_menu::popup;
 use crate::widgets::git_panel::{truncate, GitPanel, GitPanelHit, PAD};
 use crate::widgets::icons::{draw_icon, Icon};
 use crate::widgets::PaintCx;
@@ -91,12 +92,10 @@ impl GitPanel<'_> {
     ) {
         let t = self.theme;
         cx.backend.fill_round_rect(rect, 6.0, t.muted);
-        let border = if focused {
-            alpha(t.primary, 0.50)
-        } else {
-            alpha(t.border, 0.70)
-        };
-        cx.backend.stroke_round_rect(rect, 6.0, border, 1.0);
+        // Focus is the only outline UI3 draws on an input.
+        if focused {
+            cx.backend.stroke_round_rect(rect, 6.0, t.primary, 1.0);
+        }
         self.paint_text_input_view(cx, rect, input, placeholder, focused, 11.0, 8.0);
     }
 }

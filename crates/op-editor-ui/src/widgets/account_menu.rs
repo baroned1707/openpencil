@@ -7,6 +7,7 @@ use crate::theme::Theme;
 use crate::widgets::editor_state_ext::theme_for;
 use crate::widgets::icons::{draw_icon, Icon};
 // `Icon::Key` (lucide key.svg) labels the "MCP Tokens" row.
+use crate::widgets::file_menu::popup;
 use crate::widgets::menu_paint;
 use crate::widgets::{LayoutBox, LayoutCx, PaintCx, Widget, WidgetId};
 use crate::{Point2D, Rect, TextLayout};
@@ -117,11 +118,11 @@ fn row_hit(x: f32, y: f32, point: Point2D) -> bool {
 }
 
 fn paint_row_tint(cx: &mut PaintCx<'_>, theme: &Theme, x: f32, y: f32) {
-    menu_paint::paint_row_tint(cx, theme, x, y, MENU_WIDTH, ROW_HEIGHT);
+    popup::paint_row_hover(cx.backend, theme, x, y, MENU_WIDTH, ROW_HEIGHT);
 }
 
 fn paint_divider(cx: &mut PaintCx<'_>, theme: &Theme, rect: Rect, y: f32) -> f32 {
-    menu_paint::paint_divider(cx, theme, rect, y, MENU_WIDTH, PAD_X, DIVIDER_GAP)
+    popup::paint_group_divider(cx.backend, theme, rect, y, PAD_X, DIVIDER_GAP)
 }
 
 impl<'a> Widget for AccountMenu<'a> {
@@ -139,9 +140,7 @@ impl<'a> Widget for AccountMenu<'a> {
     }
 
     fn paint(&self, cx: &mut PaintCx<'_>, rect: Rect) {
-        cx.backend.fill_round_rect(rect, 10.0, self.theme.card);
-        cx.backend
-            .stroke_round_rect(rect, 10.0, self.theme.border, 1.0);
+        popup::paint_popup_surface(cx.backend, &self.theme, rect, popup::MENU_RADIUS);
 
         // Header: display name + @username.
         let name_layout = TextLayout::single_run(

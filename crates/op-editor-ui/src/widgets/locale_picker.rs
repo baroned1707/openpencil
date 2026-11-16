@@ -8,6 +8,7 @@
 
 use crate::theme::Theme;
 use crate::widgets::editor_state_ext::theme_for;
+use crate::widgets::file_menu::popup;
 use crate::widgets::{LayoutBox, LayoutCx, PaintCx, Widget, WidgetId};
 use crate::{Point2D, Rect};
 pub use jian_widgets::components::select::SelectHit;
@@ -73,16 +74,16 @@ impl LocalePicker {
 
     pub fn paint_select(&self, cx: &mut PaintCx<'_>, anchor: Rect, viewport: Rect) {
         let items = self.items();
+        let tokens = tokens_from_theme(&self.theme);
+        if self.state.open {
+            let popup = Select::popup_rect(anchor, viewport, items.len(), &tokens);
+            popup::paint_soft_shadow(cx.backend, &self.theme, popup, popup::SELECT_RADIUS);
+        }
         let select = Select {
             state: &self.state,
             items: &items,
         };
-        select.paint(
-            cx.backend,
-            anchor,
-            viewport,
-            &tokens_from_theme(&self.theme),
-        );
+        select.paint(cx.backend, anchor, viewport, &tokens);
     }
 
     /// Hit-test the panel at `point`. Returns the locale whose row
@@ -149,8 +150,9 @@ fn popup_anchor(popup: Rect) -> Rect {
     }
 }
 
+/// The Select body strokes its panel with `border`, which UI3 does not draw.
 fn tokens_from_theme(theme: &Theme) -> Tokens {
-    crate::widgets::button::tokens_from_theme(theme)
+    popup::borderless_tokens(theme)
 }
 
 #[cfg(test)]

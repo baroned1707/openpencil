@@ -79,8 +79,7 @@ impl GitPanel<'_> {
     pub(in crate::widgets) fn paint_remote_settings(&self, cx: &mut PaintCx<'_>, panel_rect: Rect) {
         let t = self.theme;
         let p = self.remote_settings_panel(panel_rect);
-        cx.backend.fill_round_rect(p, 8.0, t.popover);
-        cx.backend.stroke_round_rect(p, 8.0, t.border, 1.0);
+        popup::paint_popup_surface(cx.backend, &t, p, popup::MENU_RADIUS);
         let (back, url_input, set) = self.remote_settings_rects(panel_rect);
         let left = back.origin.x;
         // ← Back row.
@@ -158,7 +157,7 @@ impl GitPanel<'_> {
                     origin: Point2D::new(left, y),
                     size: Point2D::new(inner_w, 1.0),
                 },
-                alpha(t.border, 0.50),
+                t.muted,
             );
         };
         divider(cx, top);

@@ -6,6 +6,7 @@
 
 use crate::theme::Theme;
 use crate::widgets::editor_state_ext::theme_for;
+use crate::widgets::file_menu::popup;
 use crate::widgets::icons::Icon;
 use crate::widgets::{PaintCx, Widget, WidgetId};
 use crate::{Point2D, Rect};
@@ -115,6 +116,10 @@ impl Widget for ColorPicker {
     }
 
     fn paint(&self, cx: &mut PaintCx<'_>, rect: Rect) {
+        popup::paint_soft_shadow(cx.backend, &self.theme, rect, popup::COLOR_PICKER_RADIUS);
+        // The shared picker strokes its panel and swatches with `border`,
+        // which UI3 does not draw — switch the hairline colour off.
+        let tokens = popup::borderless_tokens(&self.theme);
         JianColorPicker {
             hue: self.state.hue,
             sat: self.state.sat,
@@ -126,11 +131,7 @@ impl Widget for ColorPicker {
             rgb_input: self.state.rgb_focus.map(|ch| (ch, &self.state.rgb_input)),
             now_ms: self.now_ms,
         }
-        .paint(
-            cx.backend,
-            rect,
-            &crate::widgets::button::tokens_from_theme(&self.theme),
-        );
+        .paint(cx.backend, rect, &tokens);
     }
 
     fn access_node(&self) -> accesskit::Node {

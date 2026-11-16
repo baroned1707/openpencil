@@ -11,6 +11,7 @@
 
 use crate::theme::Theme;
 use crate::widgets::editor_state_ext::theme_for;
+use crate::widgets::file_menu::popup;
 use crate::widgets::PaintCx;
 use crate::{Point2D, Rect, TextLayout};
 pub use jian_widgets::components::menu::MenuHit;
@@ -109,9 +110,7 @@ impl PathAnchorContextMenu {
 
     pub fn paint(&self, cx: &mut PaintCx<'_>) {
         let rect = self.rect();
-        cx.backend.fill_round_rect(rect, 6.0, self.theme.card);
-        cx.backend
-            .stroke_round_rect(rect, 6.0, self.theme.border, 1.0);
+        popup::paint_popup_surface(cx.backend, &self.theme, rect, popup::MENU_RADIUS);
         let mut y = rect.origin.y + PAD_Y;
         for (i, (_, label)) in ROWS.iter().enumerate() {
             if self.state.menu.hover == Some(i) {
@@ -120,7 +119,7 @@ impl PathAnchorContextMenu {
                     size: Point2D::new(rect.size.x - 8.0, ROW_HEIGHT - 2.0),
                 };
                 cx.backend
-                    .fill_round_rect(hover_rect, 4.0, self.theme.row_selected);
+                    .fill_round_rect(hover_rect, 6.0, self.theme.accent);
             }
             let fg = self.theme.foreground;
             let layout = TextLayout::single_run(
