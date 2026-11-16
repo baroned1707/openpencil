@@ -216,15 +216,27 @@ mod tests {
     #[test]
     fn light_theme_uses_figma_ui3_shell() {
         let t = Theme::light();
-        assert!(t.canvas_surface.r < t.card.r, "canvas sits below white panels");
-        assert_eq!(t.border, t.card, "borderless shell: border equals panel tone");
+        assert!(
+            t.canvas_surface.r < t.card.r,
+            "canvas sits below white panels"
+        );
+        assert_eq!(
+            t.border, t.card,
+            "borderless shell: border equals panel tone"
+        );
     }
 
     #[test]
     fn dark_theme_uses_figma_ui3_shell() {
         let t = Theme::dark();
-        assert!(t.canvas_surface.r < t.card.r, "canvas is darker than panels");
-        assert_eq!(t.border, t.card, "borderless shell: border equals panel tone");
+        assert!(
+            t.canvas_surface.r < t.card.r,
+            "canvas is darker than panels"
+        );
+        assert_eq!(
+            t.border, t.card,
+            "borderless shell: border equals panel tone"
+        );
     }
 
     #[test]

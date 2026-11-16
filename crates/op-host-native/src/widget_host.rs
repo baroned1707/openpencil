@@ -24,22 +24,6 @@ mod account_press;
 #[cfg(test)]
 mod account_press_tests;
 #[cfg(test)]
-mod ui3_proof;
-#[cfg(test)]
-mod ui3_proof_tests;
-#[cfg(test)]
-mod ui3_proof_frame_tests;
-#[cfg(test)]
-mod ui3_proof_chat_tests;
-#[cfg(test)]
-mod ui3_proof_menus_tests;
-#[cfg(test)]
-mod ui3_proof_panels_tests;
-#[cfg(test)]
-mod ui3_proof_home_tests;
-#[cfg(test)]
-mod ui3_proof_settings_tests;
-#[cfg(test)]
 mod agent_settings_acp_tests;
 #[cfg(test)]
 mod agent_settings_api_key_delete_tests;
@@ -143,6 +127,10 @@ mod home;
 mod home_brand;
 mod home_document_swap;
 mod home_site_import;
+#[cfg(test)]
+mod ui3_proof;
+#[cfg(test)]
+mod ui3_proof_tests;
 pub use home_document_swap::ReplacedHomeDocument;
 mod home_overlays;
 mod home_quick_start;

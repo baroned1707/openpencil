@@ -1,5 +1,18 @@
 //! Baseline proof scenes: the editor frame in both themes.
 
+#[path = "ui3_proof_chat_tests.rs"]
+mod chat;
+#[path = "ui3_proof_frame_tests.rs"]
+mod frame;
+#[path = "ui3_proof_home_tests.rs"]
+mod home;
+#[path = "ui3_proof_menus_tests.rs"]
+mod menus;
+#[path = "ui3_proof_panels_tests.rs"]
+mod panels;
+#[path = "ui3_proof_settings_tests.rs"]
+mod settings;
+
 use super::ui3_proof::{editor_host, render_scene};
 use op_editor_core::ThemeMode;
 

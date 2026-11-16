@@ -88,6 +88,7 @@ fn long_palette_state() -> EditorState {
 
 fn empty_open_state() -> EditorState {
     let mut state = EditorState::default();
+    state.editor_ui.locale = op_i18n::Locale::ZhCn;
     state.editor_ui.design_md_panel.open = true;
     state.doc.design_md = None;
     state

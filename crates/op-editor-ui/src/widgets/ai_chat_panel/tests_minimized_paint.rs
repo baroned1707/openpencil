@@ -11,6 +11,7 @@ use crate::widgets::{AI_CHAT_MINIMIZED_HEIGHT, AI_CHAT_WIDTH};
 #[test]
 fn paint_minimized_bar_reads_as_a_compact_input() {
     let mut s = EditorState::new();
+    s.editor_ui.locale = op_i18n::Locale::ZhCn;
     s.chat.minimize();
     let panel = {
         // The minimized bar is the TOUCH sheet's collapsed form now: on
@@ -66,6 +67,7 @@ fn the_model_name_sits_a_step_below_the_placeholder() {
     // Secondary chrome: same muted hue, lower alpha, smaller size — the
     // eye should land on the prompt, not on the model.
     let mut s = EditorState::new();
+    s.editor_ui.locale = op_i18n::Locale::ZhCn;
     s.chat.minimize();
     seed_available_model(&mut s);
     let panel = {
@@ -104,6 +106,7 @@ fn the_model_name_sits_a_step_below_the_placeholder() {
 #[test]
 fn paint_minimized_bar_prefers_the_unsent_draft_over_the_placeholder() {
     let mut s = EditorState::new();
+    s.editor_ui.locale = op_i18n::Locale::ZhCn;
     s.chat.minimize();
     s.chat
         .set_input_text("a pricing page\nsecond line".to_string());
@@ -144,6 +147,7 @@ fn paint_minimized_bar_prefers_the_unsent_draft_over_the_placeholder() {
 #[test]
 fn paint_minimized_bar_hover_adds_visible_feedback_across_the_bar() {
     let mut s = EditorState::new();
+    s.editor_ui.locale = op_i18n::Locale::ZhCn;
     s.chat.minimize();
     s.editor_ui.chat_header_hover = Some(op_editor_core::ChatHeaderButton::ToggleCollapse);
     let panel = {

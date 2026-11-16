@@ -7,6 +7,7 @@ use op_editor_core::{
 #[test]
 fn home_offers_create_and_join_paths() {
     let mut ui = EditorUiState::default();
+    ui.locale = op_i18n::Locale::ZhCn;
     ui.collab.availability = CollabAvailability::Ready;
 
     let model = CollabPanelModel::for_editor_ui(&ui);
@@ -27,6 +28,7 @@ fn home_offers_create_and_join_paths() {
 #[test]
 fn open_create_is_navigation_only_and_exposes_connection_choices() {
     let mut ui = EditorUiState::default();
+    ui.locale = op_i18n::Locale::ZhCn;
     ui.collab.availability = CollabAvailability::Ready;
     ui.collab.panel.open = true;
 
@@ -66,6 +68,7 @@ fn open_create_is_navigation_only_and_exposes_connection_choices() {
 #[test]
 fn open_join_is_navigation_only_and_nearby_search_is_explicit() {
     let mut ui = EditorUiState::default();
+    ui.locale = op_i18n::Locale::ZhCn;
     ui.collab.availability = CollabAvailability::Ready;
     ui.collab.panel.open = true;
 
@@ -105,6 +108,7 @@ fn open_join_is_navigation_only_and_nearby_search_is_explicit() {
 #[test]
 fn relay_only_capabilities_hide_multicast_paths_but_keep_manual_join() {
     let mut ui = EditorUiState::default();
+    ui.locale = op_i18n::Locale::ZhCn;
     ui.collab.availability = CollabAvailability::Ready;
     ui.collab.transport_capabilities =
         op_editor_core::CollabTransportCapabilities::RELAY_AND_MANUAL_JOIN;
@@ -137,6 +141,7 @@ fn relay_only_capabilities_hide_multicast_paths_but_keep_manual_join() {
 fn invite_or_address_input_is_bounded_and_queues_one_join() {
     for target in ["opc1_Ab-9", "192.168.1.8:43120"] {
         let mut ui = EditorUiState::default();
+        ui.locale = op_i18n::Locale::ZhCn;
         ui.collab.panel.join_address_focused = true;
         for character in target.chars() {
             assert_eq!(join_address_text(&mut ui, character, 0), Some(true));
@@ -156,6 +161,7 @@ fn invite_or_address_input_is_bounded_and_queues_one_join() {
 fn join_target_and_action_debug_are_redacted() {
     let raw_invite = "opc1_secret-join-route";
     let mut ui = EditorUiState::default();
+    ui.locale = op_i18n::Locale::ZhCn;
     ui.collab.availability = CollabAvailability::Ready;
     ui.collab.panel.view = CollabPanelView::Join;
     ui.collab.panel.join_input.set_text(raw_invite);
@@ -170,6 +176,7 @@ fn join_target_and_action_debug_are_redacted() {
 fn owner_model_projects_redacted_invite_and_relay_region() {
     let raw_invite = "opc1_secret-route-capability";
     let mut ui = EditorUiState::default();
+    ui.locale = op_i18n::Locale::ZhCn;
     ui.collab.availability = CollabAvailability::Ready;
     ui.collab.set_authenticated_session(
         CollabConnectionPhase::Active,
@@ -214,6 +221,7 @@ fn owner_model_projects_redacted_invite_and_relay_region() {
 #[test]
 fn guest_model_never_projects_owner_invite() {
     let mut ui = EditorUiState::default();
+    ui.locale = op_i18n::Locale::ZhCn;
     ui.collab.set_authenticated_session(
         CollabConnectionPhase::Active,
         AuthenticatedCollabSession {
@@ -248,6 +256,7 @@ fn conflict_notice_names_the_discarded_fields_and_offers_reapply() {
     };
 
     let mut ui = EditorUiState::default();
+    ui.locale = op_i18n::Locale::ZhCn;
     ui.collab.availability = CollabAvailability::Ready;
     ui.collab.set_authenticated_session(
         CollabConnectionPhase::Active,
@@ -303,6 +312,7 @@ fn conflict_notice_names_the_discarded_fields_and_offers_reapply() {
 #[test]
 fn paste_replaces_the_whole_join_field() {
     let mut ui = EditorUiState::default();
+    ui.locale = op_i18n::Locale::ZhCn;
     ui.collab.panel.join_address_focused = true;
     ui.collab.panel.join_input.set_text("opc1_stale-old-code");
 
@@ -323,6 +333,7 @@ fn paste_replaces_the_whole_join_field() {
 #[test]
 fn select_all_then_backspace_clears_and_type_replaces() {
     let mut ui = EditorUiState::default();
+    ui.locale = op_i18n::Locale::ZhCn;
     ui.collab.panel.join_address_focused = true;
     ui.collab.panel.join_input.set_text("opc1_very-long-invite");
 
@@ -345,6 +356,7 @@ fn select_all_then_backspace_clears_and_type_replaces() {
 #[test]
 fn clear_hit_empties_the_field_and_keeps_focus() {
     let mut ui = EditorUiState::default();
+    ui.locale = op_i18n::Locale::ZhCn;
     ui.collab.availability = CollabAvailability::Ready;
     ui.collab.panel.open = true;
     ui.collab.panel.view = CollabPanelView::Join;
@@ -363,6 +375,7 @@ fn clear_hit_empties_the_field_and_keeps_focus() {
 #[test]
 fn refocus_by_click_collapses_a_stale_selection() {
     let mut ui = EditorUiState::default();
+    ui.locale = op_i18n::Locale::ZhCn;
     ui.collab.panel.join_address_focused = true;
     ui.collab.panel.join_input.set_text("opc1_abc");
     ui.collab.panel.join_input.select_all();
