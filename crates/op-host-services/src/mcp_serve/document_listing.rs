@@ -6,7 +6,7 @@
 //! server, the headless registry tool and the refusal messages all share one
 //! description of "an open document".
 
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 use op_editor_core::{DocumentId, DocumentTabStatus};
 
@@ -27,6 +27,15 @@ pub struct DocumentListing {
     /// today; the others are parked.
     pub active: bool,
     pub status: DocumentTabStatus,
+}
+
+/// The project folder name used to group a document stored at `path`
+/// (`project_root_for`), or empty for an untitled document or a path with no
+/// usable project directory.
+pub fn project_name_for(path: Option<&Path>) -> String {
+    crate::project_root::project_root_for_document(path)
+        .map(|root| root.name)
+        .unwrap_or_default()
 }
 
 impl DocumentListing {

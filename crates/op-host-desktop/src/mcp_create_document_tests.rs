@@ -112,8 +112,12 @@ fn tab_label_and_path_update_after_create_document() {
     let tabs = &app.host.editor_state().editor_ui.document_tabs;
     assert_eq!(tabs.len(), 1);
     assert_eq!(tabs[0].label, "landing.op");
-    // The tab's project group is the file's own folder, as for any saved file.
-    assert_eq!(tabs[0].project, "designs");
+    // A file in `<project>/designs/` groups under the project, not under
+    // "designs" (which every project has).
+    assert_eq!(
+        tabs[0].project,
+        project.file_name().unwrap().to_string_lossy().as_ref()
+    );
     assert!(!tabs[0].dirty);
     assert_eq!(app.documents.open_paths(), vec![expected.clone()]);
 

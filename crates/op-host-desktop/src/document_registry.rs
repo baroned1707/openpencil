@@ -41,21 +41,42 @@ pub(crate) struct SlotLocalState {
 /// One open document.
 pub(crate) struct DocumentSlot {
     pub id: DocumentId,
+    /// The project name last resolved for a path, so a frame does not walk the
+    /// file system again for every tab (`project_name`).
+    project_memo: std::sync::Mutex<Option<(PathBuf, String)>>,
     pub local: SlotLocalState,
     /// The document itself while it is not on screen; `None` for the active slot.
     pub parked: Option<ParkedDocument>,
 }
 
 impl DocumentSlot {
-    /// The folder name shown beside the tab; empty for an untitled document.
+    /// The project the tab groups under: the name of the project root the file
+    /// belongs to (the same root the Projects dock and the agent's working
+    /// directory use), or the file's own folder when no root is found. Empty for
+    /// an untitled document. Memoized per path: resolving it reads the disk.
     fn project_name(&self) -> String {
-        self.local
-            .path
-            .as_deref()
-            .and_then(Path::parent)
-            .and_then(Path::file_name)
-            .map(|name| name.to_string_lossy().into_owned())
-            .unwrap_or_default()
+        let Some(path) = self.local.path.as_deref() else {
+            return String::new();
+        };
+        let mut memo = self
+            .project_memo
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner());
+        if let Some((cached_path, name)) = memo.as_ref() {
+            if cached_path == path {
+                return name.clone();
+            }
+        }
+        let name = op_host_services::project_root::project_root_for(path)
+            .map(|project| project.name)
+            .or_else(|| {
+                path.parent()
+                    .and_then(Path::file_name)
+                    .map(|name| name.to_string_lossy().into_owned())
+            })
+            .unwrap_or_default();
+        *memo = Some((path.to_path_buf(), name.clone()));
+        name
     }
 
     fn label(&self, untitled: &str) -> String {
@@ -106,6 +127,7 @@ impl DocumentRegistry {
         let id = DocumentId(NEXT_DOCUMENT_ID.fetch_add(1, std::sync::atomic::Ordering::Relaxed));
         DocumentSlot {
             id,
+            project_memo: std::sync::Mutex::new(None),
             local: SlotLocalState::default(),
             parked: None,
         }

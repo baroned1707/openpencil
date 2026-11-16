@@ -525,3 +525,15 @@ mod tests {
 #[cfg(test)]
 #[path = "mcp_parked_document_tests.rs"]
 mod parked_document_tests;
+
+#[cfg(test)]
+#[path = "mcp_multi_document_e2e_support.rs"]
+mod multi_document_e2e_support;
+
+#[cfg(test)]
+#[path = "mcp_multi_document_e2e_tests.rs"]
+mod multi_document_e2e_tests;
+
+#[cfg(test)]
+#[path = "mcp_multi_document_e2e_lifecycle_tests.rs"]
+mod multi_document_e2e_lifecycle_tests;

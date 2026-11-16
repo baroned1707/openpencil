@@ -206,7 +206,9 @@ fn process_message_with_auto_finalize(
     let line = line.as_ref();
     // A headless document always has its backing file, so it can never be
     // given a first one.
-    if let Some(response) = create_document::refuse_in_headless(line, path, profile) {
+    if let Some(response) = create_document::refuse_in_headless(line, path, profile)
+        .or_else(|| list_documents_tool::answer_in_headless(line, path, profile))
+    {
         return Ok(Some(response));
     }
     // The headless transport owns its backing file outright (no editor holds

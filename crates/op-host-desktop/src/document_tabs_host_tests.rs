@@ -314,3 +314,35 @@ fn session_restore_reopens_existing_files_and_skips_missing_ones() {
     assert_eq!(fresh.current_path.as_deref(), Some(paths[0].as_path()));
     let _ = std::fs::remove_dir_all(dir);
 }
+
+#[test]
+fn files_in_designs_folders_of_different_projects_group_separately() {
+    // Both layouts are `<project>/designs/x.op`; grouping by the file's own
+    // folder would put every project's files under "designs".
+    let one = temp_dir("group-one");
+    let two = temp_dir("group-two");
+    for root in [&one, &two] {
+        std::fs::write(root.join("package.json"), "{}").unwrap();
+        std::fs::create_dir_all(root.join("designs")).unwrap();
+    }
+    let a = write_document(&one.join("designs"), "a.op");
+    let b = write_document(&two.join("designs"), "b.op");
+    let mut app = DesktopApp::new(None);
+    assert!(app.open_document_tab(a));
+    assert!(app.open_document_tab(b));
+    app.publish_document_tabs();
+    let tabs = &app.host.editor_state().editor_ui.document_tabs;
+    assert_eq!(tabs.len(), 2);
+    assert_ne!(tabs[0].project, tabs[1].project, "two projects, two groups");
+    assert_ne!(tabs[0].project, "designs");
+    assert_eq!(
+        tabs[0].project,
+        one.canonicalize()
+            .unwrap()
+            .file_name()
+            .unwrap()
+            .to_string_lossy()
+    );
+    let _ = std::fs::remove_dir_all(one);
+    let _ = std::fs::remove_dir_all(two);
+}

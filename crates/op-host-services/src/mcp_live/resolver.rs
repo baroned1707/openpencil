@@ -76,7 +76,7 @@ impl DocumentResolver for SingleDocumentResolver<'_> {
             id: crate::mcp_serve::document_address::HEADLESS_DOCUMENT,
             label,
             path: self.path.clone(),
-            project: String::new(),
+            project: crate::mcp_serve::document_listing::project_name_for(self.path.as_deref()),
             dirty: self.state.is_dirty(),
             active: true,
             status: DocumentTabStatus::Idle,
