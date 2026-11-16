@@ -77,6 +77,9 @@ pub struct NewSessionOptions {
     /// `_meta.systemPrompt` (claude-agent-acp honors this; agents
     /// that don't simply ignore the unknown `_meta` key).
     pub system_prompt_meta: Option<String>,
+    /// Working directory the agent should treat as the project (the open
+    /// document's project root). `None` sends this process's own cwd.
+    pub cwd: Option<PathBuf>,
 }
 
 /// A newly-created stable-v1 ACP session, including the configuration state
@@ -251,9 +254,12 @@ impl AcpConnection {
     }
 
     async fn new_session_once(&self, options: &NewSessionOptions) -> Result<AcpSession, AcpError> {
-        let cwd = std::env::current_dir()
+        let cwd = options
+            .cwd
+            .clone()
+            .or_else(|| std::env::current_dir().ok())
             .map(|p| p.to_string_lossy().to_string())
-            .unwrap_or_else(|_| ".".to_string());
+            .unwrap_or_else(|| ".".to_string());
         let servers: Vec<Value> = options
             .mcp_servers
             .iter()

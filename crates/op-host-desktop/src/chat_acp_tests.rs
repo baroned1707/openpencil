@@ -74,6 +74,28 @@ fn remote_session_options_never_expose_the_desktop_loopback_mcp() {
 }
 
 #[test]
+fn project_cwd_reaches_local_acp_sessions_only() {
+    let project = std::path::Path::new("/projects/demo");
+    let local = with_project_cwd(
+        session_options_for_port(4123),
+        ConnectionType::Local,
+        Some(project),
+    );
+    assert_eq!(local.cwd.as_deref(), Some(project));
+    assert_eq!(local.mcp_servers.len(), 1, "other options are preserved");
+
+    let remote = with_project_cwd(
+        NewSessionOptions::default(),
+        ConnectionType::Remote,
+        Some(project),
+    );
+    assert_eq!(remote.cwd, None, "a remote agent never sees a local path");
+
+    let untitled = with_project_cwd(session_options_for_port(4123), ConnectionType::Local, None);
+    assert_eq!(untitled.cwd, None, "no project root keeps today's cwd");
+}
+
+#[test]
 fn stable_v1_stop_reasons_reach_the_chat_terminal_delta() {
     assert_eq!(
         map_acp_stop_reason(AcpStopReason::EndTurn),

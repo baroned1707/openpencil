@@ -67,6 +67,9 @@ pub struct ClaudeCodeProvider {
     /// Cloned per-`send`; `None` falls through to the SDK's defaults.
     options: Option<ClaudeAgentOptions>,
     label: String,
+    /// Working directory for the `claude` subprocess (the document's project
+    /// root). `None` keeps the process's own cwd. See `with_project_cwd`.
+    project_cwd: Option<std::path::PathBuf>,
 }
 
 impl ClaudeCodeProvider {
@@ -78,6 +81,7 @@ impl ClaudeCodeProvider {
         Self {
             options: None,
             label: "Claude Code".into(),
+            project_cwd: None,
         }
     }
 
@@ -102,6 +106,7 @@ impl ClaudeCodeProvider {
         Self {
             options: Some(options),
             label: "Claude Code".into(),
+            project_cwd: None,
         }
     }
 }
@@ -126,7 +131,9 @@ impl ClaudeCodeProvider {
             request.system_prompt =
                 crate::chat_attachment::strip_no_tools_restriction(&request.system_prompt);
         }
-        let options = Some(effective_options(self.options.as_ref(), &request));
+        let mut options = effective_options(self.options.as_ref(), &request);
+        provider_impl::apply_project_cwd(&mut options, self.project_cwd.as_deref());
+        let options = Some(options);
         // Claude Code's `query` String API can't carry image content
         // blocks, so attachments spill to temp files and the prompt
         // carries the TS guided Read-tool flow (chat.ts:268-282): one

@@ -86,6 +86,8 @@ pub struct SubprocessProvider {
     /// `None` for custom `with_binary` providers — generic behavior.
     cli: Option<CliName>,
     turn_purpose: safety::TurnPurpose,
+    /// Document project root; only Codex honours it (see `cwd::child_cwd`).
+    project_cwd: Option<std::path::PathBuf>,
 }
 
 impl SubprocessProvider {
@@ -187,6 +189,7 @@ impl SubprocessProvider {
             tail_args,
             cli: Some(cli),
             turn_purpose,
+            project_cwd: None,
         })
     }
 
@@ -222,6 +225,7 @@ impl SubprocessProvider {
             tail_args: Vec::new(),
             cli: None,
             turn_purpose: safety::TurnPurpose::Generation,
+            project_cwd: None,
         }
     }
 
@@ -431,6 +435,7 @@ impl SubprocessProvider {
             _ => None,
         };
         let label = self.label.clone();
+        let project_cwd = self.project_cwd.clone();
         let (tx, rx) = mpsc::channel::<ChatDelta>(64);
         shared_runtime().spawn(async move {
             // Keep staged attachment temp files alive for the turn.
@@ -439,10 +444,9 @@ impl SubprocessProvider {
             let deadline = tokio::time::Instant::now()
                 + turn_timeout.unwrap_or(Duration::from_secs(60 * 60 * 24 * 365));
             let mut cmd = build_command(&binary, &args);
-            if let Some(turn) = &_isolation {
-                cmd.current_dir(turn.cwd());
-            } else if cli == Some(CliName::Kimi) {
-                cmd.current_dir(crate::chat_subprocess_kimi::workspace_dir());
+            let isolated_cwd = _isolation.as_ref().map(safety::IsolatedTurn::cwd);
+            if let Some(dir) = cwd::child_cwd(cli, isolated_cwd, project_cwd.as_deref()) {
+                cmd.current_dir(dir);
             }
             // Set the child's env from the per-CLI policy. We
             // env_clear first because tokio::process Command
@@ -781,6 +785,9 @@ impl SubprocessProvider {
         }
     }
 }
+
+#[path = "chat_subprocess_cwd.rs"]
+mod cwd;
 
 #[cfg(test)]
 #[path = "chat_subprocess_tests.rs"]

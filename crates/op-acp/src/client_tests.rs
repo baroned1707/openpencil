@@ -278,10 +278,57 @@ async fn session_new_carries_mcp_servers_and_system_prompt_meta() {
                 url: "http://127.0.0.1:3100/mcp".into(),
             }],
             system_prompt_meta: Some("use the canvas tools".into()),
+            cwd: None,
         })
         .await
         .unwrap();
     assert_eq!(session.session_id, "sess-mcp-ok");
+}
+
+/// Agent that answers `session/new` with the `cwd` it was sent as the session id.
+async fn mock_agent_echoing_session_cwd(
+    read: impl AsyncRead + Unpin,
+    mut write: impl AsyncWrite + Unpin,
+) {
+    let mut buf = BufReader::new(read);
+    while let Ok(Some(frame)) = read_frame(&mut buf).await {
+        let id = frame["id"].clone();
+        let result = match frame["method"].as_str().unwrap_or_default() {
+            "initialize" => serde_json::json!({ "protocolVersion": 1 }),
+            "session/new" => serde_json::json!({ "sessionId": frame["params"]["cwd"] }),
+            _ => break,
+        };
+        write_frame(
+            &mut write,
+            &serde_json::json!({ "jsonrpc": "2.0", "id": id, "result": result }),
+        )
+        .await
+        .unwrap();
+    }
+}
+
+async fn session_cwd_sent_for(options: NewSessionOptions) -> String {
+    let (client_write, agent_read) = tokio::io::duplex(8192);
+    let (agent_write, client_read) = tokio::io::duplex(8192);
+    tokio::spawn(mock_agent_echoing_session_cwd(agent_read, agent_write));
+    let mut conn = AcpConnection::new(client_read, client_write, None);
+    conn.initialize("fallback").await.unwrap();
+    conn.new_session_with(&options).await.unwrap().session_id
+}
+
+#[tokio::test]
+async fn acp_client_uses_given_cwd() {
+    let project = std::path::PathBuf::from("/projects/demo");
+    let sent = session_cwd_sent_for(NewSessionOptions {
+        cwd: Some(project.clone()),
+        ..NewSessionOptions::default()
+    })
+    .await;
+    assert_eq!(sent, project.to_string_lossy());
+
+    // Without a project root the client keeps sending the process cwd.
+    let fallback = session_cwd_sent_for(NewSessionOptions::default()).await;
+    assert_eq!(fallback, std::env::current_dir().unwrap().to_string_lossy());
 }
 
 #[tokio::test]
@@ -296,6 +343,7 @@ async fn http_mcp_requires_an_advertised_capability() {
                 url: "http://127.0.0.1:3100/mcp".into(),
             }],
             system_prompt_meta: None,
+            cwd: None,
         })
         .await
         .unwrap_err();

@@ -11,6 +11,24 @@ pub(super) fn unexpected_stream_end_deltas() -> [ChatDelta; 2] {
     ]
 }
 
+impl ClaudeCodeProvider {
+    /// Run `claude` from `cwd` (the document's project root) so it finds the
+    /// project's `.claude/`, `CLAUDE.md` and `.mcp.json`. `None` leaves the
+    /// SDK option unset, i.e. the process's own working directory.
+    pub fn with_project_cwd(mut self, cwd: Option<std::path::PathBuf>) -> Self {
+        self.project_cwd = cwd;
+        self
+    }
+}
+
+/// Point the SDK at `cwd` only when one is given; `None` must not clobber a
+/// `cwd` already carried by caller-supplied options.
+pub(super) fn apply_project_cwd(options: &mut ClaudeAgentOptions, cwd: Option<&std::path::Path>) {
+    if let Some(cwd) = cwd {
+        options.cwd = Some(cwd.to_path_buf());
+    }
+}
+
 impl ChatProvider for ClaudeCodeProvider {
     fn provider_label(&self) -> &str {
         &self.label
@@ -105,6 +123,26 @@ mod tests {
             "PATH must never ride options.env: {:?}",
             options.env.keys().collect::<Vec<_>>()
         );
+    }
+
+    #[test]
+    fn claude_launch_sets_cwd_only_when_some() {
+        let request = ChatRequest::default();
+        let mut options = effective_options(None, &request);
+        apply_project_cwd(&mut options, None);
+        assert_eq!(options.cwd, None, "no project root keeps today's cwd");
+
+        let project = std::path::Path::new("/projects/demo");
+        apply_project_cwd(&mut options, Some(project));
+        assert_eq!(options.cwd.as_deref(), Some(project));
+
+        // `None` never clears a cwd the options already carried.
+        apply_project_cwd(&mut options, None);
+        assert_eq!(options.cwd.as_deref(), Some(project));
+
+        let provider = ClaudeCodeProvider::for_chat().with_project_cwd(Some(project.into()));
+        assert_eq!(provider.project_cwd.as_deref(), Some(project));
+        assert_eq!(ClaudeCodeProvider::new().project_cwd, None);
     }
 
     #[test]

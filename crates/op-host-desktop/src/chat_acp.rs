@@ -43,6 +43,7 @@
 //!   `EditorState` (`agent_settings.mcp_server`), which tracks the
 //!   user-enabled server's bound port.
 
+use std::path::{Path, PathBuf};
 use std::sync::{atomic::AtomicBool, Arc};
 
 use op_acp::{
@@ -128,6 +129,7 @@ fn session_options_for_port(port: u16) -> NewSessionOptions {
             url: format!("http://127.0.0.1:{port}/mcp"),
         }],
         system_prompt_meta: Some(ACP_SYSTEM_PROMPT.to_string()),
+        cwd: None,
     }
 }
 
@@ -142,6 +144,20 @@ fn session_options_for_connection(
         ConnectionType::Local => live_mcp_port.map(session_options_for_port),
         ConnectionType::Remote => Some(NewSessionOptions::default()),
     }
+}
+
+/// Add the document's project root to the `session/new` payload. Only a local
+/// agent receives it: a remote agent runs on another host, where this
+/// machine's path is meaningless and would leak the local directory layout.
+fn with_project_cwd(
+    mut options: NewSessionOptions,
+    connection_type: ConnectionType,
+    project_cwd: Option<&Path>,
+) -> NewSessionOptions {
+    if connection_type == ConnectionType::Local {
+        options.cwd = project_cwd.map(Path::to_path_buf);
+    }
+    options
 }
 
 /// Resolve a local command through the same GUI-aware search path used by the
@@ -300,6 +316,9 @@ pub struct AcpProvider {
     /// Local ACP turns require it (TS parity — see module docs).
     live_mcp_port: Option<u16>,
     label: String,
+    /// Project root of the open document, sent as the session `cwd` to local
+    /// agents. `None` keeps the process cwd.
+    project_cwd: Option<PathBuf>,
 }
 
 impl AcpProvider {
@@ -314,7 +333,15 @@ impl AcpProvider {
             config,
             live_mcp_port,
             label,
+            project_cwd: None,
         }
+    }
+
+    /// Open the agent's session in `cwd` (the document's project root) so it
+    /// finds the project's config files. `None` changes nothing.
+    pub fn with_project_cwd(mut self, cwd: Option<PathBuf>) -> Self {
+        self.project_cwd = cwd;
+        self
     }
 }
 
@@ -356,6 +383,11 @@ impl AcpProvider {
                 Some(options) => options,
                 None => return mcp_not_running_turn(),
             };
+        let session_options = with_project_cwd(
+            session_options,
+            config.connection_type,
+            self.project_cwd.as_deref(),
+        );
         // ACP `session/prompt` carries plain text. A local agent can
         // read temp-file path lines; a remote (WebSocket) agent
         // cannot, so for remote agents the attachments are omitted

@@ -86,7 +86,23 @@ pub fn launch_if_pending(
     current_chat: &mut Option<ChatSession>,
     current_design: &mut Option<DesignSession>,
 ) -> bool {
-    let launched = launch_if_pending_inner(host, current_chat, current_design);
+    launch_if_pending_with(
+        host,
+        current_chat,
+        current_design,
+        &ChatLaunchContext::default(),
+    )
+}
+
+/// [`launch_if_pending`] with the launch-time facts about the open document
+/// (its project root). The default context reproduces the old behaviour.
+pub fn launch_if_pending_with(
+    host: &mut WidgetHostNative,
+    current_chat: &mut Option<ChatSession>,
+    current_design: &mut Option<DesignSession>,
+    context: &ChatLaunchContext,
+) -> bool {
+    let launched = launch_if_pending_inner(host, current_chat, current_design, context);
     if launched {
         stamp_workspace_run_epoch(host);
     }
@@ -113,6 +129,7 @@ fn launch_if_pending_inner(
     host: &mut WidgetHostNative,
     current_chat: &mut Option<ChatSession>,
     current_design: &mut Option<DesignSession>,
+    context: &ChatLaunchContext,
 ) -> bool {
     let Some(user_text) = host.editor_state_mut().chat.pending_send.take() else {
         return false;
@@ -169,7 +186,13 @@ fn launch_if_pending_inner(
         })
         .unwrap_or(false);
     if !is_builtin_or_acp {
-        if launch_cli_standard_turn(host, &effective_user_text, current_chat, current_design) {
+        if launch_cli_standard_turn(
+            host,
+            &effective_user_text,
+            current_chat,
+            current_design,
+            context,
+        ) {
             return true;
         }
         // CLI transport construction failed — fall through to the
@@ -319,7 +342,7 @@ fn launch_if_pending_inner(
         *current_chat = Some(ChatSession::start_with_tools(provider, req, Some(tool_rx)));
         return true;
     }
-    let Some(provider) = chat_provider_for_selected_model(host) else {
+    let Some(provider) = chat_provider_for_selected_model(host, context) else {
         // Selected agent has no `ChatProvider` bridge (all fixed CLI
         // agents are wired today, so this is a stale-index / not-ready
         // builtin/ACP guard). Surface that honestly in the assistant
@@ -464,13 +487,14 @@ fn launch_cli_standard_turn(
     user_text: &str,
     current_chat: &mut Option<ChatSession>,
     current_design: &mut Option<DesignSession>,
+    context: &ChatLaunchContext,
 ) -> bool {
     // All three transports up front: classification + design run without
     // transcript history (TS classify/generate calls never join the chat
     // conversation); the chat route receives only its owning tab's history.
     let (Some(classify_provider), Some(chat_provider), Some(design_provider)) = (
         provider_for_selected_model(host),
-        chat_provider_for_selected_model(host),
+        chat_provider_for_selected_model(host, context),
         provider_for_selected_model(host),
     ) else {
         return false;
@@ -742,6 +766,7 @@ pub(crate) fn active_page_is_blank_starter_frame(state: &EditorState) -> bool {
 
 #[path = "chat_session_launch_providers.rs"]
 mod providers;
+pub use providers::ChatLaunchContext;
 pub(crate) use providers::{
     builtin_provider_with_tools, provider_for_selected_model, selected_cli_model_id,
 };

@@ -4,6 +4,7 @@
 //! `chat_session_launch.rs` spine to keep it under the 800-line cap;
 //! pure code motion.
 
+use std::path::{Path, PathBuf};
 use std::sync::mpsc::Receiver;
 use std::sync::Arc;
 
@@ -18,6 +19,31 @@ use op_host_services::chat_claude::ClaudeCodeProvider;
 use op_host_services::chat_copilot::CopilotProvider;
 use op_host_services::chat_http_server::OpenCodeProvider;
 use op_host_services::chat_subprocess::SubprocessProvider;
+
+/// Per-launch facts about the document a chat turn belongs to, resolved by the
+/// caller at launch time (never cached: the user may Save As or switch tabs
+/// between two sends). Today it carries the working directory agent
+/// subprocesses should start in.
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct ChatLaunchContext {
+    /// Project root of the open document (`project_root::project_root_for`).
+    /// `None` for an unsaved document or an unresolvable path: every provider
+    /// then behaves exactly as before and inherits the process cwd.
+    pub project_cwd: Option<PathBuf>,
+}
+
+impl ChatLaunchContext {
+    /// Context for the document stored at `path` (`None` = untitled).
+    // Called by the host once `DesktopApp.current_path` is wired in; see
+    // `TODO(phase3-wire)` in `keyboard_chat_tabs.rs`.
+    #[allow(dead_code)]
+    pub fn for_document(path: Option<&Path>) -> Self {
+        Self {
+            project_cwd: op_host_services::project_root::project_root_for_document(path)
+                .map(|project| project.root),
+        }
+    }
+}
 
 /// Build the `ChatProvider` for an agent index (into
 /// `AgentProvider::ALL`: 0 ClaudeCode, 1 CodexCli, 2 OpenCode,
@@ -34,15 +60,28 @@ use op_host_services::chat_subprocess::SubprocessProvider;
 /// paths pass `false`, so their sub-requests stay independent from chat-panel
 /// context. OpenCode opens a fresh server session per turn (TS parity:
 /// `streamViaOpenCode` never resumes), so it has no chat/non-chat split.
-fn provider_for_agent(agent_idx: usize, chat_session: bool) -> Option<Box<dyn ChatProvider>> {
+///
+/// `project_cwd` is the document's project root. Only providers that may leave
+/// the process cwd honour it (Claude Code, Codex); Antigravity / Grok Build keep
+/// their isolated temp dir, and Copilot / OpenCode / DeepSeek / Kimi are
+/// unchanged.
+fn provider_for_agent(
+    agent_idx: usize,
+    chat_session: bool,
+    project_cwd: Option<&Path>,
+) -> Option<Box<dyn ChatProvider>> {
+    let project_cwd = project_cwd.map(Path::to_path_buf);
     match agent_idx {
-        0 => Some(Box::new(if chat_session {
-            ClaudeCodeProvider::for_chat()
-        } else {
-            ClaudeCodeProvider::new()
-        })),
+        0 => Some(Box::new(
+            if chat_session {
+                ClaudeCodeProvider::for_chat()
+            } else {
+                ClaudeCodeProvider::new()
+            }
+            .with_project_cwd(project_cwd),
+        )),
         1 => SubprocessProvider::for_cli(CliName::Codex)
-            .map(|p| Box::new(p) as Box<dyn ChatProvider>),
+            .map(|p| Box::new(p.with_project_cwd(project_cwd)) as Box<dyn ChatProvider>),
         2 => Some(Box::new(OpenCodeProvider::new())),
         3 => Some(Box::new(if chat_session {
             CopilotProvider::for_chat()
@@ -73,20 +112,26 @@ fn subprocess_provider(cli: CliName, chat: bool) -> Option<Box<dyn ChatProvider>
 pub(crate) fn provider_for_selected_model(
     host: &WidgetHostNative,
 ) -> Option<Box<dyn ChatProvider>> {
-    provider_for_selected_model_impl(host, false)
+    provider_for_selected_model_impl(host, false, None)
 }
 
 /// Provider for the chat panel's own turns. Claude Code and Copilot both keep
 /// context isolated per request/tab through `ChatRequest` history.
+///
+/// Only the chat turn itself runs in the project root; classification and
+/// design generation stay on [`provider_for_selected_model`] (no cwd) so the
+/// project's own agent config cannot leak into their tool-free prompts.
 pub(super) fn chat_provider_for_selected_model(
     host: &WidgetHostNative,
+    context: &ChatLaunchContext,
 ) -> Option<Box<dyn ChatProvider>> {
-    provider_for_selected_model_impl(host, true)
+    provider_for_selected_model_impl(host, true, context.project_cwd.as_deref())
 }
 
 fn provider_for_selected_model_impl(
     host: &WidgetHostNative,
     chat_session: bool,
+    project_cwd: Option<&Path>,
 ) -> Option<Box<dyn ChatProvider>> {
     if let Some(entry) = host.editor_state().chat.selected_model_entry() {
         if entry.hosted_route_id().is_some() {
@@ -98,12 +143,13 @@ fn provider_for_selected_model_impl(
             return provider_for_builtin(host.editor_state(), entry);
         }
         if let Some(id) = entry.acp_agent_id() {
-            return provider_for_acp(host.editor_state(), id);
+            return provider_for_acp(host.editor_state(), id, project_cwd);
         }
     }
     provider_for_agent(
         host.editor_state().editor_ui.chat_selected_agent,
         chat_session,
+        project_cwd,
     )
 }
 
@@ -209,7 +255,11 @@ fn provider_for_builtin(state: &EditorState, entry: &ModelEntry) -> Option<Box<d
     Some(Box::new(provider))
 }
 
-fn provider_for_acp(state: &EditorState, id: &str) -> Option<Box<dyn ChatProvider>> {
+fn provider_for_acp(
+    state: &EditorState,
+    id: &str,
+    project_cwd: Option<&Path>,
+) -> Option<Box<dyn ChatProvider>> {
     let settings = &state.editor_ui.agent_settings;
     let config = settings.acp_agents.iter().find(|agent| {
         agent.id == id && agent.ready() && settings.acp_agent_verified_connected(&agent.id)
@@ -219,10 +269,10 @@ fn provider_for_acp(state: &EditorState, id: &str) -> Option<Box<dyn ChatProvide
     // makes the provider refuse the turn with the TS error message.
     let mcp = state.editor_ui.agent_settings.mcp_server;
     let live_mcp_port = mcp.running.then_some(mcp.port);
-    Some(Box::new(AcpProvider::new(
-        acp_config_for_provider(config),
-        live_mcp_port,
-    )))
+    Some(Box::new(
+        AcpProvider::new(acp_config_for_provider(config), live_mcp_port)
+            .with_project_cwd(project_cwd.map(Path::to_path_buf)),
+    ))
 }
 
 fn acp_config_for_provider(agent: &op_editor_core::AcpAgentConfig) -> op_acp::AcpAgentConfig {
@@ -293,14 +343,14 @@ mod routing_tests {
             op_editor_core::AgentProvider::ALL[6],
             op_editor_core::AgentProvider::DeepSeekHarness
         );
-        let design = provider_for_agent(6, false).expect("DSH routes to a provider");
+        let design = provider_for_agent(6, false, None).expect("DSH routes to a provider");
         assert_eq!(design.provider_label(), "DeepSeek Harness");
         // The chat-session path routes the same CLI (single-shot
         // subprocess — there is no session-resume slot to join).
-        let chat = provider_for_agent(6, true).expect("chat DSH routes too");
+        let chat = provider_for_agent(6, true, None).expect("chat DSH routes too");
         assert_eq!(chat.provider_label(), "DeepSeek Harness");
         // Out-of-range agent indices stay unrouted (fail-closed).
-        assert!(provider_for_agent(8, false).is_none());
+        assert!(provider_for_agent(8, false, None).is_none());
     }
 
     #[test]
@@ -313,7 +363,8 @@ mod routing_tests {
         // Kimi has no canvas-tool wiring, so the chat panel takes the same
         // generation transport as the orchestrator instead of no route.
         for chat_session in [false, true] {
-            let provider = provider_for_agent(7, chat_session).expect("Kimi routes to a provider");
+            let provider =
+                provider_for_agent(7, chat_session, None).expect("Kimi routes to a provider");
             assert_eq!(provider.provider_label(), "Kimi Code");
         }
     }
@@ -324,7 +375,7 @@ mod routing_tests {
         // it: a new tail entry with no route arm would silently fall
         // through to `None` and strand the user's agent picker.
         for index in 0..op_editor_core::AgentProvider::ALL.len() {
-            let provider = provider_for_agent(index, false);
+            let provider = provider_for_agent(index, false, None);
             assert!(
                 provider.is_some(),
                 "AgentProvider::ALL index {index} has no provider route"
