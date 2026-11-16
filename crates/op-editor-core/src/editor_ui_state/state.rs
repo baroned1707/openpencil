@@ -62,6 +62,13 @@ pub struct EditorUiState {
     /// Studio generation-workspace chrome state (docked chat + real
     /// canvas on the same document). Fully transient — never persisted.
     pub workspace: WorkspaceState,
+    /// Tab rows mirrored from the host's document registry (empty when the
+    /// host has a single document or does not support tabs).
+    pub document_tabs: Vec<crate::document_tabs::DocumentTabView>,
+    /// Set by the tab strip, drained by the host. Transient, never persisted.
+    pub pending_document_request: Option<crate::document_tabs::DocumentTabRequest>,
+    /// Whether this host can hold several documents (desktop only for now).
+    pub document_tabs_supported: bool,
     /// UI locale — TopBar Globe cycles.
     pub locale: Locale,
     /// A runtime catalog selected in the web picker but not installed yet.
