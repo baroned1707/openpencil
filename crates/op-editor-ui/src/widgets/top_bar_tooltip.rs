@@ -117,6 +117,11 @@ pub fn tooltip_for(ui: &EditorUiState, button: TopBarButton) -> TopBarTooltip {
             DESKTOP_SHORTCUTS.then_some("⌘P"),
         ),
         TopBarButton::OpenAccount => (translate(ui, "tooltip.topbar.account"), None),
+        // A tab names itself; labelling it again would only repeat the text.
+        // `TopBarTooltip::label` is static, so an empty label is also the
+        // only thing a tab could say.
+        TopBarButton::DocumentTab(_) => ("", None),
+        TopBarButton::CloseDocumentTab(_) => (translate(ui, "common.close"), None),
     };
     TopBarTooltip { label, shortcut }
 }
@@ -139,6 +144,9 @@ pub fn suppressed(ui: &EditorUiState, button: TopBarButton) -> bool {
         TopBarButton::OpenCollaboration => ui.collab.panel.open,
         TopBarButton::ToggleGitPanel => ui.git_panel.open,
         TopBarButton::OpenAccount => ui.account_menu_open,
+        // Tabs have no tooltip, so they must not arm a dwell wake-up either.
+        TopBarButton::DocumentTab(_) => true,
+        TopBarButton::CloseDocumentTab(_) => false,
         // Sidebar / theme / fullscreen / preview act immediately — they
         // open no surface that could cover or repeat the tooltip.
         TopBarButton::ToggleSidebar

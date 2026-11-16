@@ -679,6 +679,40 @@ impl WidgetHostNative {
         self.input_active()
     }
 
+    /// Cmd/Ctrl+1..9 and Cmd/Ctrl+Shift+[ / ] — switch between open
+    /// documents. The caller has already checked the platform command
+    /// modifier; `key` is the logical character. Returns whether the chord
+    /// raised a request (the desktop shell reports the key consumed). A
+    /// no-op unless the host supports tabs, and never while a text input
+    /// owns the keyboard.
+    pub fn apply_document_tab_shortcut(&mut self, key: &str, shift: bool) -> bool {
+        let Some(request) = shared::document_tab_shortcut(
+            &self.editor_state.editor_ui,
+            key,
+            shift,
+            self.input_active(),
+        ) else {
+            return false;
+        };
+        self.editor_state.editor_ui.pending_document_request = Some(request);
+        self.mark_dirty();
+        true
+    }
+
+    /// Cmd/Ctrl+W — close the open document's tab. Reports whether a request
+    /// was raised; `false` leaves the chord to its ordinary meaning (a single
+    /// document, no tab support, or a text input owning the keyboard).
+    pub fn apply_close_document_tab_shortcut(&mut self) -> bool {
+        let Some(request) =
+            shared::close_document_tab_shortcut(&self.editor_state.editor_ui, self.input_active())
+        else {
+            return false;
+        };
+        self.editor_state.editor_ui.pending_document_request = Some(request);
+        self.mark_dirty();
+        true
+    }
+
     /// Public proxy for the variable-row inline editor commit.
     /// External call sites in the desktop binary (Cmd+S / Cmd+O /
     /// Cmd+Shift+S / Cmd+Shift+P) call this before persistence /

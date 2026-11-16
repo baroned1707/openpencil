@@ -536,6 +536,7 @@ pub fn lookup(key: &str) -> Option<&'static str> {
         "ai.referenceImagesTooLarge" => "As imagens de referência excedem o limite de tamanho ou quantidade de anexos.",
         "ai.referenceImagesUnsupported" => "O modelo selecionado não aceita imagens de referência. Escolha um modelo compatível com imagens ou remova os anexos.",
         "ai.hostedTransportUnavailable" => "O OpenPencil Hosted não está disponível nesta sessão. Entre novamente ou escolha outro modelo.",
+        "documents.switchBlocked" => "Conclua ou interrompa a tarefa em andamento antes de trocar de documento.",
         _ => return None,
     })
 }

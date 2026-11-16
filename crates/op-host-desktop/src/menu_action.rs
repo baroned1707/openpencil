@@ -87,40 +87,11 @@ impl DesktopApp {
                 outcome == op_host_services::doc_io::ActionOutcome::Noop
             }
             A::New => {
-                if persistence::run_action(
-                    op_editor_core::editor_ui_state::FileAction::New,
-                    &mut self.host,
-                    &mut self.current_path,
-                    self.window.as_ref(),
-                ) == op_host_services::doc_io::ActionOutcome::Saved
-                {
-                    self.mark_document_saved();
-                }
+                self.open_untitled_tab();
                 true
             }
-            A::Open => {
-                let ok = persistence::handle_open(
-                    &mut self.host,
-                    &mut self.current_path,
-                    self.window.as_ref(),
-                );
-                if ok {
-                    self.mark_document_saved();
-                }
-                ok
-            }
-            A::OpenRecent(i) => {
-                let opened = persistence::run_action(
-                    op_editor_core::editor_ui_state::FileAction::OpenRecent(i),
-                    &mut self.host,
-                    &mut self.current_path,
-                    self.window.as_ref(),
-                ) == op_host_services::doc_io::ActionOutcome::Saved;
-                if opened {
-                    self.mark_document_saved();
-                }
-                opened
-            }
+            A::Open => self.open_document_via_picker(),
+            A::OpenRecent(i) => self.open_recent_document(i),
             A::Save => {
                 self.host.commit_variable_row_focus_if_any_pub();
                 self.request_background_save()

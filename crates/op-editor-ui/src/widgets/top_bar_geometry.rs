@@ -435,6 +435,18 @@ impl TopBar {
                 let text_w = measure(&self.chip_text(), 11.0);
                 self.agent_chip_rect(top_bar_rect, text_w)
             }
+            B::DocumentTab(index) | B::CloseDocumentTab(index) => {
+                if !self.document_tabs_visible() {
+                    return None;
+                }
+                let tabs = self.title_layout(top_bar_rect, &mut measure).tabs?;
+                let cell = tabs.cell(index)?;
+                if matches!(button, B::DocumentTab(_)) {
+                    cell.rect
+                } else {
+                    cell.close_rect
+                }
+            }
         };
         Some(rect)
     }

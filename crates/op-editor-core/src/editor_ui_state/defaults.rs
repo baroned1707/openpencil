@@ -33,6 +33,7 @@ impl Default for EditorUiState {
             document_tabs: Vec::new(),
             pending_document_request: None,
             document_tabs_supported: false,
+            session_documents: Vec::new(),
             locale: Locale::EnUs,
             pending_locale: None,
             locale_persistence_override: None,

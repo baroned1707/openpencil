@@ -199,10 +199,29 @@ fn handle_save_as_with(
     }
 }
 
-fn load_into_host(
+/// A document read from disk, not yet installed anywhere.
+pub(crate) struct LoadedDocument {
+    pub(crate) state: EditorState,
+    pub(crate) bound_path: PathBuf,
+    /// The thumbnail registry the file carried (see
+    /// [`op_host_native::widget_host::capture_loaded_thumbnails`]).
+    pub(crate) thumbs: jian_ops_schema::image_thumbs::ImageThumbSnapshot,
+    /// Home or an ordinary workspace was showing when the open began, so the
+    /// document should open in the simple reading view.
+    pub(crate) open_in_normal_mode: bool,
+}
+
+/// Read and prepare a document file without touching the live editor: gate,
+/// parse, optional legacy-schema upgrade. `Ok(None)` means a collaboration
+/// session refused the open. `carry_app_preferences` copies the live app
+/// preferences onto the loaded state, which an in-place replacement needs
+/// because it swaps the whole state; a new tab keeps the live app state and
+/// takes only the document, so it passes `false`.
+pub(crate) fn load_document(
     host: &mut WidgetHostNative,
     path: &std::path::Path,
-) -> Result<Option<PathBuf>, DocumentOpenError> {
+    carry_app_preferences: bool,
+) -> Result<Option<LoadedDocument>, DocumentOpenError> {
     if !host.gate_collaboration_action(
         op_editor_core::CollabGateAction::ReplaceDocument,
         op_editor_core::CollabEditSource::User,
@@ -215,11 +234,17 @@ fn load_into_host(
     let open_in_normal_mode = host.home_visible() || host.workspace_visible();
     let loaded_source_state = crate::figma_import_session::capture_output_state(path)?;
     let locale = host.editor_state().editor_ui.locale;
-    let loaded = load_editor_state_with_report(path, locale);
+    // Loading activates the file's thumbnails process-wide; bracket it so the
+    // document on screen keeps its own until this one is installed.
+    let (loaded, thumbs) = op_host_native::widget_host::capture_loaded_thumbnails(|| {
+        load_editor_state_with_report(path, locale)
+    });
     crate::heap_pressure::schedule_relief("document load parse");
     let loaded = loaded?;
     let mut state = loaded.state;
-    preserve_app_preferences(host.editor_state(), &mut state);
+    if carry_app_preferences {
+        preserve_app_preferences(host.editor_state(), &mut state);
+    }
     state.editor_ui.home.hide();
     let bound_path = crate::legacy_op_upgrade::prompt_and_save(
         &mut state,
@@ -233,9 +258,33 @@ fn load_into_host(
         "[open] {} active-page top-level nodes",
         state.active_children().len()
     );
+    Ok(Some(LoadedDocument {
+        state,
+        bound_path,
+        thumbs,
+        open_in_normal_mode,
+    }))
+}
+
+/// Replace the document on screen with the file at `path`. Git reloads use
+/// this; opening a file for the user goes through a new tab instead.
+fn load_into_host(
+    host: &mut WidgetHostNative,
+    path: &std::path::Path,
+) -> Result<Option<PathBuf>, DocumentOpenError> {
+    let Some(loaded) = load_document(host, path, true)? else {
+        return Ok(None);
+    };
+    let LoadedDocument {
+        state,
+        bound_path,
+        thumbs,
+        open_in_normal_mode,
+    } = loaded;
     if !host.replace_editor_state(state) {
         return Ok(None);
     }
+    jian_ops_schema::image_thumbs::restore_snapshot(thumbs);
     if open_in_normal_mode {
         open_loaded_normal_workspace(host);
     }
@@ -248,7 +297,7 @@ fn load_into_host(
 
 /// Reopen existing work without inventing a generation or carrying the
 /// previous document's brief, task family, selection, or running state.
-fn open_loaded_normal_workspace(host: &mut WidgetHostNative) {
+pub(crate) fn open_loaded_normal_workspace(host: &mut WidgetHostNative) {
     let now_ms = host.now_ms();
     let state = host.editor_state_mut();
     op_editor_core::work_identity::open_for_reading(state, now_ms);
@@ -260,44 +309,20 @@ fn open_loaded_normal_workspace(host: &mut WidgetHostNative) {
     state.tool = op_editor_core::Tool::Hand;
 }
 
-/// Cmd+O — pop the Open dialog and replace the current document.
-pub fn handle_open(
-    host: &mut WidgetHostNative,
-    current_path: &mut Option<PathBuf>,
-    window: Option<&winit::window::Window>,
-) -> bool {
-    if !crate::persistence_replace_guard::confirm_replace(host, current_path, window) {
-        return false;
-    }
-    let path = match rfd::FileDialog::new()
+/// Cmd+O — pop the Open dialog. The caller opens the chosen file in a new tab.
+pub(crate) fn pick_open_path(host: &WidgetHostNative) -> Option<PathBuf> {
+    rfd::FileDialog::new()
         .set_title(op_i18n::translate(
             host.editor_state().editor_ui.locale,
             "dialog.pickerOpenTitle",
         ))
         .add_filter(op_editor_ui::PRODUCT_NAME, DOCUMENT_EXTENSIONS)
         .pick_file()
-    {
-        Some(p) => p,
-        None => return false,
-    };
-    match load_into_host(host, &path) {
-        Ok(Some(bound_path)) => {
-            fit_loaded_document(host, window);
-            crate::settings_io::touch_recent(host, &bound_path);
-            *current_path = Some(bound_path);
-            refresh_title(current_path, window);
-            true
-        }
-        Ok(None) => false,
-        Err(e) => {
-            eprintln!("[open] {e}");
-            show_error_dialog(host, ErrorKind::Open, Some(&path), &e.to_string());
-            false
-        }
-    }
 }
 
-/// Open a drag/drop or file-association path without a picker.
+/// Replace the document on screen with the file at `path`, without a picker.
+/// Git reloads use this; the user-facing open paths open a new tab instead
+/// (`DesktopApp::open_document_tab`).
 pub fn open_path(
     host: &mut WidgetHostNative,
     path: PathBuf,
@@ -411,7 +436,9 @@ pub fn run_action(
             host.mark_editor_state_dirty();
             ActionOutcome::Noop
         }
-        FileAction::Open => ActionOutcome::saved_or_noop(handle_open(host, current_path, window)),
+        // Opening a file is a tab operation: `DesktopApp::run_file_action` takes it
+        // before it can reach here.
+        FileAction::Open => ActionOutcome::Noop,
         FileAction::Save => handle_save(host, current_path, window).into_action_outcome(),
         FileAction::SaveAs => handle_save_as(host, current_path, window).into_action_outcome(),
         FileAction::ExportImage => {

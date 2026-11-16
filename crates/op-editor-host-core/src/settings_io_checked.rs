@@ -30,6 +30,7 @@ pub(super) fn validate_payload_fields(raw: &serde_json::Value) -> Result<()> {
             "active_image_gen_profile_id",
             "image_gen_enabled",
             "recent_files",
+            "open_documents",
             "preferred_agent_team_size",
             "entry_surface",
             "chat_agent",
@@ -80,6 +81,11 @@ pub(super) fn validate_payload_fields(raw: &serde_json::Value) -> Result<()> {
         root.get("recent_files"),
         &["path", "modified_at"],
         "recent file",
+    )?;
+    validate_array_object_fields(
+        root.get("open_documents"),
+        &["path", "active"],
+        "open document",
     )
 }
 

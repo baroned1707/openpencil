@@ -12,6 +12,8 @@ mod menus;
 mod panels;
 #[path = "ui3_proof_settings_tests.rs"]
 mod settings;
+#[path = "ui3_proof_tabs_tests.rs"]
+mod tabs;
 
 use super::ui3_proof::{editor_host, render_scene};
 use op_editor_core::ThemeMode;

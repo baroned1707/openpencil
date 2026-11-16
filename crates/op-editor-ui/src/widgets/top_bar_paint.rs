@@ -180,6 +180,13 @@ impl TopBar {
                 cx.backend.save();
                 cx.backend.clip_rect(title.slot);
 
+                // With two or more documents open the tab strip stands in
+                // for the file name (and its edited marker, which each tab
+                // carries as its own unsaved bullet).
+                if let Some(tabs) = &title.tabs {
+                    self.paint_document_tabs(cx, tabs, center_y);
+                }
+
                 if !title.file_name.is_empty() {
                     let name = TextLayout::single_run(
                         &title.file_name,
@@ -226,7 +233,11 @@ impl TopBar {
                         git_color,
                         1.4,
                     );
-                    if let Some(branch) = self.git_branch.as_deref() {
+                    // The strip's Git button is icon-only: its slot has no
+                    // room for a branch name.
+                    if let Some(branch) =
+                        self.git_branch.as_deref().filter(|_| title.tabs.is_none())
+                    {
                         let label = TextLayout::single_run(
                             branch,
                             "system-ui",

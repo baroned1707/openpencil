@@ -552,6 +552,7 @@ pub fn lookup(key: &str) -> Option<&'static str> {
         "ai.referenceImagesTooLarge" => "참조 이미지가 첨부 파일의 크기 또는 개수 제한을 초과했습니다.",
         "ai.referenceImagesUnsupported" => "선택한 모델은 참조 이미지를 지원하지 않습니다. 이미지를 지원하는 모델을 선택하거나 첨부 파일을 제거하세요.",
         "ai.hostedTransportUnavailable" => "이 세션에서는 OpenPencil Hosted를 사용할 수 없습니다. 다시 로그인하거나 다른 모델을 선택하세요.",
+        "documents.switchBlocked" => "문서를 전환하기 전에 실행 중인 작업을 완료하거나 중지하세요.",
         _ => return None,
     })
 }

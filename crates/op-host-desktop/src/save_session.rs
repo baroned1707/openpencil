@@ -565,7 +565,7 @@ impl crate::DesktopApp {
         latest_ok
     }
 
-    fn apply_save_completion(&mut self, completion: SaveCompletion) -> bool {
+    pub(crate) fn apply_save_completion(&mut self, completion: SaveCompletion) -> bool {
         // The worker just dropped its save snapshot or source mapping. Ask the
         // allocator-relief worker to return retained free pages after its
         // trailing debounce; this never scans on the UI thread.
@@ -605,6 +605,19 @@ impl crate::DesktopApp {
         let live_epoch = self.host.document_epoch();
         let live_generation = self.host.editor_state().document_generation();
         if live_epoch != document_epoch || live_generation != generation {
+            // The document that issued this save may be a parked tab: the write
+            // reached its file, so that tab (and only that tab) is now clean.
+            if live_epoch != document_epoch
+                && self.apply_parked_save_ack(
+                    document_epoch,
+                    generation,
+                    revision,
+                    set_current_path.then_some(path.as_path()),
+                )
+            {
+                crate::settings_io::touch_recent(&mut self.host, &path);
+                return true;
+            }
             eprintln!(
                 "[save] ignored stale ack epoch {document_epoch} revision {generation}:{revision}; live identity is epoch {live_epoch} revision {live_generation}:{}",
                 self.host.editor_state().document_revision()

@@ -7,9 +7,8 @@
 use crate::{
     collab_avatar_host, figma_import_session, git_session, html_import_session, image_decode_host,
     image_panel_host, image_search_session, ime_window, init_auth_runtime, kit_persistence,
-    persistence, prompt_center_store, remote_image_host, save_session, single_instance,
-    theme_preset_host, update_check, DesktopApp, PaintedPageIdentity, INITIAL_VIEWPORT_H,
-    INITIAL_VIEWPORT_W,
+    prompt_center_store, remote_image_host, save_session, single_instance, theme_preset_host,
+    update_check, DesktopApp, PaintedPageIdentity, INITIAL_VIEWPORT_H, INITIAL_VIEWPORT_W,
 };
 use op_host_native::WidgetHostNative;
 use std::path::PathBuf;
@@ -71,6 +70,13 @@ impl DesktopApp {
         // — the picker paints the Import row + imported group here, and
         // web leaves the default `false` so those controls stay hidden.
         host.editor_state_mut().editor_ui.font_import_supported = true;
+        // Desktop keeps several documents open as tabs (`document_registry`).
+        host.editor_state_mut().editor_ui.document_tabs_supported = true;
+        // The documents open at the last quit, reopened once the window is up.
+        // Taken now so the per-frame tab mirror cannot overwrite the saved list
+        // with this launch's single blank tab first.
+        let pending_session_restore =
+            std::mem::take(&mut host.editor_state_mut().editor_ui.session_documents);
         // Same rationale for the File-menu batch-export row: desktop
         // owns the directory picker + offscreen exporter it needs.
         host.editor_state_mut()
@@ -164,6 +170,8 @@ impl DesktopApp {
             clock_start: Instant::now(),
             rotate_cursor: None,
             current_path: None,
+            documents: crate::document_registry::DocumentRegistry::new(),
+            pending_session_restore,
             save_session: save_session::SaveSession::new(),
             collab_fork_saves: Vec::new(),
             error: None,
@@ -301,17 +309,37 @@ impl DesktopApp {
     /// save; import paths call it directly after explicitly marking their new
     /// state saved or dirty.
     pub(crate) fn rebind_git_session_for_current_path(&mut self) {
+        let (prev_repo, prev_tracked) = self.git_binding();
+        self.git_session.rebind(self.current_path.as_deref());
+        self.finish_git_rebind(prev_repo, prev_tracked);
+    }
+
+    /// The repository work-tree and tracked file the live Git session is bound
+    /// to — captured before a rebind or a document switch so
+    /// [`Self::finish_git_rebind`] can tell what changed.
+    pub(crate) fn git_binding(&self) -> (Option<PathBuf>, Option<PathBuf>) {
+        (
+            self.git_session.repo().map(|r| r.workdir().to_path_buf()),
+            self.git_session.tracked_file().map(|p| p.to_path_buf()),
+        )
+    }
+
+    /// Everything that follows the Git session pointing somewhere new: drop the
+    /// previous repository's jobs and views, retitle the window and refresh an
+    /// open Git panel. `prev_*` come from [`Self::git_binding`] taken before the
+    /// session changed.
+    pub(crate) fn finish_git_rebind(
+        &mut self,
+        prev_repo: Option<PathBuf>,
+        prev_tracked: Option<PathBuf>,
+    ) {
         // The empty-state "Init" card is gated on the doc having a path.
         self.host
             .editor_state_mut()
             .editor_ui
             .git_panel
             .has_saved_file = self.current_path.is_some();
-        let prev_repo = self.git_session.repo().map(|r| r.workdir().to_path_buf());
-        let prev_tracked = self.git_session.tracked_file().map(|p| p.to_path_buf());
-        self.git_session.rebind(self.current_path.as_deref());
-        let new_repo = self.git_session.repo().map(|r| r.workdir().to_path_buf());
-        let new_tracked = self.git_session.tracked_file().map(|p| p.to_path_buf());
+        let (new_repo, new_tracked) = self.git_binding();
         if prev_tracked != new_tracked {
             // The tracked document changed — a half-typed commit
             // message was authored for the *previous* document (a
@@ -357,7 +385,7 @@ impl DesktopApp {
 
     /// Set the window title to `<file> (<branch>) — OpenPencil`, with
     /// the branch shown only when the document is in a git repository.
-    fn refresh_window_title(&self) {
+    pub(crate) fn refresh_window_title(&self) {
         let Some(window) = self.window.as_ref() else {
             return;
         };
@@ -429,47 +457,14 @@ impl DesktopApp {
     /// Apple event — a Finder double-click, `open file.op`, or a file
     /// dropped on the Dock icon. macOS routes these out-of-band of
     /// argv; the `casement` winit fork captures them and this drains
-    /// the buffer. The single-window editor opens the first supported
-    /// document and logs any extras. Returns `true` when a document
-    /// was opened. A no-op on non-macOS (the buffer is always empty).
+    /// the buffer. Each document opens in its own tab. Returns `true` when
+    /// at least one document was opened. A no-op on non-macOS (the buffer is
+    /// always empty).
     pub(crate) fn drain_opened_files(&mut self) -> bool {
         #[cfg(target_os = "macos")]
         {
-            let mut opened = false;
-            for path in winit::platform::macos::drain_opened_file_urls() {
-                let is_op = op_host_services::doc_io::is_supported_document(&path);
-                let is_fig = op_host_services::doc_io::is_supported_figma_import(&path);
-                let is_html = op_host_services::doc_io::is_supported_html_import(&path);
-                if !is_op && !is_fig && !is_html {
-                    continue;
-                }
-                if opened {
-                    eprintln!(
-                        "openpencil-desktop: ignoring extra opened file \
-                         (single-window editor): {}",
-                        path.display()
-                    );
-                    continue;
-                }
-                if is_fig {
-                    // `.fig` → background import. An accepted destination
-                    // marks this batch handled; cancelling the dialog leaves
-                    // the current import untouched and allows the next path.
-                    // `pump` applies accepted imports when the worker finishes.
-                    opened = self.begin_figma_import(path);
-                } else if is_html {
-                    opened = self.begin_html_import(path);
-                } else if persistence::open_path(
-                    &mut self.host,
-                    path,
-                    &mut self.current_path,
-                    self.window.as_ref(),
-                ) {
-                    self.mark_document_saved();
-                    opened = true;
-                }
-            }
-            opened
+            let paths = winit::platform::macos::drain_opened_file_urls();
+            self.open_paths_from_os(paths)
         }
         #[cfg(not(target_os = "macos"))]
         {
@@ -478,7 +473,7 @@ impl DesktopApp {
     }
 
     /// Drain documents forwarded by second-launch processes
-    /// (`single_instance`) and open them in this window. Cross-platform
+    /// (`single_instance`) and open each in its own tab. Cross-platform
     /// analogue of `drain_opened_files` (which only covers the macOS
     /// Apple-event path). Returns true when a document was opened.
     pub(crate) fn drain_forwarded_files(&mut self) -> bool {
@@ -486,31 +481,28 @@ impl DesktopApp {
             Ok(mut queue) => queue.drain(..).collect(),
             Err(_) => return false,
         };
+        self.open_paths_from_os(paths.into_iter().filter(|path| path.is_file()))
+    }
+
+    /// Open every supported document `paths` names — `.op` / `.pen` as tabs,
+    /// `.fig` / `.html` through their background import. Returns whether any
+    /// of them opened.
+    fn open_paths_from_os(&mut self, paths: impl IntoIterator<Item = PathBuf>) -> bool {
         let mut opened = false;
         for path in paths {
             let is_op = op_host_services::doc_io::is_supported_document(&path);
             let is_fig = op_host_services::doc_io::is_supported_figma_import(&path);
             let is_html = op_host_services::doc_io::is_supported_html_import(&path);
-            if (!is_op && !is_fig && !is_html) || !path.is_file() {
-                continue;
-            }
-            // Single-window editor: the first forwarded document wins, the
-            // rest are ignored (mirrors `drain_opened_files`).
-            if opened {
-                continue;
-            }
             if is_fig {
-                opened = self.begin_figma_import(path);
+                // `.fig` → background import. An accepted destination
+                // counts as handled; cancelling the dialog leaves the current
+                // import untouched. `pump` applies accepted imports when the
+                // worker finishes.
+                opened |= self.begin_figma_import(path);
             } else if is_html {
-                opened = self.begin_html_import(path);
-            } else if persistence::open_path(
-                &mut self.host,
-                path,
-                &mut self.current_path,
-                self.window.as_ref(),
-            ) {
-                self.mark_document_saved();
-                opened = true;
+                opened |= self.begin_html_import(path);
+            } else if is_op {
+                opened |= self.open_document_tab(path);
             }
         }
         opened
@@ -567,11 +559,63 @@ impl DesktopApp {
     }
 
     pub(crate) fn confirm_close(&mut self) -> bool {
+        self.confirm_close_with(|title, body| {
+            crate::message_dialog::ask_yes_no_cancel(title, body, rfd::MessageLevel::Warning)
+        })
+    }
+
+    /// [`Self::confirm_close`] with the question asked through `ask`, so the
+    /// unsaved-changes flow runs under test without opening a native dialog.
+    ///
+    /// Every open document with unsaved edits is asked about, not just the one
+    /// on screen: each is brought forward first, so the save the user agrees
+    /// to runs against that document exactly as it would for the only one.
+    /// Returns `false` the moment the user cancels or a save fails, leaving the
+    /// document that stopped the quit on screen. If a parked document has
+    /// unsaved edits but switching to it is refused (a run is in flight), the
+    /// quit is aborted with a notice instead of discarding it silently.
+    pub(crate) fn confirm_close_with(
+        &mut self,
+        mut ask: impl FnMut(&str, &str) -> Option<crate::message_dialog::Choice>,
+    ) -> bool {
         // A Save-As may be writing an otherwise-clean document to a new path.
         // Finish it before the process can exit and abandon the worker.
         if self.save_session.is_active() && !self.finish_background_saves() {
             return false;
         }
+        self.sync_active_slot();
+        let dirty: Vec<_> = self
+            .documents
+            .dirty_indices(self.document_is_dirty())
+            .into_iter()
+            .filter_map(|index| self.documents.id_at(index))
+            .collect();
+        for id in dirty {
+            if id != self.documents.active_id() {
+                if let Some(reason) = self.document_switch_blocked() {
+                    self.refuse_document_switch(reason);
+                    return false;
+                }
+                let Some(index) = self.documents.index_of(id) else {
+                    continue;
+                };
+                if !self.activate_document_slot(index) {
+                    return false;
+                }
+            }
+            if !self.confirm_close_active_document(&mut ask) {
+                return false;
+            }
+        }
+        true
+    }
+
+    /// Ask about the document on screen and save it on request. `true` when it
+    /// is safe to let go of: clean, saved, or discarded on purpose.
+    pub(crate) fn confirm_close_active_document(
+        &mut self,
+        ask: &mut impl FnMut(&str, &str) -> Option<crate::message_dialog::Choice>,
+    ) -> bool {
         if !self.document_is_dirty() {
             return true;
         }
@@ -583,11 +627,7 @@ impl DesktopApp {
             .map(|n| n.to_string_lossy().into_owned())
             .unwrap_or_else(|| op_i18n::translate(locale, "dialog.untitledDocument").to_string());
         let body = op_i18n::translate(locale, "dialog.closeBody").replace("{{name}}", &name);
-        let choice = crate::message_dialog::ask_yes_no_cancel(
-            op_i18n::translate(locale, "dialog.unsavedTitle"),
-            &body,
-            rfd::MessageLevel::Warning,
-        );
+        let choice = ask(op_i18n::translate(locale, "dialog.unsavedTitle"), &body);
         match choice {
             // Yes — or no dialog backend on this system (`None`): the
             // close must never be silently swallowed (#197), so fail

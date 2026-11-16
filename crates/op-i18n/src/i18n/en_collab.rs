@@ -576,6 +576,7 @@ pub fn lookup(key: &str) -> Option<&'static str> {
         "ai.referenceImagesTooLarge" => "Reference images exceed the attachment size or count limit.",
         "ai.referenceImagesUnsupported" => "The selected model does not support reference images. Choose an image-capable model or remove the attachments.",
         "ai.hostedTransportUnavailable" => "OpenPencil Hosted is unavailable in this session. Sign in again or choose another model.",
+        "documents.switchBlocked" => "Finish or stop the running task before switching documents.",
         _ => return None,
     })
 }

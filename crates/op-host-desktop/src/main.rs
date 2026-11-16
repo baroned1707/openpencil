@@ -36,6 +36,8 @@ mod design_loop_indicator;
 mod design_md_error;
 mod design_md_host;
 mod design_session;
+mod document_registry;
+mod document_tabs_host;
 mod drag_cursor;
 mod figma_import_session;
 mod font_import_host;
@@ -234,7 +236,14 @@ struct DesktopApp {
     /// the bitmap every move. None until the event loop is ready.
     rotate_cursor: Option<winit::window::CustomCursor>,
     /// Path of the currently-open .pen/.op document; None when unsaved.
+    /// Mirror of the on-screen entry in `documents`; `git_session` and
+    /// `collab_fork_saves` below are likewise the on-screen document's.
     current_path: Option<PathBuf>,
+    /// Every open document. The on-screen one lives in `host`; the rest are
+    /// parked here with the path, Git binding and fork saves that belong to them.
+    documents: document_registry::DocumentRegistry,
+    /// Documents open at the last quit, reopened once the window is ready.
+    pending_session_restore: Vec<op_editor_core::SessionDocument>,
     /// At most one background document serialization / atomic write. Keeping
     /// saves serialized prevents an older snapshot from committing after a
     /// newer Save request to the same path.

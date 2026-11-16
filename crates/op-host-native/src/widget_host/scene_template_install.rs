@@ -53,7 +53,7 @@ impl WidgetHostNative {
         if replaces_starter {
             // Replacing the untouched starter supersedes any async work that
             // was dispatched for that placeholder document.
-            self.document_epoch = self.document_epoch.wrapping_add(1);
+            self.document_epoch = document_swap::next_document_epoch();
         }
         self.force_rotate_layer_panel_owner();
         self.scene_cache.invalidate();

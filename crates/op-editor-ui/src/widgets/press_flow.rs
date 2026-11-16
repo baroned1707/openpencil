@@ -444,6 +444,10 @@ pub fn apply_shared_top_bar_hit(
             core_press::toggle_file_menu(&mut state.editor_ui);
             TopBarPress::FileMenuToggled
         }
+        TopBarHit::DocumentTab(_) | TopBarHit::CloseDocumentTab(_) => {
+            super::top_bar_document_tabs_flow::apply_document_tab_hit(&mut state.editor_ui, hit);
+            TopBarPress::Handled
+        }
         TopBarHit::ToggleFullscreen
         | TopBarHit::TogglePreview
         | TopBarHit::ToggleGitPanel

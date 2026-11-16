@@ -42,4 +42,9 @@ pub enum TopBarButton {
     /// User-avatar button — opens the sign-in modal (signed out) or the
     /// account dropdown (signed in).
     OpenAccount,
+    /// Document tab at this index of `EditorUiState.document_tabs` — also
+    /// the trailing "+N" overflow chip, which stands for its first hidden tab.
+    DocumentTab(usize),
+    /// The close (x) of the document tab at this index.
+    CloseDocumentTab(usize),
 }

@@ -257,16 +257,7 @@ impl DesktopApp {
                 } else {
                     match lower.as_str() {
                         "n" if home_visible => {
-                            let outcome = persistence::run_action(
-                                op_editor_core::editor_ui_state::FileAction::New,
-                                &mut self.host,
-                                &mut self.current_path,
-                                self.window.as_ref(),
-                            );
-                            consumed = outcome == op_host_services::doc_io::ActionOutcome::Saved;
-                            if consumed {
-                                self.mark_document_saved();
-                            }
+                            consumed = self.open_untitled_tab();
                         }
                         // Cmd+, toggles the settings modal.
                         "," => consumed = self.host.apply_toggle_agent_settings(),
@@ -276,15 +267,7 @@ impl DesktopApp {
                             consumed = self.request_background_save();
                         }
                         "o" => {
-                            self.host.commit_variable_row_focus_if_any_pub();
-                            consumed = persistence::handle_open(
-                                &mut self.host,
-                                &mut self.current_path,
-                                self.window.as_ref(),
-                            );
-                            if consumed {
-                                self.mark_document_saved();
-                            }
+                            consumed = self.open_document_via_picker();
                         }
                         // Clipboard chords target the focused input before canvas.
                         "c" => consumed = self.handle_cmd_copy(),
@@ -317,6 +300,16 @@ impl DesktopApp {
                             self.new_chat_tab();
                             consumed = true;
                         }
+                        // Cmd/Ctrl+W closes the open document's tab and Cmd/Ctrl+1..9
+                        // jump to one. Both raise the request the tab strip would
+                        // (the frame pump executes it); the host declines them while
+                        // a text input owns the keyboard, with a single document, or
+                        // without tab support, so the chords keep their usual meaning
+                        // there.
+                        "w" => consumed = self.host.apply_close_document_tab_shortcut(),
+                        digit @ ("1" | "2" | "3" | "4" | "5" | "6" | "7" | "8" | "9") => {
+                            consumed = self.host.apply_document_tab_shortcut(digit, false);
+                        }
                         _ => {}
                     }
                 }
@@ -330,6 +323,13 @@ impl DesktopApp {
                     consumed = true;
                 } else {
                     match ch.to_lowercase().as_str() {
+                        // Cmd+Shift+[ / ] (winit reports `{` / `}` with Shift) step
+                        // to the previous / next document tab.
+                        bracket @ ("[" | "]" | "{" | "}")
+                            if !settings_focused && !image_popover_open =>
+                        {
+                            consumed = self.host.apply_document_tab_shortcut(bracket, true);
+                        }
                         // Cmd+Shift+S = Save As; always allowed.
                         "s" => {
                             self.host.commit_variable_row_focus_if_any_pub();

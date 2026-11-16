@@ -12,8 +12,8 @@ mod scheduling;
 mod window_events;
 
 use crate::{
-    a11y, chat_session, cursor_icon, frame, menu, persistence, window_state, DesktopApp,
-    DesktopEvent, INITIAL_VIEWPORT_H, INITIAL_VIEWPORT_W,
+    a11y, chat_session, cursor_icon, frame, menu, window_state, DesktopApp, DesktopEvent,
+    INITIAL_VIEWPORT_H, INITIAL_VIEWPORT_W,
 };
 use std::time::{Duration, Instant};
 use winit::application::ApplicationHandler;
@@ -325,18 +325,14 @@ impl ApplicationHandler<DesktopEvent> for DesktopApp {
         // / `.pen` through `open_path`; `.fig` goes through the
         // background Figma import worker so the launch doesn't freeze
         // on a multi-second parse.
+        self.restore_session_documents();
         if let Some(path) = self.initial_file.take() {
             if op_host_services::doc_io::is_supported_figma_import(&path) {
                 let _ = self.begin_figma_import(path);
             } else if op_host_services::doc_io::is_supported_html_import(&path) {
                 let _ = self.begin_html_import(path);
-            } else if persistence::open_path(
-                &mut self.host,
-                path,
-                &mut self.current_path,
-                self.window.as_ref(),
-            ) {
-                self.mark_document_saved();
+            } else {
+                self.open_document_tab(path);
             }
         }
         // macOS Finder-launch path: a double-clicked document arrives

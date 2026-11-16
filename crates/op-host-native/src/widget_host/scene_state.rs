@@ -203,7 +203,7 @@ impl WidgetHostNative {
         // commits and replay stay within the same lifetime so epoch-guarded
         // async work is not discarded after every collaboration operation.
         if origin == op_editor_core::EditOrigin::Snapshot {
-            self.document_epoch = self.document_epoch.wrapping_add(1);
+            self.document_epoch = document_swap::next_document_epoch();
             self.force_rotate_layer_panel_owner();
             if let Some(op_editor_core::DocumentIdAllocator::Namespaced(allocator)) =
                 self.collab_id_allocator.as_ref()
@@ -261,7 +261,7 @@ impl WidgetHostNative {
             .editor_ui
             .workspace
             .reset_for_new_document();
-        self.document_epoch = self.document_epoch.wrapping_add(1);
+        self.document_epoch = document_swap::next_document_epoch();
         self.layout_transition = None;
         self.scene_cache.invalidate();
         self.editor_state_dirty = true;
@@ -302,7 +302,7 @@ impl WidgetHostNative {
         self.editor_state.mark_saved_revision();
 
         self.layout_transition = None;
-        self.document_epoch = self.document_epoch.wrapping_add(1);
+        self.document_epoch = document_swap::next_document_epoch();
         self.force_rotate_layer_panel_owner();
         self.scene_cache.invalidate();
         self.editor_state_dirty = true;
@@ -417,7 +417,7 @@ impl WidgetHostNative {
         // Whole-document replacement — bump the epoch so any async
         // work captured against the previous document (e.g. a pending
         // clipboard paste decode) is dropped instead of applied here.
-        self.document_epoch = self.document_epoch.wrapping_add(1);
+        self.document_epoch = document_swap::next_document_epoch();
         let old_scene = std::mem::take(&mut self.layout_scene);
         // Take-once slot so the drop work runs exactly once: on the worker
         // when the spawn succeeds, inline (blocking the UI thread briefly)

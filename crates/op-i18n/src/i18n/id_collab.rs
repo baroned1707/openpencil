@@ -536,6 +536,7 @@ pub fn lookup(key: &str) -> Option<&'static str> {
         "ai.referenceImagesTooLarge" => "Gambar referensi melebihi batas ukuran atau jumlah lampiran.",
         "ai.referenceImagesUnsupported" => "Model yang dipilih tidak mendukung gambar referensi. Pilih model yang mendukung gambar atau hapus lampiran.",
         "ai.hostedTransportUnavailable" => "OpenPencil Hosted tidak tersedia dalam sesi ini. Masuk kembali atau pilih model lain.",
+        "documents.switchBlocked" => "Selesaikan atau hentikan tugas yang sedang berjalan sebelum berpindah dokumen.",
         _ => return None,
     })
 }

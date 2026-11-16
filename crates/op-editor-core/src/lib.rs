@@ -83,6 +83,7 @@ pub mod editor_toast;
 pub mod quality_report;
 pub mod size_class;
 // Runtime-fetched product assets for the browser bundle (native embeds them).
+pub mod document_scope;
 pub mod document_tabs;
 pub mod editor_ui_state;
 pub mod export_batch;
@@ -160,6 +161,7 @@ pub mod selection;
 pub mod selection_resolve;
 pub mod share_routes;
 pub mod square_chrome;
+pub use document_scope::{DocumentScope, SessionDocument};
 pub use document_tabs::{DocumentId, DocumentTabRequest, DocumentTabStatus, DocumentTabView};
 pub mod state;
 pub mod statusbar_state;

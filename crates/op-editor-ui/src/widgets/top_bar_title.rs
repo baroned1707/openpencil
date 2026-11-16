@@ -7,12 +7,13 @@
 //! middle-elided while the edited marker and Git button keep their own space.
 
 use crate::widgets::top_bar::*;
+use crate::widgets::top_bar_document_tabs::DocumentTabsLayout;
 use crate::{Point2D, Rect};
 
 pub(super) const TITLE_SIDE_GAP: f32 = 8.0;
 const TITLE_TEXT_MAX_WIDTH: f32 = 360.0;
 const EDITED_GAP: f32 = 6.0;
-const GIT_GAP: f32 = 10.0;
+pub(super) const GIT_GAP: f32 = 10.0;
 
 #[derive(Debug, Clone)]
 pub(super) struct TopBarTitleLayout {
@@ -21,6 +22,8 @@ pub(super) struct TopBarTitleLayout {
     pub edited_x: Option<f32>,
     pub git_rect: Option<Rect>,
     pub slot: Rect,
+    /// The document tab strip, when it replaces the centred title.
+    pub tabs: Option<DocumentTabsLayout>,
 }
 
 impl TopBar {
@@ -47,6 +50,10 @@ impl TopBar {
             origin: Point2D::new(slot_left, top_bar_rect.origin.y),
             size: Point2D::new(slot_width, top_bar_rect.size.y),
         };
+
+        if self.document_tabs_visible() {
+            return self.tabs_title_layout(slot, measure);
+        }
 
         let edited_w = if self.edited {
             measure(self.label_edited, 11.0)
@@ -113,6 +120,7 @@ impl TopBar {
             edited_x,
             git_rect,
             slot,
+            tabs: None,
         }
     }
 }

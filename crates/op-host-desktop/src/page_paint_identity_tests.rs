@@ -49,7 +49,9 @@ fn whole_document_replacement_changes_identity_for_same_page_id() {
     let after = app.active_page_paint_identity();
 
     assert_eq!(before.page_id, after.page_id);
-    assert_eq!(after.document_epoch, before.document_epoch + 1);
+    // Epochs come from a process-wide allocator, so a replacement gets a fresh
+    // value rather than `previous + 1` (which another open document may hold).
+    assert!(after.document_epoch > before.document_epoch);
     assert_ne!(
         before, after,
         "the epoch must distinguish replaced documents"

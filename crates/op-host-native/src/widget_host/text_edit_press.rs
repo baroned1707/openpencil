@@ -125,6 +125,66 @@ impl WidgetHostNative {
         })
     }
 
+    /// Whether a modal, dropdown or floating panel paints over the TopBar at
+    /// `(x, y)` — the same surfaces that get first refusal in the left-press
+    /// ladder (`press_overlay_tiers`, `press_chrome_tiers`). A middle-click
+    /// must not reach a tab those surfaces cover. Deliberately conservative:
+    /// any open modal or top-bar dropdown blocks, wherever the cursor is.
+    fn top_bar_covered_by_overlay(&self, x: f32, y: f32) -> bool {
+        let ui = &self.editor_state.editor_ui;
+        let point = Point2D::new(x, y);
+        let (w, h) = (self.last_viewport_w, self.last_viewport_h);
+        ui.agent_settings_open
+            || ui.collab.panel.open
+            || ui.login_modal_open
+            || ui.file_menu_open
+            || ui.export_quick_menu_open
+            || ui.slides_panel.export_menu_open
+            || ui.export_dialog_open
+            || ui.figma_import_open
+            || ui.account_menu_open
+            || ui.import_menu_open
+            || ui.locale_picker.open
+            || ui.missing_fonts_modal_open
+            || self.over_topmost_panel(x, y, w, h)
+            || self
+                .chat_model_picker_rect(w, h)
+                .is_some_and(|rect| rect.contains(point))
+            || self
+                .git_panel_rect(w, h)
+                .is_some_and(|rect| rect.contains(point))
+    }
+
+    /// Middle-click on a document tab closes it (browser convention), using the
+    /// same family-aware metric as paint so the target is the painted tab.
+    /// Returns whether the press landed on a tab and was consumed.
+    pub(in crate::widget_host) fn press_middle_document_tab(&mut self, x: f32, y: f32) -> bool {
+        use op_editor_ui::widgets::top_bar_document_tabs_flow::apply_document_tab_hit;
+        use op_editor_ui::widgets::{TopBar, TopBarHit, TOP_BAR_HEIGHT};
+        if y >= TOP_BAR_HEIGHT || self.top_bar_covered_by_overlay(x, y) {
+            return false;
+        }
+        let top_bar = TopBar::for_editor_ui(&self.editor_state.editor_ui);
+        let rect = Rect {
+            origin: Point2D::new(0.0, 0.0),
+            size: Point2D::new(self.last_viewport_w, TOP_BAR_HEIGHT),
+        };
+        let index = self.with_measure_only(|backend| {
+            top_bar.document_tab_index_at(rect, Point2D::new(x, y), |text, size| {
+                backend.measure_text_family(text, size, "system-ui")
+            })
+        });
+        let Some(index) = index else {
+            return false;
+        };
+        apply_document_tab_hit(
+            &mut self.editor_state.editor_ui,
+            TopBarHit::CloseDocumentTab(index),
+        );
+        self.mark_dirty();
+        true
+    }
+
     /// Exact center of the painted TopBar Git button, shared by the Git
     /// popover body and caret placement.
     pub(in crate::widget_host) fn topbar_git_button_center_x(

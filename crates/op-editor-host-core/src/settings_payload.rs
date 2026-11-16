@@ -15,7 +15,7 @@
 
 use op_editor_core::{
     normalize_builtin_models, BuiltinAgentConfig, BuiltinAgentKind, BuiltinAgentPresetKey,
-    ImageGenProfile, ImageGenProvider, ThemeMode,
+    ImageGenProfile, ImageGenProvider, SessionDocument, ThemeMode,
 };
 use serde::{Deserialize, Serialize};
 
@@ -23,6 +23,44 @@ use serde::{Deserialize, Serialize};
 pub struct RecentFilePayload {
     pub path: String,
     pub modified_at: u64,
+}
+
+/// One document that was open when the app last saved its settings.
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq)]
+pub struct OpenDocumentPayload {
+    pub path: String,
+    /// Which tab was on screen. Absent in older writers, so it defaults off.
+    #[serde(default)]
+    pub active: bool,
+}
+
+pub fn open_documents_to_payload(documents: &[SessionDocument]) -> Vec<OpenDocumentPayload> {
+    documents
+        .iter()
+        .map(|document| OpenDocumentPayload {
+            path: document.path.clone(),
+            active: document.active,
+        })
+        .collect()
+}
+
+/// Restore the open-document list. Empty paths are dropped and at most one
+/// entry may stay active (the first), so a hand-edited file cannot open two
+/// documents as "the" active one.
+pub fn open_documents_from_payload(payload: Vec<OpenDocumentPayload>) -> Vec<SessionDocument> {
+    let mut seen_active = false;
+    payload
+        .into_iter()
+        .filter(|entry| !entry.path.is_empty())
+        .map(|entry| {
+            let active = entry.active && !seen_active;
+            seen_active |= active;
+            SessionDocument {
+                path: entry.path,
+                active,
+            }
+        })
+        .collect()
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq)]

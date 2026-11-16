@@ -25,6 +25,9 @@ use crate::ui_draft::PropertyFocus;
 use crate::walkers::ReorderDirection;
 use crate::Tool;
 
+mod document_tab_shortcuts;
+pub use document_tab_shortcuts::{close_document_tab_shortcut, document_tab_shortcut};
+
 pub use crate::prompt_center_keyboard::{
     backspace as prompt_center_backspace, delete_forward as prompt_center_delete_forward,
     move_caret as prompt_center_caret, select_all as prompt_center_select_all,

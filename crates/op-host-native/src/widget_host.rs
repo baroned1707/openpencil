@@ -104,6 +104,9 @@ mod design_md_press;
 mod design_md_press_tests;
 #[cfg(test)]
 mod document_epoch_tests;
+mod document_swap;
+#[cfg(test)]
+mod document_tab_input_tests;
 #[cfg(test)]
 mod export_quick_menu_tests;
 mod figma_import_scroll;
@@ -131,6 +134,7 @@ mod home_site_import;
 mod ui3_proof;
 #[cfg(test)]
 mod ui3_proof_tests;
+pub use document_swap::{capture_loaded_thumbnails, next_document_epoch, ParkedDocument};
 pub use home_document_swap::ReplacedHomeDocument;
 mod home_overlays;
 mod home_quick_start;

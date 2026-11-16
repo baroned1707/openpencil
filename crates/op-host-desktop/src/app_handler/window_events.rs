@@ -3,7 +3,7 @@
 //! `app_handler.rs` spine to keep it under the 800-line cap; pure code
 //! motion.
 
-use crate::{chat_session, image_drop_host, persistence, DesktopApp};
+use crate::{chat_session, image_drop_host, DesktopApp};
 use std::path::PathBuf;
 use winit::dpi::{PhysicalPosition, PhysicalSize};
 use winit::event_loop::ActiveEventLoop;
@@ -155,13 +155,7 @@ impl DesktopApp {
         } else if op_host_services::doc_io::is_supported_html_import(&path) {
             let _ = self.begin_html_import(path);
         } else if op_host_services::doc_io::is_supported_document(&path) {
-            if persistence::open_path(
-                &mut self.host,
-                path,
-                &mut self.current_path,
-                self.window.as_ref(),
-            ) {
-                self.mark_document_saved();
+            if self.open_document_tab(path) {
                 self.request_redraw(true);
             }
         } else {

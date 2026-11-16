@@ -14,6 +14,7 @@
 
 pub mod chrome;
 mod defaults;
+pub mod document_scope;
 mod exports;
 pub mod git_panel;
 pub mod groups;
@@ -27,5 +28,6 @@ mod state;
 mod tests;
 pub mod workspace;
 
+pub use document_scope::EditorUiDocumentScope;
 pub use exports::*;
 pub use state::EditorUiState;

@@ -7,7 +7,7 @@
 //! skipping its post-event epilogue — return `false` here; the
 //! dispatcher turns that back into the same early return.
 
-use crate::{chat_attachment, chat_session, figma_import_session, frame, persistence, DesktopApp};
+use crate::{chat_attachment, chat_session, figma_import_session, frame, DesktopApp};
 use winit::dpi::PhysicalPosition;
 use winit::event::MouseScrollDelta;
 use winit::event_loop::ActiveEventLoop;
@@ -297,12 +297,7 @@ impl DesktopApp {
                     self.host.commit_variable_row_focus_if_any_pub();
                     self.request_background_save_as();
                 } else {
-                    let outcome = persistence::run_action(
-                        action,
-                        &mut self.host,
-                        &mut self.current_path,
-                        self.window.as_ref(),
-                    );
+                    let outcome = self.run_file_action(action);
                     if !dispatch_background_save_as_if_required(&outcome, || {
                         self.request_background_save_as()
                     }) {

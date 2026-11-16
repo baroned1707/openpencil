@@ -41,6 +41,11 @@ impl DesktopApp {
             self.redraw_dirty = true;
             return false;
         }
+        // Tab-strip clicks and Cmd+W / Cmd+1..9 land here; run them before any
+        // pump reads the document so the frame paints the tab that was asked for.
+        if self.pump_document_tabs() {
+            self.redraw_dirty = true;
+        }
         // Auth and catalog invalidation must precede every queued AI launch
         // and result pump so an expired Hosted selection cannot adopt fallback.
         if self.poll_auth_flow() {

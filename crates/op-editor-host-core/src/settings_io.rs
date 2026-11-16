@@ -9,10 +9,7 @@ use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicU64, Ordering};
 
 use op_editor_core::editor_ui_state::{RecentFile, RECENT_FILE_CAP};
-use op_editor_core::{
-    AcpAgentConfig, AcpConnectionType, BuiltinAgentConfig, BuiltinAgentPresetKey, EditorState,
-    ImageGenProfile, ThemeMode,
-};
+use op_editor_core::{AcpAgentConfig, AcpConnectionType, BuiltinAgentPresetKey, EditorState};
 // Shared settings payload shapes + conversions — single-sourced in
 // this crate so the desktop `settings.json` and the browser
 // `web_settings` snapshots cannot drift field-by-field.
@@ -20,9 +17,10 @@ use crate::settings_payload::{
     builtin_agent_from_payload, builtin_agent_to_payload, dedupe_builtin_agents,
     image_gen_profile_from_payload, image_gen_profile_to_payload, migrate_mcp_cli_flags,
     next_builtin_agent_id, next_image_gen_profile_id, openverse_oauth_to_payload, str_to_theme,
-    theme_to_str, BuiltinAgentPayload, ImageGenProfilePayload, OpenverseOAuthPayload,
-    RecentFilePayload,
+    theme_to_str, BuiltinAgentPayload, ImageGenProfilePayload, OpenDocumentPayload,
+    OpenverseOAuthPayload, RecentFilePayload,
 };
+use crate::settings_payload::{open_documents_from_payload, open_documents_to_payload};
 use op_i18n::Locale;
 use serde::{Deserialize, Serialize};
 
@@ -30,10 +28,14 @@ pub use crate::settings_io_error::SettingsIoError;
 
 // The sibling test files reach these enums through `use super::*`.
 #[cfg(test)]
-use op_editor_core::{BuiltinAgentKind, ImageGenProvider};
+use op_editor_core::{BuiltinAgentKind, ImageGenProfile, ImageGenProvider};
 
 #[path = "settings_io_checked.rs"]
 mod settings_io_checked;
+
+#[path = "settings_io_fingerprint.rs"]
+mod settings_io_fingerprint;
+pub use settings_io_fingerprint::{fingerprint, Fingerprint};
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 struct AcpAgentPayload {
@@ -49,62 +51,6 @@ struct AcpAgentPayload {
     #[serde(default)]
     url: Option<String>,
     enabled: bool,
-}
-
-/// Cheap snapshot of every persisted field. Captured before each
-/// dispatch; if it differs after, save the file.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct Fingerprint {
-    recent_files: Vec<RecentFile>,
-    theme: ThemeMode,
-    locale: Locale,
-    port: u16,
-    cli: [bool; 13],
-    mcp_lean_profile: bool,
-    images_adv: bool,
-    openverse_client_id: String,
-    openverse_client_secret: String,
-    openverse_credential_owner: Option<String>,
-    auto_update_enabled: bool,
-    experimental_features_enabled: bool,
-    connected: [bool; 8],
-    builtin_agents: Vec<BuiltinAgentConfig>,
-    acp_agents: Vec<AcpAgentConfig>,
-    image_gen_profiles: Vec<ImageGenProfile>,
-    active_image_gen_profile_id: Option<String>,
-    image_gen_enabled: bool,
-    preferred_agent_team_size: u32,
-    entry_surface: op_editor_core::EntrySurface,
-    chat_agent: String,
-    chat_model: String,
-}
-
-pub fn fingerprint(state: &EditorState) -> Fingerprint {
-    let eui = &state.editor_ui;
-    Fingerprint {
-        recent_files: eui.recent_files.clone(),
-        theme: eui.theme_mode,
-        locale: eui.locale,
-        port: eui.agent_settings.mcp_server.port,
-        cli: eui.agent_settings.mcp_cli_enabled,
-        mcp_lean_profile: eui.agent_settings.mcp_lean_profile,
-        images_adv: eui.agent_settings.images_advanced_open,
-        openverse_client_id: eui.agent_settings.openverse_client_id.clone(),
-        openverse_client_secret: eui.agent_settings.openverse_client_secret.clone(),
-        openverse_credential_owner: eui.agent_settings.openverse_credential_owner.clone(),
-        auto_update_enabled: eui.agent_settings.auto_update_enabled,
-        experimental_features_enabled: eui.agent_settings.experimental_features_enabled,
-        connected: eui.agent_settings.connected,
-        builtin_agents: eui.agent_settings.builtin_agents.clone(),
-        acp_agents: eui.agent_settings.acp_agents.clone(),
-        image_gen_profiles: eui.agent_settings.image_gen_profiles.clone(),
-        active_image_gen_profile_id: eui.agent_settings.active_image_gen_profile_id.clone(),
-        image_gen_enabled: eui.agent_settings.image_gen_enabled,
-        preferred_agent_team_size: eui.preferred_agent_team_size,
-        entry_surface: eui.entry_surface,
-        chat_agent: selected_chat_agent_name(eui),
-        chat_model: selected_chat_model_value(state),
-    }
 }
 
 /// The persisted identity of the selected chat agent — its stable
@@ -201,6 +147,10 @@ struct SettingsPayload {
     image_gen_enabled: Option<bool>,
     #[serde(default)]
     recent_files: Option<Vec<RecentFilePayload>>,
+    /// Documents open at the last save, restored as tabs on launch. Older
+    /// files omit it, which restores nothing.
+    #[serde(default)]
+    open_documents: Option<Vec<OpenDocumentPayload>>,
     /// User's last-set ⚡Nx parallel-agents team size — seeds tab 0's
     /// `ChatState::agent_team_size` on load. Absent in settings files
     /// predating this field; `#[serde(default)]` + the `unwrap_or(1)` at
@@ -306,6 +256,7 @@ fn to_payload(state: &EditorState) -> SettingsPayload {
                 })
                 .collect(),
         ),
+        open_documents: Some(open_documents_to_payload(&eui.session_documents)),
         preferred_agent_team_size: Some(eui.preferred_agent_team_size),
         entry_surface: Some(eui.entry_surface.as_str().into()),
         chat_agent: Some(selected_chat_agent_name(eui)),
@@ -422,6 +373,9 @@ fn apply_payload_with_options(
                 modified_at: r.modified_at,
             })
             .collect();
+    }
+    if let Some(list) = payload.open_documents {
+        eui.session_documents = open_documents_from_payload(list);
     }
     if let Some(size) = payload.preferred_agent_team_size {
         eui.preferred_agent_team_size = size.clamp(1, 6);
@@ -790,3 +744,7 @@ mod settings_io_guard_tests;
 #[cfg(test)]
 #[path = "settings_io_chat_model_tests.rs"]
 mod settings_io_chat_model_tests;
+
+#[cfg(test)]
+#[path = "settings_io_open_documents_tests.rs"]
+mod settings_io_open_documents_tests;

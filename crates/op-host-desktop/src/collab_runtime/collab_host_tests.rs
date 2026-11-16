@@ -54,7 +54,8 @@ fn snapshot_install_through_the_host_seam_rotates_the_document_epoch() {
 
     // The blanket `EditorState` impl cannot rotate the epoch — only the GUI
     // host's override does, so this equality proves the seam reached it.
-    assert_eq!(host.document_epoch(), epoch.wrapping_add(1));
+    // Fresh from the process-wide allocator, not `epoch + 1`.
+    assert!(host.document_epoch() > epoch);
     assert_eq!(host.editor_state().doc.children.len(), 1);
 }
 

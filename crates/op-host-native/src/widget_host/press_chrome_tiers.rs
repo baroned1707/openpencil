@@ -189,6 +189,8 @@ impl WidgetHostNative {
                 | TopBarHit::OpenExportMenu
                 | TopBarHit::OpenAssetCenter
                 | TopBarHit::OpenImportMenu
+                | TopBarHit::DocumentTab(_)
+                | TopBarHit::CloseDocumentTab(_)
                 | TopBarHit::Home => return Some(true),
                 TopBarHit::ToggleFullscreen => {
                     // The widget host doesn't own the winit window — raise

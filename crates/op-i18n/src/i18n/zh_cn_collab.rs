@@ -536,6 +536,7 @@ pub fn lookup(key: &str) -> Option<&'static str> {
         "ai.referenceImagesTooLarge" => "参考图超过了附件大小或数量限制。",
         "ai.referenceImagesUnsupported" => "所选模型不支持参考图。请选择支持图片的模型，或移除附件。",
         "ai.hostedTransportUnavailable" => "当前会话无法使用 OpenPencil Hosted。请重新登录或选择其他模型。",
+        "documents.switchBlocked" => "请先完成或停止正在运行的任务，再切换文档。",
         _ => return None,
     })
 }

@@ -182,9 +182,12 @@ impl DesktopApp {
     /// instead of edited on disk behind the editor). Cheap — no filesystem
     /// access; the server canonicalizes when it compares.
     fn sync_mcp_host(&mut self) {
+        // The on-screen path is `current_path`; parked tabs' paths come from the
+        // registry, so a `filePath` edit of ANY open document is refused.
+        self.sync_active_slot();
         let document_epoch = self.host.document_epoch();
         if let Some(server) = self.mcp_server.as_mut() {
-            server.sync_host(document_epoch, self.current_path.as_slice());
+            server.sync_host(document_epoch, &self.documents.open_paths());
         }
     }
 

@@ -231,6 +231,10 @@ impl WidgetHostNative {
     /// and end it like any pan drag.
     pub fn apply_pan_press(&mut self, x: f32, y: f32) -> bool {
         self.cancel_native_touch_gestures();
+        // Middle-click on a document tab closes it instead of starting a pan.
+        if self.press_middle_document_tab(x, y) {
+            return true;
+        }
         if self.over_topmost_panel(x, y, self.last_viewport_w, self.last_viewport_h) {
             return true;
         }

@@ -108,6 +108,11 @@ pub enum TopBarHit {
     /// User-avatar button — open the sign-in modal (signed out) or the
     /// account dropdown (signed in).
     Account,
+    /// A document tab (or the `+N` chip, standing for its first hidden tab)
+    /// — switch to the document at this index of `document_tabs`.
+    DocumentTab(usize),
+    /// The close (x) of the document tab at this index.
+    CloseDocumentTab(usize),
 }
 
 pub struct TopBar {
@@ -178,6 +183,10 @@ pub struct TopBar {
     /// name/edited/git cluster) and the Maximize button — the host
     /// workbench already owns those affordances.
     pub embed: op_editor_core::EmbedHost,
+    /// Open-document tab rows. Empty unless the strip is shown — the host
+    /// supports tabs, more than one document is open, and the chrome is the
+    /// desktop one — so `len() > 1` is the whole visibility rule.
+    pub document_tabs: Vec<op_editor_core::DocumentTabView>,
 }
 
 impl TopBar {
@@ -207,6 +216,7 @@ impl TopBar {
             account: op_editor_core::AccountState::Anonymous,
             account_button_visible: false,
             embed: op_editor_core::EmbedHost::None,
+            document_tabs: Vec::new(),
         }
     }
 
@@ -268,6 +278,14 @@ impl TopBar {
             account: ui.account.clone(),
             account_button_visible: ui.account_ui_available,
             embed: ui.embed,
+            document_tabs: if ui.document_tabs_supported
+                && !ui.touch_chrome()
+                && ui.embed != op_editor_core::EmbedHost::VsCode
+            {
+                ui.document_tabs.clone()
+            } else {
+                Vec::new()
+            },
         }
     }
 
@@ -367,19 +385,18 @@ impl TopBar {
         if !rect.contains(point) {
             return None;
         }
-        let git_rect = if GIT_BUTTON_AVAILABLE && self.file_controls_visible() {
-            self.git_button_rect(rect)
-        } else {
-            Rect::xywh(rect.origin.x, rect.origin.y, 0.0, 0.0)
-        };
-        self.hit_test_with_git_rect(rect, point, git_rect)
+        let title = self
+            .file_controls_visible()
+            .then(|| self.title_layout_estimated(rect));
+        self.hit_test_with_title(rect, point, title.as_ref())
     }
 
     /// Hit-test using the same font-family measurement as paint.
     ///
-    /// Native hosts use this path for the centered title group's Git button so
-    /// its hover/press target follows the painted group even when the system
-    /// font's advances differ from the cross-platform fallback estimator.
+    /// Native hosts use this path for the centered title group's Git button
+    /// and the document tab strip so their hover/press targets follow what is
+    /// painted even when the system font's advances differ from the
+    /// cross-platform fallback estimator.
     pub fn hit_test_with_measure(
         &self,
         rect: Rect,
@@ -389,23 +406,24 @@ impl TopBar {
         if !rect.contains(point) {
             return None;
         }
-        let git_rect = if GIT_BUTTON_AVAILABLE && self.file_controls_visible() {
-            self.git_button_rect_with_measure(rect, measure)
-        } else {
-            Rect::xywh(rect.origin.x, rect.origin.y, 0.0, 0.0)
-        };
-        self.hit_test_with_git_rect(rect, point, git_rect)
+        let title = self
+            .file_controls_visible()
+            .then(|| self.title_layout(rect, measure));
+        self.hit_test_with_title(rect, point, title.as_ref())
     }
 
-    fn hit_test_with_git_rect(
+    fn hit_test_with_title(
         &self,
         rect: Rect,
         point: Point2D,
-        git_rect: Rect,
+        title: Option<&super::top_bar_title::TopBarTitleLayout>,
     ) -> Option<TopBarHit> {
         if !(rect).contains(point) {
             return None;
         }
+        let git_rect = title
+            .and_then(|title| title.git_rect)
+            .unwrap_or_else(|| Rect::xywh(rect.origin.x, rect.origin.y, 0.0, 0.0));
         let icon_y = rect.origin.y + 8.0;
         let panel_left_rect = Rect {
             origin: Point2D::new(rect.origin.x + PAD + self.left_inset(), icon_y),
@@ -446,6 +464,12 @@ impl TopBar {
             && git_rect.contains(point)
         {
             return Some(TopBarHit::ToggleGitPanel);
+        }
+        // Document tabs fill the title slot between Home and the agent chip.
+        if let Some(tabs) = title.and_then(|title| title.tabs.as_ref()) {
+            if let Some(hit) = tabs.hit(point) {
+                return Some(hit);
+            }
         }
         // Right cluster: Maximize / Play / Sun / Globe-with-chevron
         // (right→left). Maximize + Play + Sun are normal ICON_BUTTON

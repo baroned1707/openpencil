@@ -19,14 +19,19 @@ fn epoch_bumps_on_replace_not_on_edit() {
         "in-place edit must not bump the document epoch"
     );
 
-    // A whole-document replacement (Open / New) bumps once.
+    // A whole-document replacement (Open / New) moves to a fresh epoch. The
+    // counter is process-wide (parked documents keep their own), so other
+    // threads may also allocate: assert "changed and never reused", not +1.
     host.replace_editor_state(op_editor_core::EditorState::starter());
-    assert_eq!(
-        host.document_epoch(),
-        start + 1,
-        "replace_editor_state must bump the epoch"
+    let first = host.document_epoch();
+    assert!(
+        first > start,
+        "replace_editor_state must move the epoch forward"
     );
 
     host.replace_editor_state(op_editor_core::EditorState::starter());
-    assert_eq!(host.document_epoch(), start + 2, "each replace bumps once");
+    assert!(
+        host.document_epoch() > first,
+        "each replace gets a new, larger epoch"
+    );
 }

@@ -38,7 +38,10 @@ fn snapshot_rotates_epoch_and_failed_install_is_atomic() {
     let epoch = host.document_epoch();
     host.install_collaboration_document(document_with_rect("peer-1:1"), EditOrigin::Snapshot)
         .expect("snapshot installs");
-    assert_eq!(host.document_epoch(), epoch.wrapping_add(1));
+    assert!(
+        host.document_epoch() > epoch,
+        "a snapshot rotates the epoch"
+    );
 
     let before = host.editor_state().doc.clone();
     let epoch = host.document_epoch();
