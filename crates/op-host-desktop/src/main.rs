@@ -28,6 +28,7 @@ mod codegen_export;
 mod codegen_input;
 mod codegen_session;
 mod collab_avatar_host;
+mod collab_join_target_host;
 mod collab_runtime;
 mod commit_diff_host;
 mod commit_diff_semantic;
@@ -339,6 +340,9 @@ struct DesktopApp {
     /// Collaboration session/editor actor. Sockets remain on bounded network
     /// workers; this field is touched only by the winit GUI thread.
     collab_runtime: collab_runtime::DesktopCollabRuntime,
+    /// The empty tab a join opened for the shared document, until the owner's
+    /// Snapshot lands in it or the join ends without one.
+    guest_join_tab: Option<collab_join_target_host::GuestJoinTab>,
     /// Paths forwarded by second-launch processes (`single_instance`),
     /// drained on the UI thread by `drain_forwarded_files`.
     forwarded_files: single_instance::ForwardQueue,

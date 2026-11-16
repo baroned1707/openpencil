@@ -537,6 +537,7 @@ pub fn lookup(key: &str) -> Option<&'static str> {
         "ai.referenceImagesUnsupported" => "所選模型不支援參考圖。請選擇支援圖片的模型，或移除附件。",
         "ai.hostedTransportUnavailable" => "目前工作階段無法使用 OpenPencil Hosted。請重新登入或選擇其他模型。",
         "documents.switchBlocked" => "請先完成或停止執行中的任務，再切換文件。",
+        "documents.joinBlocked" => "目前無法為共享文件開啟新分頁。請先完成或停止執行中的任務，或離開目前的工作階段，然後重新加入。你的文件沒有被更改。",
         "leftPanel.tab.projects" => "專案",
         "projects.empty" => "尚無專案",
         "projects.newDesign" => "新增設計",

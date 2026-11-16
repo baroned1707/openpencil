@@ -537,6 +537,7 @@ pub fn lookup(key: &str) -> Option<&'static str> {
         "ai.referenceImagesUnsupported" => "Le modèle sélectionné ne prend pas en charge les images de référence. Choisissez un modèle compatible avec les images ou retirez les pièces jointes.",
         "ai.hostedTransportUnavailable" => "OpenPencil Hosted est indisponible dans cette session. Reconnectez-vous ou choisissez un autre modèle.",
         "documents.switchBlocked" => "Terminez ou arrêtez la tâche en cours avant de changer de document.",
+        "documents.joinBlocked" => "Impossible d'ouvrir un nouvel onglet pour le document partagé pour le moment. Terminez ou arrêtez la tâche en cours, ou quittez la session actuelle, puis rejoignez à nouveau. Votre document n'a pas été modifié.",
         "leftPanel.tab.projects" => "Projets",
         "projects.empty" => "Aucun projet pour l’instant",
         "projects.newDesign" => "Nouveau design",

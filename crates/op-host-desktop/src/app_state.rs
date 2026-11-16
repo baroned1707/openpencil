@@ -204,6 +204,7 @@ impl DesktopApp {
             image_decodes: image_decode_host::ImageDecodeHost::new(),
             mcp_wake_proxy: None,
             collab_runtime: crate::collab_runtime::DesktopCollabRuntime::new(),
+            guest_join_tab: None,
             forwarded_files: single_instance::ForwardQueue::default(),
             iconify_job: None,
             image_gen_test_job: None,

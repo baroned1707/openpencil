@@ -541,6 +541,7 @@ pub fn lookup(key: &str) -> Option<&'static str> {
         "ai.referenceImagesUnsupported" => "चुना गया मॉडल संदर्भ चित्रों का समर्थन नहीं करता। चित्रों का समर्थन करने वाला मॉडल चुनें या संलग्नक हटाएँ।",
         "ai.hostedTransportUnavailable" => "इस सत्र में OpenPencil Hosted उपलब्ध नहीं है। फिर से साइन इन करें या कोई अन्य मॉडल चुनें।",
         "documents.switchBlocked" => "दस्तावेज़ बदलने से पहले चल रहे कार्य को पूरा करें या रोकें।",
+        "documents.joinBlocked" => "साझा दस्तावेज़ के लिए अभी नया टैब नहीं खोला जा सकता। चल रहे कार्य को पूरा करें या रोकें, या मौजूदा सत्र छोड़ें, फिर दोबारा जुड़ें। आपका दस्तावेज़ बदला नहीं गया है।",
         "leftPanel.tab.projects" => "प्रोजेक्ट",
         "projects.empty" => "अभी कोई प्रोजेक्ट नहीं",
         "projects.newDesign" => "नया डिज़ाइन",

@@ -577,6 +577,7 @@ pub fn lookup(key: &str) -> Option<&'static str> {
         "ai.referenceImagesUnsupported" => "The selected model does not support reference images. Choose an image-capable model or remove the attachments.",
         "ai.hostedTransportUnavailable" => "OpenPencil Hosted is unavailable in this session. Sign in again or choose another model.",
         "documents.switchBlocked" => "Finish or stop the running task before switching documents.",
+        "documents.joinBlocked" => "Can't open a new tab for the shared document right now. Finish or stop the running task, or leave the current session, then join again. Your document was not changed.",
         "leftPanel.tab.projects" => "Projects",
         "projects.empty" => "No projects yet",
         "projects.newDesign" => "New design",

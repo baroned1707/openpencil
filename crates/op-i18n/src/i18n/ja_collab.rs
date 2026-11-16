@@ -553,6 +553,7 @@ pub fn lookup(key: &str) -> Option<&'static str> {
         "ai.referenceImagesUnsupported" => "選択したモデルは参照画像に対応していません。画像対応モデルを選択するか、添付ファイルを削除してください。",
         "ai.hostedTransportUnavailable" => "このセッションでは OpenPencil Hosted を利用できません。再度ログインするか、別のモデルを選択してください。",
         "documents.switchBlocked" => "ドキュメントを切り替える前に、実行中のタスクを完了または停止してください。",
+        "documents.joinBlocked" => "共有ドキュメント用の新しいタブを今は開けません。実行中のタスクを完了または停止するか、現在のセッションを退出してから、もう一度参加してください。あなたのドキュメントは変更されていません。",
         "leftPanel.tab.projects" => "プロジェクト",
         "projects.empty" => "プロジェクトはまだありません",
         "projects.newDesign" => "新しいデザイン",
