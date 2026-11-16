@@ -24,6 +24,22 @@ mod account_press;
 #[cfg(test)]
 mod account_press_tests;
 #[cfg(test)]
+mod ui3_proof;
+#[cfg(test)]
+mod ui3_proof_tests;
+#[cfg(test)]
+mod ui3_proof_frame_tests;
+#[cfg(test)]
+mod ui3_proof_chat_tests;
+#[cfg(test)]
+mod ui3_proof_menus_tests;
+#[cfg(test)]
+mod ui3_proof_panels_tests;
+#[cfg(test)]
+mod ui3_proof_home_tests;
+#[cfg(test)]
+mod ui3_proof_settings_tests;
+#[cfg(test)]
 mod agent_settings_acp_tests;
 #[cfg(test)]
 mod agent_settings_api_key_delete_tests;
