@@ -195,7 +195,7 @@ pub(super) fn serve_snapshot_ingest<S: std::io::Read + std::io::Write>(
     stream: &mut S,
     req_tx: &Sender<UiRequest>,
     wake_ui: &UiWake,
-    stateful_lock: &Mutex<()>,
+    documents: &LiveDocuments,
     req: &crate::mcp_serve::HttpRequest,
     cors_origin: Option<&str>,
 ) -> Result<(), McpLiveError> {
@@ -219,11 +219,12 @@ pub(super) fn serve_snapshot_ingest<S: std::io::Read + std::io::Write>(
     }
     let call = snapshot_tool_call(&req.body);
     // Same serialization as the JSON-RPC write path: one live apply at a
-    // time, and a coherent snapshot to validate against.
-    let _guard = stateful_lock
-        .lock()
-        .unwrap_or_else(|poison| poison.into_inner());
-    let (mut state, epoch) = request_snapshot(req_tx, wake_ui)?;
+    // time per document, and a coherent snapshot to validate against. The
+    // extension names no document; it means the canvas the user is looking at.
+    let document = active_document(req_tx, wake_ui)?;
+    let gate = documents.gate(document);
+    let _guard = lock_gate(&gate);
+    let (mut state, epoch) = request_snapshot(req_tx, wake_ui, document)?;
     let mut document_changed = false;
     let mut response = crate::mcp_serve::process_message_with_applier(
         &mut state,
@@ -231,6 +232,7 @@ pub(super) fn serve_snapshot_ingest<S: std::io::Read + std::io::Write>(
         |tool_name, local_state, cmd| match request_apply(
             req_tx,
             wake_ui,
+            document,
             tool_name.to_string(),
             cmd.clone(),
             Some(epoch),

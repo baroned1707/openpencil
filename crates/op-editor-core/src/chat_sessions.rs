@@ -149,6 +149,20 @@ impl ChatSessions {
         self.active = self.active.min(self.tabs.len() - 1);
     }
 
+    /// Whether nothing was ever typed, sent or received here: one tab with no
+    /// messages, no draft, no queued send and no staged attachments. A blank
+    /// document may be replaced by a freshly opened file only if its chat is
+    /// untouched too, now that the chat travels with the document.
+    pub fn is_untouched(&self) -> bool {
+        self.tabs.len() == 1
+            && self.tabs.iter().all(|tab| {
+                tab.messages.is_empty()
+                    && tab.input.text().is_empty()
+                    && tab.pending_send.is_none()
+                    && tab.pending_attachments.is_empty()
+            })
+    }
+
     /// Immutable reference to the active tab (same as `Deref`, but explicit).
     pub fn active(&self) -> &ChatState {
         &self.tabs[self.active]

@@ -542,6 +542,8 @@ pub fn lookup(key: &str) -> Option<&'static str> {
         "projects.newDesign" => "Desain baru",
         "projects.needsReview" => "{{count}} perlu ditinjau",
         "projects.running" => "{{count}} berjalan",
+        "dialog.agentRunningTitle" => "Agen masih bekerja",
+        "dialog.agentRunningBody" => "“{{name}}” memiliki agen yang masih berjalan.\n\nMenutup akan menghentikannya.\n\nYa = Hentikan dan tutup · Tidak atau Batal = lanjutkan bekerja.",
         _ => return None,
     })
 }

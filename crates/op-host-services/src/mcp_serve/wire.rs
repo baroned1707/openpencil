@@ -160,3 +160,13 @@ pub fn classify_stateless(line: &str) -> Stateless {
         _ => Stateless::NeedsState,
     }
 }
+
+/// Whether a JSON-RPC tool response is a success (no `isError:true`).
+pub(crate) fn mcp_response_succeeded(response: &str) -> bool {
+    serde_json::from_str::<serde_json::Value>(response)
+        .ok()
+        .and_then(|value| value.get("result").cloned())
+        .and_then(|result| result.get("isError").cloned())
+        .and_then(|is_error| is_error.as_bool())
+        != Some(true)
+}

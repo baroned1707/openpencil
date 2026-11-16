@@ -460,6 +460,7 @@ fn sensitive_browser_posts_include_credentials_and_ai_routes() {
             authorization: None,
             cookie: None,
             query: None,
+            mcp_param_document_id: None,
         };
         assert!(is_sensitive_browser_post(&request), "path={path}");
     }

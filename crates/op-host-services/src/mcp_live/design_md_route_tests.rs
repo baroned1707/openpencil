@@ -54,6 +54,7 @@ fn request_for(
         authorization: None,
         cookie: None,
         query: None,
+        mcp_param_document_id: None,
     }
 }
 

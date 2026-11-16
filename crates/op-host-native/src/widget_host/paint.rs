@@ -370,6 +370,12 @@ impl WidgetHostNative {
             }
         }
 
+        // 5a. Projects dock — the far-right column, painted after the
+        //     property panel it sits beside.
+        if !presenting && !workspace_visible {
+            self.paint_projects_dock(frame, viewport_width, viewport_height);
+        }
+
         // 5b. VariablesPanel — mirrors TS' `{}` toolbar toggle as a
         //     floating canvas overlay next to the toolbar.
         if let Some(vars_rect) = self

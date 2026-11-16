@@ -227,6 +227,7 @@ mod preview_slideshow;
 mod preview_slideshow_tests;
 #[cfg(all(test, not(target_os = "windows")))]
 mod preview_swipe_tests;
+mod projects_dock;
 #[cfg(test)]
 mod prompt_center_host_tests;
 mod prompt_center_press;

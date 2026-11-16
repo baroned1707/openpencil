@@ -13,9 +13,8 @@ use super::WidgetHostNative;
 use op_editor_core::size_class::MobileSheetKind;
 use op_editor_core::LeftPanelTab;
 use op_editor_ui::widgets::host_canvas_geometry as canvas_geometry;
-use op_editor_ui::widgets::projects_panel_flow as projects_flow;
 use op_editor_ui::widgets::slides_panel_flow as flow;
-use op_editor_ui::widgets::{BoardChip, ProjectsPanelLayout, SlidesPanelLayout, SlidesPanelTabs};
+use op_editor_ui::widgets::{BoardChip, SlidesPanelLayout, SlidesPanelTabs};
 use op_editor_ui::{Point2D, Rect, RenderBackend};
 
 use crate::backend::NativeFrameBackend;
@@ -124,34 +123,6 @@ impl WidgetHostNative {
             active,
             layout,
         })
-    }
-
-    /// The Projects tab's layout, or `None` when another tab owns the rail.
-    pub(in crate::widget_host) fn projects_panel_layout(
-        &self,
-        viewport_w: f32,
-        viewport_h: f32,
-    ) -> Option<ProjectsPanelLayout> {
-        if !self.left_rail_visible() {
-            return None;
-        }
-        projects_flow::layout(
-            &self.editor_state,
-            self.slides_panel_rect(viewport_w, viewport_h),
-        )
-    }
-
-    /// Paint the Projects tab body (the tab row is painted by the caller).
-    pub(in crate::widget_host) fn paint_projects_panel(
-        &self,
-        frame: &mut NativeFrameBackend<'_>,
-        layout: &ProjectsPanelLayout,
-    ) {
-        use op_editor_ui::widgets::PaintCx;
-        let text = projects_flow::text(&self.editor_state);
-        let widget = projects_flow::widget(&self.editor_state, &text);
-        let mut cx = PaintCx { backend: frame };
-        widget.paint(&mut cx, layout, &self.theme);
     }
 
     /// Paint the panel and blit whatever thumbnails are cached, then
@@ -306,15 +277,6 @@ impl WidgetHostNative {
                 }
             };
         }
-        // The Projects tab owns the body below the tab row.
-        if let Some(projects) = self.projects_panel_layout(viewport_w, viewport_h) {
-            if let projects_flow::ProjectsPress::Claimed(_) =
-                projects_flow::press(&mut self.editor_state, &projects, point)
-            {
-                self.mark_dirty();
-                return true;
-            }
-        }
         // The Layers tab owns the rail: only the tab row itself is ours.
         let Some(tabs) = self.slides_tab_row(viewport_w, viewport_h) else {
             return false;
@@ -348,19 +310,6 @@ impl WidgetHostNative {
                 || self.editor_state.editor_ui.slides_panel.drag.is_some();
             return (owns, changed);
         }
-        let mut projects_cleared = false;
-        if let Some(projects) = self.projects_panel_layout(viewport_w, viewport_h) {
-            if projects.contains_point(point) {
-                let changed = projects_flow::cursor_move(&mut self.editor_state, &projects, point);
-                if changed {
-                    self.mark_dirty();
-                }
-                return (true, changed);
-            }
-            // Off the body (on the tab row or outside the rail): the row
-            // wash must not outlive the cursor.
-            projects_cleared = projects_flow::clear_hover(&mut self.editor_state);
-        }
         let Some(tabs) = self.slides_tab_row(viewport_w, viewport_h) else {
             // No tab row on this document — drop any hover it left.
             let changed = self.editor_state.editor_ui.slides_panel.clear_pointer();
@@ -369,8 +318,7 @@ impl WidgetHostNative {
             }
             return (false, changed);
         };
-        let changed =
-            flow::tab_cursor_move(&mut self.editor_state, &tabs, point) || projects_cleared;
+        let changed = flow::tab_cursor_move(&mut self.editor_state, &tabs, point);
         if changed {
             self.mark_dirty();
         }
@@ -484,9 +432,6 @@ impl WidgetHostNative {
         viewport_w: f32,
         viewport_h: f32,
     ) -> Option<bool> {
-        if let Some(projects) = self.projects_panel_layout(viewport_w, viewport_h) {
-            return projects_flow::scroll(&mut self.editor_state, Some(&projects), point, delta_y);
-        }
         let slides = self.slides_panel_frame(viewport_w, viewport_h)?;
         flow::scroll(&mut self.editor_state, Some(&slides.layout), point, delta_y)
     }

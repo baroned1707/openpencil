@@ -3,6 +3,7 @@
 //! daemon's connection tests) so they cover the wiring, not just the
 //! predicates: a refused request must never reach the UI-request channel.
 
+use super::super::test_support::TestResolver;
 use super::super::*;
 use super::*;
 
@@ -10,7 +11,7 @@ const PORT: u16 = 51234;
 const TOKEN: &str = "d34db33f-cafe";
 /// A read-only tool call. Reads were entirely unauthenticated before this
 /// gate existed, so the read path is exactly what these tests must pin.
-const LIST_PAGES_CALL: &str = r#"{"jsonrpc":"2.0","id":11,"method":"tools/call","params":{"name":"list_pages","arguments":{}}}"#;
+const LIST_PAGES_CALL: &str = r#"{"jsonrpc":"2.0","id":11,"method":"tools/call","params":{"name":"list_pages","arguments":{"documentId":"d1"}}}"#;
 
 struct MockStream {
     input: std::io::Cursor<Vec<u8>>,
@@ -37,7 +38,7 @@ impl std::io::Write for MockStream {
 /// response.
 fn drive(request: &str, req_tx: &Sender<UiRequest>) -> String {
     let admission = LiveAdmission::new(TOKEN.to_string(), PORT);
-    let stateful_lock = Mutex::new(());
+    let documents = LiveDocuments::default();
     let quit_flag = AtomicBool::new(false);
     let wake_ui: UiWake = Arc::new(|| {});
     let client_identity = Mutex::new(None);
@@ -49,11 +50,10 @@ fn drive(request: &str, req_tx: &Sender<UiRequest>) -> String {
         &mut stream,
         req_tx,
         &admission,
-        &stateful_lock,
+        &documents,
         &quit_flag,
         &wake_ui,
         &client_identity,
-        &OpenDocumentPaths::default(),
     )
     .expect("a refused request is answered on the wire, never a server error");
     String::from_utf8_lossy(&stream.output).into_owned()
@@ -83,12 +83,12 @@ fn a_tokenless_tool_call_is_served() {
     // URL, no discovered token) reaches the UI thread and is served.
     let (req_tx, req_rx) = mpsc::channel();
     let responder = thread::spawn(move || match req_rx.recv_timeout(Duration::from_secs(5)) {
-        Ok(UiRequest::ListPages { ack }) => ack
-            .send(op_mcp::ListPages {
+        Ok(UiRequest::ListPages { ack, .. }) => ack
+            .send(Ok(op_mcp::ListPages {
                 page_count: 3,
                 active_page_index: 1,
                 pages: vec![("p1".to_string(), "One".to_string())],
-            })
+            }))
             .is_ok(),
         _ => false,
     });
@@ -107,12 +107,12 @@ fn a_tokenless_tool_call_is_served() {
 fn authenticated_tool_call_is_served() {
     let (req_tx, req_rx) = mpsc::channel();
     let responder = thread::spawn(move || match req_rx.recv_timeout(Duration::from_secs(5)) {
-        Ok(UiRequest::ListPages { ack }) => ack
-            .send(op_mcp::ListPages {
+        Ok(UiRequest::ListPages { ack, .. }) => ack
+            .send(Ok(op_mcp::ListPages {
                 page_count: 3,
                 active_page_index: 1,
                 pages: vec![("p1".to_string(), "One".to_string())],
-            })
+            }))
             .is_ok(),
         _ => false,
     });
@@ -138,12 +138,12 @@ fn authenticated_tool_call_is_served() {
 fn cli_request_without_origin_or_host_port_is_served() {
     let (req_tx, req_rx) = mpsc::channel();
     let responder = thread::spawn(move || match req_rx.recv_timeout(Duration::from_secs(5)) {
-        Ok(UiRequest::ListPages { ack }) => ack
-            .send(op_mcp::ListPages {
+        Ok(UiRequest::ListPages { ack, .. }) => ack
+            .send(Ok(op_mcp::ListPages {
                 page_count: 1,
                 active_page_index: 0,
                 pages: vec![("p1".to_string(), "One".to_string())],
-            })
+            }))
             .is_ok(),
         _ => false,
     });
@@ -337,16 +337,21 @@ fn extension_snapshot_ingress_inserts_without_a_token() {
         let mut applied = 0usize;
         while let Ok(request) = req_rx.recv_timeout(Duration::from_secs(5)) {
             match request {
-                UiRequest::Snapshot { ack } => {
+                // The extension names no document: the server resolves the
+                // one on screen first.
+                UiRequest::Documents { ack } => {
+                    let _ = ack.send(TestResolver::single(EditorState::new()).documents());
+                }
+                UiRequest::Snapshot { ack, .. } => {
                     let state = EditorState::starter();
                     let epoch = DocumentEpoch::of(0, &state);
-                    let _ = ack.send(SnapshotAck { state, epoch });
+                    let _ = ack.send(Ok(SnapshotAck { state, epoch }));
                 }
                 UiRequest::Apply { ack, .. } => {
                     applied += 1;
                     let _ = ack.send(ApplyAck {
                         applied: true,
-                        document_changed: false,
+                        ..ApplyAck::default()
                     });
                     break;
                 }

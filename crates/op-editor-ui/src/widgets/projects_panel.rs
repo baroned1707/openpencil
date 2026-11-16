@@ -1,4 +1,4 @@
-//! The left rail's Projects tab: every project and the design files in it.
+//! The Projects dock's list: every project and the design files in it.
 //!
 //! Figma UI3 look — flat, borderless, tone-separated. A project header
 //! carries a chevron, the project name in semibold, a muted folder hint and
@@ -47,7 +47,7 @@ const EMPTY_FONT: f32 = 12.0;
 const EMPTY_PAD_TOP: f32 = 28.0;
 const SEMIBOLD: u16 = 600;
 
-/// The tab's translated strings. `needs_review` and `running` carry a
+/// The list's translated strings. `needs_review` and `running` carry a
 /// `{{count}}` placeholder.
 #[derive(Debug, Clone, Copy)]
 pub struct ProjectsPanelText<'a> {
@@ -65,9 +65,21 @@ pub struct ProjectsPanel<'a> {
 }
 
 impl ProjectsPanel<'_> {
-    /// Paint the tab body into the layout's viewport.
+    /// Paint the list into the layout's viewport, on the card tone.
     pub fn paint(&self, cx: &mut PaintCx<'_>, layout: &ProjectsPanelLayout, theme: &Theme) {
-        cx.backend.fill_rect(layout.panel, theme.card);
+        self.paint_on(cx, layout, theme, theme.card);
+    }
+
+    /// Paint the list on a surface of the caller's tone — the dock sets
+    /// itself apart from the property panel beside it by tone alone.
+    pub fn paint_on(
+        &self,
+        cx: &mut PaintCx<'_>,
+        layout: &ProjectsPanelLayout,
+        theme: &Theme,
+        surface: Color,
+    ) {
+        cx.backend.fill_rect(layout.panel, surface);
         if layout.empty {
             self.paint_empty(cx, layout.panel, theme);
             return;
@@ -371,7 +383,7 @@ impl ProjectsPanel<'_> {
     }
 }
 
-fn draw_label(
+pub(crate) fn draw_label(
     cx: &mut PaintCx<'_>,
     text: &str,
     font: f32,

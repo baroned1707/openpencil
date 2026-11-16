@@ -506,7 +506,21 @@ pub(super) fn dispatch<S: Read + Write>(
     // write, so the decision is made BEFORE dispatch — the alternative is
     // discovering it from an `EditorCommand` the tool has already produced,
     // which is after the point where refusing is still honest.
-    let mcp_write = op_mcp::parse_tool_call(&req.body)
+    // This daemon serves one document (`d1`): refuse a `documentId` naming
+    // another and strip the addressing arguments no tool should see.
+    let body = match crate::mcp_serve::document_address::headless_line(&req.body) {
+        crate::mcp_serve::document_address::HeadlessCall::Dispatch(body) => body,
+        crate::mcp_serve::document_address::HeadlessCall::Refuse(refusal) => {
+            crate::mcp_serve::write_mcp_http_response_with_origin(
+                stream,
+                "200 OK",
+                &refusal,
+                cors_origin,
+            )?;
+            return Ok(false);
+        }
+    };
+    let mcp_write = op_mcp::parse_tool_call(&body)
         .is_some_and(|call| crate::mcp_serve::tool_profile::tool_writes(&call.tool));
     let mcp_write_pass = match admit_mutation(ctx, mcp_write) {
         MutationAdmission::NotAWrite => None,
@@ -514,7 +528,7 @@ pub(super) fn dispatch<S: Read + Write>(
         MutationAdmission::ShuttingDown => {
             // A tools/call error envelope, not a transport failure: an MCP
             // client must be able to read the refusal and keep its session.
-            let refusal = op_mcp::parse_tool_call(&req.body).map(|call| {
+            let refusal = op_mcp::parse_tool_call(&body).map(|call| {
                 op_mcp::tool_response_to_json(&op_mcp::ToolResponse::Err {
                     id: call.id.clone(),
                     code: op_mcp::ToolErrorCode::ToolFailed,
@@ -555,7 +569,7 @@ pub(super) fn dispatch<S: Read + Write>(
         // scope, not part of this pass.
         let response = crate::mcp_serve::process_message_with_applier_profiled(
             &mut guard.editor,
-            &req.body,
+            &body,
             mcp_profile,
             |_tool_name, editor, cmd| {
                 if let Err(reason) =

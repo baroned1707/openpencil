@@ -5,46 +5,95 @@
 
 use super::*;
 
-/// Snapshot the live document and learn which document it is. The returned
-/// [`DocumentEpoch`] must ride back on the call's apply (see
+/// Every open document, freshly read on the UI thread.
+pub(super) fn request_documents(
+    req_tx: &Sender<UiRequest>,
+    wake_ui: &UiWake,
+) -> Result<Vec<DocumentListing>, McpLiveError> {
+    let (ack_tx, ack_rx) = mpsc::sync_channel(1);
+    req_tx
+        .send(UiRequest::Documents { ack: ack_tx })
+        .map_err(|_| {
+            McpLiveError::UiThread("UI thread is not accepting MCP document requests".to_string())
+        })?;
+    wake_ui();
+    recv_with_timeout(ack_rx.recv_timeout(UI_ACK_TIMEOUT), "document-list")
+}
+
+/// Turn a resolver refusal into the error the agent should read. An unknown
+/// id lists the open documents, so one more round trip is spent here — only
+/// on the failure path.
+pub(super) fn resolve_failure(
+    req_tx: &Sender<UiRequest>,
+    wake_ui: &UiWake,
+    document: DocumentId,
+    reason: ResolveError,
+) -> McpLiveError {
+    match reason {
+        ResolveError::NotReachable => McpLiveError::DocumentNotOnScreen { document },
+        ResolveError::Unknown => match request_documents(req_tx, wake_ui) {
+            Ok(open) => McpLiveError::UnknownDocument {
+                requested: crate::mcp_serve::document_address::format_document_id(document),
+                open,
+            },
+            Err(error) => error,
+        },
+    }
+}
+
+/// Snapshot document `document` and learn which lifetime of it this is. The
+/// returned [`DocumentEpoch`] must ride back on the call's apply (see
 /// [`request_apply`]) so a swap in between is caught.
 pub(super) fn request_snapshot(
     req_tx: &Sender<UiRequest>,
     wake_ui: &UiWake,
+    document: DocumentId,
 ) -> Result<(EditorState, DocumentEpoch), McpLiveError> {
     let (ack_tx, ack_rx) = mpsc::sync_channel(1);
     req_tx
-        .send(UiRequest::Snapshot { ack: ack_tx })
+        .send(UiRequest::Snapshot {
+            document,
+            ack: ack_tx,
+        })
         .map_err(|_| {
             McpLiveError::UiThread("UI thread is not accepting MCP snapshot requests".to_string())
         })?;
     wake_ui();
-    let SnapshotAck { state, epoch } =
-        recv_with_timeout(ack_rx.recv_timeout(UI_ACK_TIMEOUT), "snapshot")?;
-    Ok((state, epoch))
+    match recv_with_timeout(ack_rx.recv_timeout(UI_ACK_TIMEOUT), "snapshot")? {
+        Ok(SnapshotAck { state, epoch }) => Ok((state, epoch)),
+        Err(reason) => Err(resolve_failure(req_tx, wake_ui, document, reason)),
+    }
 }
 
 pub(super) fn request_list_pages(
     req_tx: &Sender<UiRequest>,
     wake_ui: &UiWake,
+    document: DocumentId,
 ) -> Result<op_mcp::ListPages, McpLiveError> {
     let (ack_tx, ack_rx) = mpsc::sync_channel(1);
     req_tx
-        .send(UiRequest::ListPages { ack: ack_tx })
+        .send(UiRequest::ListPages {
+            document,
+            ack: ack_tx,
+        })
         .map_err(|_| {
             McpLiveError::UiThread("UI thread is not accepting MCP page-list requests".to_string())
         })?;
     wake_ui();
-    recv_with_timeout(ack_rx.recv_timeout(UI_ACK_TIMEOUT), "page-list")
+    match recv_with_timeout(ack_rx.recv_timeout(UI_ACK_TIMEOUT), "page-list")? {
+        Ok(pages) => Ok(pages),
+        Err(reason) => Err(resolve_failure(req_tx, wake_ui, document, reason)),
+    }
 }
 
-/// Ask the UI thread to apply `cmd`. `expected_epoch` is the epoch from the
-/// call's snapshot (`None` for a call that took none); when the live document
-/// no longer matches it the apply is refused and this reports
-/// [`McpLiveError::DocumentChanged`].
+/// Ask the UI thread to apply `cmd` to `document`. `expected_epoch` is the
+/// epoch from the call's snapshot of that document (`None` for a call that
+/// took none); when the document no longer matches it the apply is refused
+/// and this reports [`McpLiveError::DocumentChanged`].
 pub(super) fn request_apply(
     req_tx: &Sender<UiRequest>,
     wake_ui: &UiWake,
+    document: DocumentId,
     tool_name: String,
     cmd: EditorCommand,
     expected_epoch: Option<DocumentEpoch>,
@@ -52,6 +101,7 @@ pub(super) fn request_apply(
     let (ack_tx, ack_rx) = mpsc::sync_channel(1);
     req_tx
         .send(UiRequest::Apply {
+            document,
             tool_name,
             cmd,
             expected_epoch,
@@ -62,43 +112,53 @@ pub(super) fn request_apply(
         })?;
     wake_ui();
     let ack = recv_with_timeout(ack_rx.recv_timeout(UI_ACK_TIMEOUT), "apply")?;
+    if let Some(reason) = ack.unresolved {
+        return Err(resolve_failure(req_tx, wake_ui, document, reason));
+    }
     if ack.document_changed {
         return Err(McpLiveError::DocumentChanged);
     }
     Ok(ack)
 }
 
-/// Ask the UI thread to render a `debug_screenshot` capture. Bounded
-/// wait per the request's own budget (TS `min(timeoutMs ?? 15000,
+/// Ask the UI thread to render a `debug_screenshot` capture of `document`.
+/// Bounded wait per the request's own budget (TS `min(timeoutMs ?? 15000,
 /// 60000)`) — the same recv-timeout discipline the chat canvas tools
 /// use, so a stalled UI pump can never pin the connection thread.
 #[cfg(feature = "mcp-debug-tools")]
 pub(super) fn request_screenshot(
     req_tx: &Sender<UiRequest>,
     wake_ui: &UiWake,
+    document: DocumentId,
     req: op_mcp::ScreenshotRequest,
 ) -> Result<crate::export::screenshot::ScreenshotPng, McpLiveError> {
     let timeout = Duration::from_millis(req.timeout_ms.max(1));
     let spec = screenshot::capture_spec(&req);
     let (ack_tx, ack_rx) = mpsc::sync_channel(1);
     req_tx
-        .send(UiRequest::Screenshot { spec, ack: ack_tx })
+        .send(UiRequest::Screenshot {
+            document,
+            spec,
+            ack: ack_tx,
+        })
         .map_err(|_| {
             McpLiveError::UiThread("UI thread is not accepting MCP screenshot requests".to_string())
         })?;
     wake_ui();
-    // Two layers: the outer `?` is the UI round-trip (channel closed / ack
-    // timed out), the inner `?` is the raster capture itself — both land in
-    // `McpLiveError`, the export one via `From<ExportError>`.
-    Ok(recv_with_timeout(
-        ack_rx.recv_timeout(timeout),
-        "screenshot",
-    )??)
+    // Three layers: the outer `?` is the UI round-trip (channel closed / ack
+    // timed out), the middle is the document lookup, the inner `?` is the
+    // raster capture itself — all land in `McpLiveError`, the export one via
+    // `From<ExportError>`.
+    match recv_with_timeout(ack_rx.recv_timeout(timeout), "screenshot")? {
+        Ok(capture) => Ok(capture?),
+        Err(reason) => Err(resolve_failure(req_tx, wake_ui, document, reason)),
+    }
 }
 
-/// Ask the UI thread to swap in an already-loaded document. `Ok(false)` means
-/// collaboration rejected the replacement; `Err` is a channel/timeout fault.
-/// Load/validation failures are handled before this call and surface as 400.
+/// Ask the UI thread to swap an already-loaded document into the one on
+/// screen. `Ok(false)` means collaboration rejected the replacement; `Err` is
+/// a channel/timeout fault. Load/validation failures are handled before this
+/// call and surface as 400.
 pub(super) fn request_replace(
     req_tx: &Sender<UiRequest>,
     wake_ui: &UiWake,
@@ -118,7 +178,8 @@ pub(super) fn request_replace(
             )
         })?;
     wake_ui();
-    recv_with_timeout(ack_rx.recv_timeout(UI_ACK_TIMEOUT), "document-sync")
+    recv_with_timeout(ack_rx.recv_timeout(UI_ACK_TIMEOUT), "document-sync")?
+        .map_err(no_document_on_screen)
 }
 
 pub(super) fn request_update_editor_meta(
@@ -138,7 +199,14 @@ pub(super) fn request_update_editor_meta(
             )
         })?;
     wake_ui();
-    recv_with_timeout(ack_rx.recv_timeout(UI_ACK_TIMEOUT), "metadata-sync")
+    recv_with_timeout(ack_rx.recv_timeout(UI_ACK_TIMEOUT), "metadata-sync")?
+        .map_err(no_document_on_screen)
+}
+
+/// The REST sync routes target "the document on screen"; a host that cannot
+/// lend one has nothing to sync into.
+fn no_document_on_screen(_: ResolveError) -> McpLiveError {
+    McpLiveError::UiThread("no document is on screen to sync into".to_string())
 }
 
 pub(super) fn recv_with_timeout<T>(

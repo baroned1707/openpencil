@@ -37,6 +37,8 @@ mod design_md_error;
 mod design_md_host;
 mod design_session;
 mod document_registry;
+mod document_runs;
+mod document_runs_host;
 mod document_tabs_host;
 mod drag_cursor;
 mod figma_import_session;
@@ -77,6 +79,7 @@ mod legacy_op_upgrade_error;
 mod macos_app;
 mod mcp_config_error;
 mod mcp_config_io;
+mod mcp_document_resolver;
 mod mcp_integrations;
 mod mcp_integrations_dsh;
 mod mcp_port_file;
@@ -254,45 +257,10 @@ struct DesktopApp {
     /// bound. A successful live acknowledgement detaches into the saved fork.
     collab_fork_saves: Vec<(u64, u64, u64, PathBuf)>,
     error: Option<SharedSkiaError>,
-    /// Design-loop canvas indicator — tracks the active agent epoch,
-    /// colour/name identity, and initial frame set. `None` when no
-    /// design-loop turn is running; populated by `pump_indicator` in
-    /// `RedrawRequested` whenever `chat.agents_running.0 > 0`.
-    design_loop_indicator: Option<design_loop_indicator::DesignLoopIndicator>,
-    /// Design-orchestrator canvas indicator — the same glow/badge/scan
-    /// tracking as `design_loop_indicator` above, but driven by
-    /// `current_design.is_some()` instead of `chat.agents_running` so the
-    /// CLI-orchestrator and builtin-provider design turns (which never set
-    /// `agents_running`) also animate their generated frames. `None` when
-    /// no design-orchestrator turn is running; populated by
-    /// `design_loop_indicator::pump_design_session_indicator` in
-    /// `RedrawRequested`, right after `design_session::pump_progress`.
-    design_session_indicator: Option<design_loop_indicator::DesignLoopIndicator>,
-    /// Sub-agent design loops launched by `spawn_agents` (Task 3.1).
-    /// Empty unless the top-level design loop called `spawn_agents`.
-    /// Pumped SEQUENTIALLY — `active_sub_agent` indexes the one running
-    /// — after the parent `chat_session::pump` each frame.
-    sub_agents: Vec<sub_agent_session::SubAgentSession>,
-    /// Index of the active sub-agent in `sub_agents` (sequential pump).
-    active_sub_agent: usize,
-    /// In-flight AI chat turn, if any. `chat.begin_send` raises
-    /// `chat.pending_send`; the event loop drains that into a
-    /// `ChatSession` here and pumps deltas into the transcript.
-    current_chat: Option<chat_session::ChatSession>,
-    /// Index of the chat tab a `current_chat` / `current_design` run is bound
-    /// to (multi-tab MT.3). Captured from `chat.active_index()` when a turn
-    /// launches; the pumps target this tab via `ChatSessions::run_tab_mut`
-    /// even after the user switches the active tab. `None` when no run is in
-    /// flight. Cleared when the run finishes (pump retired both sessions), on
-    /// New Chat / Stop, and when the bound tab is closed.
-    chat_running_tab: Option<usize>,
-    /// In-flight design-orchestrator turn, if any.
-    /// `chat_session::launch_if_pending` classifies the user's message
-    /// and routes design intent here, chat intent to `current_chat`.
-    /// CLI standard-mode turns (GAP #33) park BOTH sessions while the
-    /// async classifier resolves; the route not taken retires via its
-    /// pump once the worker drops its channels.
-    current_design: Option<design_session::DesignSession>,
+    /// The agent runs (chat turn, design turn, sub-agents, their canvas
+    /// indicators) of the document on screen. Every other open document keeps
+    /// its own in `documents`; each frame pumps all of them.
+    runs: document_runs::DocumentRuns,
     /// In-flight code-generation turn, if any. The Code panel raises
     /// `codegen.pending_generate` / `pending_regenerate`;
     /// `codegen_session::launch_codegen_if_pending` drains that into a

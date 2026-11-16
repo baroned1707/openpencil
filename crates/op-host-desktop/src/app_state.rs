@@ -146,7 +146,7 @@ impl DesktopApp {
             let connected = host.editor_state().editor_ui.agent_settings.connected;
             op_host_services::model_discovery::ModelProbe::spawn_for_connected(connected)
         };
-        Self {
+        let app = Self {
             window: None,
             a11y: None,
             ctx: None,
@@ -176,13 +176,7 @@ impl DesktopApp {
             save_session: save_session::SaveSession::new(),
             collab_fork_saves: Vec::new(),
             error: None,
-            design_loop_indicator: None,
-            design_session_indicator: None,
-            sub_agents: Vec::new(),
-            active_sub_agent: 0,
-            current_chat: None,
-            chat_running_tab: None,
-            current_design: None,
+            runs: Default::default(),
             current_codegen: None,
             current_design_md: None,
             codegen_results: Default::default(),
@@ -236,7 +230,9 @@ impl DesktopApp {
             mcp_server: None,
             force_live_mcp_port: None,
             mcp_integrations_home: None,
-        }
+        };
+        app.sync_indicator_scope();
+        app
     }
 
     pub(crate) fn active_page_paint_identity(&self) -> PaintedPageIdentity {
@@ -573,8 +569,10 @@ impl DesktopApp {
     /// to runs against that document exactly as it would for the only one.
     /// Returns `false` the moment the user cancels or a save fails, leaving the
     /// document that stopped the quit on screen. If a parked document has
-    /// unsaved edits but switching to it is refused (a run is in flight), the
-    /// quit is aborted with a notice instead of discarding it silently.
+    /// unsaved edits but switching to it is refused (an import or a Git write is
+    /// in flight), the quit is aborted with a notice instead of discarding it
+    /// silently. Documents with a live agent run are named first and the user
+    /// must agree to stop them.
     pub(crate) fn confirm_close_with(
         &mut self,
         mut ask: impl FnMut(&str, &str) -> Option<crate::message_dialog::Choice>,
@@ -585,6 +583,12 @@ impl DesktopApp {
             return false;
         }
         self.sync_active_slot();
+        // Live agents die with the process: name them, and finalize their work
+        // before the save prompts so what the user saves is the finished design.
+        if !self.confirm_stop_runs_to_quit(&mut ask) {
+            return false;
+        }
+        self.cancel_all_runs();
         let dirty: Vec<_> = self
             .documents
             .dirty_indices(self.document_is_dirty())

@@ -132,30 +132,9 @@ fn only_documents_bound_to_a_file_are_restored_next_launch() {
 }
 
 #[test]
-fn no_swap_while_run_bound() {
+fn jobs_not_bound_to_a_document_still_block_a_switch() {
     assert_eq!(ActivityFlags::default().blocked_by(), None);
     let cases = [
-        (
-            ActivityFlags {
-                chat_turn: true,
-                ..Default::default()
-            },
-            BlockReason::ChatTurn,
-        ),
-        (
-            ActivityFlags {
-                design_run: true,
-                ..Default::default()
-            },
-            BlockReason::DesignRun,
-        ),
-        (
-            ActivityFlags {
-                sub_agents: true,
-                ..Default::default()
-            },
-            BlockReason::SubAgents,
-        ),
         (
             ActivityFlags {
                 codegen: true,

@@ -10,7 +10,7 @@
 //! host finishes the binding (path, tab, title, recent files) from the
 //! `created_document` it finds in the pump outcome.
 
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 use op_mcp::{RequestId, ToolResponse};
 
@@ -31,16 +31,19 @@ pub(super) struct CreatedDocument {
 /// The UI thread's answer to a create request.
 pub(super) enum CreateAck {
     Done(Result<CreatedDocument, CreateDocumentError>),
-    /// The on-screen document was replaced since the call's snapshot.
+    /// The document was replaced since the call's snapshot.
     DocumentChanged,
+    /// The addressed document could not be lent to the UI thread at all.
+    Unresolved(ResolveError),
 }
 
-/// Answer a `create_document` call, or `None` when `body` is some other call
-/// (or one the session's profile refuses, which the generic dispatch reports).
+/// Answer a `create_document` call for `document`, or `None` when `body` is
+/// some other call (or one the session's profile refuses, which the caller
+/// reports).
 pub(super) fn serve(
     body: &str,
     profile: McpAccessProfile,
-    open_paths: &OpenDocumentPaths,
+    document: DocumentId,
     req_tx: &Sender<UiRequest>,
     wake_ui: &UiWake,
 ) -> Result<Option<String>, McpLiveError> {
@@ -55,7 +58,11 @@ pub(super) fn serve(
     let refuse = |id: RequestId, error: CreateDocumentError| {
         Ok(Some(create_document::error_response(id, &error)))
     };
-    if let Some(path) = open_paths.active() {
+    let bound_path = request_documents(req_tx, wake_ui)?
+        .into_iter()
+        .find(|listing| listing.id == document)
+        .and_then(|listing| listing.path);
+    if let Some(path) = bound_path {
         return refuse(call.id, CreateDocumentError::AlreadySaved { path });
     }
     let validated = create_document::extract_args(&call.arguments).and_then(|(root, name)| {
@@ -71,9 +78,10 @@ pub(super) fn serve(
         Err(error) => return refuse(call.id, error),
     };
     // Only the epoch is wanted; the clone of the document is dropped at once.
-    let (_snapshot, epoch) = request_snapshot(req_tx, wake_ui)?;
-    match request_create(req_tx, wake_ui, project_root, name, epoch)? {
+    let (_snapshot, epoch) = request_snapshot(req_tx, wake_ui, document)?;
+    match request_create(req_tx, wake_ui, document, project_root, name, epoch)? {
         CreateAck::DocumentChanged => Ok(document_changed_response(body)),
+        CreateAck::Unresolved(reason) => Err(resolve_failure(req_tx, wake_ui, document, reason)),
         CreateAck::Done(Err(error)) => refuse(call.id, error),
         CreateAck::Done(Ok(created)) => Ok(Some(success_response(call.id, &created))),
     }
@@ -99,6 +107,7 @@ fn success_response(id: RequestId, created: &CreatedDocument) -> String {
 pub(super) fn request_create(
     req_tx: &Sender<UiRequest>,
     wake_ui: &UiWake,
+    document: DocumentId,
     project_root: String,
     name: String,
     expected_epoch: DocumentEpoch,
@@ -106,6 +115,7 @@ pub(super) fn request_create(
     let (ack_tx, ack_rx) = mpsc::sync_channel(1);
     req_tx
         .send(UiRequest::CreateDocument {
+            document,
             project_root,
             name,
             expected_epoch,
@@ -120,19 +130,21 @@ pub(super) fn request_create(
     recv_with_timeout(ack_rx.recv_timeout(UI_ACK_TIMEOUT), "create-document")
 }
 
-/// UI-thread half. Re-checks against the live editor, writes the file and
-/// marks the document saved, then makes the new path visible to the
-/// connection threads BEFORE the ack: the stateful lock is released as soon as
-/// the reply is written, so a follow-up `filePath` call naming the new file
-/// must already be refused as an open document.
+/// UI-thread half. Re-checks against the live editor and writes the file and
+/// marks the document saved. `bound_path` is the file the document already
+/// has (`None` while untitled). The pump stops draining after a success so the
+/// host binds the new path to the document before any later request reads the
+/// open files.
 pub(super) fn create_on_ui_thread(
     state: &mut EditorState,
-    open_paths: &OpenDocumentPaths,
+    bound_path: Option<&Path>,
     project_root: &str,
     name: &str,
 ) -> Result<CreatedDocument, CreateDocumentError> {
-    if let Some(path) = open_paths.active() {
-        return Err(CreateDocumentError::AlreadySaved { path });
+    if let Some(path) = bound_path {
+        return Err(CreateDocumentError::AlreadySaved {
+            path: path.to_path_buf(),
+        });
     }
     if let Err(reason) = CollabGatePolicy::from(&state.editor_ui.collab)
         .check(CollabGateAction::ReplaceDocument, CollabEditSource::Mcp)
@@ -151,7 +163,6 @@ pub(super) fn create_on_ui_thread(
     create_document::write_new_document(state, &target)?;
     state.mark_saved_revision();
     crate::doc_io::set_file_name_display(state, Some(&target.file_path));
-    open_paths.bind(&target.file_path);
     Ok(CreatedDocument {
         file_path: target.file_path,
         project_root: target.project_root,

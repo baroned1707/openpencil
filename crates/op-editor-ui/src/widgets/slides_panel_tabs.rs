@@ -1,6 +1,5 @@
 //! The left rail's tab row — the header that switches the rail between
-//! the Agent conversation, the Layers tree, the slides navigator and the
-//! Projects tree.
+//! the Agent conversation, the Layers tree and the slides navigator.
 //!
 //! Split out of `slides_panel.rs` at the 800-line ceiling.
 //! `SlidesPanelTabs` is re-exported from the parent, so every import
@@ -9,8 +8,7 @@
 //! The row has two modes and picks between them by MEASURING, never by
 //! a width threshold — see [`SlidesPanelTabs::new`]. Which tabs EXIST
 //! is the flow's decision ([`SlidesTabRow`]): the Chat tab is
-//! desktop-only, the slides tab needs boards, the Projects tab needs a
-//! host with several documents, Layers is always there.
+//! desktop-only, the slides tab needs boards, Layers is always there.
 
 use op_editor_core::{LeftPanelTab, SlidesPanelTarget};
 
@@ -33,7 +31,6 @@ pub struct SlidesTabRow<'a> {
     pub chat_label: &'a str,
     pub layers_label: &'a str,
     pub slides_label: &'a str,
-    pub projects_label: &'a str,
     /// The Chat tab is desktop-only: touch chrome hosts the
     /// conversation as its own bottom sheet, so the sheet's row keeps
     /// the two tabs it has always had.
@@ -41,25 +38,19 @@ pub struct SlidesTabRow<'a> {
     /// The slides tab needs boards to list — see the flow's
     /// `slides_tab_available`.
     pub slides_available: bool,
-    /// The Projects tab needs a multi-document host that has reported
-    /// at least one project — see the flow's `projects_tab_available`.
-    pub projects_available: bool,
 }
 
 impl SlidesTabRow<'_> {
-    /// The tabs on show, in row order: 对话 · 图层 · 幻灯片 · 项目
-    /// (Pencil puts Agent first).
+    /// The tabs on show, in row order: 对话 · 图层 · 幻灯片 (Pencil
+    /// puts Agent first).
     fn tabs(&self) -> Vec<LeftPanelTab> {
-        let mut tabs = Vec::with_capacity(4);
+        let mut tabs = Vec::with_capacity(3);
         if self.chat_available {
             tabs.push(LeftPanelTab::Chat);
         }
         tabs.push(LeftPanelTab::Layers);
         if self.slides_available {
             tabs.push(LeftPanelTab::Slides);
-        }
-        if self.projects_available {
-            tabs.push(LeftPanelTab::Projects);
         }
         tabs
     }
@@ -69,7 +60,6 @@ impl SlidesTabRow<'_> {
             LeftPanelTab::Chat => self.chat_label,
             LeftPanelTab::Layers => self.layers_label,
             LeftPanelTab::Slides => self.slides_label,
-            LeftPanelTab::Projects => self.projects_label,
         }
     }
 }
@@ -85,7 +75,6 @@ pub struct SlidesPanelTabs {
     pub chat: Rect,
     pub layers: Rect,
     pub slides: Rect,
-    pub projects: Rect,
     /// True when the labels did not fit and the row fell back to
     /// icons. The ACTIVE tab keeps its label either way.
     pub compact: bool,
@@ -149,7 +138,6 @@ impl SlidesPanelTabs {
             chat: rect_for(&rects, LeftPanelTab::Chat),
             layers: rect_for(&rects, LeftPanelTab::Layers),
             slides: rect_for(&rects, LeftPanelTab::Slides),
-            projects: rect_for(&rects, LeftPanelTab::Projects),
             compact: !text_mode,
             active,
         }
@@ -254,7 +242,6 @@ impl SlidesPanelTabs {
             LeftPanelTab::Chat => self.chat,
             LeftPanelTab::Layers => self.layers,
             LeftPanelTab::Slides => self.slides,
-            LeftPanelTab::Projects => self.projects,
         }
     }
 
@@ -264,9 +251,17 @@ impl SlidesPanelTabs {
         if !contains(self.row, point) {
             return None;
         }
-        for tab in ALL_TABS {
+        for tab in [
+            LeftPanelTab::Chat,
+            LeftPanelTab::Layers,
+            LeftPanelTab::Slides,
+        ] {
             if contains(self.rect_of(tab), point) {
-                return Some(target_of(tab));
+                return Some(match tab {
+                    LeftPanelTab::Chat => SlidesPanelTarget::ChatTab,
+                    LeftPanelTab::Layers => SlidesPanelTarget::LayersTab,
+                    LeftPanelTab::Slides => SlidesPanelTarget::SlidesTab,
+                });
             }
         }
         None
@@ -304,14 +299,17 @@ impl SlidesPanelTabs {
             (LeftPanelTab::Chat, Icon::MessageCircle),
             (LeftPanelTab::Layers, Icon::LayersStack),
             (LeftPanelTab::Slides, Icon::PresentationScreen),
-            (LeftPanelTab::Projects, Icon::FolderOpen),
         ] {
             let rect = self.rect_of(tab);
             if rect.size.x <= 0.0 {
                 continue;
             }
             let label = tabs.label(tab);
-            let target = target_of(tab);
+            let target = match tab {
+                LeftPanelTab::Chat => SlidesPanelTarget::ChatTab,
+                LeftPanelTab::Layers => SlidesPanelTarget::LayersTab,
+                LeftPanelTab::Slides => SlidesPanelTarget::SlidesTab,
+            };
             let selected = self.active == tab;
             if selected {
                 // A soft fill and nothing else: the border used to draw a
@@ -395,23 +393,6 @@ impl SlidesPanelTabs {
                 );
             }
         }
-    }
-}
-
-/// Every tab, in row order.
-const ALL_TABS: [LeftPanelTab; 4] = [
-    LeftPanelTab::Chat,
-    LeftPanelTab::Layers,
-    LeftPanelTab::Slides,
-    LeftPanelTab::Projects,
-];
-
-fn target_of(tab: LeftPanelTab) -> SlidesPanelTarget {
-    match tab {
-        LeftPanelTab::Chat => SlidesPanelTarget::ChatTab,
-        LeftPanelTab::Layers => SlidesPanelTarget::LayersTab,
-        LeftPanelTab::Slides => SlidesPanelTarget::SlidesTab,
-        LeftPanelTab::Projects => SlidesPanelTarget::ProjectsTab,
     }
 }
 

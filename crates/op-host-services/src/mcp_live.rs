@@ -16,15 +16,18 @@ use std::time::{Duration, SystemTime, UNIX_EPOCH};
 use jian_ops_schema::node::PenNode;
 use op_editor_core::pen_node_ext::PenNodeExt;
 use op_editor_core::{
-    CollabEditSource, CollabGateAction, CollabGatePolicy, EditorCommand, EditorState,
+    CollabEditSource, CollabGateAction, CollabGatePolicy, DocumentId, EditorCommand, EditorState,
 };
 
 pub mod error;
 #[cfg(feature = "mcp-debug-tools")]
 pub mod screenshot;
 
+/// The URL an agent spawned for one document should be given.
+pub use crate::mcp_serve::document_address::mcp_url_for_document;
 pub use design_md_route::{DesignMdResponder, DesignMdResponseError, PendingDesignMdRequest};
 pub use error::McpLiveError;
+pub use resolver::{DocumentListing, DocumentResolver, ResolveError, SingleDocumentResolver};
 
 /// Per-request budget for a UI-thread snapshot/apply ack. Sized to cover a
 /// large single editor operation without the connection giving up; the CLI
@@ -87,22 +90,17 @@ pub struct McpLiveServer {
     /// provider worker. Kept separate from `EditorState`: this route neither
     /// reads nor mutates the live document.
     pending_design_md: VecDeque<PendingDesignMdRequest>,
-    /// The desktop host's whole-document epoch, published by `sync_host`.
-    /// Half of every [`DocumentEpoch`] this server hands out; the other half
-    /// (`EditorState::document_generation`) is read from the live state when a
-    /// request is handled. UI-thread-only, so a plain field.
-    host_document_epoch: u64,
-    /// Files open in the editor, read by connection threads to refuse a
-    /// `filePath` tool argument that would edit an open document on disk.
-    open_paths: OpenDocumentPaths,
 }
 
+#[derive(Default)]
 struct ApplyAck {
     applied: bool,
     /// The apply was refused because its `expected_epoch` no longer names the
-    /// live document (as opposed to a collaboration refusal or a failed
-    /// command, which leave this `false`).
+    /// document (as opposed to a collaboration refusal or a failed command,
+    /// which leave this `false`).
     document_changed: bool,
+    /// The addressed document could not be lent to the apply at all.
+    unresolved: Option<ResolveError>,
 }
 
 #[derive(Debug, Default, Clone, PartialEq, Eq)]
@@ -125,16 +123,23 @@ pub struct McpPumpOutcome {
 }
 
 enum UiRequest {
+    /// Every open document, for resolution and for `list_documents`.
+    Documents {
+        ack: SyncSender<Vec<DocumentListing>>,
+    },
     Snapshot {
-        ack: SyncSender<SnapshotAck>,
+        document: DocumentId,
+        ack: SyncSender<Result<SnapshotAck, ResolveError>>,
     },
     /// Lightweight read snapshot for `list_pages`. Copying only page metadata
     /// avoids cloning every node in a large live document just to report page
     /// ids, names, and the active index.
     ListPages {
-        ack: SyncSender<op_mcp::ListPages>,
+        document: DocumentId,
+        ack: SyncSender<Result<op_mcp::ListPages, ResolveError>>,
     },
     Apply {
+        document: DocumentId,
         /// The MCP tool that produced `cmd` — `McpLiveServer::pump` reads
         /// this to gate canvas-generation indicators (frame glow + reveal
         /// sweep) on `"batch_design"` specifically, mirroring how the
@@ -149,22 +154,22 @@ enum UiRequest {
         expected_epoch: Option<DocumentEpoch>,
         ack: SyncSender<ApplyAck>,
     },
-    /// Whole-document sync (TS REST `/api/mcp/document` parity). The document
-    /// is parsed/loaded OFF the UI thread (so a large document never pins the
-    /// UI thread, and the stateful lock is held only for the swap); the UI pump
-    /// just swaps the already-loaded document into the live `EditorState`. The
-    /// The bool ack is false when the current collaboration session rejects
-    /// whole-document replacement.
+    /// Whole-document sync (TS REST `/api/mcp/document` parity), always into
+    /// the document on screen. The document is parsed/loaded OFF the UI thread
+    /// (so a large document never pins the UI thread, and the document's gate
+    /// is held only for the swap); the UI pump just swaps the already-loaded
+    /// document into the live `EditorState`. The bool ack is false when the
+    /// current collaboration session rejects whole-document replacement.
     ReplaceDocument {
         doc: Box<jian_ops_schema::PenDocument>,
         editor_meta: op_pen_loader::EditorMeta,
-        ack: SyncSender<bool>,
+        ack: SyncSender<Result<bool, ResolveError>>,
     },
     /// Editor-only live-sync update. Page switches must not install an
     /// identical whole document as an undoable replacement.
     UpdateEditorMeta {
         editor_meta: op_pen_loader::EditorMeta,
-        ack: SyncSender<()>,
+        ack: SyncSender<Result<(), ResolveError>>,
     },
     GenerateDesignMd {
         request: PendingDesignMdRequest,
@@ -173,6 +178,7 @@ enum UiRequest {
     /// `<project_root>/designs/<name>.op`. Held to the same epoch check as an
     /// apply, so a document swapped since the call's snapshot is never written.
     CreateDocument {
+        document: DocumentId,
         project_root: String,
         name: String,
         expected_epoch: DocumentEpoch,
@@ -185,9 +191,13 @@ enum UiRequest {
     /// bounded-wait discipline as the chat canvas tools.
     #[cfg(feature = "mcp-debug-tools")]
     Screenshot {
+        document: DocumentId,
         spec: crate::export::screenshot::CaptureSpec,
         ack: SyncSender<
-            Result<crate::export::screenshot::ScreenshotPng, crate::export::ExportError>,
+            Result<
+                Result<crate::export::screenshot::ScreenshotPng, crate::export::ExportError>,
+                ResolveError,
+            >,
         >,
     },
 }
@@ -225,8 +235,7 @@ impl McpLiveServer {
         let wake_ui: UiWake = Arc::new(wake_ui);
         let client_identity = Arc::new(Mutex::new(None));
         let server_identity = Arc::clone(&client_identity);
-        let open_paths = OpenDocumentPaths::default();
-        let server_open_paths = open_paths.clone();
+        let documents = Arc::new(LiveDocuments::default());
         thread::Builder::new()
             .name("op-mcp-live-http".into())
             .spawn(move || {
@@ -238,7 +247,7 @@ impl McpLiveServer {
                     server_quit,
                     wake_ui,
                     server_identity,
-                    server_open_paths,
+                    documents,
                 )
             })
             .map_err(|e| McpLiveError::Startup(format!("spawn MCP live server: {e}")))?;
@@ -252,8 +261,6 @@ impl McpLiveServer {
             client_identity,
             last_mcp_epoch: 0,
             pending_design_md: VecDeque::new(),
-            host_document_epoch: 0,
-            open_paths,
         })
     }
 
@@ -270,181 +277,6 @@ impl McpLiveServer {
     /// thread should exit the event loop.
     pub fn shutdown_requested(&self) -> bool {
         self.quit_flag.load(Ordering::Acquire)
-    }
-
-    /// Publish what only the host knows: its whole-document epoch (bumped on
-    /// Open / New / import), the files open in the editor and the on-screen
-    /// document's own file (`None` while untitled, which is what lets
-    /// `create_document` run). Call it from the UI thread before each
-    /// [`Self::pump`] — and once right after start — so a snapshot/apply pair
-    /// can tell the document was swapped and a `filePath` argument naming an
-    /// open file is refused.
-    pub fn sync_host(
-        &mut self,
-        document_epoch: u64,
-        open_paths: &[std::path::PathBuf],
-        active_path: Option<&std::path::Path>,
-    ) {
-        self.host_document_epoch = document_epoch;
-        self.open_paths.set(open_paths);
-        self.open_paths.set_active(active_path);
-    }
-
-    /// Whether `expected` (a call's snapshot epoch) no longer names the live
-    /// document. `None` — a call that took no snapshot — has nothing to compare.
-    fn epoch_changed(&self, expected: Option<DocumentEpoch>, state: &EditorState) -> bool {
-        expected.is_some_and(|epoch| epoch != DocumentEpoch::of(self.host_document_epoch, state))
-    }
-
-    pub fn pump(&mut self, state: &mut EditorState) -> McpPumpOutcome {
-        let mut outcome = McpPumpOutcome::default();
-        for _ in 0..UI_PUMP_REQUEST_BUDGET {
-            match self.req_rx.try_recv() {
-                Ok(UiRequest::Snapshot { ack }) => {
-                    // Narrowed clone: the MCP registry + applier never read
-                    // `chat` / `codegen` / `theme_presets`, and those are the
-                    // sub-states that grow with SESSION length (transcripts,
-                    // generated source, saved preset tables) rather than with
-                    // the document — so copying them into every tool call's
-                    // snapshot is pure UI-thread stall. See
-                    // `op_editor_core::request_snapshot` for the field audit
-                    // and for why an `Arc` can't replace this clone (the
-                    // connection thread re-applies the ack'd command to its
-                    // own copy, and the live state keeps mutating here).
-                    let epoch = DocumentEpoch::of(self.host_document_epoch, state);
-                    let _ = ack.send(SnapshotAck {
-                        state: op_editor_core::request_snapshot::narrowed_snapshot(state),
-                        epoch,
-                    });
-                }
-                Ok(UiRequest::ListPages { ack }) => {
-                    let _ = ack.send(op_mcp::list_pages_snapshot(state));
-                }
-                Ok(UiRequest::Apply {
-                    tool_name,
-                    cmd,
-                    expected_epoch,
-                    ack,
-                }) => {
-                    // The snapshot this command was derived from belongs to a
-                    // document that has since been replaced: node ids repeat
-                    // across documents, so applying would silently edit the
-                    // wrong one.
-                    if self.epoch_changed(expected_epoch, state) {
-                        let _ = ack.send(ApplyAck {
-                            applied: false,
-                            document_changed: true,
-                        });
-                        continue;
-                    }
-                    if let Err(reason) = CollabGatePolicy::from(&state.editor_ui.collab)
-                        .check_command(&cmd, CollabEditSource::Mcp)
-                    {
-                        state.editor_ui.collab.set_notice(
-                            reason.notice_kind(),
-                            crate::design_agent_tools::reveal_now_millis(),
-                        );
-                        let _ = ack.send(ApplyAck {
-                            applied: false,
-                            document_changed: false,
-                        });
-                        outcome.repaint = true;
-                        continue;
-                    }
-                    let layout_dirty = command_invalidates_layout(&cmd);
-                    // Snapshot BEFORE apply, only for the one tool the canvas
-                    // radar-scan cares about — `design_agent_tools.rs`'s
-                    // `should_register_batch_reveals` gates the in-app
-                    // design-agent loop's reveal registration the exact same
-                    // way, for the exact same reason (every other write tool
-                    // is a targeted property tweak, not a "generation").
-                    let ids_before = (tool_name == "batch_design")
-                        .then(|| crate::design_agent_tools::collect_active_node_ids(state));
-                    let applied = state.apply(cmd);
-                    if applied {
-                        let write_repairs = crate::mcp_serve::run_write_repairs_after_apply(state);
-                        if let Some(ids_before) = ids_before {
-                            self.register_mcp_generation(&ids_before, state);
-                        }
-                        outcome.layout_dirty |= write_repairs;
-                    }
-                    let _ = ack.send(ApplyAck {
-                        applied,
-                        document_changed: false,
-                    });
-                    if applied {
-                        outcome.repaint = true;
-                        outcome.layout_dirty |= layout_dirty;
-                    }
-                }
-                Ok(UiRequest::ReplaceDocument {
-                    doc,
-                    editor_meta,
-                    ack,
-                }) => {
-                    if let Err(reason) = CollabGatePolicy::from(&state.editor_ui.collab)
-                        .check(CollabGateAction::ReplaceDocument, CollabEditSource::Mcp)
-                    {
-                        state.editor_ui.collab.set_notice(
-                            reason.notice_kind(),
-                            crate::design_agent_tools::reveal_now_millis(),
-                        );
-                        let _ = ack.send(false);
-                        outcome.repaint = true;
-                        continue;
-                    }
-                    // The document was already loaded off the UI thread; just
-                    // swap it in (preserving editor chrome). Layout is computed
-                    // by the renderer at paint, so the swap + dirty flag
-                    // repaints the new document with no extra layout pass here.
-                    state.replace_document(*doc);
-                    op_pen_loader::apply_editor_meta(state, editor_meta);
-                    let _ = ack.send(true);
-                    outcome.repaint = true;
-                    outcome.layout_dirty = true;
-                    outcome.document_replaced = true;
-                }
-                Ok(UiRequest::UpdateEditorMeta { editor_meta, ack }) => {
-                    op_pen_loader::apply_editor_meta(state, editor_meta);
-                    let _ = ack.send(());
-                    outcome.repaint = true;
-                    outcome.layout_dirty = true;
-                }
-                Ok(UiRequest::GenerateDesignMd { request }) => {
-                    self.pending_design_md.push_back(request);
-                }
-                Ok(UiRequest::CreateDocument {
-                    project_root,
-                    name,
-                    expected_epoch,
-                    ack,
-                }) => {
-                    if self.epoch_changed(Some(expected_epoch), state) {
-                        let _ = ack.send(CreateAck::DocumentChanged);
-                        continue;
-                    }
-                    let result = create_document_route::create_on_ui_thread(
-                        state,
-                        &self.open_paths,
-                        &project_root,
-                        &name,
-                    );
-                    if let Ok(created) = &result {
-                        outcome.created_document = Some(created.file_path.clone());
-                    }
-                    let _ = ack.send(CreateAck::Done(result));
-                    outcome.repaint = true;
-                }
-                #[cfg(feature = "mcp-debug-tools")]
-                Ok(UiRequest::Screenshot { spec, ack }) => {
-                    // Read-only render of the live state — no repaint needed.
-                    let _ = ack.send(crate::export::screenshot::capture(state, &spec));
-                }
-                Err(TryRecvError::Empty) => break,
-                Err(TryRecvError::Disconnected) => break,
-            }
-        }
-        outcome
     }
 
     /// Take the next extension design-analysis request for asynchronous
@@ -588,6 +420,7 @@ fn command_invalidates_layout(cmd: &EditorCommand) -> bool {
     }
 }
 
+mod addressing_schema;
 mod admission;
 mod connection;
 mod create_document_route;
@@ -595,11 +428,18 @@ mod design_md_output;
 pub(crate) mod design_md_route;
 mod doc_sync;
 mod document_epoch;
-mod open_paths;
+mod document_gates;
+mod document_target;
+mod live_call;
+mod operation_log;
+mod pump;
+mod resolver;
 /// `pub(crate)` for two consts only: the shared HTTP parser
 /// (`mcp_serve::read_http_request`) has to recognise this route's path to
 /// apply its smaller body cap before reading a body.
 pub(crate) mod snapshot_ingest;
+#[cfg(test)]
+mod test_support;
 mod ui_requests;
 
 use admission::*;
@@ -607,9 +447,13 @@ use connection::*;
 use create_document_route::CreateAck;
 use doc_sync::*;
 use document_epoch::*;
-use open_paths::*;
+use document_gates::*;
+use document_target::active_document;
 use ui_requests::*;
 
+#[cfg(test)]
+#[path = "mcp_live/document_addressing_tests.rs"]
+mod document_addressing_tests;
 #[cfg(test)]
 #[path = "mcp_live_tests.rs"]
 mod tests;

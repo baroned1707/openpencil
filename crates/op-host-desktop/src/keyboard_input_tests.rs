@@ -401,7 +401,8 @@ fn stop_chat_aborts_sub_agents_and_clears_the_running_counter() {
 
     let mut app = DesktopApp::new(None);
     let (_hold_tx, rx) = std::sync::mpsc::channel();
-    app.sub_agents
+    app.runs
+        .sub_agents
         .push(crate::sub_agent_session::SubAgentSession {
             session: Some(crate::chat_session::ChatSession::from_channels(rx, None)),
             identity: op_orchestrator::agent_identity::AgentIdentity {
@@ -412,7 +413,7 @@ fn stop_chat_aborts_sub_agents_and_clears_the_running_counter() {
             root_seed_mobile: true,
             root_seed_continuation: false,
         });
-    app.active_sub_agent = 0;
+    app.runs.active_sub_agent = 0;
     app.host.editor_state_mut().chat.agents_running = (1, 1);
     app.host
         .editor_state_mut()
@@ -423,8 +424,8 @@ fn stop_chat_aborts_sub_agents_and_clears_the_running_counter() {
     assert!(app.host.editor_state_mut().chat.stop_streaming());
     assert!(app.drain_stop_chat());
 
-    assert!(app.sub_agents.is_empty());
-    assert_eq!(app.active_sub_agent, 0);
+    assert!(app.runs.sub_agents.is_empty());
+    assert_eq!(app.runs.active_sub_agent, 0);
     assert_eq!(app.host.editor_state().chat.agents_running, (0, 0));
     assert!(
         app.host
@@ -447,7 +448,8 @@ fn new_chat_aborts_the_old_running_tab_without_dirtying_the_fresh_tab() {
 
     let mut app = DesktopApp::new(None);
     let (_hold_tx, rx) = std::sync::mpsc::channel();
-    app.sub_agents
+    app.runs
+        .sub_agents
         .push(crate::sub_agent_session::SubAgentSession {
             session: Some(crate::chat_session::ChatSession::from_channels(rx, None)),
             identity: op_orchestrator::agent_identity::AgentIdentity {
@@ -458,8 +460,8 @@ fn new_chat_aborts_the_old_running_tab_without_dirtying_the_fresh_tab() {
             root_seed_mobile: true,
             root_seed_continuation: false,
         });
-    app.active_sub_agent = 0;
-    app.chat_running_tab = Some(0);
+    app.runs.active_sub_agent = 0;
+    app.runs.chat_running_tab = Some(0);
     {
         let old_tab = app.host.editor_state_mut().chat.tab_mut(0).unwrap();
         old_tab.agents_running = (1, 1);
@@ -473,9 +475,9 @@ fn new_chat_aborts_the_old_running_tab_without_dirtying_the_fresh_tab() {
     assert_eq!(fresh, 1);
     assert!(app.drain_new_chat());
 
-    assert!(app.sub_agents.is_empty());
-    assert_eq!(app.active_sub_agent, 0);
-    assert_eq!(app.chat_running_tab, None);
+    assert!(app.runs.sub_agents.is_empty());
+    assert_eq!(app.runs.active_sub_agent, 0);
+    assert_eq!(app.runs.chat_running_tab, None);
     let tabs = app.host.editor_state().chat.tabs();
     assert_eq!(tabs[0].agents_running, (0, 0));
     assert!(tabs[0].messages.iter().all(|message| !message.streaming));

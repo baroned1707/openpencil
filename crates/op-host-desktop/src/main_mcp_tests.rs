@@ -55,7 +55,7 @@ fn live_mcp_http_server_applies_write_requests_to_editor_state() {
 
     let started = Instant::now();
     let response = loop {
-        server.pump(&mut state);
+        server.pump(&mut op_host_services::mcp_live::SingleDocumentResolver::new(&mut state));
         if let Ok(response) = rx.try_recv() {
             break response;
         }
@@ -227,7 +227,7 @@ fn live_mcp_http_server_routes_file_path_requests_to_target_file() {
 
     let started = Instant::now();
     let response = loop {
-        server.pump(&mut state);
+        server.pump(&mut op_host_services::mcp_live::SingleDocumentResolver::new(&mut state));
         if let Ok(response) = rx.try_recv() {
             break response;
         }
@@ -293,7 +293,7 @@ fn live_mcp_http_server_replaces_document_via_rest_document_sync() {
 
     let started = Instant::now();
     let response = loop {
-        server.pump(&mut state);
+        server.pump(&mut op_host_services::mcp_live::SingleDocumentResolver::new(&mut state));
         if let Ok(response) = rx.try_recv() {
             break response;
         }

@@ -110,6 +110,10 @@ impl WidgetHostNative {
                 return true;
             }
         }
+        // The Projects dock owns the pan over its column.
+        if self.try_scroll_projects_dock(x, y, dy, viewport_width, viewport_height) {
+            return true;
+        }
         // Route inspector pan before the canvas.
         if self.try_scroll_property_panel_2d(x, y, dx, dy, viewport_width, viewport_height) {
             return true;

@@ -404,8 +404,6 @@ fn test_row() -> SlidesTabRow<'static> {
         slides_label: slides,
         chat_available: true,
         slides_available: true,
-        projects_label: "Projects",
-        projects_available: false,
     }
 }
 
@@ -755,4 +753,39 @@ fn switching_tabs_closes_the_export_menu() {
     deck.editor_ui.slides_panel.export_menu_open = true;
     assert!(select_tab(&mut deck, LeftPanelTab::Layers));
     assert!(!deck.editor_ui.slides_panel.export_menu_open);
+}
+
+/// The Projects tree lives in its own right-edge dock: a host that holds
+/// several documents and projects still gets the left rail's original
+/// three text tabs — Agent, Layers, Slides — and nothing else.
+#[test]
+fn left_rail_tabs_are_agent_layers_slides_again() {
+    use op_editor_core::{ProjectView, SlidesPanelTarget};
+    let mut state = deck_state(THREE_BOARDS);
+    state.editor_ui.document_tabs_supported = true;
+    state.editor_ui.projects_panel.projects = vec![ProjectView {
+        root: "/work/shop".to_string(),
+        name: "shop".to_string(),
+        files: Vec::new(),
+        expanded: true,
+    }];
+    assert!(state.editor_ui.projects_dock_available());
+    // Exhaustive on purpose: a fourth tab would stop this compiling.
+    let _ = |tab: LeftPanelTab| match tab {
+        LeftPanelTab::Chat | LeftPanelTab::Layers | LeftPanelTab::Slides => {}
+    };
+
+    let tabs = tab_row(&state, PANEL).expect("a deck shows its tab row");
+    assert!(!tabs.compact, "the row keeps its text labels");
+    assert_eq!(tab_labels(&state), ("Agent", "Layers", "Slides"));
+    let mid_y = tabs.row.origin.y + tabs.row.size.y / 2.0;
+    for (rect, target) in [
+        (tabs.chat, SlidesPanelTarget::ChatTab),
+        (tabs.layers, SlidesPanelTarget::LayersTab),
+        (tabs.slides, SlidesPanelTarget::SlidesTab),
+    ] {
+        let inside = Point2D::new(rect.origin.x + rect.size.x / 2.0, mid_y);
+        assert!(rect.size.x > 0.0);
+        assert_eq!(tabs.hit(inside), Some(target));
+    }
 }

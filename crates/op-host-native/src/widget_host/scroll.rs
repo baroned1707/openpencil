@@ -593,6 +593,10 @@ impl WidgetHostNative {
                 return true;
             }
         }
+        // The Projects dock owns the wheel over its column.
+        if self.try_scroll_projects_dock(x, y, delta_y, viewport_width, viewport_height) {
+            return true;
+        }
         // Route inspector scroll before the canvas.
         if self.try_scroll_property_panel(x, y, delta_y, viewport_width, viewport_height) {
             return true;

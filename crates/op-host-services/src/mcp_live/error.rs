@@ -21,7 +21,11 @@
 
 use std::fmt;
 
+use op_editor_core::DocumentId;
+
 use crate::export::ExportError;
+use crate::mcp_serve::document_address::format_document_id;
+use crate::mcp_serve::document_listing::{describe_open, DocumentListing};
 use crate::mcp_serve::McpServeError;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -50,6 +54,42 @@ pub enum McpLiveError {
     /// reuse the same node ids. A client-visible tool error: the agent should
     /// re-read the document and retry.
     DocumentChanged,
+    /// Several documents are open (or none) and the call named none. The
+    /// server never guesses which one an agent meant.
+    DocumentRequired { open: Vec<DocumentListing> },
+    /// The named `documentId` is not an open document (closed, never
+    /// existed, or not the `d<N>` spelling).
+    UnknownDocument {
+        requested: String,
+        open: Vec<DocumentListing>,
+    },
+    /// The document is open but the host cannot lend its state right now: it
+    /// is parked behind the document on screen.
+    DocumentNotOnScreen { document: DocumentId },
+    /// The call arrived on an endpoint bound to one document
+    /// (`/mcp/d/<N>`) yet named a different one in `documentId`.
+    DocumentIdConflict {
+        bound: DocumentId,
+        requested: String,
+    },
+    /// An `operationId` was reused for a different call.
+    OperationIdConflict { operation_id: String },
+}
+
+impl McpLiveError {
+    /// Whether the client should see this as a tool error it can act on
+    /// (answered `200` with `isError:true`) rather than a server fault (500).
+    pub(super) fn is_tool_error(&self) -> bool {
+        matches!(
+            self,
+            McpLiveError::DocumentChanged
+                | McpLiveError::DocumentRequired { .. }
+                | McpLiveError::UnknownDocument { .. }
+                | McpLiveError::DocumentNotOnScreen { .. }
+                | McpLiveError::DocumentIdConflict { .. }
+                | McpLiveError::OperationIdConflict { .. }
+        )
+    }
 }
 
 impl fmt::Display for McpLiveError {
@@ -60,6 +100,34 @@ impl fmt::Display for McpLiveError {
             McpLiveError::Screenshot(e) => e.fmt(f),
             McpLiveError::DocumentChanged => f.write_str(
                 "the open document changed while this call was running; re-read and retry",
+            ),
+            McpLiveError::DocumentRequired { open } => write!(
+                f,
+                "this call does not say which document it is about and the choice is not \
+                 obvious. Pass `documentId` (or call list_documents). Open documents: {}",
+                describe_open(open)
+            ),
+            McpLiveError::UnknownDocument { requested, open } => write!(
+                f,
+                "unknown documentId '{requested}'. Open documents: {}. Pass one of these ids \
+                 or call list_documents",
+                describe_open(open)
+            ),
+            McpLiveError::DocumentNotOnScreen { document } => write!(
+                f,
+                "document {} is open but not on screen yet; switch to it",
+                format_document_id(*document)
+            ),
+            McpLiveError::DocumentIdConflict { bound, requested } => write!(
+                f,
+                "documentId '{requested}' conflicts with the document this endpoint is bound \
+                 to ({}); omit documentId or use the /mcp endpoint",
+                format_document_id(*bound)
+            ),
+            McpLiveError::OperationIdConflict { operation_id } => write!(
+                f,
+                "operationId '{operation_id}' was already used for a different call; use a new \
+                 operationId for a new call"
             ),
         }
     }

@@ -88,8 +88,6 @@ fn a_rail_too_narrow_for_its_labels_falls_back_to_icons() {
 fn a_boardless_document_drops_the_slides_tab_not_the_row() {
     let row = SlidesTabRow {
         slides_available: false,
-        projects_label: "Projects",
-        projects_available: false,
         ..EN_ROW
     };
     let tabs = SlidesPanelTabs::new(PANEL, LeftPanelTab::Layers, &row);

@@ -10,6 +10,7 @@
 pub mod account_state;
 pub mod acp_agent_presets;
 pub mod agent_indicators;
+mod agent_indicators_scope_tests;
 mod agent_indicators_tests;
 mod agent_provider_wire;
 pub mod agent_reveals;
@@ -30,6 +31,7 @@ mod catalog_toml;
 pub mod chat;
 pub mod chat_activity;
 pub mod chat_agent_readiness;
+pub mod chat_app_prefs;
 pub mod chat_button_state;
 mod chat_design_apply;
 mod chat_model_mutators;
@@ -326,6 +328,7 @@ pub use chat::{
     LaunchRoute, ModelEntry,
 };
 pub use chat_activity::{ChatActivity, ChatActivityStatus, ChatCompletion, PendingSubtaskRetry};
+pub use chat_app_prefs::ChatAppPrefs;
 pub use chat_button_state::{ChatFooterButton, ChatHeaderButton};
 pub use chat_sessions::{adjust_running_tab_after_close, ChatSessions};
 pub use collab_admission_ui::{

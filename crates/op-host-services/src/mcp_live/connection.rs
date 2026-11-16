@@ -4,7 +4,7 @@
 //! `mcp_live.rs` to keep the spine under the 800-line cap.
 
 use super::*;
-use crate::mcp_serve::tool_catalog::McpToolCatalog;
+use crate::mcp_serve::document_address;
 use crate::mcp_serve::tool_profile::McpAccessProfile;
 
 /// RAII decrement for the live-connection counter — see its use in the
@@ -18,6 +18,7 @@ impl Drop for ConnGuard {
     }
 }
 
+#[allow(clippy::too_many_arguments)]
 pub(super) fn server_loop(
     listener: TcpListener,
     req_tx: Sender<UiRequest>,
@@ -26,12 +27,12 @@ pub(super) fn server_loop(
     quit_flag: Arc<AtomicBool>,
     wake_ui: UiWake,
     client_identity: Arc<Mutex<Option<(String, String)>>>,
-    open_paths: OpenDocumentPaths,
+    documents: Arc<LiveDocuments>,
 ) {
-    // Serializes only *stateful* requests so a concurrent multi-apply batch
-    // can't interleave. Stateless probes (`ping`/`initialize`) bypass it, so
-    // `op`'s liveness probe is never blocked behind an in-flight write.
-    let stateful_lock = Arc::new(Mutex::new(()));
+    // Each document has its own gate (`LiveDocuments`), so a concurrent
+    // multi-apply batch can't interleave within a document while calls to
+    // other documents proceed. Stateless probes (`ping`/`initialize`) take no
+    // gate, so `op`'s liveness probe is never blocked behind an in-flight write.
     // Bounds the number of in-flight connection threads.
     let conn_count = Arc::new(AtomicUsize::new(0));
     loop {
@@ -61,12 +62,11 @@ pub(super) fn server_loop(
                 conn_count.fetch_add(1, Ordering::AcqRel);
                 let req_tx = req_tx.clone();
                 let admission = Arc::clone(&admission);
-                let lock = Arc::clone(&stateful_lock);
+                let documents = Arc::clone(&documents);
                 let quit = Arc::clone(&quit_flag);
                 let conns = Arc::clone(&conn_count);
                 let wake = Arc::clone(&wake_ui);
                 let identity = Arc::clone(&client_identity);
-                let open_paths = open_paths.clone();
                 let spawned = thread::Builder::new()
                     .name("op-mcp-live-conn".into())
                     .stack_size(LIVE_CONN_STACK_SIZE)
@@ -83,11 +83,10 @@ pub(super) fn server_loop(
                             &mut stream,
                             &req_tx,
                             &admission,
-                            &lock,
+                            &documents,
                             &quit,
                             &wake,
                             &identity,
-                            &open_paths,
                         ) {
                             eprintln!("openpencil-desktop mcp: {e}");
                             let _ = crate::mcp_serve::write_mcp_http_response(
@@ -119,11 +118,10 @@ pub(super) fn serve_connection<S: std::io::Read + std::io::Write>(
     stream: &mut S,
     req_tx: &Sender<UiRequest>,
     admission: &LiveAdmission,
-    stateful_lock: &Mutex<()>,
+    documents: &LiveDocuments,
     quit_flag: &AtomicBool,
     wake_ui: &UiWake,
     client_identity: &Mutex<Option<(String, String)>>,
-    open_paths: &OpenDocumentPaths,
 ) -> Result<(), McpLiveError> {
     // A refused body FRAMING (over a route's declared cap, or missing the
     // `Content-Length` a route requires) is a client fault detected before a
@@ -177,11 +175,11 @@ pub(super) fn serve_connection<S: std::io::Read + std::io::Write>(
         // multi-tenant daemon is a separate request loop with its own
         // per-account auth — so no per-instance token is demanded here. The
         // REST route answers `{ok,error}`, not JSON-RPC.
-        return serve_document_sync(stream, req_tx, wake_ui, stateful_lock, &req.body);
+        return serve_document_sync(stream, req_tx, wake_ui, documents, &req.body);
     }
     // Content-free design-token evidence from the Chrome extension. This
     // route queues an asynchronous LLM request only; it never snapshots or
-    // mutates the live document and therefore does not take `stateful_lock`.
+    // mutates the live document and therefore takes no document gate.
     if design_md_route::is_design_md_path(&req.path) {
         return design_md_route::serve_design_md(stream, req_tx, wake_ui, &req, cors_origin);
     }
@@ -194,18 +192,18 @@ pub(super) fn serve_connection<S: std::io::Read + std::io::Write>(
             stream,
             req_tx,
             wake_ui,
-            stateful_lock,
+            documents,
             &req,
             cors_origin,
         );
     }
     // `/mcp` (and `/`) serve the full catalog; `/mcp/lean` the six-tool lean
-    // one the terminal-integration writer installs when asked to.
-    let Some(catalog) = McpToolCatalog::for_http_path(&req.path) else {
+    // one the terminal-integration writer installs when asked to; the
+    // `/mcp/d/<N>` forms bind the connection to one document.
+    let Some(route) = document_address::parse_route(&req.path) else {
         return write_http(stream, "404 Not Found", r#"{"error":"Not found"}"#);
     };
-    let profile = McpAccessProfile::UNRESTRICTED.with_catalog(catalog);
-    let full_catalog = catalog == McpToolCatalog::Full;
+    let profile = McpAccessProfile::UNRESTRICTED.with_catalog(route.catalog);
     if req.method != "POST" {
         return write_http(
             stream,
@@ -249,109 +247,20 @@ pub(super) fn serve_connection<S: std::io::Read + std::io::Write>(
         crate::mcp_serve::Stateless::NeedsState => {}
     }
     // Gate 2 (see `admission.rs`): everything from here down reads or writes
-    // the live document — every `tools/call`, not just the write ones. The
+    // a live document — every `tools/call`, not just the write ones. The
     // `Host`/`Origin` boundary above is the only gate the local desktop and a
     // self-hosted serve-web daemon apply; `CollabGatePolicy` (which still runs
     // on the UI thread for each apply) decides what a session permits. The
     // online multi-tenant daemon authenticates per account in its own request
     // loop, not here.
-    // Everything below observes or mutates shared state — the live
-    // `EditorState` OR a `--file` document on disk (a read-modify-write).
-    // Serialize it under one lock so snapshots stay coherent, concurrent live
-    // applies cannot interleave, and file-backed writes cannot race. Tolerate a
-    // poisoned lock (a panicked sibling connection) rather than cascade.
-    let _guard = stateful_lock
-        .lock()
-        .unwrap_or_else(|poison| poison.into_inner());
-    // File-backed path (`filePath` arg): handle the whole read-modify-write
-    // while holding the lock. A `filePath` naming a document the editor has
-    // open is refused there instead of edited on disk behind the editor.
-    if let Some(response) = crate::mcp_serve::file_path::process_message_for_file_path_arg(
-        None,
-        &open_paths.snapshot(),
-        &req.body,
-        profile,
-    )? {
-        return write_json_rpc_response(stream, &response);
-    }
-    // `debug_screenshot` against the LIVE canvas: route through the
-    // raster export pipeline on the UI thread instead of the generic
-    // dispatch (whose headless tool can only report no-live-canvas).
-    // Gate-closed (`OPENPENCIL_DEBUG_TOOLS` unset) falls through to the
-    // generic dispatch, which reports UnknownTool exactly like the
-    // headless registry that never registered the tool.
-    #[cfg(feature = "mcp-debug-tools")]
-    if let Some(response) = full_catalog
-        .then(|| {
-            screenshot::maybe_serve(&req.body, op_mcp::debug_tools_enabled(), |shot_req| {
-                request_screenshot(req_tx, wake_ui, shot_req)
-            })
-        })
-        .flatten()
-    {
-        return write_json_rpc_response(stream, &response);
-    }
-    // These tools need either no editor snapshot (`set_active_page`) or only
-    // page metadata (`list_pages`). Keep them on the normal MCP
-    // parser/registry/serializer path, but do not deep-clone the live document.
-    // Neither tool is in the lean catalog, so a lean request skips the fast
-    // path and gets the profiled refusal below.
-    if full_catalog {
-        if let Some(response) = process_lightweight_live_tool(&req.body, req_tx, wake_ui)? {
-            return write_json_rpc_response(stream, &response);
-        }
-    }
-    // `create_document` writes a file for the untitled on-screen document and
-    // needs the host's view of it, so it has its own two-step route. Under a
-    // profile that refuses it (the lean catalog) the generic dispatch below
-    // reports the refusal.
-    if let Some(response) =
-        create_document_route::serve(&req.body, profile, open_paths, req_tx, wake_ui)?
-    {
-        return write_json_rpc_response(stream, &response);
-    }
-    let (mut state, epoch) = request_snapshot(req_tx, wake_ui)?;
-    let mut document_changed = false;
-    let mut response = crate::mcp_serve::process_message_with_applier_profiled(
-        &mut state,
-        &req.body,
-        profile,
-        |tool_name, local_state, cmd| match request_apply(
-            req_tx,
-            wake_ui,
-            tool_name.to_string(),
-            cmd.clone(),
-            Some(epoch),
-        ) {
-            Ok(ack) => {
-                if ack.applied {
-                    let _ = local_state.apply(cmd.clone());
-                }
-                ack.applied
-            }
-            Err(McpLiveError::DocumentChanged) => {
-                document_changed = true;
-                false
-            }
-            Err(e) => {
-                eprintln!("openpencil-desktop mcp: apply failed: {e}");
-                false
-            }
-        },
-    )?
-    .unwrap_or_default();
-    if document_changed {
-        // The dispatcher only knows the applier said `false`; give the client
-        // the real reason as a tool error instead of "host rejected command".
-        response = document_changed_response(&req.body).unwrap_or(response);
-    }
-    write_json_rpc_response(stream, &response)
+    live_call::serve_call(stream, &req, route, profile, req_tx, wake_ui, documents)
 }
 
 /// Dispatch live tools whose registry snapshot is independent of the full
 /// [`EditorState`]. Returning `None` delegates to the general snapshot path.
 pub(super) fn process_lightweight_live_tool(
     line: &str,
+    document: DocumentId,
     req_tx: &Sender<UiRequest>,
     wake_ui: &UiWake,
 ) -> Result<Option<String>, McpLiveError> {
@@ -368,26 +277,43 @@ pub(super) fn process_lightweight_live_tool(
     if is_write {
         registry.register(Box::new(op_mcp::set_active_page_snapshot()));
     } else {
-        registry.register(Box::new(request_list_pages(req_tx, wake_ui)?));
+        registry.register(Box::new(request_list_pages(req_tx, wake_ui, document)?));
     }
-    Ok(crate::mcp_serve::process_tool_message_with_registry(
-        &registry,
-        line,
-        |tool_name, cmd| {
+    let mut failure: Option<McpLiveError> = None;
+    let response =
+        crate::mcp_serve::process_tool_message_with_registry(&registry, line, |tool_name, cmd| {
             if !is_write {
                 return false;
             }
             // No snapshot was taken on this path, so there is no epoch to hold
             // the apply to.
-            match request_apply(req_tx, wake_ui, tool_name.to_string(), cmd.clone(), None) {
+            match request_apply(
+                req_tx,
+                wake_ui,
+                document,
+                tool_name.to_string(),
+                cmd.clone(),
+                None,
+            ) {
                 Ok(ack) => ack.applied,
+                Err(error) if error.is_tool_error() => {
+                    failure = Some(error);
+                    false
+                }
                 Err(e) => {
                     eprintln!("openpencil-desktop mcp: apply failed: {e}");
                     false
                 }
             }
-        },
-    )?)
+        })?;
+    match failure {
+        Some(error) => Ok(crate::mcp_serve::document_address::tool_error_response(
+            line,
+            error.to_string(),
+        )
+        .or(response)),
+        None => Ok(response),
+    }
 }
 
 #[cfg(test)]

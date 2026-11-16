@@ -75,11 +75,9 @@ impl DesktopApp {
         }
         // Chat / design / Figma-import worker active → wake ~30 fps to
         // pump results and animate the loading overlay's spinner.
-        if self.current_chat.is_some()
-            || self.current_design.is_some()
+        if self.any_run_live()
             || self.current_codegen.is_some()
             || self.current_design_md.is_some()
-            || !self.sub_agents.is_empty()
             // Poll the drag position while an image file hovers the window.
             || self.hovered_image_drop
         {
@@ -160,11 +158,9 @@ impl DesktopApp {
     }
 
     pub(crate) fn resume_time_needs_redraw(&self) -> bool {
-        self.current_chat.is_some()
-            || self.current_design.is_some()
+        self.any_run_live()
             || self.current_codegen.is_some()
             || self.current_design_md.is_some()
-            || !self.sub_agents.is_empty()
             || self
                 .current_figma_import
                 .as_ref()

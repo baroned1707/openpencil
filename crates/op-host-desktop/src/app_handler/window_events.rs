@@ -3,7 +3,7 @@
 //! `app_handler.rs` spine to keep it under the 800-line cap; pure code
 //! motion.
 
-use crate::{chat_session, image_drop_host, DesktopApp};
+use crate::{image_drop_host, DesktopApp};
 use std::path::PathBuf;
 use winit::dpi::{PhysicalPosition, PhysicalSize};
 use winit::event_loop::ActiveEventLoop;
@@ -21,11 +21,7 @@ impl DesktopApp {
         // changes prompt's `document_is_dirty` check + its own Save
         // decide what gets persisted, so a finalize mutation applied
         // afterward would never make it to disk.
-        chat_session::finalize_design_session_if_needed(
-            &mut self.host,
-            &self.current_chat,
-            "teardown-backstop",
-        );
+        self.finalize_runs_before_exit();
         // The unsaved-changes prompt can abort the close.
         if self.confirm_close() {
             self.host.flush_settings_input();

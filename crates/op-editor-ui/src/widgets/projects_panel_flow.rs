@@ -1,46 +1,31 @@
-//! Shared press / hover / scroll flow for the left rail's Projects tab.
+//! Press / hover / scroll flow for the Projects dock's project list.
 //!
-//! Both hosts hit-test the same layout and run the same transitions, so all
-//! of it lives here and a host keeps only its platform tail (the rail rect,
-//! a repaint). A press ACTS on press, like the Layers tree rows: the tab has
-//! no drag gesture that would need a release to disambiguate it.
+//! The dock (`projects_dock_flow`) places the list and routes presses that
+//! land on it here, so the list transitions live once. A press ACTS on
+//! press, like the Layers tree rows: the list has no drag gesture that would
+//! need a release to disambiguate it.
 //!
-//! The tab never mutates the project rows — the host owns them. A click only
-//! records a [`ProjectRequest`] on `projects_panel.pending_request`, which
-//! the host drains.
+//! The list never mutates the project rows — the host owns them. A click
+//! only records a [`ProjectRequest`] on `projects_panel.pending_request`,
+//! which the host drains.
 
 use op_editor_core::{EditorState, ProjectRequest, ProjectRowTarget};
 
 use crate::widgets::projects_panel::{ProjectsPanel, ProjectsPanelText};
 use crate::widgets::projects_panel_layout::ProjectsPanelLayout;
-use crate::widgets::slides_panel_flow::{layers_content_rect, projects_tab_active};
-use crate::{Point2D, Rect};
+use crate::Point2D;
 
-/// What a press on the tab amounted to.
+/// What a press on the list amounted to.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ProjectsPress {
-    /// The point is not on the tab body; the host falls through.
+    /// The point is not on the list; the host falls through.
     Missed,
-    /// The tab owns the press. It landed on a row when `Some`, and on bare
+    /// The list owns the press. It landed on a row when `Some`, and on bare
     /// body when `None`; either way nothing below may see it.
     Claimed(Option<ProjectRowTarget>),
 }
 
-/// The tab body's layout for a rail occupying `rail`, or `None` when the
-/// Projects tab is not the one on show.
-pub fn layout(state: &EditorState, rail: Rect) -> Option<ProjectsPanelLayout> {
-    if !projects_tab_active(state) {
-        return None;
-    }
-    let panel = &state.editor_ui.projects_panel;
-    Some(ProjectsPanelLayout::new(
-        &panel.projects,
-        layers_content_rect(state, rail),
-        panel.scroll.offset,
-    ))
-}
-
-/// The tab's translated strings, resolved once per frame.
+/// The list's translated strings, resolved once per frame.
 pub fn text(state: &EditorState) -> ProjectsPanelText<'static> {
     let ui = &state.editor_ui;
     let translate = crate::widgets::editor_state_ext::translate;
@@ -122,12 +107,12 @@ pub fn cursor_move(state: &mut EditorState, layout: &ProjectsPanelLayout, point:
     changed
 }
 
-/// Drop the hover (the cursor left the tab). Returns whether one was set.
+/// Drop the hover (the cursor left the list). Returns whether one was set.
 pub fn clear_hover(state: &mut EditorState) -> bool {
     state.editor_ui.projects_panel.hover.take().is_some()
 }
 
-/// Scroll the list. `None` when the pointer is not over the tab body, so
+/// Scroll the list. `None` when the pointer is not over the list, so
 /// the caller keeps looking. `delta_y` follows the wheel convention the
 /// slides list uses: positive scrolls toward the top.
 pub fn scroll(

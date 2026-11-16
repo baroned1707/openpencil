@@ -51,7 +51,15 @@ impl WidgetHostNative {
             }
         }
         if self.editor_state.property_panel_visible() {
-            let edge = viewport_w - self.editor_state.editor_ui.property_panel_width;
+            // The panel's left edge, beside the Projects dock (x does not
+            // depend on the viewport height on the desktop layout).
+            let edge = canvas_geometry::property_panel_rect(
+                &self.editor_state,
+                viewport_w,
+                self.last_viewport_h,
+            )
+            .origin
+            .x;
             if (x - edge).abs() <= PANEL_RESIZE_GUTTER {
                 return Some(PanelResizeKind::PropertyLeft);
             }

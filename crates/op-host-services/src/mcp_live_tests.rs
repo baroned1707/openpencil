@@ -59,7 +59,7 @@ fn snapshot_request_wakes_ui_event_loop_after_queueing() {
         })
     };
 
-    let requester = thread::spawn(move || request_snapshot(&req_tx, &wake_ui));
+    let requester = thread::spawn(move || request_snapshot(&req_tx, &wake_ui, DocumentId(1)));
     let request = req_rx
         .recv_timeout(Duration::from_secs(1))
         .expect("snapshot request should be queued");
@@ -72,12 +72,12 @@ fn snapshot_request_wakes_ui_event_loop_after_queueing() {
         1,
         "queueing a UI request must wake winit instead of relying on idle polling"
     );
-    let UiRequest::Snapshot { ack } = request else {
+    let UiRequest::Snapshot { ack, .. } = request else {
         panic!("expected snapshot request");
     };
     let state = EditorState::new();
     let epoch = DocumentEpoch::of(0, &state);
-    ack.send(SnapshotAck { state, epoch })
+    ack.send(Ok(SnapshotAck { state, epoch }))
         .expect("ack snapshot");
     requester
         .join()
@@ -91,7 +91,9 @@ fn set_active_page_fast_path_sends_apply_without_full_snapshot() {
     let wake_ui: UiWake = Arc::new(|| {});
     let line = r#"{"jsonrpc":"2.0","id":7,"method":"tools/call","params":{"name":"set_active_page","arguments":{"index":"1"}}}"#;
 
-    let requester = thread::spawn(move || process_lightweight_live_tool(line, &req_tx, &wake_ui));
+    let requester = thread::spawn(move || {
+        process_lightweight_live_tool(line, DocumentId(1), &req_tx, &wake_ui)
+    });
     let request = req_rx
         .recv_timeout(Duration::from_secs(1))
         .expect("fast path should queue an apply request");
@@ -100,6 +102,7 @@ fn set_active_page_fast_path_sends_apply_without_full_snapshot() {
         cmd: EditorCommand::SetActivePage { index },
         expected_epoch: None,
         ack,
+        ..
     } = request
     else {
         panic!("set_active_page must not request a full EditorState snapshot");
@@ -108,7 +111,7 @@ fn set_active_page_fast_path_sends_apply_without_full_snapshot() {
     assert_eq!(index, 1);
     ack.send(ApplyAck {
         applied: true,
-        document_changed: false,
+        ..ApplyAck::default()
     })
     .expect("ack apply");
 
@@ -126,21 +129,23 @@ fn list_pages_fast_path_requests_only_page_metadata() {
     let wake_ui: UiWake = Arc::new(|| {});
     let line = r#"{"jsonrpc":"2.0","id":8,"method":"tools/call","params":{"name":"list_pages","arguments":{}}}"#;
 
-    let requester = thread::spawn(move || process_lightweight_live_tool(line, &req_tx, &wake_ui));
+    let requester = thread::spawn(move || {
+        process_lightweight_live_tool(line, DocumentId(1), &req_tx, &wake_ui)
+    });
     let request = req_rx
         .recv_timeout(Duration::from_secs(1))
         .expect("fast path should request page metadata");
-    let UiRequest::ListPages { ack } = request else {
+    let UiRequest::ListPages { ack, .. } = request else {
         panic!("list_pages must not request a full EditorState snapshot");
     };
-    ack.send(op_mcp::ListPages {
+    ack.send(Ok(op_mcp::ListPages {
         page_count: 70,
         active_page_index: 42,
         pages: vec![
             ("page-a".to_string(), "Intro".to_string()),
             ("page-b".to_string(), "Analysis".to_string()),
         ],
-    })
+    }))
     .expect("ack page metadata");
 
     let response = requester
@@ -168,8 +173,6 @@ fn pump_yields_after_ui_request_budget() {
         client_identity: Arc::new(Mutex::new(None)),
         last_mcp_epoch: 0,
         pending_design_md: VecDeque::new(),
-        host_document_epoch: 0,
-        open_paths: OpenDocumentPaths::default(),
     };
     let mut state = EditorState::new();
     let mut acks = Vec::new();
@@ -178,6 +181,7 @@ fn pump_yields_after_ui_request_budget() {
         let (ack_tx, ack_rx) = mpsc::sync_channel(1);
         req_tx
             .send(UiRequest::Apply {
+                document: DocumentId(1),
                 tool_name: "set_viewport".to_string(),
                 expected_epoch: None,
                 cmd: EditorCommand::SetViewport {
@@ -191,7 +195,7 @@ fn pump_yields_after_ui_request_budget() {
         acks.push(ack_rx);
     }
 
-    let outcome = server.pump(&mut state);
+    let outcome = server.pump(&mut SingleDocumentResolver::new(&mut state));
     assert!(outcome.repaint);
     assert!(!outcome.layout_dirty);
     let acked = acks.iter().filter(|ack| ack.try_recv().is_ok()).count();
@@ -215,8 +219,6 @@ fn pump_fulfills_screenshot_requests_off_the_live_state() {
         client_identity: Arc::new(Mutex::new(None)),
         last_mcp_epoch: 0,
         pending_design_md: VecDeque::new(),
-        host_document_epoch: 0,
-        open_paths: OpenDocumentPaths::default(),
     };
     let mut state = EditorState::new();
     assert!(state.apply(EditorCommand::InsertNode {
@@ -234,6 +236,7 @@ fn pump_fulfills_screenshot_requests_off_the_live_state() {
     let (ack_tx, ack_rx) = mpsc::sync_channel(1);
     req_tx
         .send(UiRequest::Screenshot {
+            document: DocumentId(1),
             spec: crate::export::screenshot::CaptureSpec {
                 node_id: None,
                 padding: 0.0,
@@ -242,10 +245,11 @@ fn pump_fulfills_screenshot_requests_off_the_live_state() {
             ack: ack_tx,
         })
         .expect("queue screenshot request");
-    let _ = server.pump(&mut state);
+    let _ = server.pump(&mut SingleDocumentResolver::new(&mut state));
     let shot = ack_rx
         .try_recv()
         .expect("pump must ack the screenshot")
+        .expect("the document resolves")
         .expect("capture must succeed for a filled rect");
     assert!(!shot.png_base64.is_empty());
     assert!(shot.actual_bounds.is_none(), "root capture has no bounds");
@@ -264,8 +268,6 @@ fn pump_marks_layout_dirty_only_for_layout_affecting_commands() {
         client_identity: Arc::new(Mutex::new(None)),
         last_mcp_epoch: 0,
         pending_design_md: VecDeque::new(),
-        host_document_epoch: 0,
-        open_paths: OpenDocumentPaths::default(),
     };
     let mut state = EditorState::new();
     state.selection.anchor = op_editor_core::NodeId::new("n1");
@@ -274,13 +276,14 @@ fn pump_marks_layout_dirty_only_for_layout_affecting_commands() {
     let (selection_ack_tx, _selection_ack_rx) = mpsc::sync_channel(1);
     req_tx
         .send(UiRequest::Apply {
+            document: DocumentId(1),
             tool_name: "clear_selection".to_string(),
             expected_epoch: None,
             cmd: EditorCommand::ClearSelection,
             ack: selection_ack_tx,
         })
         .expect("queue selection request");
-    let selection = server.pump(&mut state);
+    let selection = server.pump(&mut SingleDocumentResolver::new(&mut state));
     assert!(selection.repaint);
     assert!(
         !selection.layout_dirty,
@@ -290,6 +293,7 @@ fn pump_marks_layout_dirty_only_for_layout_affecting_commands() {
     let (insert_ack_tx, _insert_ack_rx) = mpsc::sync_channel(1);
     req_tx
         .send(UiRequest::Apply {
+            document: DocumentId(1),
             tool_name: "insert_node".to_string(),
             expected_epoch: None,
             cmd: EditorCommand::InsertNode {
@@ -306,7 +310,7 @@ fn pump_marks_layout_dirty_only_for_layout_affecting_commands() {
             ack: insert_ack_tx,
         })
         .expect("queue insert request");
-    let insert = server.pump(&mut state);
+    let insert = server.pump(&mut SingleDocumentResolver::new(&mut state));
     assert!(insert.repaint);
     assert!(
         insert.layout_dirty,
@@ -337,8 +341,6 @@ fn pump_flags_document_replaced_only_for_replace_document_requests() {
         client_identity: Arc::new(Mutex::new(None)),
         last_mcp_epoch: 0,
         pending_design_md: VecDeque::new(),
-        host_document_epoch: 0,
-        open_paths: OpenDocumentPaths::default(),
     };
     let mut state = EditorState::new();
     let replacement_doc = op_pen_loader::load_canonical(
@@ -363,7 +365,7 @@ fn pump_flags_document_replaced_only_for_replace_document_requests() {
             ack: ack_tx,
         })
         .expect("queue replace-document request");
-    let outcome = server.pump(&mut state);
+    let outcome = server.pump(&mut SingleDocumentResolver::new(&mut state));
     assert!(ack_rx.try_recv().is_ok(), "replace must ack");
     assert!(outcome.repaint);
     assert!(outcome.layout_dirty);
@@ -389,7 +391,7 @@ fn pump_flags_document_replaced_only_for_replace_document_requests() {
             ack: ack_tx,
         })
         .expect("queue metadata-only request");
-    let metadata = server.pump(&mut state);
+    let metadata = server.pump(&mut SingleDocumentResolver::new(&mut state));
     assert!(ack_rx.try_recv().is_ok(), "metadata update must ack");
     assert!(metadata.repaint);
     assert!(metadata.layout_dirty);
@@ -422,6 +424,7 @@ fn pump_rejects_mcp_document_writes_during_active_collaboration() {
     let (ack_tx, ack_rx) = mpsc::sync_channel(1);
     req_tx
         .send(UiRequest::Apply {
+            document: DocumentId(1),
             tool_name: "insert_node".to_string(),
             expected_epoch: None,
             cmd: EditorCommand::InsertNode {
@@ -439,7 +442,7 @@ fn pump_rejects_mcp_document_writes_during_active_collaboration() {
         })
         .expect("queue MCP write");
 
-    let outcome = server.pump(&mut state);
+    let outcome = server.pump(&mut SingleDocumentResolver::new(&mut state));
     assert!(!ack_rx.try_recv().expect("apply ack").applied);
     assert_eq!(state.doc, before);
     assert!(outcome.repaint);
@@ -475,8 +478,8 @@ fn pump_rejects_whole_document_sync_during_active_collaboration() {
         })
         .expect("queue whole-document sync");
 
-    let outcome = server.pump(&mut state);
-    assert!(!ack_rx.try_recv().expect("replace ack"));
+    let outcome = server.pump(&mut SingleDocumentResolver::new(&mut state));
+    assert_eq!(ack_rx.try_recv().expect("replace ack"), Ok(false));
     assert_eq!(state.doc, before);
     assert!(!outcome.document_replaced);
     assert!(!outcome.layout_dirty);
@@ -507,8 +510,6 @@ fn fresh_mcp_server(req_rx: Receiver<UiRequest>, stop_tx: Sender<()>) -> McpLive
         client_identity: Arc::new(Mutex::new(None)),
         last_mcp_epoch: 0,
         pending_design_md: VecDeque::new(),
-        host_document_epoch: 0,
-        open_paths: OpenDocumentPaths::default(),
     }
 }
 
@@ -529,6 +530,7 @@ fn send_batch_design_insert(req_tx: &Sender<UiRequest>, node: PenNode) -> mpsc::
     let (ack_tx, ack_rx) = mpsc::sync_channel(1);
     req_tx
         .send(UiRequest::Apply {
+            document: DocumentId(1),
             tool_name: "batch_design".to_string(),
             expected_epoch: None,
             // `InsertAuthoredSubtree`, not `InsertSubtree` — the
@@ -560,7 +562,7 @@ fn batch_design_apply_populates_the_scan_gate_frames_and_reveals() {
     let mut state = EditorState::new();
 
     let ack_rx = send_batch_design_insert(&req_tx, root_frame_with_child("root-a", "box-a"));
-    let outcome = server.pump(&mut state);
+    let outcome = server.pump(&mut SingleDocumentResolver::new(&mut state));
     assert!(ack_rx.try_recv().is_ok_and(|ack| ack.applied));
     assert!(outcome.repaint);
 
@@ -599,6 +601,7 @@ fn batch_design_apply_is_a_noop_when_nothing_new_landed() {
     let (ack_tx, ack_rx) = mpsc::sync_channel(1);
     req_tx
         .send(UiRequest::Apply {
+            document: DocumentId(1),
             tool_name: "batch_design".to_string(),
             expected_epoch: None,
             cmd: EditorCommand::InsertSubtree {
@@ -609,7 +612,7 @@ fn batch_design_apply_is_a_noop_when_nothing_new_landed() {
             ack: ack_tx,
         })
         .expect("queue batch_design apply");
-    let _ = server.pump(&mut state);
+    let _ = server.pump(&mut SingleDocumentResolver::new(&mut state));
     let _ = ack_rx.try_recv();
 
     assert_eq!(
@@ -640,7 +643,7 @@ fn back_to_back_batch_design_calls_coalesce_into_one_epoch_while_reveals_drain()
     let mut state = EditorState::new();
 
     let first_ack = send_batch_design_insert(&req_tx, root_frame_with_child("root-a", "box-a"));
-    server.pump(&mut state);
+    server.pump(&mut SingleDocumentResolver::new(&mut state));
     assert!(first_ack.try_recv().is_ok_and(|ack| ack.applied));
     let epoch_after_first = server.last_mcp_epoch;
     assert_ne!(epoch_after_first, 0, "first call must have minted an epoch");
@@ -655,7 +658,7 @@ fn back_to_back_batch_design_calls_coalesce_into_one_epoch_while_reveals_drain()
 
     // Second call, different root, arriving inside that drain window.
     let second_ack = send_batch_design_insert(&req_tx, root_frame_with_child("root-b", "box-b"));
-    server.pump(&mut state);
+    server.pump(&mut SingleDocumentResolver::new(&mut state));
     assert!(second_ack.try_recv().is_ok_and(|ack| ack.applied));
 
     assert_eq!(

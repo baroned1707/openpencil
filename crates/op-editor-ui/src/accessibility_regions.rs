@@ -132,13 +132,11 @@ pub fn editor_tree_update(
 
     // 4. PropertyPanel — right rail, only with a selection.
     let property_panel = PropertyPanel::for_selection_at(state, now_ms);
-    let property_rect = Rect {
-        origin: Point2D::new(viewport_width - ui.property_panel_width, TOP_BAR_HEIGHT),
-        size: Point2D::new(
-            ui.property_panel_width,
-            (viewport_height - TOP_BAR_HEIGHT).max(0.0),
-        ),
-    };
+    let property_rect = crate::widgets::host_canvas_geometry::property_panel_rect(
+        state,
+        viewport_width,
+        viewport_height,
+    );
 
     // 5. Toolbar — floating vertical column over the canvas.
     let toolbar = Toolbar::for_editor(state);

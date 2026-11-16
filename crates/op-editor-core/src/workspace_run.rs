@@ -23,9 +23,13 @@ use crate::{ChatRole, EditorState};
 /// over boards that already exist — so without this arm a refine that
 /// died settled as Done and the user never saw the Retry banner.
 pub fn last_assistant_failed(state: &EditorState) -> bool {
-    let Some(message) = last_assistant_message(state) else {
-        return false;
-    };
+    last_assistant_message(state).is_some_and(assistant_message_failed)
+}
+
+/// Whether one assistant message reports a failed turn. The verdict behind
+/// [`last_assistant_failed`], for a host that holds a chat tab other than the
+/// active one (a run bound to a background document).
+pub fn assistant_message_failed(message: &ChatMessage) -> bool {
     if message.content.trim_start().starts_with("error:") {
         return true;
     }

@@ -1,4 +1,4 @@
-//! Projects tab host side: build the project -> files tree from the open
+//! Projects dock host side: build the project -> files tree from the open
 //! documents and the disk, and execute what the tab asked for.
 //!
 //! A project is the folder `project_root_for` resolves for a file. Its files
@@ -150,7 +150,7 @@ impl DesktopApp {
             .collect()
     }
 
-    /// Execute the Projects tab's request, then publish the tree. Returns
+    /// Execute the Projects dock's request, then publish the tree. Returns
     /// whether anything changed. Runs once per frame next to the tab strip.
     pub(crate) fn pump_projects(&mut self) -> bool {
         let mut changed = false;

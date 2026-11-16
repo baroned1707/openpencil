@@ -1,7 +1,7 @@
-//! Geometry of the Projects tab: where every row sits for a given scroll
+//! Geometry of the Projects dock's list: where every row sits for a given scroll
 //! offset, and what a point lands on.
 //!
-//! One pure function of the project rows, the rail body rect and the scroll
+//! One pure function of the project rows, the list body rect and the scroll
 //! offset. Paint, hit-test and scroll all read the same [`ProjectsPanelLayout`],
 //! so a painted row and its click target can never drift apart.
 
@@ -21,8 +21,8 @@ const LIST_PAD_BOTTOM: f32 = 12.0;
 /// Air above every project header but the first, so each project reads as
 /// one group instead of a flat list of rows.
 const PROJECT_GAP: f32 = 6.0;
-/// Rows are washed this far in from the rail's edges, so a selected row
-/// reads as a block resting on the rail rather than a stripe through it.
+/// Rows are washed this far in from the dock's edges, so a selected row
+/// reads as a block resting on the dock rather than a stripe through it.
 pub const ROW_INSET_X: f32 = 8.0;
 /// Right padding inside a row for its trailing content.
 pub const ROW_PAD_RIGHT: f32 = 8.0;
@@ -48,10 +48,10 @@ pub struct ProjectRow {
     pub plus: Option<Rect>,
 }
 
-/// Where the Projects tab's rows sit.
+/// Where the Projects dock's rows sit.
 #[derive(Debug, Clone, PartialEq)]
 pub struct ProjectsPanelLayout {
-    /// The viewport: the rail body below the tab row.
+    /// The viewport: the dock body below its header.
     pub panel: Rect,
     pub rows: Vec<ProjectRow>,
     /// Total height of all rows plus padding.
@@ -128,7 +128,7 @@ impl ProjectsPanelLayout {
         (self.content_height - self.panel.size.y).max(0.0)
     }
 
-    /// Whether `point` is on the rail body (the tab's whole claim).
+    /// Whether `point` is on the list body (the list's whole claim).
     pub fn contains_point(&self, point: Point2D) -> bool {
         self.panel.contains(point)
     }

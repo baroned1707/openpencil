@@ -30,6 +30,11 @@ pub struct ChatLaunchContext {
     /// `None` for an unsaved document or an unresolvable path: every provider
     /// then behaves exactly as before and inherits the process cwd.
     pub project_cwd: Option<PathBuf>,
+    /// The document this turn belongs to. An agent that reaches the canvas over
+    /// MCP is handed THIS document's endpoint (`/mcp/d/<id>`), so it keeps
+    /// editing it after the user switches tabs. `None` keeps the generic
+    /// endpoint (the document on screen).
+    pub document: Option<op_editor_core::DocumentId>,
 }
 
 impl ChatLaunchContext {
@@ -38,7 +43,14 @@ impl ChatLaunchContext {
         Self {
             project_cwd: op_host_services::project_root::project_root_for_document(path)
                 .map(|project| project.root),
+            document: None,
         }
+    }
+
+    /// The same context, bound to document `document`.
+    pub fn with_document(mut self, document: Option<op_editor_core::DocumentId>) -> Self {
+        self.document = document;
+        self
     }
 }
 
@@ -109,7 +121,7 @@ fn subprocess_provider(cli: CliName, chat: bool) -> Option<Box<dyn ChatProvider>
 pub(crate) fn provider_for_selected_model(
     host: &WidgetHostNative,
 ) -> Option<Box<dyn ChatProvider>> {
-    provider_for_selected_model_impl(host, false, None)
+    provider_for_selected_model_impl(host, false, None, None)
 }
 
 /// Provider for the chat panel's own turns. Claude Code and Copilot both keep
@@ -122,13 +134,14 @@ pub(super) fn chat_provider_for_selected_model(
     host: &WidgetHostNative,
     context: &ChatLaunchContext,
 ) -> Option<Box<dyn ChatProvider>> {
-    provider_for_selected_model_impl(host, true, context.project_cwd.as_deref())
+    provider_for_selected_model_impl(host, true, context.project_cwd.as_deref(), context.document)
 }
 
 fn provider_for_selected_model_impl(
     host: &WidgetHostNative,
     chat_session: bool,
     project_cwd: Option<&Path>,
+    document: Option<op_editor_core::DocumentId>,
 ) -> Option<Box<dyn ChatProvider>> {
     if let Some(entry) = host.editor_state().chat.selected_model_entry() {
         if entry.hosted_route_id().is_some() {
@@ -140,7 +153,7 @@ fn provider_for_selected_model_impl(
             return provider_for_builtin(host.editor_state(), entry);
         }
         if let Some(id) = entry.acp_agent_id() {
-            return provider_for_acp(host.editor_state(), id, project_cwd);
+            return provider_for_acp(host.editor_state(), id, project_cwd, document);
         }
     }
     provider_for_agent(
@@ -256,6 +269,7 @@ fn provider_for_acp(
     state: &EditorState,
     id: &str,
     project_cwd: Option<&Path>,
+    document: Option<op_editor_core::DocumentId>,
 ) -> Option<Box<dyn ChatProvider>> {
     let settings = &state.editor_ui.agent_settings;
     let config = settings.acp_agents.iter().find(|agent| {
@@ -268,7 +282,8 @@ fn provider_for_acp(
     let live_mcp_port = mcp.running.then_some(mcp.port);
     Some(Box::new(
         AcpProvider::new(acp_config_for_provider(config), live_mcp_port)
-            .with_project_cwd(project_cwd.map(Path::to_path_buf)),
+            .with_project_cwd(project_cwd.map(Path::to_path_buf))
+            .with_document(document),
     ))
 }
 

@@ -69,6 +69,8 @@ use op_mcp::{
 pub(crate) mod auto_finalize;
 pub mod create_document;
 pub mod create_document_error;
+pub mod document_address;
+pub mod document_listing;
 pub mod error;
 pub mod file_path;
 pub mod file_path_error;
@@ -196,6 +198,12 @@ fn process_message_with_auto_finalize(
     mut auto_finalize: Option<&mut auto_finalize::AutoFinalize>,
     profile: tool_profile::McpAccessProfile,
 ) -> Result<Option<String>, McpServeError> {
+    // One document (`d1`): refuse any other `documentId`, strip the addressing.
+    let line = match document_address::headless_line(line) {
+        document_address::HeadlessCall::Dispatch(line) => line,
+        document_address::HeadlessCall::Refuse(refusal) => return Ok(Some(refusal)),
+    };
+    let line = line.as_ref();
     // A headless document always has its backing file, so it can never be
     // given a first one.
     if let Some(response) = create_document::refuse_in_headless(line, path, profile) {
@@ -256,15 +264,6 @@ fn process_message_with_auto_finalize(
         }
     }
     Ok(response)
-}
-
-fn mcp_response_succeeded(response: &str) -> bool {
-    serde_json::from_str::<serde_json::Value>(response)
-        .ok()
-        .and_then(|value| value.get("result").cloned())
-        .and_then(|result| result.get("isError").cloned())
-        .and_then(|is_error| is_error.as_bool())
-        != Some(true)
 }
 
 pub fn process_message_with_applier<F>(
@@ -444,6 +443,9 @@ pub struct HttpRequest {
     /// parameter. `EventSource` cannot set headers, which is why the tenant
     /// travels in the query at all — see `share_routes::TENANT_QUERY`.
     pub query: Option<String>,
+    /// `Mcp-Param-DocumentId` header value, verbatim, when present — the
+    /// spec's mirror of the `documentId` argument (`x-mcp-header`).
+    pub mcp_param_document_id: Option<String>,
 }
 
 /// Parse a capped HTTP header and then read exactly its declared body length.
@@ -623,6 +625,7 @@ pub fn read_http_request<S: std::io::Read>(stream: &mut S) -> Result<HttpRequest
     }
     let authorization = header_value("authorization");
     let cookie = header_value("cookie");
+    let mcp_param_document_id = header_value(document_address::DOCUMENT_ID_HEADER);
     if content_length > MAX_BODY {
         return Err(McpServeError::Protocol(format!(
             "request body exceeds {} MiB",
@@ -666,6 +669,7 @@ pub fn read_http_request<S: std::io::Read>(stream: &mut S) -> Result<HttpRequest
         authorization,
         cookie,
         query,
+        mcp_param_document_id,
     })
 }
 
@@ -767,6 +771,8 @@ pub(crate) mod design_quality_tool;
 use design_quality_tool::get_design_quality_snapshot;
 pub(crate) mod enrich_images_tool;
 use enrich_images_tool::enrich_images_snapshot;
+pub(crate) mod list_documents_tool;
+use list_documents_tool::list_documents_snapshot;
 pub(crate) mod design_agent_run_error;
 pub(crate) mod design_agent_run_tool;
 use design_agent_run_tool::run_design_agent_snapshot;

@@ -717,6 +717,13 @@ impl WidgetHostNative {
         if let Some(consumed) = self.cursor_move_late_drag_tiers(x, y) {
             return consumed;
         }
+        // Tier 9b — the Projects dock's hover. After the late drags: a
+        // marquee / pan / resize whose pointer wanders onto the dock must
+        // keep updating, and the chat (painted above the dock) keeps any
+        // point it covers.
+        if let Some(consumed) = self.cursor_move_projects_dock_tier(x, y, chat_owns_point) {
+            return consumed;
+        }
         // Tier 10 — chat ownership, then toolbar / property / code /
         // canvas-hierarchy hover. Produces the event's repaint signal.
         self.cursor_move_base_tiers(&mut ctx, chat_owns_point)

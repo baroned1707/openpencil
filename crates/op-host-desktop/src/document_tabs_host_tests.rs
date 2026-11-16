@@ -235,16 +235,15 @@ fn a_stale_save_ack_for_a_closed_tab_changes_nothing() {
 }
 
 #[test]
-fn no_swap_while_run_bound() {
+fn an_import_in_flight_still_blocks_a_switch() {
     let (mut app, _paths, dir) = app_with_tabs("gate", &["a.op", "b.op"]);
     assert_eq!(app.document_switch_blocked(), None);
 
-    app.host.editor_state_mut().chat.agents_running = (1, 1);
-    assert_eq!(
-        app.document_switch_blocked(),
-        Some(BlockReason::DesignRun),
-        "a running design loop forbids switching"
-    );
+    // A clipboard paste decode still delivers into whichever document is
+    // showing when it finishes, so it forbids switching.
+    let (_tx, rx) = std::sync::mpsc::channel();
+    app.pending_figma_paste = Some((0, rx));
+    assert_eq!(app.document_switch_blocked(), Some(BlockReason::Import));
     let active = app.documents.active_index();
     assert!(!app.activate_document_slot(0), "switch is refused");
     assert!(!app.open_untitled_tab(), "a new tab is refused");
@@ -259,8 +258,7 @@ fn no_swap_while_run_bound() {
         "the refusal is visible"
     );
 
-    app.host.editor_state_mut().chat.agents_running = (0, 0);
-    app.save_session = crate::save_session::SaveSession::new();
+    app.pending_figma_paste = None;
     assert_eq!(app.document_switch_blocked(), None);
     assert!(app.activate_document_slot(0));
     let _ = std::fs::remove_dir_all(dir);

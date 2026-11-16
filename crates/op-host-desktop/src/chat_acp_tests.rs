@@ -53,7 +53,7 @@ fn send_without_live_mcp_refuses_with_ts_error() {
 
 #[test]
 fn session_options_advertise_openpencil_mcp_and_acp_prompt() {
-    let options = session_options_for_port(4123);
+    let options = session_options_for_port(4123, None);
     assert_eq!(options.mcp_servers.len(), 1);
     assert_eq!(options.mcp_servers[0].name, "openpencil");
     assert_eq!(options.mcp_servers[0].url, "http://127.0.0.1:4123/mcp");
@@ -65,19 +65,19 @@ fn session_options_advertise_openpencil_mcp_and_acp_prompt() {
 
 #[test]
 fn remote_session_options_never_expose_the_desktop_loopback_mcp() {
-    let options = session_options_for_connection(ConnectionType::Remote, Some(4123))
+    let options = session_options_for_connection(ConnectionType::Remote, Some(4123), None)
         .expect("remote sessions are allowed without local MCP");
     assert!(options.mcp_servers.is_empty());
     assert!(options.system_prompt_meta.is_none());
-    assert!(session_options_for_connection(ConnectionType::Remote, None).is_some());
-    assert!(session_options_for_connection(ConnectionType::Local, None).is_none());
+    assert!(session_options_for_connection(ConnectionType::Remote, None, None).is_some());
+    assert!(session_options_for_connection(ConnectionType::Local, None, None).is_none());
 }
 
 #[test]
 fn project_cwd_reaches_local_acp_sessions_only() {
     let project = std::path::Path::new("/projects/demo");
     let local = with_project_cwd(
-        session_options_for_port(4123),
+        session_options_for_port(4123, None),
         ConnectionType::Local,
         Some(project),
     );
@@ -91,7 +91,11 @@ fn project_cwd_reaches_local_acp_sessions_only() {
     );
     assert_eq!(remote.cwd, None, "a remote agent never sees a local path");
 
-    let untitled = with_project_cwd(session_options_for_port(4123), ConnectionType::Local, None);
+    let untitled = with_project_cwd(
+        session_options_for_port(4123, None),
+        ConnectionType::Local,
+        None,
+    );
     assert_eq!(untitled.cwd, None, "no project root keeps today's cwd");
 }
 
@@ -380,4 +384,17 @@ done
     );
     std::thread::sleep(Duration::from_millis(100));
     std::fs::remove_dir_all(dir).unwrap();
+}
+
+#[test]
+fn a_document_bound_run_gets_that_documents_mcp_endpoint() {
+    let bound = session_options_for_port(4123, Some(DocumentId(7)));
+    assert_eq!(bound.mcp_servers[0].url, "http://127.0.0.1:4123/mcp/d/7");
+    let unbound = session_options_for_port(4123, None);
+    assert_eq!(unbound.mcp_servers[0].url, "http://127.0.0.1:4123/mcp");
+    // A remote agent never receives a desktop loopback endpoint, bound or not.
+    let remote =
+        session_options_for_connection(ConnectionType::Remote, Some(4123), Some(DocumentId(7)))
+            .expect("remote still starts a session");
+    assert!(remote.mcp_servers.is_empty());
 }

@@ -12,8 +12,8 @@ mod scheduling;
 mod window_events;
 
 use crate::{
-    a11y, chat_session, cursor_icon, frame, menu, window_state, DesktopApp, DesktopEvent,
-    INITIAL_VIEWPORT_H, INITIAL_VIEWPORT_W,
+    a11y, cursor_icon, frame, menu, window_state, DesktopApp, DesktopEvent, INITIAL_VIEWPORT_H,
+    INITIAL_VIEWPORT_W,
 };
 use std::time::{Duration, Instant};
 use winit::application::ApplicationHandler;
@@ -41,11 +41,7 @@ impl ApplicationHandler<DesktopEvent> for DesktopApp {
             // `chat_session::finalize_design_session_if_needed`'s doc
             // comment. MCP-driven shutdown can fire while a chat-launched
             // design loop is still in flight in the same process.
-            chat_session::finalize_design_session_if_needed(
-                &mut self.host,
-                &self.current_chat,
-                "teardown-backstop",
-            );
+            self.finalize_runs_before_exit();
             event_loop.exit();
             return;
         }
@@ -387,11 +383,7 @@ impl ApplicationHandler<DesktopEvent> for DesktopApp {
                     // Finalize-lifecycle invariant (0718-1-k3-1 postmortem)
                     // — see `chat_session::finalize_design_session_if_needed`'s
                     // doc comment.
-                    chat_session::finalize_design_session_if_needed(
-                        &mut self.host,
-                        &self.current_chat,
-                        "teardown-backstop",
-                    );
+                    self.finalize_runs_before_exit();
                     event_loop.exit();
                 }
             }

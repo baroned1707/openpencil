@@ -558,6 +558,8 @@ pub fn lookup(key: &str) -> Option<&'static str> {
         "projects.newDesign" => "새 디자인",
         "projects.needsReview" => "{{count}}개 검토 필요",
         "projects.running" => "{{count}}개 실행 중",
+        "dialog.agentRunningTitle" => "에이전트가 작업 중입니다",
+        "dialog.agentRunningBody" => "“{{name}}”에서 에이전트가 실행 중입니다.\n\n닫으면 중지됩니다.\n\n예 = 중지하고 닫기 · 아니요 / 취소 = 계속 작업.",
         _ => return None,
     })
 }

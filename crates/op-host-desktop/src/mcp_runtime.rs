@@ -1,6 +1,8 @@
 //! Desktop-app glue for the live MCP server and terminal integrations.
 
 use super::{mcp_integrations, DesktopApp};
+use crate::mcp_document_resolver::DesktopDocumentResolver;
+use op_host_services::mcp_live::DocumentListing;
 
 fn mark_external_document_replacement_dirty(state: &mut op_editor_core::EditorState) {
     // `replace_document` intentionally resets to a clean revision for Open.
@@ -101,7 +103,6 @@ impl DesktopApp {
             Ok(server) => {
                 let bound_port = server.port();
                 self.mcp_server = Some(server);
-                self.sync_mcp_host();
                 self.note_bound_mcp_port(forced, setting_running, bound_port);
                 true
             }
@@ -118,7 +119,6 @@ impl DesktopApp {
                                 "openpencil-desktop mcp: fell back to 127.0.0.1:{bound_port}/mcp"
                             );
                             self.mcp_server = Some(server);
-                            self.sync_mcp_host();
                             self.note_bound_mcp_port(forced, setting_running, bound_port);
                             return true;
                         }
@@ -176,20 +176,31 @@ impl DesktopApp {
         }
     }
 
-    /// Tell the live MCP server what only this host knows: the document epoch
-    /// (so a tool call whose document was swapped mid-call is refused) and the
-    /// file open in the editor (so a `filePath` argument naming it is refused
-    /// instead of edited on disk behind the editor). Cheap — no filesystem
-    /// access; the server canonicalizes when it compares.
-    fn sync_mcp_host(&mut self) {
-        // The on-screen path is `current_path`; parked tabs' paths come from the
-        // registry, so a `filePath` edit of ANY open document is refused.
+    /// Every open document as the live MCP server reports it: the tab rows
+    /// plus each document's file. Cheap — no filesystem access. The on-screen
+    /// document's path is refreshed first, so a file bound a moment ago (for
+    /// instance by `create_document`) is already listed and a `filePath`
+    /// argument naming it is refused instead of edited on disk behind the
+    /// editor.
+    pub(crate) fn mcp_document_listings(&mut self) -> Vec<DocumentListing> {
         self.sync_active_slot();
-        let document_epoch = self.host.document_epoch();
-        let open_paths = self.documents.open_paths();
-        if let Some(server) = self.mcp_server.as_mut() {
-            server.sync_host(document_epoch, &open_paths, self.current_path.as_deref());
-        }
+        let locale = self.host.editor_state().editor_ui.locale;
+        let untitled = op_i18n::translate(locale, "common.untitled");
+        let paths = self.documents.slot_paths();
+        self.documents
+            .tab_views(self.document_is_dirty(), untitled)
+            .into_iter()
+            .zip(paths)
+            .map(|(tab, path)| DocumentListing {
+                id: tab.id,
+                label: tab.label,
+                path,
+                project: tab.project,
+                dirty: tab.dirty,
+                active: tab.active,
+                status: tab.status,
+            })
+            .collect()
     }
 
     /// Make the file `create_document` just wrote this document's own, the way
@@ -209,19 +220,60 @@ impl DesktopApp {
         self.rebind_git_session_for_current_path();
         self.publish_document_tabs();
         self.host.mark_editor_state_dirty();
-        self.sync_mcp_host();
+    }
+
+    /// `bind_created_document` for a document that is not on screen: it is
+    /// bound to its new file in its registry slot (the on-screen document's
+    /// path, Git binding and window title are not its business).
+    fn bind_created_parked_document(
+        &mut self,
+        id: op_editor_core::DocumentId,
+        path: std::path::PathBuf,
+    ) {
+        if let Some(index) = self.documents.index_of(id) {
+            if let Some(slot) = self.documents.slot_mut(index) {
+                slot.local.path = Some(path.clone());
+            }
+        }
+        crate::settings_io::touch_recent(&mut self.host, &path);
+        self.publish_document_tabs();
+        self.host.mark_editor_state_dirty();
+    }
+
+    /// The external-edit mark of a whole-document replacement, applied to the
+    /// parked document that was replaced rather than to the one on screen.
+    fn mark_parked_document_replaced(&mut self, id: op_editor_core::DocumentId) {
+        let Some(index) = self.documents.index_of(id) else {
+            return;
+        };
+        let Some(mut parked) = self.documents.take_parked(index) else {
+            return;
+        };
+        self.host.with_parked_document(&mut parked, |host| {
+            mark_external_document_replacement_dirty(host.editor_state_mut());
+        });
+        self.documents.restore_parked(index, parked);
     }
 
     pub(crate) fn poll_mcp_server(&mut self) -> bool {
-        self.sync_mcp_host();
-        let (outcome, pending_design_md) = {
+        if self.mcp_server.is_none() {
+            return false;
+        }
+        let listings = self.mcp_document_listings();
+        let (outcome, pending_design_md, target) = {
             let Some(server) = self.mcp_server.as_mut() else {
                 return false;
             };
-            let outcome = server.pump(self.host.editor_state_mut());
+            let mut resolver =
+                DesktopDocumentResolver::new(&mut self.host, &mut self.documents, listings);
+            let outcome = server.pump(&mut resolver);
+            let target = resolver.last_target();
             let pending_design_md = server.take_pending_design_md_request();
-            (outcome, pending_design_md)
+            (outcome, pending_design_md, target)
         };
+        // A pump that addressed a document other than the one on screen did its
+        // work in the parked slot; the follow-ups below must land there too.
+        let parked_target = target.filter(|id| *id != self.documents.active_id());
         // Provider execution is deliberately outside the UI/server borrow and
         // on its own worker. This request contains bounded extension evidence,
         // not a snapshot of (or mutation to) the live document.
@@ -232,10 +284,16 @@ impl DesktopApp {
             self.host.mark_editor_state_dirty();
         }
         if let Some(path) = outcome.created_document.clone() {
-            self.bind_created_document(path);
+            match parked_target {
+                Some(id) => self.bind_created_parked_document(id, path),
+                None => self.bind_created_document(path),
+            }
         }
         if outcome.document_replaced {
-            mark_external_document_replacement_dirty(self.host.editor_state_mut());
+            match parked_target {
+                Some(id) => self.mark_parked_document_replaced(id),
+                None => mark_external_document_replacement_dirty(self.host.editor_state_mut()),
+            }
             // `ReplaceDocument` (whole-document MCP sync, e.g. TS
             // `setSyncDocument` parity) installs a fresh `EditorState` whose
             // revision restarts at 0 AND whose node ids can collide with ids
@@ -463,3 +521,7 @@ mod tests {
         let _ = std::fs::remove_dir_all(home);
     }
 }
+
+#[cfg(test)]
+#[path = "mcp_parked_document_tests.rs"]
+mod parked_document_tests;

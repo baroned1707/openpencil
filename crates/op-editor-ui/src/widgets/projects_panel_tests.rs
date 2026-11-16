@@ -1,4 +1,4 @@
-//! Paint tests for the Projects tab, over the capture backend: which fills
+//! Paint tests for the Projects dock's list, over the capture backend: which fills
 //! and strings reach the canvas for a given set of project rows.
 
 use super::*;

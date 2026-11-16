@@ -153,18 +153,18 @@ fn local_acp_save_connect_initialize_picker_prompt_disconnect_e2e() {
     // so receiving this reply proves the full wire sequence.
     assert!(crate::chat_session::launch_if_pending(
         &mut app.host,
-        &mut app.current_chat,
-        &mut app.current_design,
+        &mut app.runs.current_chat,
+        &mut app.runs.current_design,
     ));
     assert!(
-        app.current_chat.is_some(),
+        app.runs.current_chat.is_some(),
         "ACP selection should launch a real chat session"
     );
     let prompt_deadline = Instant::now() + Duration::from_secs(15);
-    while app.current_chat.is_some() {
+    while app.runs.current_chat.is_some() {
         crate::chat_session::pump(
             &mut app.host,
-            &mut app.current_chat,
+            &mut app.runs.current_chat,
             None,
             None,
             (1_200.0, 800.0),
@@ -174,7 +174,7 @@ fn local_acp_save_connect_initialize_picker_prompt_disconnect_e2e() {
             "local ACP prompt timed out; transcript: {:?}",
             app.host.editor_state().chat.messages
         );
-        if app.current_chat.is_some() {
+        if app.runs.current_chat.is_some() {
             thread::sleep(Duration::from_millis(10));
         }
     }

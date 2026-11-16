@@ -542,6 +542,8 @@ pub fn lookup(key: &str) -> Option<&'static str> {
         "projects.newDesign" => "新建设计",
         "projects.needsReview" => "{{count}} 个待审阅",
         "projects.running" => "{{count}} 个运行中",
+        "dialog.agentRunningTitle" => "智能体仍在工作",
+        "dialog.agentRunningBody" => "“{{name}}”中有一个智能体仍在运行。\n\n关闭会停止它。\n\n是 = 停止并关闭 · 否或取消 = 继续工作。",
         _ => return None,
     })
 }

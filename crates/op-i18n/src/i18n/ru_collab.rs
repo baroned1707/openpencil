@@ -572,6 +572,8 @@ pub fn lookup(key: &str) -> Option<&'static str> {
         "projects.newDesign" => "Новый дизайн",
         "projects.needsReview" => "{{count}} на проверке",
         "projects.running" => "{{count}} выполняется",
+        "dialog.agentRunningTitle" => "Агент ещё работает",
+        "dialog.agentRunningBody" => "В «{{name}}» ещё работает агент.\n\nПри закрытии он будет остановлен.\n\nДа = остановить и закрыть · Нет или Отмена = продолжить работу.",
         _ => return None,
     })
 }

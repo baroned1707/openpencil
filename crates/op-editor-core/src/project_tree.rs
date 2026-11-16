@@ -1,5 +1,5 @@
 //! Project -> files tree — the plain-data contract between the host's
-//! project scanner / document registry and the left rail's Projects tab.
+//! project scanner / document registry and the Projects dock.
 //!
 //! One project can hold several design files, and the owner reviews work
 //! across projects. The host mirrors what it knows into [`ProjectView`]
@@ -10,7 +10,7 @@
 
 use crate::document_tabs::{DocumentId, DocumentTabStatus};
 
-/// One design file inside a project, as the Projects tab draws it.
+/// One design file inside a project, as the Projects dock draws it.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ProjectFileView {
     /// Where the file lives; what [`ProjectRequest::OpenFile`] carries.
@@ -60,7 +60,7 @@ impl ProjectView {
     }
 }
 
-/// A user request raised by the Projects tab, executed by the host.
+/// A user request raised by the Projects dock, executed by the host.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ProjectRequest {
     /// Open the file at this path (it is not open yet).
@@ -74,7 +74,7 @@ pub enum ProjectRequest {
     NewDesignIn(String),
 }
 
-/// What the cursor is over in the Projects tab. Indices point into
+/// What the cursor is over in the Projects dock. Indices point into
 /// `ProjectsPanelState.projects`; a stale one simply matches no row.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ProjectRowTarget {

@@ -42,6 +42,7 @@ pub(super) fn rebuild_registry(
         "create_document",
         create_document::create_document_snapshot()
     );
+    register_tool!("list_documents", list_documents_snapshot(doc));
     register_tool!("get_document_info", document_info_snapshot(doc));
     register_tool!("get_selection", selection_snapshot(doc));
     register_tool!("get_node", get_node_snapshot(doc));

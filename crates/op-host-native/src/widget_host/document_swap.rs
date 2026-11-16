@@ -150,7 +150,31 @@ impl WidgetHostNative {
         self.drop_preview_runtime();
         self.cancel_document_gestures();
 
-        self.editor_state.exchange_document_scope(&mut parked.scope);
+        self.exchange_parked_state(parked, true);
+
+        // The transcript cache is keyed by chat session, not by document, so it
+        // does not travel; rotate it so the first frame cannot pair the
+        // previous document's cached geometry with this one's messages.
+        self.force_rotate_chat_owner();
+        // The scene cache short-circuits when its inputs match, so this is
+        // cheap for a document that was parked with a current scene, and it
+        // also covers a font-registry change while the document was parked.
+        self.editor_state_dirty = true;
+        self.drop_pan_cache();
+        true
+    }
+
+    /// Exchange everything that makes a document what it is: its editor data,
+    /// thumbnails, epoch and derived caches. No side effect is visible to the
+    /// user, which is what lets [`Self::with_parked_document`] reuse it.
+    /// `user_switch` also carries the app-level chat preferences onto the
+    /// arriving document (see `EditorState::switch_document_scope`).
+    fn exchange_parked_state(&mut self, parked: &mut ParkedDocument, user_switch: bool) {
+        if user_switch {
+            self.editor_state.switch_document_scope(&mut parked.scope);
+        } else {
+            self.editor_state.exchange_document_scope(&mut parked.scope);
+        }
 
         let live_thumbs = capture_snapshot();
         restore_snapshot(std::mem::replace(&mut parked.thumbs, live_thumbs));
@@ -172,17 +196,41 @@ impl WidgetHostNative {
             &mut self.collab_id_allocator,
             &mut caches.collab_id_allocator,
         );
+    }
 
-        // The transcript cache is keyed by chat session, not by document, so it
-        // does not travel; rotate it so the first frame cannot pair the
-        // previous document's cached geometry with this one's messages.
-        self.force_rotate_chat_owner();
-        // The scene cache short-circuits when its inputs match, so this is
-        // cheap for a document that was parked with a current scene, and it
-        // also covers a font-registry change while the document was parked.
-        self.editor_state_dirty = true;
-        self.drop_pan_cache();
-        true
+    /// Run `f` with the parked document standing in for the one on screen, then
+    /// put everything back. This is how a run bound to a document that is not
+    /// showing keeps streaming into it: its pump calls `editor_state_mut()` as
+    /// usual and reaches the parked document.
+    ///
+    /// Unlike [`Self::swap_document`] this is invisible to the user: pending
+    /// input is not committed, gestures and the preview runtime are left
+    /// alone, and no cache is dropped or rotated, so the on-screen document is
+    /// restored exactly as it was. Both exchanges are pointer swaps (the
+    /// thumbnail registry clones a map of `Arc`s).
+    ///
+    /// Returns `None` without running `f` (and without a toast) when an active
+    /// collaboration session forbids replacing the document. `f` must not call `swap_document` or
+    /// this method.
+    pub fn with_parked_document<R>(
+        &mut self,
+        parked: &mut ParkedDocument,
+        f: impl FnOnce(&mut Self) -> R,
+    ) -> Option<R> {
+        // Asked of the gate directly: a refusal here is routine (it repeats every
+        // frame a parked run is waiting), so it must not raise the toast
+        // `swap_document` raises for a click.
+        let allowed = self.editor_state.editor_ui.collab.gate(
+            op_editor_core::CollabGateAction::ReplaceDocument,
+            op_editor_core::CollabEditSource::User,
+        );
+        if allowed.is_err() {
+            return None;
+        }
+        self.exchange_parked_state(parked, false);
+        let result = f(self);
+        self.exchange_parked_state(parked, false);
+        Some(result)
     }
 
     /// Cancel every in-flight pointer gesture and per-node drag. They hold
@@ -212,3 +260,7 @@ impl WidgetHostNative {
 #[cfg(test)]
 #[path = "document_swap_tests.rs"]
 mod tests;
+
+#[cfg(test)]
+#[path = "document_swap_lens_tests.rs"]
+mod lens_tests;

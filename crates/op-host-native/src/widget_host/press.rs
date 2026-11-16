@@ -315,12 +315,15 @@ impl WidgetHostNative {
         // variable-row inline editor.
         self.commit_variable_row_focus_if_any();
         if self.editor_state.ui.property_focus.is_some() {
-            let property_left = if self.editor_state.property_panel_visible() {
-                self.property_rect(viewport_width, viewport_height).origin.x
+            // Outside the panel's columns commits: left of it, or on the
+            // Projects dock to its right.
+            let outside_panel = if self.editor_state.property_panel_visible() {
+                let rect = self.property_rect(viewport_width, viewport_height);
+                x < rect.origin.x || x > rect.origin.x + rect.size.x
             } else {
-                viewport_width
+                true
             };
-            if x < property_left {
+            if outside_panel {
                 self.commit_property_focus_if_any();
             }
         }
@@ -396,6 +399,13 @@ impl WidgetHostNative {
         }
         // Tier 7 — model picker, theme presets, VariablesPanel.
         if let Some(consumed) = self.press_panel_dispatch_tiers(&ctx, allow_touch_panel_defer) {
+            return consumed;
+        }
+        // Tier 7b — the Projects dock. Painted after the property panel but
+        // under the popovers, VariablesPanel, Git panel and chat, so it
+        // yields to all of them above and claims every click on its column
+        // before the property row and the canvas below.
+        if let Some(consumed) = self.press_projects_dock_tier(&ctx) {
             return consumed;
         }
         // Tier 8 — PropertyPanel input row.

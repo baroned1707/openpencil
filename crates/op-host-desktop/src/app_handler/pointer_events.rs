@@ -7,7 +7,7 @@
 //! skipping its post-event epilogue — return `false` here; the
 //! dispatcher turns that back into the same early return.
 
-use crate::{chat_attachment, chat_session, figma_import_session, frame, DesktopApp};
+use crate::{chat_attachment, figma_import_session, frame, DesktopApp};
 use winit::dpi::PhysicalPosition;
 use winit::event::MouseScrollDelta;
 use winit::event_loop::ActiveEventLoop;
@@ -152,11 +152,7 @@ impl DesktopApp {
                         // rationale as that handler), the prompt can
                         // abort, and settings flush + save before
                         // exit — a bare `exit()` would drop work.
-                        chat_session::finalize_design_session_if_needed(
-                            &mut self.host,
-                            &self.current_chat,
-                            "teardown-backstop",
-                        );
+                        self.finalize_runs_before_exit();
                         if self.confirm_close() {
                             self.host.flush_settings_input();
                             op_host_services::settings_io::save(self.host.editor_state());

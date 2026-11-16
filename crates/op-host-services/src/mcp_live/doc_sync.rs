@@ -17,7 +17,7 @@ pub(super) fn serve_document_sync<S: std::io::Read + std::io::Write>(
     stream: &mut S,
     req_tx: &Sender<UiRequest>,
     wake_ui: &UiWake,
-    stateful_lock: &Mutex<()>,
+    documents: &LiveDocuments,
     body: &str,
 ) -> Result<(), McpLiveError> {
     let request = match crate::mcp_serve::parse_document_sync_request(body) {
@@ -35,9 +35,11 @@ pub(super) fn serve_document_sync<S: std::io::Read + std::io::Write>(
     };
     let editor_meta = request.resolved_editor_meta(request.embedded_editor_meta.clone());
     if request.metadata_only {
-        let _guard = stateful_lock
-            .lock()
-            .unwrap_or_else(|poison| poison.into_inner());
+        // Sync always targets the document on screen: serialize with that
+        // document's own calls.
+        let active = active_document(req_tx, wake_ui)?;
+        let gate = documents.gate(active);
+        let _guard = lock_gate(&gate);
         return match request_update_editor_meta(req_tx, wake_ui, editor_meta) {
             Ok(()) => write_http(
                 stream,
@@ -68,13 +70,13 @@ pub(super) fn serve_document_sync<S: std::io::Read + std::io::Write>(
     for w in &loaded.warnings {
         eprintln!("openpencil-desktop mcp: document-sync schema warning: {w:?}");
     }
-    // Serialize the swap against concurrent live writes (same lock the JSON-RPC
-    // apply path takes). The lock is now held only for the fast in-memory
-    // replace, not the parse — so a huge document can't time out mid-load while
-    // still eventually mutating the doc.
-    let _guard = stateful_lock
-        .lock()
-        .unwrap_or_else(|poison| poison.into_inner());
+    // Serialize the swap against concurrent live writes to the same document
+    // (same gate the JSON-RPC apply path takes). The gate is now held only for
+    // the fast in-memory replace, not the parse — so a huge document can't
+    // time out mid-load while still eventually mutating the doc.
+    let active = active_document(req_tx, wake_ui)?;
+    let gate = documents.gate(active);
+    let _guard = lock_gate(&gate);
     match request_replace(req_tx, wake_ui, loaded.value, editor_meta) {
         Ok(true) => {
             let version = LIVE_SYNC_VERSION.fetch_add(1, Ordering::Relaxed) + 1;

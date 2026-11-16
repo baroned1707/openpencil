@@ -302,6 +302,7 @@ fn the_collab_routes_are_gated_as_sensitive_browser_posts() {
             authorization: None,
             cookie: None,
             query: None,
+            mcp_param_document_id: None,
         };
         assert!(
             super::super::is_sensitive_browser_post(&request),

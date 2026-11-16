@@ -14,6 +14,7 @@ fn request_with(authorization: Option<&str>, cookie: Option<&str>) -> HttpReques
         authorization: authorization.map(str::to_string),
         cookie: cookie.map(str::to_string),
         query: None,
+        mcp_param_document_id: None,
     }
 }
 

@@ -16,6 +16,7 @@
 //!
 //! Everything here is plain data and wasm32-clean.
 
+use crate::chat_sessions::ChatSessions;
 use crate::codegen::CodegenState;
 use crate::components::ComponentLibrary;
 use crate::editor_ui_state::EditorUiDocumentScope;
@@ -50,6 +51,10 @@ pub struct DocumentScope {
     pub(crate) history_push_count: u64,
     pub(crate) ui: UiDraftState,
     pub(crate) editor_ui: EditorUiDocumentScope,
+    /// The document's chat tabs, transcripts and drafts. In memory only: they
+    /// are never written to disk or into the `.op` file. The app-level part
+    /// of each tab follows the user instead (see `ChatAppPrefs`).
+    pub(crate) chat: ChatSessions,
     pub(crate) codegen: CodegenState,
     pub(crate) components: ComponentLibrary,
     pub(crate) app_state_owner: std::collections::BTreeMap<String, usize>,
@@ -76,8 +81,7 @@ impl DocumentScope {
             clipboard: _,
             ui,
             editor_ui,
-            // App-level until the chat becomes per-document (Phase 2).
-            chat: _,
+            chat,
             codegen,
             components,
             ui_kits: _,
@@ -99,6 +103,7 @@ impl DocumentScope {
             history_push_count,
             ui,
             editor_ui: EditorUiDocumentScope::from_state(editor_ui),
+            chat,
             codegen,
             components,
             app_state_owner,
@@ -121,11 +126,14 @@ impl DocumentScope {
         self.revision
     }
 
-    /// Whether the document is exactly as freshly created: no edits ever and
-    /// nothing to undo. Used to reuse a blank untitled tab instead of
+    /// Whether the document is exactly as freshly created: no edits ever,
+    /// nothing to undo and an untouched chat. Used to reuse a blank untitled tab instead of
     /// stacking a new one beside it.
     pub fn is_pristine(&self) -> bool {
-        self.revision == 0 && self.saved_revision == 0 && !self.history.can_undo()
+        self.revision == 0
+            && self.saved_revision == 0
+            && !self.history.can_undo()
+            && self.chat.is_untouched()
     }
 
     /// The name painted for this document, when it has one.
@@ -151,6 +159,16 @@ impl DocumentScope {
         true
     }
 
+    /// The chat tabs of this document.
+    pub fn chat(&self) -> &ChatSessions {
+        &self.chat
+    }
+
+    /// Mutable chat tabs, for tearing down a run bound to a parked document.
+    pub fn chat_mut(&mut self) -> &mut ChatSessions {
+        &mut self.chat
+    }
+
     /// The canonical document, for read-only inspection of a parked tab.
     pub fn doc(&self) -> &jian_ops_schema::PenDocument {
         &self.doc
@@ -163,7 +181,10 @@ impl EditorState {
     /// that was parked; every app-level field is left exactly as it was.
     ///
     /// The caller owns the host-side bookkeeping a swap needs (caches, cancel
-    /// in-flight gestures); this only moves editor data.
+    /// in-flight gestures); this only moves editor data. The chat moves with
+    /// the document exactly as it is, app-level preferences included: this is
+    /// the pure exchange a lens needs. A user-visible switch uses
+    /// [`Self::switch_document_scope`].
     pub fn exchange_document_scope(&mut self, scope: &mut DocumentScope) {
         let EditorState {
             doc,
@@ -179,7 +200,7 @@ impl EditorState {
             clipboard: _,
             ui,
             editor_ui,
-            chat: _,
+            chat,
             codegen,
             components,
             ui_kits: _,
@@ -201,6 +222,7 @@ impl EditorState {
             history_push_count: scope_history_push_count,
             ui: scope_ui,
             editor_ui: scope_editor_ui,
+            chat: scope_chat,
             codegen: scope_codegen,
             components: scope_components,
             app_state_owner: scope_app_state_owner,
@@ -218,6 +240,7 @@ impl EditorState {
         std::mem::swap(history_push_count, scope_history_push_count);
         std::mem::swap(ui, scope_ui);
         scope_editor_ui.exchange(editor_ui);
+        std::mem::swap(chat, scope_chat);
         std::mem::swap(codegen, scope_codegen);
         std::mem::swap(components, scope_components);
         std::mem::swap(app_state_owner, scope_app_state_owner);
@@ -231,6 +254,22 @@ impl EditorState {
     }
 }
 
+impl EditorState {
+    /// [`Self::exchange_document_scope`] for a switch the user sees: the
+    /// app-level chat preferences (connected models, selection, panel
+    /// placement) follow the user onto the arriving document instead of
+    /// staying behind in the one that leaves.
+    pub fn switch_document_scope(&mut self, scope: &mut DocumentScope) {
+        let prefs = self.chat.app_prefs();
+        self.exchange_document_scope(scope);
+        self.chat.apply_app_prefs(&prefs);
+    }
+}
+
 #[cfg(test)]
 #[path = "document_scope_tests.rs"]
 mod tests;
+
+#[cfg(test)]
+#[path = "document_scope_chat_tests.rs"]
+mod chat_tests;

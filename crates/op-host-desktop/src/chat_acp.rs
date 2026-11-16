@@ -43,6 +43,7 @@
 //!   `EditorState` (`agent_settings.mcp_server`), which tracks the
 //!   user-enabled server's bound port.
 
+use op_editor_core::DocumentId;
 use std::path::{Path, PathBuf};
 use std::sync::{atomic::AtomicBool, Arc};
 
@@ -122,11 +123,17 @@ When emitting node JSON inside tool arguments, produce strictly valid JSON:
 /// Build the `session/new` options for one local ACP turn against the live
 /// MCP server: the `openpencil` HTTP endpoint (TS agent.ts:513-521)
 /// plus the dedicated ACP system prompt via `_meta` (agent.ts:576-580).
-fn session_options_for_port(port: u16) -> NewSessionOptions {
+fn session_options_for_port(port: u16, document: Option<DocumentId>) -> NewSessionOptions {
+    // A run that belongs to a document talks to THAT document's endpoint, so it
+    // is not redirected when the user switches tabs.
+    let url = match document {
+        Some(id) => op_host_services::mcp_live::mcp_url_for_document(port, id, false),
+        None => format!("http://127.0.0.1:{port}/mcp"),
+    };
     NewSessionOptions {
         mcp_servers: vec![McpHttpServer {
             name: "openpencil".into(),
-            url: format!("http://127.0.0.1:{port}/mcp"),
+            url,
         }],
         system_prompt_meta: Some(ACP_SYSTEM_PROMPT.to_string()),
         cwd: None,
@@ -139,9 +146,10 @@ fn session_options_for_port(port: u16) -> NewSessionOptions {
 fn session_options_for_connection(
     connection_type: ConnectionType,
     live_mcp_port: Option<u16>,
+    document: Option<DocumentId>,
 ) -> Option<NewSessionOptions> {
     match connection_type {
-        ConnectionType::Local => live_mcp_port.map(session_options_for_port),
+        ConnectionType::Local => live_mcp_port.map(|port| session_options_for_port(port, document)),
         ConnectionType::Remote => Some(NewSessionOptions::default()),
     }
 }
@@ -319,6 +327,8 @@ pub struct AcpProvider {
     /// Project root of the open document, sent as the session `cwd` to local
     /// agents. `None` keeps the process cwd.
     project_cwd: Option<PathBuf>,
+    /// The document this provider's turns belong to (selects its MCP endpoint).
+    document: Option<DocumentId>,
 }
 
 impl AcpProvider {
@@ -334,7 +344,14 @@ impl AcpProvider {
             live_mcp_port,
             label,
             project_cwd: None,
+            document: None,
         }
+    }
+
+    /// Bind this provider's turns to `document`'s MCP endpoint.
+    pub fn with_document(mut self, document: Option<DocumentId>) -> Self {
+        self.document = document;
+        self
     }
 
     /// Open the agent's session in `cwd` (the document's project root) so it
@@ -378,11 +395,14 @@ impl AcpProvider {
         // disclose it to a remote WebSocket agent: 127.0.0.1 there points at
         // the remote host, not this desktop. Local agents retain the existing
         // hard requirement because canvas edits depend on this tool surface.
-        let session_options =
-            match session_options_for_connection(config.connection_type, self.live_mcp_port) {
-                Some(options) => options,
-                None => return mcp_not_running_turn(),
-            };
+        let session_options = match session_options_for_connection(
+            config.connection_type,
+            self.live_mcp_port,
+            self.document,
+        ) {
+            Some(options) => options,
+            None => return mcp_not_running_turn(),
+        };
         let session_options = with_project_cwd(
             session_options,
             config.connection_type,

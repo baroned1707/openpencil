@@ -133,21 +133,21 @@ fn a_fresh_scope_is_pristine_until_it_is_edited() {
 }
 
 #[test]
-fn the_projects_tab_stays_on_show_across_a_document_switch() {
-    use crate::editor_ui_state::LeftPanelTab;
+fn the_projects_dock_stays_as_it_was_across_a_document_switch() {
     let mut live = EditorState::starter();
-    live.editor_ui.slides_panel.tab = LeftPanelTab::Projects;
+    live.editor_ui.projects_panel.dock_open = false;
     live.editor_ui.projects_panel.scroll.offset = 90.0;
 
-    // Picking a file in the Projects tab switches documents; the rail must
-    // still be on that tab (and keep its scroll) afterwards.
+    // Picking a file in the dock switches documents; the dock is the
+    // window's, not the document's, so it must come out the other side
+    // exactly as the user left it — folded, and at the same scroll.
     let mut parked = park_live_document(&mut live, EditorState::starter());
-    assert_eq!(live.editor_ui.slides_panel.tab, LeftPanelTab::Projects);
+    assert!(!live.editor_ui.projects_panel.dock_open);
     assert_eq!(live.editor_ui.projects_panel.scroll.offset, 90.0);
 
-    // And back: the parked document never strands the rail on it either way.
     live.exchange_document_scope(&mut parked);
-    assert_eq!(live.editor_ui.slides_panel.tab, LeftPanelTab::Projects);
+    assert!(!live.editor_ui.projects_panel.dock_open);
+    assert_eq!(live.editor_ui.projects_panel.scroll.offset, 90.0);
 }
 
 #[test]

@@ -485,6 +485,7 @@ pub const TOOL_PROFILES: &[ToolProfile] = &[
         ToolSurface::LocalFilesystem,
     ),
     ToolProfile::new("get_deck_boards", ToolAccess::Read, ToolSurface::InMemory),
+    ToolProfile::new("list_documents", ToolAccess::Read, ToolSurface::InMemory),
     ToolProfile::new(
         "export_deck",
         ToolAccess::Read,

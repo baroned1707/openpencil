@@ -12,9 +12,14 @@
 //! places, and threading a registry through every command applier would
 //! be far more invasive. Access is serialized through a `Mutex`; on the
 //! single-threaded UI / wasm targets the lock is always uncontended.
+//!
+//! The registry holds one set of indicators per *scope* (the desktop uses one
+//! scope per open document), so a run in one document never clears another's;
+//! see the `scope` module for how epoch-carrying and epoch-less calls find
+//! their scope.
 
 use std::collections::{HashMap, HashSet};
-use std::sync::{LazyLock, Mutex};
+use std::sync::Mutex;
 
 /// Window after a reveal starts during which the entrance animation
 /// (scale-pop) plays and the reveal counts as "animating" for redraw
@@ -134,8 +139,10 @@ impl AgentIndicators {
 /// that milestone in the registry lets the cursor appear immediately at the
 /// viewport's idle anchor, then move to reveal targets as writing begins.
 pub fn confirm_cursor_agent(epoch: u64, color: &str, name: &str) {
-    let mut r = REGISTRY.lock().unwrap();
-    if r.epoch != epoch || !r.run_active {
+    let Some(mut r) = lock_epoch(epoch) else {
+        return;
+    };
+    if !r.run_active {
         return;
     }
     r.cursor_agent = Some(AgentTag {
@@ -144,10 +151,7 @@ pub fn confirm_cursor_agent(epoch: u64, color: &str, name: &str) {
     });
 }
 
-static REGISTRY: LazyLock<Mutex<AgentIndicators>> =
-    LazyLock::new(|| Mutex::new(AgentIndicators::default()));
-
-/// Serializes TESTS that mutate the process-global [`REGISTRY`]. Any test —
+/// Serializes TESTS that mutate the process-global registry. Any test —
 /// in any crate — that calls [`clear`]/[`begin`]/[`add_reveal`]/… and then
 /// asserts on [`snapshot`] races every other such test in the same test
 /// binary (cargo runs them on parallel threads against this one global).
@@ -169,10 +173,9 @@ pub fn test_guard() -> std::sync::MutexGuard<'static, ()> {
 /// and the insert share the registry lock, so a `begin` can't slip in
 /// between them.
 pub fn add_node(epoch: u64, node_id: &str, color: &str, name: &str) {
-    let mut r = REGISTRY.lock().unwrap();
-    if r.epoch != epoch {
+    let Some(mut r) = lock_epoch(epoch) else {
         return;
-    }
+    };
     r.nodes.insert(
         node_id.to_string(),
         AgentTag {
@@ -185,10 +188,9 @@ pub fn add_node(epoch: u64, node_id: &str, color: &str, name: &str) {
 /// Tag a root frame with its owning agent (glow + badge). Epoch-scoped
 /// like [`add_node`] — a stale run's registration is dropped.
 pub fn add_frame(epoch: u64, frame_id: &str, color: &str, name: &str) {
-    let mut r = REGISTRY.lock().unwrap();
-    if r.epoch != epoch {
+    let Some(mut r) = lock_epoch(epoch) else {
         return;
-    }
+    };
     r.frames.insert(
         frame_id.to_string(),
         AgentTag {
@@ -209,8 +211,10 @@ pub fn add_frame(epoch: u64, frame_id: &str, color: &str, name: &str) {
 /// unconditionally every frame would collapse every root back to the
 /// driver's own single identity.
 pub fn add_frame_if_absent(epoch: u64, frame_id: &str, color: &str, name: &str) {
-    let mut r = REGISTRY.lock().unwrap();
-    if r.epoch != epoch || r.frames.contains_key(frame_id) {
+    let Some(mut r) = lock_epoch(epoch) else {
+        return;
+    };
+    if r.frames.contains_key(frame_id) {
         return;
     }
     r.frames.insert(
@@ -225,30 +229,27 @@ pub fn add_frame_if_absent(epoch: u64, frame_id: &str, color: &str, name: &str) 
 /// Mark a node as a not-yet-materialised preview (pulse fill).
 /// Epoch-scoped like [`add_node`].
 pub fn mark_preview(epoch: u64, node_id: &str) {
-    let mut r = REGISTRY.lock().unwrap();
-    if r.epoch != epoch {
+    let Some(mut r) = lock_epoch(epoch) else {
         return;
-    }
+    };
     r.previews.insert(node_id.to_string());
 }
 
 /// Drop a node from the preview set once it has real geometry.
 /// Epoch-scoped like [`add_node`].
 pub fn clear_preview(epoch: u64, node_id: &str) {
-    let mut r = REGISTRY.lock().unwrap();
-    if r.epoch != epoch {
+    let Some(mut r) = lock_epoch(epoch) else {
         return;
-    }
+    };
     r.previews.remove(node_id);
 }
 
 /// Start a short entrance animation for a node that has just been
 /// materialised by an AI generation command.
 pub fn add_reveal(epoch: u64, node_id: &str, started_at_ms: u64) {
-    let mut r = REGISTRY.lock().unwrap();
-    if r.epoch != epoch {
+    let Some(mut r) = lock_epoch(epoch) else {
         return;
-    }
+    };
     r.reveals.insert(node_id.to_string(), started_at_ms);
 }
 
@@ -267,15 +268,15 @@ pub fn reveal_offset_ms(depth: u64, stream_index: u64) -> u64 {
 
 /// Clear every indicator — called when a generation finishes / is reset.
 pub fn clear() {
-    REGISTRY.lock().unwrap().clear_maps();
+    lock_current().clear_maps();
 }
 
 /// Begin a new run: bump the epoch, clear any prior indicators, and
 /// return the new epoch for the caller to hold and pass to
 /// [`clear_if_epoch`] on teardown.
 pub fn begin() -> u64 {
-    let mut r = REGISTRY.lock().unwrap();
-    r.epoch += 1;
+    let mut r = lock_current();
+    r.epoch = next_epoch();
     r.clear_maps();
     r.run_active = true;
     r.epoch
@@ -298,8 +299,8 @@ pub struct RootSeedHint {
 /// pending so later sibling screens inherit the same contract. Non-design
 /// runs should keep using [`begin`].
 pub fn begin_with_root_seed_hint(mobile: bool, continuation: bool) -> u64 {
-    let mut r = REGISTRY.lock().unwrap();
-    r.epoch += 1;
+    let mut r = lock_current();
+    r.epoch = next_epoch();
     r.clear_maps();
     r.run_active = true;
     r.root_seed = Some(RootSeedHint {
@@ -311,21 +312,21 @@ pub fn begin_with_root_seed_hint(mobile: bool, continuation: bool) -> u64 {
 
 /// Return the currently active run epoch, if a host-owned indicator run is live.
 pub fn active_epoch() -> Option<u64> {
-    let r = REGISTRY.lock().unwrap();
+    let r = lock_current();
     r.run_active.then_some(r.epoch)
 }
 
 /// Whether `frame_id` belongs to the currently active generation run.
 pub fn is_frame_generating(frame_id: &str) -> bool {
-    let r = REGISTRY.lock().unwrap();
+    let r = lock_current();
     r.run_active && r.frames.contains_key(frame_id)
 }
 
 /// Return the root seed profile for `epoch` if its first batch has not
 /// consumed the guard yet.
 pub fn root_seed_hint_if_pending(epoch: u64) -> Option<RootSeedHint> {
-    let r = REGISTRY.lock().unwrap();
-    if r.epoch == epoch && r.run_active && !r.root_seed_consumed {
+    let r = lock_epoch(epoch)?;
+    if r.run_active && !r.root_seed_consumed {
         r.root_seed
     } else {
         None
@@ -334,8 +335,7 @@ pub fn root_seed_hint_if_pending(epoch: u64) -> Option<RootSeedHint> {
 
 /// Mark the root seed guard consumed for `epoch`.
 pub fn mark_root_seed_guard_consumed(epoch: u64) {
-    let mut r = REGISTRY.lock().unwrap();
-    if r.epoch == epoch {
+    if let Some(mut r) = lock_epoch(epoch) {
         r.root_seed_consumed = true;
     }
 }
@@ -346,8 +346,7 @@ pub fn mark_root_seed_guard_consumed(epoch: u64) {
 /// epoch compare and the clear share the registry lock, so a `begin`
 /// racing in between can't slip its fresh indicators through.
 pub fn clear_if_epoch(epoch: u64) {
-    let mut r = REGISTRY.lock().unwrap();
-    if r.epoch == epoch {
+    if let Some(mut r) = lock_epoch(epoch) {
         r.clear_maps();
     }
 }
@@ -361,10 +360,9 @@ pub fn clear_if_epoch(epoch: u64) {
 /// [`end_if_epoch`]'s immediate clear so a cancelled generation doesn't
 /// keep animating.
 pub fn finish_if_epoch(epoch: u64) {
-    let mut r = REGISTRY.lock().unwrap();
-    if r.epoch != epoch {
+    let Some(mut r) = lock_epoch(epoch) else {
         return;
-    }
+    };
     r.run_active = false;
     r.finishing = true;
     // An empty queue clears immediately. If identity confirmation already
@@ -375,7 +373,7 @@ pub fn finish_if_epoch(epoch: u64) {
     if r.reveals.is_empty() {
         let cursor_was_visible = r.cursor_agent.is_some();
         r.clear_maps();
-        r.epoch += 1;
+        r.epoch = next_epoch();
         r.needs_final_frame = cursor_was_visible;
     }
 }
@@ -390,7 +388,7 @@ pub fn finish_if_epoch(epoch: u64) {
 fn drain_finished_run(r: &mut AgentIndicators) {
     if r.finishing && r.reveals.is_empty() {
         r.clear_maps();
-        r.epoch += 1;
+        r.epoch = next_epoch();
         r.needs_final_frame = true;
     }
 }
@@ -405,23 +403,22 @@ fn drain_finished_run(r: &mut AgentIndicators) {
 /// built, first cancel-detecting channel op not yet reached) would re-add
 /// under the unchanged epoch. Retiring the epoch closes that window.
 pub fn end_if_epoch(epoch: u64) {
-    let mut r = REGISTRY.lock().unwrap();
-    if r.epoch == epoch {
+    if let Some(mut r) = lock_epoch(epoch) {
         r.clear_maps();
-        r.epoch += 1;
+        r.epoch = next_epoch();
     }
 }
 
 /// `true` while any node / frame indicator is active — the paint loop
 /// uses this to keep requesting redraws so the breathing animates.
 pub fn is_active() -> bool {
-    let r = REGISTRY.lock().unwrap();
+    let r = lock_current();
     has_active_indicators(&r)
 }
 
 /// A clone of the current indicators for the paint pass to read.
 pub fn snapshot() -> AgentIndicators {
-    REGISTRY.lock().unwrap().clone()
+    lock_current().clone()
 }
 
 /// A clone of the current indicators with reveal animations expired at
@@ -434,7 +431,7 @@ pub fn snapshot_at(now_ms: u64) -> AgentIndicators {
 /// A clone of the current indicators after reveal maintenance, or
 /// `None` when there is nothing active for paint to consume.
 pub fn snapshot_at_if_active(now_ms: u64) -> Option<AgentIndicators> {
-    let mut r = REGISTRY.lock().unwrap();
+    let mut r = lock_current();
     if !has_active_indicators(&r) {
         // This paint IS the post-drain erase frame — consume the flag.
         r.needs_final_frame = false;
@@ -462,7 +459,7 @@ pub fn snapshot_at_if_active(now_ms: u64) -> Option<AgentIndicators> {
 
 /// Next host-clock millisecond needed for generated-node reveal animation.
 pub fn next_reveal_deadline_ms(now_ms: u64) -> Option<u64> {
-    let mut r = REGISTRY.lock().unwrap();
+    let mut r = lock_current();
     rebase_external_clock_reveals(&mut r, now_ms);
     if !r.run_active {
         r.reveals
@@ -495,7 +492,7 @@ pub fn next_reveal_deadline_ms(now_ms: u64) -> Option<u64> {
 
 /// Next host-clock millisecond needed for the generating-frame scan animation.
 pub fn next_generation_scan_deadline_ms(now_ms: u64) -> Option<u64> {
-    let mut r = REGISTRY.lock().unwrap();
+    let mut r = lock_current();
     rebase_external_clock_reveals(&mut r, now_ms);
     let reveal_runway_pending = r.reveals.values().any(|started_at| *started_at > now_ms);
     (!r.frames.is_empty() && (r.run_active || reveal_runway_pending))
@@ -607,189 +604,12 @@ fn has_active_indicators(r: &AgentIndicators) -> bool {
     r.run_active || !r.nodes.is_empty() || !r.frames.is_empty() || !r.reveals.is_empty()
 }
 
-// ── Relay (daemon → browser) ────────────────────────────────────────────
-//
-// The registry is process-global, so a design run executing inside the
-// serve-web daemon writes indicators the BROWSER's wasm process never
-// sees. The daemon serves its registry as JSON (`relay_json`, behind
-// `GET /api/mcp/indicators`); the web host polls it, parses with
-// `parse_relay_json`, and mirrors it into the local registry with
-// `apply_remote` so the shared canvas paint animates on web too.
-// Reveal timestamps travel on the daemon's clock — `apply_remote`
-// inserts them verbatim and the paint path's
-// `rebase_external_clock_reveals` folds them onto the local clock,
-// the same way desktop live-MCP reveals are handled.
-
-/// A parsed relay snapshot. Vec-of-pairs (not maps) keeps the wire
-/// order deterministic for tests; `apply_remote` doesn't care.
-#[derive(Debug, Clone, Default, PartialEq)]
-pub struct RemoteIndicators {
-    /// Daemon-owned run epoch. A changed value starts a fresh local mirror
-    /// even when polling missed the prior run's inactive transition.
-    pub epoch: u64,
-    pub run_active: bool,
-    pub cursor_agent: Option<AgentTag>,
-    pub nodes: Vec<(String, AgentTag)>,
-    pub frames: Vec<(String, AgentTag)>,
-    pub previews: Vec<String>,
-    pub reveals: Vec<(String, u64)>,
-}
-
-/// Serialize the registry for the `/api/mcp/indicators` relay.
-pub fn relay_json() -> String {
-    let snap = snapshot();
-    let tag_entries = |m: &HashMap<String, AgentTag>| -> Vec<serde_json::Value> {
-        let mut entries: Vec<(&String, &AgentTag)> = m.iter().collect();
-        entries.sort_by(|a, b| a.0.cmp(b.0));
-        entries
-            .into_iter()
-            .map(|(id, tag)| serde_json::json!({"id": id, "color": tag.color, "name": tag.name}))
-            .collect()
-    };
-    let mut previews: Vec<&String> = snap.previews.iter().collect();
-    previews.sort();
-    let mut reveals: Vec<(&String, &u64)> = snap.reveals.iter().collect();
-    reveals.sort_by(|a, b| a.0.cmp(b.0));
-    serde_json::json!({
-        "epoch": snap.epoch,
-        "active": snap.run_active,
-        "cursorAgent": snap.cursor_agent.as_ref().map(|tag| {
-            serde_json::json!({"color": tag.color, "name": tag.name})
-        }),
-        "nodes": tag_entries(&snap.nodes),
-        "frames": tag_entries(&snap.frames),
-        "previews": previews,
-        "reveals": reveals
-            .into_iter()
-            .map(|(id, ms)| serde_json::json!({"id": id, "ms": ms}))
-            .collect::<Vec<_>>(),
-    })
-    .to_string()
-}
-
-/// Parse a `relay_json` body. `None` on any shape mismatch.
-pub fn parse_relay_json(body: &str) -> Option<RemoteIndicators> {
-    let v: serde_json::Value = serde_json::from_str(body).ok()?;
-    // Epoch-less payloads came from the original relay protocol. Preserve
-    // compatibility by treating them as one synthetic daemon epoch.
-    let epoch = match v.get("epoch") {
-        Some(value) => value.as_u64()?,
-        None => 0,
-    };
-    let run_active = v.get("active")?.as_bool()?;
-    let cursor_agent = match v.get("cursorAgent") {
-        None | Some(serde_json::Value::Null) => None,
-        Some(agent) => Some(AgentTag {
-            color: agent.get("color")?.as_str()?.to_string(),
-            name: agent.get("name")?.as_str()?.to_string(),
-        }),
-    };
-    let tag_list = |key: &str| -> Vec<(String, AgentTag)> {
-        v.get(key)
-            .and_then(|a| a.as_array())
-            .map(|arr| {
-                arr.iter()
-                    .filter_map(|e| {
-                        Some((
-                            e.get("id")?.as_str()?.to_string(),
-                            AgentTag {
-                                color: e.get("color")?.as_str()?.to_string(),
-                                name: e.get("name")?.as_str()?.to_string(),
-                            },
-                        ))
-                    })
-                    .collect()
-            })
-            .unwrap_or_default()
-    };
-    let previews = v
-        .get("previews")
-        .and_then(|a| a.as_array())
-        .map(|arr| {
-            arr.iter()
-                .filter_map(|e| e.as_str().map(str::to_string))
-                .collect()
-        })
-        .unwrap_or_default();
-    let reveals = v
-        .get("reveals")
-        .and_then(|a| a.as_array())
-        .map(|arr| {
-            arr.iter()
-                .filter_map(|e| Some((e.get("id")?.as_str()?.to_string(), e.get("ms")?.as_u64()?)))
-                .collect()
-        })
-        .unwrap_or_default();
-    Some(RemoteIndicators {
-        epoch,
-        run_active,
-        cursor_agent,
-        nodes: tag_list("nodes"),
-        frames: tag_list("frames"),
-        previews,
-        reveals,
-    })
-}
-
-/// Mirror a daemon registry snapshot into the local (browser) registry.
-/// Returns `true` while anything is active or draining, so the caller
-/// keeps its animation pump alive.
-///
-/// - A newly active remote epoch mirrors [`begin`] (fresh local epoch,
-///   clean maps) so a stale prior relay can't bleed through even when the
-///   browser misses the inactive snapshot between back-to-back runs.
-/// - `nodes` / `frames` / `previews` are replaced wholesale — the
-///   daemon is the authority for ownership tags.
-/// - `reveals` are insert-only: an id already present locally keeps its
-///   timestamp, which the paint path may have rebased onto the local
-///   clock (overwriting would replay its entrance every poll).
-/// - A remote run ending mirrors [`finish_if_epoch`]'s graceful drain:
-///   queued reveals play out, then the overlay clears itself.
-pub fn apply_remote(remote: &RemoteIndicators) -> bool {
-    let mut r = REGISTRY.lock().unwrap();
-    if remote.run_active {
-        if !r.run_active || r.remote_epoch != Some(remote.epoch) {
-            r.epoch += 1;
-            r.clear_maps();
-            r.run_active = true;
-            r.remote_epoch = Some(remote.epoch);
-        }
-        r.nodes = remote.nodes.iter().cloned().collect();
-        r.frames = remote.frames.iter().cloned().collect();
-        r.cursor_agent = remote.cursor_agent.clone();
-        r.previews = remote.previews.iter().cloned().collect();
-        for (id, ms) in &remote.reveals {
-            r.reveals.entry(id.clone()).or_insert(*ms);
-        }
-        return true;
-    }
-    // An out-of-order inactive poll from the previous daemon run must not
-    // tear down the newer active mirror.
-    if r.run_active && r.remote_epoch == Some(remote.epoch) {
-        r.run_active = false;
-        r.finishing = true;
-        if r.reveals.is_empty() {
-            let cursor_was_visible = r.cursor_agent.is_some();
-            r.clear_maps();
-            r.epoch += 1;
-            r.needs_final_frame = cursor_was_visible;
-        }
-    }
-    has_active_indicators(&r) || r.needs_final_frame
-}
-
-/// Latest scheduled reveal END (start + [`REVEAL_DURATION_MS`]) for `epoch`,
-/// or `None` when the epoch is stale or nothing is scheduled. The
-/// orchestrator's finalize gate polls this so tree-restructuring
-/// (`ReplaceSubtree` id churn) waits for the cursor sweep to finish instead
-/// of snapping the still-animating tail of the design in at once.
-pub fn latest_reveal_end_ms(epoch: u64) -> Option<u64> {
-    let r = REGISTRY.lock().unwrap();
-    if r.epoch != epoch {
-        return None;
-    }
-    r.reveals
-        .values()
-        .max()
-        .map(|s| s.saturating_add(REVEAL_DURATION_MS))
-}
+mod relay;
+mod scope;
+pub use relay::{
+    apply_remote, latest_reveal_end_ms, parse_relay_json, relay_json, RemoteIndicators,
+};
+pub use scope::{
+    current_scope, cursor_agent_for_epoch, drop_scope, enter_scope, set_current_scope, ScopeGuard,
+};
+use scope::{lock_current, lock_epoch, next_epoch};

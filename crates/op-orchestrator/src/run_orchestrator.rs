@@ -166,11 +166,12 @@ impl Orchestrator {
             // not the orchestrator). So: adopt whatever is ALREADY confirmed
             // for OUR epoch as the primary identity instead of minting one,
             // and only generate fresh identities for the other groups.
-            let already_confirmed = self.agent_indicator_epoch.and_then(|epoch| {
-                (op_editor_core::agent_indicators::active_epoch() == Some(epoch))
-                    .then(op_editor_core::agent_indicators::snapshot)
-                    .and_then(|snap| snap.cursor_agent)
-            });
+            // Looked up by epoch, not through the thread's current document:
+            // this runs on a worker thread, which may belong to a run in a
+            // document that is not on screen.
+            let already_confirmed = self
+                .agent_indicator_epoch
+                .and_then(op_editor_core::agent_indicators::cursor_agent_for_epoch);
             let identities = match already_confirmed {
                 Some(tag) => crate::agent_identity::assign_agent_identities_with_primary(
                     crate::agent_identity::AgentIdentity {

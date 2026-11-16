@@ -9,10 +9,11 @@
 //! unit-testable on their own. `document_tabs_host` drives it from `DesktopApp`.
 //!
 //! The on-screen slot holds no parked document (`parked == None`). Its `path`
-//! is a mirror that `DesktopApp` refreshes from `current_path` before it asks
-//! any question of the registry; its Git session and fork saves live on
-//! `DesktopApp` while the slot is active.
+//! and run `status` are mirrors that `DesktopApp` refreshes from `current_path`
+//! and `runs` before it asks any question of the registry; its Git session,
+//! fork saves and agent runs live on `DesktopApp` while the slot is active.
 
+use crate::document_runs::DocumentRuns;
 use crate::git_session::GitSession;
 use op_editor_core::{DocumentId, DocumentTabStatus, DocumentTabView, SessionDocument};
 use op_host_native::widget_host::ParkedDocument;
@@ -32,6 +33,9 @@ pub(crate) struct SlotLocalState {
     pub git_session: Option<GitSession>,
     /// Collaboration fork saves issued from this document.
     pub collab_fork_saves: Vec<CollabForkSave>,
+    /// The agent runs bound to this document. For the on-screen slot this is
+    /// empty apart from `status`, a mirror of `DesktopApp::runs`.
+    pub runs: DocumentRuns,
 }
 
 /// One open document.
@@ -75,10 +79,14 @@ pub(crate) enum EpochOwner {
     Unknown,
 }
 
+/// Source of document ids. Process-wide, so two registries (the app's and a
+/// test's, or a rebuilt one) never hand the same id to different documents: an
+/// id also names the document's agent-indicator scope.
+static NEXT_DOCUMENT_ID: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(1);
+
 pub(crate) struct DocumentRegistry {
     slots: Vec<DocumentSlot>,
     active: usize,
-    next_id: u64,
 }
 
 impl DocumentRegistry {
@@ -87,7 +95,6 @@ impl DocumentRegistry {
         let mut registry = Self {
             slots: Vec::new(),
             active: 0,
-            next_id: 1,
         };
         let first = registry.new_slot();
         registry.slots.push(first);
@@ -96,8 +103,7 @@ impl DocumentRegistry {
 
     /// A fresh slot with a never-used id and no document parked in it.
     pub fn new_slot(&mut self) -> DocumentSlot {
-        let id = DocumentId(self.next_id);
-        self.next_id += 1;
+        let id = DocumentId(NEXT_DOCUMENT_ID.fetch_add(1, std::sync::atomic::Ordering::Relaxed));
         DocumentSlot {
             id,
             local: SlotLocalState::default(),
@@ -128,6 +134,53 @@ impl DocumentRegistry {
     /// Refresh the on-screen slot's mirrored path.
     pub fn set_active_path(&mut self, path: Option<PathBuf>) {
         self.slots[self.active].local.path = path;
+    }
+
+    /// Refresh the on-screen slot's mirrored run status.
+    pub fn set_active_status(&mut self, status: DocumentTabStatus) {
+        self.slots[self.active].local.runs.status = status;
+    }
+
+    /// Positions of the parked documents that have a live run, in tab order.
+    pub fn parked_with_live_runs(&self) -> Vec<usize> {
+        self.slots
+            .iter()
+            .enumerate()
+            .filter(|&(index, slot)| index != self.active && slot.local.runs.is_live())
+            .map(|(index, _)| index)
+            .collect()
+    }
+
+    /// Positions of every document with a live run, given whether the one on
+    /// screen has one.
+    pub fn indices_with_live_runs(&self, active_is_live: bool) -> Vec<usize> {
+        (0..self.slots.len())
+            .filter(|&index| {
+                if index == self.active {
+                    active_is_live
+                } else {
+                    self.slots[index].local.runs.is_live()
+                }
+            })
+            .collect()
+    }
+
+    /// Take a parked document and its runs out of their slot so the host can
+    /// run the runs against it. Give both back with [`Self::return_runs`].
+    pub fn take_runs(&mut self, index: usize) -> Option<(ParkedDocument, DocumentRuns)> {
+        if index == self.active {
+            return None;
+        }
+        let slot = self.slots.get_mut(index)?;
+        let parked = slot.parked.take()?;
+        Some((parked, std::mem::take(&mut slot.local.runs)))
+    }
+
+    /// Put back what [`Self::take_runs`] took.
+    pub fn return_runs(&mut self, index: usize, parked: ParkedDocument, runs: DocumentRuns) {
+        let slot = &mut self.slots[index];
+        slot.parked = Some(parked);
+        slot.local.runs = runs;
     }
 
     /// The slot already showing `path`, matched on the canonical path so a
@@ -247,7 +300,7 @@ impl DocumentRegistry {
                 label: slot.label(untitled_label),
                 project: slot.project_name(),
                 dirty: self.is_dirty(index, live_dirty),
-                status: DocumentTabStatus::Idle,
+                status: slot.local.runs.status,
                 active: index == self.active,
             })
             .collect()
@@ -262,6 +315,7 @@ impl DocumentRegistry {
     }
 
     /// Every file open in some tab, on screen or parked.
+    #[cfg(test)]
     pub fn open_paths(&self) -> Vec<PathBuf> {
         self.slots
             .iter()
@@ -290,14 +344,12 @@ fn canonical_or_same(path: &Path) -> PathBuf {
 
 /// What is running that must finish before documents may be switched.
 ///
-/// Agent runs, imports and background writers are not yet bound to the
-/// document that started them, so switching under one would deliver its result
-/// to whichever document is on screen then.
+/// Agent runs (chat, design, sub-agents) are not here: each belongs to its own
+/// document and keeps streaming into it while another is on screen. What is
+/// left are the jobs whose result still lands in whichever document is showing
+/// when they finish.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum BlockReason {
-    ChatTurn,
-    DesignRun,
-    SubAgents,
     Codegen,
     DesignMd,
     Import,
@@ -309,9 +361,6 @@ pub(crate) enum BlockReason {
 impl std::fmt::Display for BlockReason {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.write_str(match self {
-            Self::ChatTurn => "a chat turn is running",
-            Self::DesignRun => "a design run is in progress",
-            Self::SubAgents => "sub-agents are running",
             Self::Codegen => "code generation is running",
             Self::DesignMd => "design-system generation is running",
             Self::Import => "an import is in progress",
@@ -325,9 +374,6 @@ impl std::fmt::Display for BlockReason {
 /// The running work the desktop observed this frame.
 #[derive(Debug, Default, Clone, Copy)]
 pub(crate) struct ActivityFlags {
-    pub chat_turn: bool,
-    pub design_run: bool,
-    pub sub_agents: bool,
     pub codegen: bool,
     pub design_md: bool,
     pub import: bool,
@@ -342,9 +388,6 @@ impl ActivityFlags {
     pub fn blocked_by(&self) -> Option<BlockReason> {
         [
             (self.collaboration, BlockReason::Collaboration),
-            (self.chat_turn, BlockReason::ChatTurn),
-            (self.design_run, BlockReason::DesignRun),
-            (self.sub_agents, BlockReason::SubAgents),
             (self.codegen, BlockReason::Codegen),
             (self.design_md, BlockReason::DesignMd),
             (self.import, BlockReason::Import),

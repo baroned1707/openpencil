@@ -249,7 +249,7 @@ pub struct EditorUiState {
     /// drag bookkeeping. The tab row itself only appears for scenario
     /// documents that have a page navigator to offer.
     pub slides_panel: SlidesPanelState,
-    /// The Projects tab's rows, pending request, hover and scroll.
+    /// The Projects dock's rows, pending request, hover and scroll.
     pub projects_panel: ProjectsPanelState,
     /// Floating `Cmd+,` agent-settings modal open.
     pub agent_settings_open: bool,

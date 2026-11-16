@@ -1,18 +1,18 @@
-//! Proof scenes for the Figma UI3 restyle — the left rail's Projects tab.
+//! Proof scenes for the Figma UI3 restyle — the right-edge Projects dock.
 //!
 //! Seeds `editor_ui.projects_panel` directly (the host scan that normally
-//! fills it is a later step), selects the Projects tab, then paints the real
-//! editor frame in both themes so `.proof-of-work/90-projects-*.png` shows
-//! the tab in context.
+//! fills it is a later step) on a host that supports document tabs, then
+//! paints the real editor frame in both themes so
+//! `.proof-of-work/90-dock-*.png` shows the dock in context: beside the
+//! Design panel, collapsed to its strip, hovered, scrolled.
 
-use super::super::ui3_proof::{editor_host, render_probes, rgb8};
+use super::super::ui3_proof::{editor_host, render_probes, rgb8, PROOF_H, PROOF_W};
 use crate::widget_host::WidgetHostNative;
 use op_editor_core::{
-    DocumentId, DocumentTabStatus, LeftPanelTab, ProjectFileView, ProjectRowTarget, ProjectView,
-    ThemeMode,
+    DocumentId, DocumentTabStatus, ProjectFileView, ProjectRowTarget, ProjectView, ThemeMode,
 };
 use op_editor_ui::widgets::host_canvas_geometry as canvas_geometry;
-use op_editor_ui::widgets::projects_panel_flow as flow;
+use op_editor_ui::widgets::projects_dock_flow as dock_flow;
 use op_editor_ui::widgets::projects_panel_layout::RowKind;
 use op_editor_ui::Theme;
 
@@ -87,61 +87,83 @@ fn mixed_projects() -> Vec<ProjectView> {
     ]
 }
 
-fn seeded(mode: ThemeMode, projects: Vec<ProjectView>) -> WidgetHostNative {
-    let mut host = editor_host(mode, None);
+fn seeded(mode: ThemeMode, projects: Vec<ProjectView>, selected: Option<&str>) -> WidgetHostNative {
+    let mut host = editor_host(mode, selected);
     let ui = &mut host.editor_state_mut().editor_ui;
     ui.document_tabs_supported = true;
     ui.projects_panel.projects = projects;
-    ui.slides_panel.tab = LeftPanelTab::Projects;
+    // The dock narrowed the canvas: frame the artboard in what is left.
+    host.mark_dirty();
+    host.zoom_to_fit(PROOF_W, PROOF_H);
     host
 }
 
-fn rail_layout(host: &WidgetHostNative) -> op_editor_ui::widgets::ProjectsPanelLayout {
-    let state = host.editor_state();
-    let rail = canvas_geometry::layer_panel_rect(state, super::super::ui3_proof::PROOF_H);
-    flow::layout(state, rail).expect("the Projects tab is on show")
+fn dock_layout(host: &WidgetHostNative) -> op_editor_ui::widgets::ProjectsDockLayout {
+    dock_flow::layout(host.editor_state(), PROOF_W, PROOF_H).expect("the dock is shown")
 }
 
-/// A pixel just inside the right end of a row, clear of its text.
+/// A pixel just inside the right end of a list row, clear of its text.
 fn row_probe(host: &WidgetHostNative, kind: RowKind) -> (i32, i32) {
-    let rect = rail_layout(host).row(kind).expect("row laid out").rect;
+    let layout = dock_layout(host);
+    let rect = layout
+        .list
+        .as_ref()
+        .and_then(|list| list.row(kind))
+        .expect("row laid out")
+        .rect;
     (
         (rect.origin.x + rect.size.x - 6.0) as i32,
         (rect.origin.y + rect.size.y / 2.0) as i32,
     )
 }
 
+/// The centre of the canvas region: where the artboard must sit.
+fn canvas_centre(host: &WidgetHostNative) -> (i32, i32) {
+    let canvas = canvas_geometry::canvas_rect(host.editor_state(), PROOF_W, PROOF_H);
+    (
+        (canvas.origin.x + canvas.size.x / 2.0) as i32,
+        (canvas.origin.y + canvas.size.y / 2.0) as i32,
+    )
+}
+
 fn each_theme(
     name: &str,
     projects: &[ProjectView],
+    selected: Option<&str>,
     prepare: impl Fn(&mut WidgetHostNative),
     probe_kinds: &[RowKind],
 ) -> Vec<(ThemeMode, Vec<[u8; 3]>)> {
     BOTH.iter()
         .map(|&mode| {
-            let mut host = seeded(mode, projects.to_vec());
+            let mut host = seeded(mode, projects.to_vec(), selected);
             prepare(&mut host);
-            let probes: Vec<(i32, i32)> = probe_kinds
+            let mut probes: Vec<(i32, i32)> = probe_kinds
                 .iter()
                 .map(|kind| row_probe(&host, *kind))
                 .collect();
-            (mode, render_probes(&mut host, name, &probes))
+            probes.push(canvas_centre(&host));
+            let mut pixels = render_probes(&mut host, name, &probes);
+            // The artboard (white) sits at the centre of the NARROWED canvas.
+            let centre = pixels.pop().expect("canvas probe");
+            assert_eq!(centre, [255, 255, 255], "{mode:?}: artboard is centred");
+            (mode, pixels)
         })
         .collect()
 }
 
 #[test]
-fn mixed_projects_with_active_file_proof() {
+fn dock_open_with_no_selection_proof() {
     let results = each_theme(
-        "90-projects-overview",
+        "90-dock-open",
         &mixed_projects(),
+        None,
         |_| {},
         &[RowKind::File(0, 0), RowKind::File(0, 1)],
     );
     for (mode, px) in results {
         let theme = theme_of(mode);
         let wash = theme.row_selected_primary;
-        let under = rgb8(theme.card);
+        let under = rgb8(theme.muted);
         let expected: Vec<u8> = [wash.r, wash.g, wash.b]
             .iter()
             .zip(under)
@@ -156,15 +178,69 @@ fn mixed_projects_with_active_file_proof() {
                 px[0]
             );
         }
-        assert_eq!(px[1], rgb8(theme.card), "{mode:?}: others sit on the rail");
+        assert_eq!(px[1], rgb8(theme.muted), "{mode:?}: others sit on the dock");
+    }
+}
+
+#[test]
+fn dock_beside_the_design_panel_proof() {
+    for mode in BOTH {
+        let mut host = seeded(mode, mixed_projects(), Some("card"));
+        let property = canvas_geometry::property_panel_rect(host.editor_state(), PROOF_W, PROOF_H);
+        let dock = dock_layout(&host).rect;
+        assert_eq!(property.origin.x + property.size.x, dock.origin.x);
+        // One pixel inside each column, at the same height.
+        let y = (PROOF_H - 24.0) as i32;
+        let probes = [
+            ((property.origin.x + 6.0) as i32, y),
+            ((dock.origin.x + 6.0) as i32, y),
+            canvas_centre(&host),
+        ];
+        let px = render_probes(&mut host, "90-dock-with-design-panel", &probes);
+        let theme = theme_of(mode);
+        assert_eq!(px[0], rgb8(theme.card), "{mode:?}: Design panel tone");
+        assert_eq!(px[1], rgb8(theme.muted), "{mode:?}: the dock's own tone");
+        assert_ne!(px[0], px[1], "{mode:?}: the dock is tone-separated from it");
+    }
+}
+
+#[test]
+fn collapsed_dock_strip_proof() {
+    for mode in BOTH {
+        let mut host = seeded(mode, mixed_projects(), None);
+        let open_canvas = canvas_geometry::canvas_rect(host.editor_state(), PROOF_W, PROOF_H);
+        host.editor_state_mut().editor_ui.projects_panel.dock_open = false;
+        host.mark_dirty();
+        host.zoom_to_fit(PROOF_W, PROOF_H);
+        let canvas = canvas_geometry::canvas_rect(host.editor_state(), PROOF_W, PROOF_H);
+        assert!(canvas.size.x > open_canvas.size.x);
+        let centre = canvas_centre(&host);
+        let px = render_probes(&mut host, "90-dock-collapsed", &[centre]);
+        assert_eq!(px[0], [255, 255, 255], "{mode:?}: artboard centred");
+    }
+}
+
+#[test]
+fn collapsed_dock_hover_proof() {
+    for mode in BOTH {
+        let mut host = seeded(mode, mixed_projects(), Some("card"));
+        host.editor_state_mut().editor_ui.projects_panel.dock_open = false;
+        host.editor_state_mut()
+            .editor_ui
+            .projects_panel
+            .toggle_hover = true;
+        host.mark_dirty();
+        host.zoom_to_fit(PROOF_W, PROOF_H);
+        render_probes(&mut host, "90-dock-collapsed-hover", &[(0, 0)]);
     }
 }
 
 #[test]
 fn hovered_header_and_file_proof() {
     let results = each_theme(
-        "90-projects-hover",
+        "90-dock-hover-header",
         &mixed_projects(),
+        None,
         |host| {
             host.editor_state_mut().editor_ui.projects_panel.hover =
                 Some(ProjectRowTarget::Header(1));
@@ -174,14 +250,27 @@ fn hovered_header_and_file_proof() {
     for (mode, px) in results {
         let theme = theme_of(mode);
         assert_ne!(px[0], px[1], "{mode:?}: the hovered header is washed");
-        assert_eq!(px[1], rgb8(theme.card));
+        assert_eq!(px[1], rgb8(theme.muted));
     }
     each_theme(
-        "90-projects-hover-file",
+        "90-dock-hover-file",
         &mixed_projects(),
+        None,
         |host| {
             host.editor_state_mut().editor_ui.projects_panel.hover =
                 Some(ProjectRowTarget::File(0, 2));
+        },
+        &[],
+    );
+    each_theme(
+        "90-dock-hover-chevron",
+        &mixed_projects(),
+        None,
+        |host| {
+            host.editor_state_mut()
+                .editor_ui
+                .projects_panel
+                .toggle_hover = true;
         },
         &[],
     );
@@ -191,7 +280,7 @@ fn hovered_header_and_file_proof() {
 fn long_names_truncate_proof() {
     let projects = vec![
         project(
-            "a-project-with-a-remarkably-long-name-for-the-rail",
+            "a-project-with-a-remarkably-long-name-for-the-dock",
             vec![
                 file(
                     "an-extremely-long-design-file-name-for-the-checkout-flow.op",
@@ -213,7 +302,7 @@ fn long_names_truncate_proof() {
         ),
         project("x", vec![], true),
     ];
-    each_theme("90-projects-long-names", &projects, |_| {}, &[]);
+    each_theme("90-dock-long-names", &projects, Some("card"), |_| {}, &[]);
 }
 
 #[test]
@@ -222,7 +311,7 @@ fn collapsed_project_proof() {
     projects[0].expanded = false;
     projects[1].expanded = false;
     projects[1].files[0].dirty = true;
-    each_theme("90-projects-collapsed", &projects, |_| {}, &[]);
+    each_theme("90-dock-projects-collapsed", &projects, None, |_| {}, &[]);
 }
 
 #[test]
@@ -242,8 +331,9 @@ fn new_design_row_for_an_empty_project_proof() {
         ),
     ];
     each_theme(
-        "90-projects-new-design",
+        "90-dock-new-design",
         &projects,
+        None,
         |host| {
             host.editor_state_mut().editor_ui.projects_panel.hover =
                 Some(ProjectRowTarget::NewDesignRow(0));
@@ -254,7 +344,7 @@ fn new_design_row_for_an_empty_project_proof() {
 
 #[test]
 fn scrolled_long_list_proof() {
-    let projects: Vec<ProjectView> = (1..=9)
+    let projects: Vec<ProjectView> = (1..=12)
         .map(|n| {
             project(
                 &format!("project-{n:02}"),
@@ -274,8 +364,9 @@ fn scrolled_long_list_proof() {
         })
         .collect();
     each_theme(
-        "90-projects-scrolled",
+        "90-dock-scrolled",
         &projects,
+        None,
         |host| {
             host.editor_state_mut()
                 .editor_ui
@@ -286,13 +377,14 @@ fn scrolled_long_list_proof() {
         &[],
     );
     // The same scene must actually overflow, or the scroll proof proves nothing.
-    let host = seeded(ThemeMode::Dark, projects);
-    assert!(rail_layout(&host).max_scroll() > 170.0);
+    let host = seeded(ThemeMode::Dark, projects, None);
+    let list = dock_layout(&host).list.expect("open dock has a list");
+    assert!(list.max_scroll() > 170.0);
 }
 
-/// The empty body, rendered on its own: the host never selects the tab
-/// without projects (it falls back to Layers), so the widget is painted
-/// directly onto a rail-sized surface.
+/// The empty list, rendered on its own: the host never shows the dock
+/// without projects, so the widget is painted directly onto a dock-sized
+/// surface.
 #[test]
 fn empty_state_proof() {
     use op_editor_ui::widgets::projects_panel_layout::ProjectsPanelLayout;
@@ -335,7 +427,7 @@ fn empty_state_proof() {
                 .expect("png encodes");
             std::fs::create_dir_all(&dir).unwrap();
             std::fs::write(
-                std::path::Path::new(&dir).join(format!("90-projects-empty-{suffix}.png")),
+                std::path::Path::new(&dir).join(format!("90-dock-list-empty-{suffix}.png")),
                 bytes.as_bytes(),
             )
             .unwrap();
@@ -343,8 +435,9 @@ fn empty_state_proof() {
     }
 }
 
-/// The whole workspace in one frame: the Projects tab on the left and the
-/// open files as tabs in the top bar, for the same three projects.
+/// The whole workspace in one frame: the Projects dock at the right edge,
+/// the Design panel beside it, and the open files as tabs in the top bar,
+/// for the same three projects.
 #[test]
 fn projects_and_file_tabs_together_proof() {
     use op_editor_core::DocumentTabView;
@@ -358,13 +451,15 @@ fn projects_and_file_tabs_together_proof() {
     };
     use DocumentTabStatus::*;
     for mode in BOTH {
-        let mut host = seeded(mode, mixed_projects());
+        let mut host = seeded(mode, mixed_projects(), Some("card"));
         host.editor_state_mut().editor_ui.document_tabs = vec![
             tab(1, "checkout.op", "storefront", Running, false, true),
             tab(2, "cart.op", "storefront", NeedsReview, true, false),
             tab(3, "thank-you-page.op", "storefront", Error, false, false),
             tab(4, "onboarding.op", "mobile-app", Done, false, false),
         ];
-        render_probes(&mut host, "91-workspace-projects-and-tabs", &[(700, 470)]);
+        let centre = canvas_centre(&host);
+        let px = render_probes(&mut host, "91-workspace-projects-and-tabs", &[centre]);
+        assert_eq!(px[0], [255, 255, 255], "{mode:?}: artboard is centred");
     }
 }

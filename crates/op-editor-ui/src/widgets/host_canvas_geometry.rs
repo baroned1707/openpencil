@@ -14,6 +14,7 @@ use op_editor_core::host_drag_state::{AnchorDragTarget, MarqueeDragState};
 use op_editor_core::EditorState;
 
 use crate::layout_scene::LayoutScene;
+use crate::widgets::projects_dock_layout::{DOCK_COLLAPSED_WIDTH, DOCK_WIDTH};
 use crate::widgets::slides_panel_flow;
 use crate::widgets::{STATUS_BAR_HEIGHT, STATUS_BAR_WIDTH, TOOLBAR_WIDTH, TOP_BAR_HEIGHT};
 use crate::{Point2D, Rect};
@@ -333,8 +334,8 @@ pub fn canvas_origin(state: &EditorState) -> (f32, f32) {
     (cx0, top)
 }
 
-/// Canvas region `(x, y, w, h)` in viewport-logical px. The right rail
-/// only reserves width while it is actually visible, and both extents
+/// Canvas region `(x, y, w, h)` in viewport-logical px. The Projects dock
+/// and the right rail only reserve width while they are actually visible, and both extents
 /// clamp at zero so a viewport narrower than the rails can't produce a
 /// negative-size rect. While the workspace is docked there is no right
 /// rail, and the presentation family's deck strip reserves the bottom.
@@ -370,16 +371,16 @@ pub fn canvas_region(
     }
     let reserve_property = state.right_rail_visible()
         && (!state.editor_ui.touch_chrome() || state.editor_ui.expanded_touch_layout());
-    let canvas_right = if reserve_property {
-        viewport_w
-            - if state.editor_ui.expanded_touch_layout() {
-                tablet_property_width(state)
-            } else {
-                state.editor_ui.property_panel_width
-            }
+    let property_width = if !reserve_property {
+        0.0
+    } else if state.editor_ui.expanded_touch_layout() {
+        tablet_property_width(state)
     } else {
-        viewport_w
+        state.editor_ui.property_panel_width
     };
+    // The Projects dock owns the window's far right edge, so the property
+    // panel and the canvas both stop short of it.
+    let canvas_right = viewport_w - projects_dock_width(state) - property_width;
     let canvas_w = (canvas_right - canvas_left).max(0.0);
     let bottom_gap = if state.editor_ui.touch_chrome() {
         touch_dock_bottom_gap(state)
@@ -456,10 +457,56 @@ pub fn property_panel_rect(state: &EditorState, viewport_w: f32, viewport_h: f32
             size: Point2D::new(panel_w, (viewport_h - top).max(0.0)),
         }
     } else {
+        // Beside the Projects dock, never under it: the dock owns the
+        // window's far right edge.
         Rect {
-            origin: Point2D::new(viewport_w - width, TOP_BAR_HEIGHT),
+            origin: Point2D::new(
+                viewport_w - projects_dock_width(state) - width,
+                TOP_BAR_HEIGHT,
+            ),
             size: Point2D::new(width, (viewport_h - TOP_BAR_HEIGHT).max(0.0)),
         }
+    }
+}
+
+/// Whether the Projects dock occupies the window's right edge right now.
+///
+/// The host must offer it ([`op_editor_core::EditorUiState::
+/// projects_dock_available`]) and nothing may own the whole window: a
+/// presentation (the host paints no dock then), the docked generation workspace and the works reader all
+/// lay out their own full-width surface.
+fn projects_dock_shown(state: &EditorState) -> bool {
+    let ui = &state.editor_ui;
+    ui.projects_dock_available()
+        && !ui.preview.mode
+        && ui.preview.slideshow.is_none()
+        && !workspace_docked(state)
+        && !ui.works_reader_visible()
+}
+
+/// Width the Projects dock takes off the right edge: [`DOCK_WIDTH`] open,
+/// [`DOCK_COLLAPSED_WIDTH`] as a strip, `0` when it is not shown. Every
+/// right-edge computation (canvas region, property panel, floating anchors)
+/// subtracts this one number.
+pub fn projects_dock_width(state: &EditorState) -> f32 {
+    if !projects_dock_shown(state) {
+        0.0
+    } else if state.editor_ui.projects_panel.dock_open {
+        DOCK_WIDTH
+    } else {
+        DOCK_COLLAPSED_WIDTH
+    }
+}
+
+/// The Projects dock: the full-height column at the window's far right,
+/// below the top bar. Callers gate on `projects_dock_width(state) > 0` —
+/// an unavailable dock returns a zero-width rect, and a closed-interval
+/// `Rect::contains` would still match its origin.
+pub fn projects_dock_rect(state: &EditorState, viewport_w: f32, viewport_h: f32) -> Rect {
+    let width = projects_dock_width(state).min(viewport_w.max(0.0));
+    Rect {
+        origin: Point2D::new(viewport_w - width, TOP_BAR_HEIGHT),
+        size: Point2D::new(width, (viewport_h - TOP_BAR_HEIGHT).max(0.0)),
     }
 }
 
@@ -690,3 +737,7 @@ pub fn path_anchor_hit(
     }
     None
 }
+
+#[cfg(test)]
+#[path = "projects_dock_geometry_tests.rs"]
+mod projects_dock_geometry_tests;

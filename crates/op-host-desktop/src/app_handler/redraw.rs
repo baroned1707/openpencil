@@ -4,8 +4,7 @@
 //! code motion.
 
 use crate::{
-    chat_session, codegen_session, design_session, figma_import_session, frame,
-    html_import_session, DesktopApp,
+    chat_session, codegen_session, figma_import_session, frame, html_import_session, DesktopApp,
 };
 use std::time::{Duration, Instant};
 use winit::event_loop::ActiveEventLoop;
@@ -46,6 +45,7 @@ impl DesktopApp {
         if self.pump_document_tabs() {
             self.redraw_dirty = true;
         }
+        self.sync_indicator_scope();
         if self.pump_projects() {
             self.redraw_dirty = true;
         }
@@ -132,55 +132,23 @@ impl DesktopApp {
         if self.drain_close_chat_tab() {
             self.redraw_dirty = true;
         }
-        // Pump in-flight AI chat deltas into this frame. The deltas
-        // land in the tab the turn was bound to (MT.3 session-per-tab),
-        // not whichever tab is active now.
-        if chat_session::pump(
-            &mut self.host,
-            &mut self.current_chat,
-            self.chat_running_tab,
-            None,
-            (self.viewport_width, self.viewport_height),
-        ) {
+        // A failed subtask row's "Retry" click raised
+        // `chat.pending_subtask_retry` — launch the single-subtask
+        // worker (failed-subtask remediation, manual layer) before
+        // this same frame's pump drains its first commands/progress.
+        if self.launch_subtask_retry_if_pending() {
             self.redraw_dirty = true;
         }
-        // Update design-loop canvas indicators (frame glows + N/M
-        // header) while an OPENPENCIL_DESIGN_AGENT_LOOP turn runs.
-        crate::design_loop_indicator::pump_indicator(
-            &mut self.design_loop_indicator,
-            &self.current_chat,
-            self.host.editor_state_mut(),
-        );
-        // Sub-agent design loops (Task 3.1): launch any specs the
-        // parent loop just stashed via `spawn_agents`, then pump the
-        // active sub SEQUENTIALLY. Runs AFTER `pump_indicator` so the
-        // parent indicator teardown can't clobber the sub N/M count.
-        // Borrow-clean: launch + pump each borrow `host` and
-        // `sub_agents` separately (and `pump_sub_agents` takes the
-        // active session out before pumping).
-        if let Some(specs) = crate::sub_agent_session::take_pending_spawn() {
-            // Guard against a parent calling `spawn_agents` a SECOND
-            // time while batch A is still running: overwriting
-            // `self.sub_agents` would drop batch A's in-flight sessions
-            // and leak its active indicator epoch (forever-glow). The
-            // nested guard only covers a sub re-spawning, not the
-            // parent — so drop the re-spawn while a batch is live (the
-            // stash is still consumed above, so it can't fire later).
-            if self.sub_agents.is_empty() {
-                self.sub_agents =
-                    crate::sub_agent_session::launch_sub_agents(&mut self.host, specs);
-                self.active_sub_agent = 0;
-                if !self.sub_agents.is_empty() {
-                    self.redraw_dirty = true;
-                }
-            }
+        // Pump the agent runs of EVERY open document: chat deltas, tool
+        // calls, design-orchestrator commands and progress, sub-agents and
+        // their canvas indicators. The on-screen document's runs are pumped
+        // directly, each other document's through the lens, so a run keeps
+        // streaming into the document it was started in. Deltas land in the
+        // chat tab the turn was bound to, not whichever tab is active now.
+        if self.pump_document_runs() {
+            self.redraw_dirty = true;
         }
-        if crate::sub_agent_session::pump_sub_agents(
-            &mut self.host,
-            &mut self.sub_agents,
-            &mut self.active_sub_agent,
-            self.chat_running_tab,
-        ) {
+        if self.publish_document_tabs() {
             self.redraw_dirty = true;
         }
         // Drain a pending Cancel from the Code panel FIRST so a
@@ -282,54 +250,10 @@ impl DesktopApp {
             figma_import_session::PumpOutcome::Idle
             | figma_import_session::PumpOutcome::StillPending => {}
         }
-        // A failed subtask row's "Retry" click raised
-        // `chat.pending_subtask_retry` — launch the single-subtask
-        // worker (failed-subtask remediation, manual layer) before
-        // this same frame's pump drains its first commands/progress.
-        if self.launch_subtask_retry_if_pending() {
-            self.redraw_dirty = true;
-        }
-        // Drain orchestrator apply requests + progress events
-        // for any in-flight design turn (orchestrator runs off
-        // the UI thread; `RemoteDocSink` forwards mutations
-        // here each frame).
-        if design_session::pump_commands(
-            &mut self.host,
-            &mut self.current_design,
-            self.viewport_width,
-            self.viewport_height,
-        ) {
-            self.redraw_dirty = true;
-        }
-        if design_session::pump_progress(
-            &mut self.host,
-            &mut self.current_design,
-            self.chat_running_tab,
-        ) {
-            self.redraw_dirty = true;
-        }
-        // Update design-orchestrator canvas indicators (frame glows
-        // + scan) — the `current_design` counterpart to
-        // `pump_indicator` above. Runs AFTER `pump_commands` /
-        // `pump_progress` so a same-frame turn-finish (which clears
-        // `current_design`) is observed here, mirroring how
-        // `pump_indicator` runs after `chat_session::pump`.
-        crate::design_loop_indicator::pump_design_session_indicator(
-            &mut self.design_session_indicator,
-            &self.current_design,
-            self.host.editor_state_mut(),
-            self.chat_running_tab,
-        );
-        // Each pump retires its session when the turn finishes — once
-        // no chat / design / sub-agent run remains in flight, the tab
-        // binding is stale, so clear it (a fresh turn re-captures the
-        // active tab at launch).
-        let all_idle = self.current_chat.is_none()
-            && self.current_design.is_none()
-            && self.sub_agents.is_empty();
-        if all_idle {
-            self.chat_running_tab = None;
-        }
+        // Each pump retires its session when the turn finishes — once the
+        // on-screen document has no chat / design / sub-agent run in flight,
+        // the generation workspace below may settle.
+        let all_idle = !self.runs.is_live();
         // The generation workspace: refresh boards / selection / camera
         // every frame it is live, and on the idle edge resolve the
         // phase (Done with ≥1 board, Failed otherwise) through the
@@ -378,7 +302,8 @@ impl DesktopApp {
         // Starter ghost: painted from the moment a design prompt
         // clears the blank starter until the generated design's root
         // lands (or the turn dies with nothing produced).
-        let session_running = self.current_chat.is_some() || self.current_design.is_some();
+        let session_running =
+            self.runs.current_chat.is_some() || self.runs.current_design.is_some();
         self.persist_connection_changes();
         self.persist_ui_pref_changes();
         if crate::chat_session::reconcile_starter_ghost(
@@ -514,11 +439,7 @@ impl DesktopApp {
             // Finalize-lifecycle invariant (0718-1-k3-1 postmortem)
             // — see `chat_session::finalize_design_session_if_needed`'s
             // doc comment.
-            chat_session::finalize_design_session_if_needed(
-                &mut self.host,
-                &self.current_chat,
-                "teardown-backstop",
-            );
+            self.finalize_runs_before_exit();
             event_loop.exit();
         }
         // Keep an open Git panel fresh against external repo

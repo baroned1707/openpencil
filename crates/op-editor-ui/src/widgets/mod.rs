@@ -408,6 +408,9 @@ pub mod mobile_chrome;
 #[cfg(test)]
 mod mobile_layout_tests;
 pub mod mobile_more_panel;
+pub mod projects_dock;
+pub mod projects_dock_flow;
+pub mod projects_dock_layout;
 pub mod projects_panel;
 pub mod projects_panel_flow;
 pub mod projects_panel_layout;
@@ -506,6 +509,8 @@ pub use locale_picker::{LocalePicker, LOCALE_PICKER_WIDTH};
 pub use missing_fonts_panel::{MissingFontsHit, MissingFontsPanel};
 pub use mobile_chrome::{MobileAppBar, MobileAppBarHit, MobileDock, MobileDockHit};
 pub use mobile_more_panel::MobileMoreEntry;
+pub use projects_dock::ProjectsDock;
+pub use projects_dock_layout::{DockHit, ProjectsDockLayout};
 pub use projects_panel::{ProjectsPanel, ProjectsPanelText};
 pub use projects_panel_layout::ProjectsPanelLayout;
 pub use prompt_center_panel::{

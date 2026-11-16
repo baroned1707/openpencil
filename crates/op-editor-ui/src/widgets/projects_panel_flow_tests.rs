@@ -1,18 +1,21 @@
-//! Flow tests for the Projects tab: tab availability and routing, what a
-//! click turns into, scrolling, and the hover contract.
+//! Flow tests for the Projects dock's list: what a click turns into,
+//! scrolling, and the hover contract.
 
 use super::*;
 use crate::widgets::projects_panel_layout::{RowKind, FILE_HEIGHT, HEADER_HEIGHT};
-use crate::widgets::slides_panel_flow::{
-    projects_tab_active, projects_tab_available, select_tab, tab_row,
-};
-use op_editor_core::{
-    DocumentId, DocumentTabStatus, LeftPanelTab, ProjectFileView, ProjectView, SlidesPanelTarget,
-};
+use crate::Rect;
+use op_editor_core::{DocumentId, DocumentTabStatus, ProjectFileView, ProjectView};
 
+/// A rail-shaped area the list tests place their body in.
 pub(crate) const RAIL: Rect = Rect {
     origin: Point2D { x: 0.0, y: 48.0 },
     size: Point2D { x: 280.0, y: 600.0 },
+};
+
+/// The list body inside [`RAIL`]: below a 44 px header band.
+pub(crate) const BODY: Rect = Rect {
+    origin: Point2D { x: 0.0, y: 92.0 },
+    size: Point2D { x: 280.0, y: 556.0 },
 };
 
 pub(crate) fn file(label: &str, open: Option<u64>) -> ProjectFileView {
@@ -35,12 +38,11 @@ pub(crate) fn project(name: &str, files: Vec<ProjectFileView>, expanded: bool) -
     }
 }
 
-/// A state whose host supports tabs, holds `projects`, and shows the tab.
+/// A state whose host supports tabs and holds `projects`.
 pub(crate) fn state_with(projects: Vec<ProjectView>) -> EditorState {
     let mut state = EditorState::default();
     state.editor_ui.document_tabs_supported = true;
     state.editor_ui.projects_panel.projects = projects;
-    state.editor_ui.slides_panel.tab = LeftPanelTab::Projects;
     state
 }
 
@@ -56,7 +58,8 @@ pub(crate) fn shop() -> Vec<ProjectView> {
 }
 
 fn laid_out(state: &EditorState) -> ProjectsPanelLayout {
-    layout(state, RAIL).expect("the Projects tab is on show")
+    let panel = &state.editor_ui.projects_panel;
+    ProjectsPanelLayout::new(&panel.projects, BODY, panel.scroll.offset)
 }
 
 fn centre(layout: &ProjectsPanelLayout, kind: RowKind) -> Point2D {
@@ -71,43 +74,6 @@ fn centre(layout: &ProjectsPanelLayout, kind: RowKind) -> Point2D {
 fn click(state: &mut EditorState, layout: &ProjectsPanelLayout, point: Point2D) -> ProjectsPress {
     cursor_move(state, layout, point);
     press(state, layout, point)
-}
-
-#[test]
-fn projects_tab_is_offered_in_the_row_only_when_supported_and_non_empty() {
-    let mut state = state_with(shop());
-    assert!(projects_tab_available(&state));
-    assert!(tab_row(&state, RAIL).is_some_and(|tabs| tabs.projects.size.x > 0.0));
-
-    state.editor_ui.document_tabs_supported = false;
-    assert!(!projects_tab_available(&state));
-    assert!(tab_row(&state, RAIL).is_some_and(|tabs| tabs.projects.size.x == 0.0));
-}
-
-#[test]
-fn a_stale_projects_selection_falls_back_to_the_layers_tree() {
-    let mut state = state_with(shop());
-    state.editor_ui.projects_panel.projects.clear();
-    assert!(!projects_tab_active(&state));
-    assert!(layout(&state, RAIL).is_none());
-    assert!(
-        !select_tab(&mut state, LeftPanelTab::Projects),
-        "an unavailable tab cannot be selected"
-    );
-}
-
-#[test]
-fn the_projects_tab_hit_selects_it() {
-    let mut state = state_with(shop());
-    state.editor_ui.slides_panel.tab = LeftPanelTab::Layers;
-    let tabs = tab_row(&state, RAIL).unwrap();
-    let at = Point2D::new(
-        tabs.projects.origin.x + 4.0,
-        tabs.projects.origin.y + tabs.projects.size.y / 2.0,
-    );
-    assert_eq!(tabs.hit(at), Some(SlidesPanelTarget::ProjectsTab));
-    assert!(select_tab(&mut state, LeftPanelTab::Projects));
-    assert!(projects_tab_active(&state));
 }
 
 #[test]
@@ -222,19 +188,8 @@ fn a_press_on_bare_body_is_claimed_without_a_request() {
     assert_eq!(
         press(&mut state, &layout, outside),
         ProjectsPress::Missed,
-        "points off the rail fall through"
+        "points off the list fall through"
     );
-}
-
-#[test]
-fn the_layout_starts_below_the_tab_row() {
-    let state = state_with(shop());
-    let layout = laid_out(&state);
-    assert!(
-        layout.panel.origin.y > RAIL.origin.y,
-        "the tab row keeps its band"
-    );
-    assert_eq!(layout.panel.size.y, RAIL.size.y - 44.0);
 }
 
 fn many_projects() -> Vec<ProjectView> {
@@ -254,7 +209,7 @@ fn scroll_clamps_to_content() {
     let mut state = state_with(many_projects());
     let inside = Point2D::new(40.0, RAIL.origin.y + 60.0);
     let max = laid_out(&state).max_scroll();
-    assert!(max > 0.0, "twelve projects overflow the rail");
+    assert!(max > 0.0, "twelve projects overflow the list");
 
     // Wheel convention: a negative delta scrolls down the list. The layout
     // is rebuilt per event, exactly as the hosts do.
@@ -279,7 +234,7 @@ fn scroll_clamps_to_content() {
     assert_eq!(
         scroll(&mut state, Some(&layout), Point2D::new(900.0, 10.0), -10.0),
         None,
-        "a wheel off the tab keeps looking"
+        "a wheel off the list keeps looking"
     );
 }
 

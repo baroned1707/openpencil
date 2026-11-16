@@ -24,8 +24,6 @@ const EN_ROW: SlidesTabRow<'static> = SlidesTabRow {
     slides_label: "Slides",
     chat_available: true,
     slides_available: true,
-    projects_label: "Projects",
-    projects_available: false,
 };
 const VI_ROW: SlidesTabRow<'static> = SlidesTabRow {
     chat_label: "Trò chuyện",
@@ -33,8 +31,6 @@ const VI_ROW: SlidesTabRow<'static> = SlidesTabRow {
     slides_label: "Trang chiếu",
     chat_available: true,
     slides_available: true,
-    projects_label: "Projects",
-    projects_available: false,
 };
 /// The touch row keeps two tabs — touch chrome hosts the chat as a
 /// sheet, so the Chat tab is not offered there.

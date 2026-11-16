@@ -24,8 +24,9 @@ pub struct ColorPicker {
     pub id: WidgetId,
     pub state: ColorPickerState,
     pub theme: Theme,
-    /// Right-rail width — drives the picker's horizontal anchor.
-    property_panel_width: f32,
+    /// Width of everything docked at the window's right edge (the Projects
+    /// dock plus the property panel) — drives the picker's horizontal anchor.
+    right_rail_width: f32,
     /// Clock for the hex field's caret blink.
     now_ms: u64,
 }
@@ -40,7 +41,8 @@ impl ColorPicker {
             id: WidgetId::new(5100),
             state: picker,
             theme: theme_for(&state.editor_ui),
-            property_panel_width: state.editor_ui.property_panel_width,
+            right_rail_width: crate::widgets::host_canvas_geometry::projects_dock_width(state)
+                + state.editor_ui.property_panel_width,
             now_ms,
         }
     }
@@ -55,7 +57,7 @@ impl ColorPicker {
             .anchor_x
             .map(|anchor_x| anchored_x(anchor_x, viewport_w))
             .unwrap_or_else(|| {
-                let right_rail_left = viewport_w - self.property_panel_width;
+                let right_rail_left = viewport_w - self.right_rail_width;
                 (right_rail_left - PICKER_WIDTH - 8.0).max(8.0)
             });
         let mut y = self.state.anchor_y - PICKER_HEIGHT / 2.0;

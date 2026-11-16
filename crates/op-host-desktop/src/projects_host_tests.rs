@@ -1,4 +1,4 @@
-//! Projects tab host wiring: tree building, disk listing and requests.
+//! Projects dock host wiring: tree building, disk listing and requests.
 
 use super::*;
 use op_host_services::doc_io::save_to_path;

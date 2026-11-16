@@ -544,6 +544,8 @@ pub fn lookup(key: &str) -> Option<&'static str> {
         "projects.newDesign" => "ดีไซน์ใหม่",
         "projects.needsReview" => "{{count}} รอตรวจ",
         "projects.running" => "{{count}} กำลังทำงาน",
+        "dialog.agentRunningTitle" => "เอเจนต์ยังทำงานอยู่",
+        "dialog.agentRunningBody" => "“{{name}}” มีเอเจนต์ที่ยังทำงานอยู่\n\nการปิดจะหยุดเอเจนต์\n\nใช่ = หยุดและปิด · ไม่ หรือ ยกเลิก = ทำงานต่อ",
         _ => return None,
     })
 }

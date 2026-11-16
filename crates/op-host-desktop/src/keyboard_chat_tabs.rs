@@ -21,15 +21,15 @@ impl DesktopApp {
         // Agents start in the project root of the document on screen at launch
         // time (not wherever the app was started); an untitled document keeps
         // the old behaviour.
-        let context = chat_session::ChatLaunchContext::for_document(self.current_path.as_deref());
+        let context = self.launch_context();
         let launched = chat_session::launch_if_pending_with(
             &mut self.host,
-            &mut self.current_chat,
-            &mut self.current_design,
+            &mut self.runs.current_chat,
+            &mut self.runs.current_design,
             &context,
         );
-        if launched && (self.current_chat.is_some() || self.current_design.is_some()) {
-            self.chat_running_tab = Some(self.host.editor_state().chat.active_index());
+        if launched && (self.runs.current_chat.is_some() || self.runs.current_design.is_some()) {
+            self.runs.chat_running_tab = Some(self.host.editor_state().chat.active_index());
         }
         retired || launched
     }
@@ -43,10 +43,10 @@ impl DesktopApp {
     pub(crate) fn launch_subtask_retry_if_pending(&mut self) -> bool {
         let launched = design_session::launch_subtask_retry_if_pending(
             &mut self.host,
-            &mut self.current_design,
+            &mut self.runs.current_design,
         );
-        if launched && self.current_design.is_some() {
-            self.chat_running_tab = Some(self.host.editor_state().chat.active_index());
+        if launched && self.runs.current_design.is_some() {
+            self.runs.chat_running_tab = Some(self.host.editor_state().chat.active_index());
         }
         launched
     }
@@ -54,7 +54,7 @@ impl DesktopApp {
     /// Drain a New Chat request (the widget handler already opened the fresh
     /// tab). Aborts any in-flight worker and clears the now-stale tab binding.
     pub(crate) fn drain_new_chat(&mut self) -> bool {
-        let running_tab = self.chat_running_tab;
+        let running_tab = self.runs.chat_running_tab;
         let fresh_turn_tab = self
             .host
             .editor_state()
@@ -64,11 +64,14 @@ impl DesktopApp {
             .map(|_| self.host.editor_state().chat.active_index());
         let drained = chat_session::drain_new_chat_request(
             &mut self.host,
-            &mut self.current_chat,
-            &mut self.current_design,
+            &mut self.runs.current_chat,
+            &mut self.runs.current_design,
         );
         if drained {
-            crate::sub_agent_session::abort_all(&mut self.sub_agents, &mut self.active_sub_agent);
+            crate::sub_agent_session::abort_all(
+                &mut self.runs.sub_agents,
+                &mut self.runs.active_sub_agent,
+            );
             if let Some(chat) = running_tab
                 .filter(|idx| Some(*idx) != fresh_turn_tab)
                 .and_then(|idx| self.host.editor_state_mut().chat.tab_mut(idx))
@@ -80,7 +83,7 @@ impl DesktopApp {
                     message.streaming = false;
                 }
             }
-            self.chat_running_tab = None;
+            self.runs.chat_running_tab = None;
         }
         drained
     }
@@ -88,17 +91,20 @@ impl DesktopApp {
     /// Drain a Stop request — aborts the in-flight worker and clears the tab
     /// binding so a later pump can't target a finished run.
     pub(crate) fn drain_stop_chat(&mut self) -> bool {
-        let running_tab = self.chat_running_tab;
+        let running_tab = self.runs.chat_running_tab;
         let drained = chat_session::drain_stop_request(
             &mut self.host,
-            &mut self.current_chat,
-            &mut self.current_design,
+            &mut self.runs.current_chat,
+            &mut self.runs.current_design,
             running_tab,
         );
         if drained {
-            crate::sub_agent_session::abort_all(&mut self.sub_agents, &mut self.active_sub_agent);
+            crate::sub_agent_session::abort_all(
+                &mut self.runs.sub_agents,
+                &mut self.runs.active_sub_agent,
+            );
             self.host.editor_state_mut().chat.agents_running = (0, 0);
-            self.chat_running_tab = None;
+            self.runs.chat_running_tab = None;
         }
         drained
     }
@@ -111,7 +117,7 @@ impl DesktopApp {
         if idx >= self.host.editor_state().chat.tab_count() {
             return; // out of range — mirror ChatSessions::close_tab no-op
         }
-        if self.chat_running_tab == Some(idx) {
+        if self.runs.chat_running_tab == Some(idx) {
             // The run's tab is going away — abort it before the index shifts.
             // Drop the chat / design sessions and any sub-agent loops bound to
             // this tab (ending their canvas-indicator epoch so no badge glow
@@ -124,15 +130,19 @@ impl DesktopApp {
             // `chat_session::finalize_design_session_if_needed`'s doc comment.
             crate::chat_session::finalize_design_session_if_needed(
                 &mut self.host,
-                &self.current_chat,
+                &self.runs.current_chat,
                 "teardown-backstop",
             );
-            self.current_chat = None;
-            self.current_design = None;
-            crate::sub_agent_session::abort_all(&mut self.sub_agents, &mut self.active_sub_agent);
-            self.chat_running_tab = None;
-        } else if let Some(running) = self.chat_running_tab {
-            self.chat_running_tab = op_editor_core::adjust_running_tab_after_close(running, idx);
+            self.runs.current_chat = None;
+            self.runs.current_design = None;
+            crate::sub_agent_session::abort_all(
+                &mut self.runs.sub_agents,
+                &mut self.runs.active_sub_agent,
+            );
+            self.runs.chat_running_tab = None;
+        } else if let Some(running) = self.runs.chat_running_tab {
+            self.runs.chat_running_tab =
+                op_editor_core::adjust_running_tab_after_close(running, idx);
         }
         self.host.editor_state_mut().chat.close_tab(idx);
         self.host.editor_state_mut().rebuild_chat_models();
@@ -222,13 +232,13 @@ mod tests {
             !app.host.editor_state().chat.pending_new_chat,
             "the old-chat cleanup must be consumed BEFORE launch"
         );
-        assert!(app.current_design.is_some());
-        assert_eq!(app.chat_running_tab, Some(0));
+        assert!(app.runs.current_design.is_some());
+        assert_eq!(app.runs.chat_running_tab, Some(0));
         assert!(
             !app.drain_new_chat(),
             "the pointer/redraw tail must not abort the new run"
         );
-        assert!(app.current_design.is_some());
+        assert!(app.runs.current_design.is_some());
         app.host.editor_state_mut().chat.pending_stop_chat = true;
         app.drain_stop_chat();
     }
@@ -236,7 +246,7 @@ mod tests {
     #[test]
     fn clearing_a_replaced_chat_keeps_its_already_queued_fresh_turn() {
         let mut app = DesktopApp::new(None);
-        app.chat_running_tab = Some(0);
+        app.runs.chat_running_tab = Some(0);
         let chat = &mut app.host.editor_state_mut().chat;
         chat.new_chat();
         chat.set_input_text("新作品的资料");
@@ -248,7 +258,7 @@ mod tests {
             Some("新作品的资料")
         );
         assert_eq!(app.host.editor_state().chat.messages, messages);
-        assert_eq!(app.chat_running_tab, None);
+        assert_eq!(app.runs.chat_running_tab, None);
     }
 
     #[test]

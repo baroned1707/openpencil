@@ -554,6 +554,8 @@ pub fn lookup(key: &str) -> Option<&'static str> {
         "projects.newDesign" => "Thiết kế mới",
         "projects.needsReview" => "{{count}} cần duyệt",
         "projects.running" => "{{count}} đang chạy",
+        "dialog.agentRunningTitle" => "Agent vẫn đang chạy",
+        "dialog.agentRunningBody" => "“{{name}}” có một agent đang chạy.\n\nĐóng sẽ dừng agent.\n\nCó = Dừng và đóng · Không hoặc Hủy = tiếp tục làm việc.",
         _ => return None,
     })
 }

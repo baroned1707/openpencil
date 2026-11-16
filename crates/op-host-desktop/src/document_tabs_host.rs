@@ -22,15 +22,14 @@ const SWITCH_BLOCKED_KEY: &str = "documents.switchBlocked";
 
 impl DesktopApp {
     /// Why documents cannot be switched, opened or closed right now, if they
-    /// cannot. Agent runs, imports and background writers are not yet bound to
-    /// the document that started them, so switching under one would hand its
-    /// result to whichever document is on screen by then.
+    /// cannot. Agent runs are not a reason: each belongs to its own document
+    /// and keeps streaming into it while another is on screen. Imports,
+    /// background writers and the like still deliver their result to whichever
+    /// document is showing when they finish, so switching under one would
+    /// hand it to the wrong document.
     pub(crate) fn document_switch_blocked(&self) -> Option<BlockReason> {
         let state = self.host.editor_state();
         ActivityFlags {
-            chat_turn: self.current_chat.is_some() || state.chat.has_streaming_turn(),
-            design_run: self.current_design.is_some() || state.chat.agents_running.0 > 0,
-            sub_agents: !self.sub_agents.is_empty(),
             codegen: self.current_codegen.is_some(),
             design_md: self.current_design_md.is_some(),
             import: self.current_figma_import.is_some()
@@ -66,6 +65,7 @@ impl DesktopApp {
     /// before asking the registry anything that depends on paths.
     pub(crate) fn sync_active_slot(&mut self) {
         self.documents.set_active_path(self.current_path.clone());
+        self.documents.set_active_status(self.runs.status);
     }
 
     /// Run once per frame: execute the tab strip's request, then publish the
@@ -159,6 +159,7 @@ impl DesktopApp {
         let Some(mut incoming) = self.documents.take_parked(target) else {
             return false;
         };
+        self.settle_leaving_document();
         if !self.host.swap_document(&mut incoming) {
             self.documents.restore_parked(target, incoming);
             return false;
@@ -180,6 +181,7 @@ impl DesktopApp {
             path: self.current_path.take(),
             git_session: Some(std::mem::take(&mut self.git_session)),
             collab_fork_saves: std::mem::take(&mut self.collab_fork_saves),
+            runs: std::mem::take(&mut self.runs),
         }
     }
 
@@ -189,6 +191,9 @@ impl DesktopApp {
         self.git_session = local.git_session.unwrap_or_else(GitSession::new);
         self.current_path = local.path;
         self.collab_fork_saves = local.collab_fork_saves;
+        self.runs = local.runs;
+        // The user is looking at it now: a finished run no longer asks for review.
+        self.runs.mark_seen();
         if never_bound {
             self.git_session.rebind(self.current_path.as_deref());
         }
@@ -198,6 +203,7 @@ impl DesktopApp {
     /// document that left, point Git and the title at the one that arrived,
     /// and republish the tab strip.
     fn finish_document_switch(&mut self, git_before: (Option<PathBuf>, Option<PathBuf>)) {
+        self.sync_indicator_scope();
         self.pending_cursor_move = None;
         self.image_search.reset();
         // Accessibility actions name nodes of the previous document.
@@ -223,6 +229,7 @@ impl DesktopApp {
         path: Option<PathBuf>,
     ) -> bool {
         self.sync_active_slot();
+        self.settle_leaving_document();
         if !self.host.swap_document(&mut incoming) {
             return false;
         }
@@ -243,9 +250,13 @@ impl DesktopApp {
     fn active_document_is_pristine_untitled(&self) -> bool {
         let state = self.host.editor_state();
         self.current_path.is_none()
+            && !self.runs.is_live()
             && !state.is_dirty()
             && state.document_revision() == 0
             && !state.history.can_undo()
+            // The chat belongs to the document: replacing a tab whose chat was
+            // used would delete the conversation.
+            && state.chat.is_untouched()
     }
 
     /// Open the document at `path` in a new tab, or switch to it when it is
@@ -305,7 +316,7 @@ impl DesktopApp {
             crate::settings_io::touch_recent(&mut self.host, &bound_path);
         }
         if replaces_blank {
-            self.documents.remove(blank_index);
+            self.remove_slot(blank_index);
             self.publish_document_tabs();
         }
         true
@@ -412,6 +423,16 @@ impl DesktopApp {
             self.refuse_document_switch(reason);
             return false;
         }
+        // Closing stops the document's agent: say so before anything else, so
+        // answering No leaves everything as it was.
+        if self.slot_has_live_run(index) {
+            if !self.confirm_stop_runs_to_close(index, &mut ask) {
+                return false;
+            }
+            // Stopped before the save prompt, so a Save writes the finalized
+            // design (quit does the same).
+            self.cancel_runs_of_slot(index);
+        }
         if self.documents.is_dirty(index, self.document_is_dirty()) {
             // Ask against the document itself so Save writes the right file.
             if !self.activate_document_slot(index) || !self.confirm_close_active_document(&mut ask)
@@ -420,6 +441,15 @@ impl DesktopApp {
             }
         }
         self.discard_document_tab(index)
+    }
+
+    /// Remove the parked tab at `index` and forget its indicators.
+    fn remove_slot(&mut self, index: usize) -> bool {
+        let Some(slot) = self.documents.remove(index) else {
+            return false;
+        };
+        op_editor_core::agent_indicators::drop_scope(slot.id.0);
+        true
     }
 
     /// Remove the tab at `index` without asking. When it is the one on screen,
@@ -448,7 +478,7 @@ impl DesktopApp {
         let Some(index) = self.documents.index_of(id) else {
             return false;
         };
-        let removed = self.documents.remove(index).is_some();
+        let removed = self.remove_slot(index);
         self.publish_document_tabs();
         removed
     }

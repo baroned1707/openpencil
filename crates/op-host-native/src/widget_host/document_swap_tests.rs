@@ -107,7 +107,6 @@ fn app_level_state_does_not_follow_a_host_swap() {
     let mut host = host_showing("docA");
     host.editor_state_mut().editor_ui.locale = op_editor_core::Locale::Ja;
     host.editor_state_mut().editor_ui.touch = true;
-    host.editor_state_mut().chat.title = "design chat".to_owned();
 
     let mut parked_b = ParkedDocument::from_state(state_named("docB"), Default::default());
     assert!(host.swap_document(&mut parked_b));
@@ -116,7 +115,6 @@ fn app_level_state_does_not_follow_a_host_swap() {
         op_editor_core::Locale::Ja
     );
     assert!(host.editor_state().editor_ui.touch);
-    assert_eq!(host.editor_state().chat.title, "design chat");
 }
 
 #[test]
