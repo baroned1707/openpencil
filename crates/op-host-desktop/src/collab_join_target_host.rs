@@ -12,6 +12,11 @@
 //! is under way the tab system is frozen (`requires_background_save_as_fork`),
 //! so nothing can switch away from the join's tab before the Snapshot lands.
 //!
+//! The session's display state (queued join action, typed address, panel, a
+//! failure notice) moves with the join: out of the guest's tab into the new
+//! one, and back again if the join falls through, so the user sees the same
+//! panel before, during and after.
+//!
 //! Cleanup: a join that ends WITHOUT a Snapshot (cancelled, refused, failed)
 //! closes the tab it opened and puts the guest's own document back on screen
 //! (`settle_guest_join_tab`). Once the Snapshot has installed (the document
@@ -109,7 +114,18 @@ impl DesktopApp {
         // lend parked documents to the recovery writer, so write its entry
         // now, while it is still on screen. It cannot change afterwards.
         self.snapshot_before_run();
-        if !self.open_untitled_tab_unchecked() {
+        // The queued join, the typed address and the open panel belong to the
+        // session that is about to run, which lives in the NEW tab. Lift the
+        // session out of the old tab for the swap and put it into whichever
+        // tab is on screen afterwards (the old one again if no tab opened).
+        let session = self.host.editor_state_mut().editor_ui.collab.take_session();
+        let opened = self.open_untitled_tab_unchecked();
+        self.host
+            .editor_state_mut()
+            .editor_ui
+            .collab
+            .restore_session(session);
+        if !opened {
             return self.refuse_join();
         }
         self.guest_join_tab = Some(GuestJoinTab {
@@ -173,7 +189,17 @@ impl DesktopApp {
         let Some(previous) = self.documents.index_of(tab.previous) else {
             return false;
         };
-        if !self.activate_document_slot(previous) {
+        // The session UI (a failure notice, the panel) must outlive the closed
+        // tab: it moves back to the guest's own tab, which is where the user
+        // lands and where they started the join.
+        let session = self.host.editor_state_mut().editor_ui.collab.take_session();
+        let activated = self.activate_document_slot(previous);
+        self.host
+            .editor_state_mut()
+            .editor_ui
+            .collab
+            .restore_session(session);
+        if !activated {
             return false;
         }
         if let Some(index) = self.documents.index_of(tab.document) {
@@ -199,3 +225,7 @@ pub(crate) struct GuestJoinTab {
 #[cfg(test)]
 #[path = "collab_join_target_host_tests.rs"]
 mod tests;
+
+#[cfg(test)]
+#[path = "collab_join_handoff_tests.rs"]
+mod handoff_tests;

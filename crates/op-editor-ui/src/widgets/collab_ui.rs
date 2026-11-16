@@ -658,3 +658,7 @@ mod tests;
 #[cfg(test)]
 #[path = "collab_ui_tests.rs"]
 mod public_flow_tests;
+
+#[cfg(test)]
+#[path = "collab_ui_document_scope_tests.rs"]
+mod document_scope_tests;

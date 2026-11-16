@@ -340,7 +340,8 @@ pub enum CollabUiAction {
 }
 
 /// Complete shared display state. Authentication/session actors publish only
-/// sanitized projections through the methods below.
+/// sanitized projections through the methods below. The SESSION fields travel
+/// with their document and the app-level ones do not: `session_scope`.
 #[derive(Debug, Clone)]
 pub struct CollabUiState {
     pub availability: CollabAvailability,
@@ -614,6 +615,8 @@ impl CollabUiState {
         }
     }
 }
+
+pub(crate) mod session_scope;
 
 #[cfg(test)]
 mod presence_merge_tests;

@@ -8,7 +8,8 @@
 //!
 //! What travels with a document:
 //!   - its editor data (`DocumentScope`: node tree, selection, history,
-//!     revision counters, per-document view state);
+//!     revision counters, per-document view state, and the collaboration
+//!     session display: phase, roster, notice, join panel);
 //!   - the host caches derived from it (`DocumentCaches`). Each document's
 //!     revision restarts at 0, so a cache keyed by revision would otherwise
 //!     serve one document's scene or LayerPanel rows to another;
@@ -17,7 +18,7 @@
 //!     refused after the user switches away and back.
 //!
 //! App-level state (theme, locale, agent connections, chat, clipboard, window
-//! chrome) never moves.
+//! chrome, collaboration availability / transports / relay region) never moves.
 
 use super::*;
 use jian_ops_schema::image_thumbs::{capture_snapshot, restore_snapshot, ImageThumbSnapshot};
@@ -285,3 +286,7 @@ mod tests;
 #[cfg(test)]
 #[path = "document_swap_lens_tests.rs"]
 mod lens_tests;
+
+#[cfg(test)]
+#[path = "document_swap_collab_tests.rs"]
+mod collab_tests;

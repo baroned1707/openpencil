@@ -4,8 +4,8 @@
 //! connections, ...) and must stay put when the user switches documents. A
 //! small group of fields instead belongs to ONE document: node-keyed hover and
 //! collapse state, per-document scroll offsets, the file name, the document
-//! metadata that `editorMeta` persists, and the Studio workspace. Those travel
-//! in this struct.
+//! metadata that `editorMeta` persists, the Studio workspace, and the
+//! collaboration SESSION display state. Those travel in this struct.
 //!
 //! Every field of `EditorUiState` is named in [`EditorUiDocumentScope::from_state`]
 //! and [`EditorUiDocumentScope::exchange`] with no `..` rest pattern: a new
@@ -81,6 +81,11 @@ pub struct EditorUiDocumentScope {
     pub(crate) home_imported_from: Option<String>,
     /// `design_md_panel.scroll` — the Design-MD list scroll for this document.
     pub(crate) design_md_scroll: jian_core::scroll::ScrollState,
+    /// The collaboration display state. Only its SESSION fields belong to the
+    /// document (see `CollabUiState::exchange_session`); the app-level fields
+    /// of this copy (availability, transport capabilities, relay region) are
+    /// never read: the live state keeps its own across every swap.
+    pub(crate) collab: crate::CollabUiState,
 }
 
 impl EditorUiDocumentScope {
@@ -116,7 +121,7 @@ impl EditorUiDocumentScope {
             host_locale_override: _,
             locale_picker: _,
             preferred_agent_team_size: _,
-            collab: _,
+            collab,
             file_menu_open: _,
             file_menu: _,
             export_quick_menu_open: _,
@@ -379,6 +384,7 @@ impl EditorUiDocumentScope {
             home_work_family: home.work_family,
             home_imported_from: home.imported_from,
             design_md_scroll: design_md_panel.scroll,
+            collab,
         }
     }
 
@@ -411,7 +417,7 @@ impl EditorUiDocumentScope {
             host_locale_override: _,
             locale_picker: _,
             preferred_agent_team_size: _,
-            collab: _,
+            collab,
             file_menu_open: _,
             file_menu: _,
             export_quick_menu_open: _,
@@ -674,6 +680,7 @@ impl EditorUiDocumentScope {
             home_work_family,
             home_imported_from,
             design_md_scroll,
+            collab: scope_collab,
         } = self;
         std::mem::swap(hovered_layer_id, scope_hovered_layer_id);
         std::mem::swap(hovered_page_index, scope_hovered_page_index);
@@ -762,5 +769,6 @@ impl EditorUiDocumentScope {
         std::mem::swap(&mut home.work_family, home_work_family);
         std::mem::swap(&mut home.imported_from, home_imported_from);
         std::mem::swap(&mut design_md_panel.scroll, design_md_scroll);
+        collab.exchange_session(scope_collab);
     }
 }

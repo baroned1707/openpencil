@@ -159,6 +159,13 @@ impl DocumentScope {
         true
     }
 
+    /// The collaboration display state of this document. Only its session
+    /// fields are meaningful here; the app-level ones live in the on-screen
+    /// state (see `CollabUiState::exchange_session`).
+    pub fn collab(&self) -> &crate::CollabUiState {
+        &self.editor_ui.collab
+    }
+
     /// The chat tabs of this document.
     pub fn chat(&self) -> &ChatSessions {
         &self.chat
@@ -259,9 +266,25 @@ impl EditorState {
     /// app-level chat preferences (connected models, selection, panel
     /// placement) follow the user onto the arriving document instead of
     /// staying behind in the one that leaves.
+    ///
+    /// The collaboration session follows its document, with one exception:
+    /// mDNS discovery (`Discovering`) is documented as "the current document
+    /// is not yet bound", and the host runtime keeps publishing the endpoint
+    /// list to whichever document is on screen. It therefore stays with the
+    /// user, exactly as the app-wide display state did before sessions moved
+    /// with their document. The collaboration app-level fields (availability,
+    /// transports, relay region) never move at all, see
+    /// `CollabUiState::exchange_session`.
     pub fn switch_document_scope(&mut self, scope: &mut DocumentScope) {
         let prefs = self.chat.app_prefs();
+        let discovery_follows_user =
+            self.editor_ui.collab.phase == crate::CollabConnectionPhase::Discovering;
         self.exchange_document_scope(scope);
+        if discovery_follows_user {
+            self.editor_ui
+                .collab
+                .exchange_session(&mut scope.editor_ui.collab);
+        }
         self.chat.apply_app_prefs(&prefs);
     }
 }
@@ -273,3 +296,7 @@ mod tests;
 #[cfg(test)]
 #[path = "document_scope_chat_tests.rs"]
 mod chat_tests;
+
+#[cfg(test)]
+#[path = "document_scope_collab_tests.rs"]
+mod collab_tests;

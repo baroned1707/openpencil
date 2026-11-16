@@ -537,3 +537,7 @@ pub(crate) mod test_support;
 #[cfg(test)]
 #[path = "recovery_host_tests.rs"]
 mod tests;
+
+#[cfg(test)]
+#[path = "recovery_collab_tests.rs"]
+mod collab_tests;
