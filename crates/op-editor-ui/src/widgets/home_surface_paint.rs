@@ -192,17 +192,12 @@ fn paint_top_bar(
     // sized to the column they stopped short under the right-hand actions.
     cx.backend
         .fill_rect(Rect::xywh(0.0, 0.0, width, HOME_TOPBAR_H), palette.topbar);
-    // Official mark, 34×34 (the PNG carries internal padding, so its
-    // layout box overshoots the visible glyph). 80 px in from the left:
-    // the macOS traffic lights own the first ~70 px of a borderless
-    // window, so the prototype's 30 px would put the mark under them.
+    // Text-only brand: `mark` is just the layout slot the wordmark sits in
+    // (80 px in from the left — the macOS traffic lights own the first
+    // ~70 px of a borderless window).
     let mark = Rect::xywh(80.0, (HOME_TOPBAR_H - 34.0) / 2.0, 34.0, 34.0);
-    if !crate::widgets::login_modal::paint_brand_logo_png(cx.backend, mark) {
-        cx.backend
-            .fill_round_rect(mark, 7.0, fade(palette.blue, 0.25));
-    }
     // OpenPencil, 20 px w700, −0.7 tracking.
-    let name_x = mark.origin.x + mark.size.x + 10.0;
+    let name_x = mark.origin.x;
     let baseline = jian_widgets::centered_text_baseline_y(mark, 20.0);
     spaced_text(
         cx,

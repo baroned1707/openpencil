@@ -96,16 +96,13 @@ pub(super) fn paint_top_bar(
     let locale = surface.ui.locale;
     cx.backend
         .fill_rect(Rect::xywh(0.0, 0.0, width, HOME_TOPBAR_H), palette.topbar);
-    // Brand mark, 26 px, 16 in from the left (no desktop traffic
-    // lights own a phone's first column).
+    // Text-only brand: `mark` is the layout slot the wordmark sits in,
+    // 16 in from the left (no desktop traffic lights own a phone's first
+    // column).
     let mark = Rect::xywh(16.0, (HOME_TOPBAR_H - 26.0) / 2.0, 26.0, 26.0);
-    if !crate::widgets::login_modal::paint_brand_logo_png(cx.backend, mark) {
-        cx.backend
-            .fill_round_rect(mark, 6.0, fade(palette.blue, 0.25));
-    }
     // Keep the compact wordmark out of the translated mode switch. The
-    // brand icon remains visible even when a narrow header cannot fit both.
-    let brand_x = mark.origin.x + mark.size.x + 8.0;
+    // wordmark is dropped when a narrow header cannot fit both.
+    let brand_x = mark.origin.x;
     let brand_width = cx
         .backend
         .measure_text_family_styled("OpenPencil", 17.0, SANS, 700, false);
@@ -114,7 +111,7 @@ pub(super) fn paint_top_bar(
             cx,
             "OpenPencil",
             Point2D::new(
-                mark.origin.x + mark.size.x + 8.0,
+                mark.origin.x,
                 jian_widgets::centered_text_baseline_y(mark, 17.0),
             ),
             17.0,

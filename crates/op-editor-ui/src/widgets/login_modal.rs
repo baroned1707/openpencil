@@ -10,9 +10,6 @@
 //! its own.
 
 use crate::theme::Theme;
-use crate::widgets::canvas_viewport_image::{
-    has_cached_image_bytes, note_pending_decode, required_raster_edge, store_remote_image_bytes,
-};
 use crate::widgets::editor_state_ext::theme_for;
 use crate::widgets::icons::{draw_icon, Icon};
 use crate::widgets::text_metrics;
@@ -34,9 +31,6 @@ const SIGN_IN_BTN_H: f32 = 48.0;
 const SIGN_IN_BTN_Y: f32 = MODAL_HEIGHT - 80.0;
 const CLOSE_SIZE: f32 = 30.0;
 const BRAND_BADGE_SIZE: f32 = 52.0;
-const BRAND_LOGO_IMAGE_ID: u64 = 0x4f50_5a37_4c4f_474f;
-// 128px downscale: the modal paints 52px; the 1024px original cost 557 KB.
-const BRAND_LOGO_PNG: &[u8] = include_bytes!("../../assets/brand-logo-128.png");
 const STATUS_HEIGHT: f32 = 44.0;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -189,56 +183,26 @@ fn paint_centered_text(
     backend.draw_text(&layout, Point2D::new(center_x - width / 2.0, baseline_y));
 }
 
+/// Text-only brand: the wordmark sits in the slot the badge used to fill, so
+/// the layout below it stays put.
 fn paint_brand_badge(backend: &mut dyn RenderBackend, theme: &Theme, panel: Rect) {
-    let badge = Rect::xywh(
-        panel.origin.x + (panel.size.x - BRAND_BADGE_SIZE) / 2.0,
+    let slot = Rect::xywh(
+        panel.origin.x,
         panel.origin.y + 24.0,
+        panel.size.x,
         BRAND_BADGE_SIZE,
-        BRAND_BADGE_SIZE,
     );
-    // The official application artwork already carries the white rounded
-    // tile and cyan Z/pencil mark. Keep its natural transparent padding;
-    // wrapping it in another coloured badge changes the brand silhouette.
-    let tile_inset = 5.0;
-    let shadow = Rect::xywh(
-        badge.origin.x + tile_inset,
-        badge.origin.y + tile_inset + 2.0,
-        badge.size.x - tile_inset * 2.0,
-        badge.size.y - tile_inset * 2.0,
+    let font_size = 24.0;
+    let baseline = jian_widgets::centered_text_baseline_y(slot, font_size);
+    paint_centered_text(
+        backend,
+        "OpenPencil",
+        slot.origin.x + slot.size.x / 2.0,
+        baseline,
+        font_size,
+        700,
+        theme.foreground,
     );
-    backend.fill_drop_shadow(
-        shadow,
-        11.0,
-        9.0,
-        Color::BLACK.with_alpha(if theme.background.r < 0.5 { 0.30 } else { 0.14 }),
-    );
-
-    if !paint_brand_logo_png(backend, badge) {
-        // One-frame decode fallback: preserve the official white tile without
-        // flashing the old generic pencil glyph.
-        backend.fill_round_rect(shadow, 11.0, Color::WHITE);
-    }
-}
-
-/// Draw the official OpenPencil mark (`brand-logo-128.png`) into `rect`.
-/// Returns `false` for the one frame the raster is still decoding, so the
-/// caller can paint its own placeholder; the Home wordmark and the sign-in
-/// badge share this so the product never shows two different logos.
-pub fn paint_brand_logo_png(backend: &mut dyn RenderBackend, rect: Rect) -> bool {
-    if !has_cached_image_bytes(BRAND_LOGO_IMAGE_ID) {
-        store_remote_image_bytes(BRAND_LOGO_IMAGE_ID, BRAND_LOGO_PNG.to_vec());
-    }
-    let max_edge_px = required_raster_edge(rect, backend.dpi_scale());
-    let sharp_enough = backend.image_decoded(BRAND_LOGO_IMAGE_ID, BRAND_LOGO_PNG, max_edge_px);
-    if !sharp_enough {
-        note_pending_decode(BRAND_LOGO_IMAGE_ID, max_edge_px);
-    }
-    if sharp_enough || backend.image_resident(BRAND_LOGO_IMAGE_ID) {
-        backend.draw_image(rect, BRAND_LOGO_IMAGE_ID, BRAND_LOGO_PNG);
-        true
-    } else {
-        false
-    }
 }
 
 impl Widget for LoginModal {
@@ -555,7 +519,7 @@ mod tests {
     }
 
     #[test]
-    fn brand_identity_uses_official_logo_and_zseven_account_copy() {
+    fn brand_identity_is_a_text_wordmark_with_zseven_account_copy() {
         let mut state = EditorState::new();
         state.editor_ui.locale = Locale::ZhCn;
         let (_, _, paint) = paint_modal(&state);
@@ -568,8 +532,10 @@ mod tests {
             .texts
             .iter()
             .any(|text| text == "使用 OpenPencil 账户继续"));
-        assert!(paint.images.iter().any(|(_, image_id, byte_len)| {
-            *image_id == BRAND_LOGO_IMAGE_ID && *byte_len == BRAND_LOGO_PNG.len()
-        }));
+        assert!(paint.texts.iter().any(|text| text == "OpenPencil"));
+        assert!(
+            paint.images.is_empty(),
+            "the brand is text only, no logo image"
+        );
     }
 }
