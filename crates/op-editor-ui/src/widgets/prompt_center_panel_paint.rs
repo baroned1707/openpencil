@@ -29,10 +29,12 @@ const META_SIZE: f32 = 11.0;
 impl PromptCenterPanel<'_> {
     /// Paint the complete non-modal panel.
     pub fn paint(&self, cx: &mut PaintCx<'_>, panel: Rect) {
-        cx.backend
-            .fill_round_rect(panel, PANEL_RADIUS, self.theme.popover);
-        cx.backend
-            .stroke_round_rect(panel, PANEL_RADIUS, self.theme.border, 1.0);
+        crate::widgets::file_menu::popup::paint_popup_surface(
+            cx.backend,
+            &self.theme,
+            panel,
+            PANEL_RADIUS,
+        );
         self.paint_header(cx, panel);
         self.paint_search(cx, panel);
         self.paint_filter_chips(cx, panel);
@@ -112,18 +114,15 @@ impl PromptCenterPanel<'_> {
             close,
             &crate::widgets::button::tokens_from_theme(&self.theme),
         );
-
-        cx.backend.fill_rect(
-            Rect::xywh(panel.origin.x, panel.origin.y + HEADER_H, panel.size.x, 1.0),
-            self.theme.border,
-        );
     }
 
     fn paint_search(&self, cx: &mut PaintCx<'_>, panel: Rect) {
         let rect = Self::search_rect(panel);
-        cx.backend.fill_round_rect(rect, 9.0, self.theme.muted);
-        cx.backend
-            .stroke_round_rect(rect, 9.0, self.theme.border, 1.0);
+        cx.backend.fill_round_rect(rect, 9.0, self.theme.input);
+        if self.state.editor_ui.prompt_center.focus == PromptCenterFocus::Search {
+            cx.backend
+                .stroke_round_rect(rect, 9.0, self.theme.primary, 1.0);
+        }
         draw_icon(
             cx.backend,
             Icon::Search,
@@ -187,24 +186,13 @@ impl PromptCenterPanel<'_> {
         let form = Rect::xywh(panel.origin.x, form_top, panel.size.x, super::SAVE_FORM_H);
         cx.backend
             .fill_rect(form, self.theme.muted.with_alpha(0.35));
-        cx.backend.fill_rect(
-            Rect::xywh(form.origin.x, form.origin.y, form.size.x, 1.0),
-            self.theme.border,
-        );
-        cx.backend.fill_rect(
-            Rect::xywh(
-                form.origin.x,
-                form.origin.y + form.size.y - 1.0,
-                form.size.x,
-                1.0,
-            ),
-            self.theme.border,
-        );
 
         let title = Self::save_title_rect(panel);
-        cx.backend.fill_round_rect(title, 6.0, self.theme.popover);
-        cx.backend
-            .stroke_round_rect(title, 6.0, self.theme.border, 1.0);
+        cx.backend.fill_round_rect(title, 6.0, self.theme.input);
+        if self.state.editor_ui.prompt_center.focus == PromptCenterFocus::SaveTitle {
+            cx.backend
+                .stroke_round_rect(title, 6.0, self.theme.primary, 1.0);
+        }
         paint_text_input_view(
             cx,
             &self.theme,
@@ -240,11 +228,9 @@ impl PromptCenterPanel<'_> {
             let fill = if active {
                 self.theme.row_selected_primary
             } else {
-                self.theme.popover
+                self.theme.muted
             };
             cx.backend.fill_round_rect(rect, CHIP_H / 2.0, fill);
-            cx.backend
-                .stroke_round_rect(rect, CHIP_H / 2.0, self.theme.border, 1.0);
             paint_button_feedback_wash(
                 cx.backend,
                 &self.theme,
@@ -343,9 +329,7 @@ impl PromptCenterPanel<'_> {
         card: &PromptCenterCard<'_>,
     ) {
         cx.backend
-            .fill_round_rect(rect, CARD_RADIUS, self.theme.card);
-        cx.backend
-            .stroke_round_rect(rect, CARD_RADIUS, self.theme.border, 1.0);
+            .fill_round_rect(rect, CARD_RADIUS, self.theme.muted);
 
         let preview = Self::card_preview_rect(rect);
         self.paint_card_preview(cx, preview, card);

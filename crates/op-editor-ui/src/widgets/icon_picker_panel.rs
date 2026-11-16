@@ -249,9 +249,7 @@ impl<'a> IconPickerPanel<'a> {
     }
 
     pub fn paint(&self, cx: &mut PaintCx<'_>, panel: Rect) {
-        cx.backend.fill_round_rect(panel, 8.0, self.theme.popover);
-        cx.backend
-            .stroke_round_rect(panel, 8.0, self.theme.border, 1.0);
+        crate::widgets::file_menu::popup::paint_popup_surface(cx.backend, &self.theme, panel, 8.0);
         self.paint_header(cx, panel);
         self.paint_search(cx, panel);
 
@@ -301,7 +299,8 @@ impl<'a> IconPickerPanel<'a> {
             13.0,
             (self.theme.foreground).to_jian(),
             Point2D::new(0.0, 0.0),
-        );
+        )
+        .with_font_weight(600);
         cx.backend.draw_text(
             &title,
             Point2D::new(panel.origin.x + PAD, panel.origin.y + 25.0),
@@ -327,7 +326,10 @@ impl<'a> IconPickerPanel<'a> {
 
     fn paint_search(&self, cx: &mut PaintCx<'_>, panel: Rect) {
         let search = Self::search_rect(panel);
-        cx.backend.fill_round_rect(search, 6.0, self.theme.muted);
+        cx.backend.fill_round_rect(search, 6.0, self.theme.input);
+        // The picker owns the keyboard while open, so the field is always focused.
+        cx.backend
+            .stroke_round_rect(search, 6.0, self.theme.primary, 1.0);
         draw_icon(
             cx.backend,
             Icon::Search,
@@ -392,15 +394,12 @@ impl<'a> IconPickerPanel<'a> {
             origin: Point2D::new(panel.origin.x + 6.0, y),
             size: Point2D::new(panel.size.x - 12.0, ROW_H),
         };
-        cx.backend.fill_round_rect(row, 6.0, self.theme.popover);
-        paint_button_feedback_wash(
-            cx.backend,
-            &self.theme,
-            row,
-            6.0,
-            self.hover == Some(idx),
-            self.pressed == Some(idx),
-        );
+        if self.pressed == Some(idx) {
+            cx.backend
+                .fill_round_rect(row, 6.0, self.theme.row_selected);
+        } else if self.hover == Some(idx) {
+            cx.backend.fill_round_rect(row, 6.0, self.theme.accent);
+        }
         let icon_pos = Point2D::new(row.origin.x + ROW_PAD_X, y + (ROW_H - ICON_SIZE) / 2.0);
         match item {
             IconRow::Local(icon) => draw_icon_catalog_entry(

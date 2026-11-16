@@ -10,7 +10,7 @@
 
 use crate::widgets::git_panel::{GitPanel, GitPanelHit, BUTTON_H, PAD};
 use crate::widgets::PaintCx;
-use crate::{Color, Point2D, Rect};
+use crate::{Point2D, Rect};
 use op_editor_core::CloneField;
 
 /// Heading baseline.
@@ -199,13 +199,10 @@ impl GitPanel<'_> {
 
     fn paint_clone_input_frame(&self, cx: &mut PaintCx<'_>, rect: Rect, focused: bool) {
         let t = self.theme;
-        cx.backend.fill_round_rect(rect, 6.0, t.card);
-        let border = if focused {
-            alpha(t.primary, 0.5)
-        } else {
-            alpha(t.border, 0.7)
-        };
-        cx.backend.stroke_round_rect(rect, 6.0, border, 1.0);
+        cx.backend.fill_round_rect(rect, 6.0, t.input);
+        if focused {
+            cx.backend.stroke_round_rect(rect, 6.0, t.primary, 1.0);
+        }
     }
 
     /// Map a press inside the clone view onto a [`GitPanelHit`].
@@ -241,9 +238,4 @@ impl GitPanel<'_> {
         // Inside the panel but not on a target — swallow.
         Some(GitPanelHit::Inside)
     }
-}
-
-/// A colour at `factor` of its current alpha (Tailwind `/NN`).
-fn alpha(c: Color, factor: f32) -> Color {
-    crate::util::alpha(c, factor)
 }

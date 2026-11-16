@@ -98,11 +98,6 @@ const CHIP_FONT: f32 = 11.0;
 /// its own scrim instead of a theme surface — one disc that stays
 /// legible over a white cover slide and a black one, in either theme.
 const CHIP_SCRIM_ALPHA: f32 = 0.72;
-/// Opacity of the hairline around the disc. A dark scrim alone has no
-/// shape on a dark slide — the number reads but the chip does not — and
-/// a dark deck is exactly the case this panel was built for. The
-/// hairline draws the circle there; the scrim draws it on a light one.
-const CHIP_EDGE_ALPHA: f32 = 0.18;
 /// Rail width the box height is struck at — the shipped default for
 /// `layer_panel_width`. It is a REFERENCE, not a constraint: the rail
 /// resizes freely and the height below does not follow it.
@@ -454,18 +449,6 @@ pub struct SlidesPanel<'a> {
 impl SlidesPanel<'_> {
     pub fn paint(&self, cx: &mut PaintCx<'_>, layout: &SlidesPanelLayout, theme: &Theme) {
         cx.backend.fill_rect(layout.panel, theme.card);
-        // Right-edge hairline, so the rail reads as a distinct surface
-        // from the canvas next to it — same as the layers tab.
-        cx.backend.fill_rect(
-            Rect {
-                origin: Point2D::new(
-                    layout.panel.origin.x + layout.panel.size.x - 1.0,
-                    layout.panel.origin.y,
-                ),
-                size: Point2D::new(1.0, layout.panel.size.y),
-            },
-            theme.border,
-        );
         layout.tabs.paint(cx, theme, self.hover, self.tabs);
 
         cx.backend.save();
@@ -617,12 +600,6 @@ impl SlidesPanel<'_> {
             chip,
             CHIP_D / 2.0,
             fade(CHIP_DISC, CHIP_SCRIM_ALPHA * alpha),
-        );
-        cx.backend.stroke_round_rect(
-            chip,
-            CHIP_D / 2.0,
-            fade(CHIP_INK, CHIP_EDGE_ALPHA * alpha),
-            1.0,
         );
         let number = format!("{}", index + 1);
         let width = text_metrics::measure_chrome_weighted(cx.backend, &number, CHIP_FONT, 600);

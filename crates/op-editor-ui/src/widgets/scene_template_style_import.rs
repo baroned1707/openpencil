@@ -220,10 +220,7 @@ impl SceneTemplatePanel<'_> {
         }
         cx.backend.fill_rect(panel, SCRIM);
         let box_rect = self.style_import_rect(panel);
-        cx.backend
-            .fill_round_rect(box_rect, BOX_RADIUS, self.theme.popover);
-        cx.backend
-            .stroke_round_rect(box_rect, BOX_RADIUS, self.theme.border, 1.0);
+        super::file_menu::popup::paint_popup_surface(cx.backend, &self.theme, box_rect, BOX_RADIUS);
 
         let left = box_rect.origin.x + BOX_PAD;
         let inner_w = (box_rect.size.x - BOX_PAD * 2.0).max(0.0);
@@ -329,16 +326,10 @@ impl SceneTemplatePanel<'_> {
         cx.backend.fill_round_rect(rect, 8.0, self.theme.input);
         let focused =
             self.state.editor_ui.scene_template_center.focus == SceneTemplateFocus::Import;
-        cx.backend.stroke_round_rect(
-            rect,
-            8.0,
-            if focused {
-                self.theme.ring
-            } else {
-                self.theme.border
-            },
-            1.0,
-        );
+        if focused {
+            cx.backend
+                .stroke_round_rect(rect, 8.0, self.theme.ring, 1.0);
+        }
 
         let text = self
             .state

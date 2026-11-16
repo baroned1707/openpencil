@@ -235,6 +235,8 @@ impl ComponentBrowserPanel<'_> {
         // Dropdown control: current filter label + chevron.
         let dropdown = self.kit_dropdown_rect(panel);
         let current = self.kit_filter_label();
+        // Filled like every Figma UI3 input; the trigger adds only the label.
+        cx.backend.fill_round_rect(dropdown, 6.0, self.theme.input);
         jian_widgets::components::select_trigger::SelectTrigger {
             icon_paths: None,
             label: &current,
@@ -249,13 +251,6 @@ impl ComponentBrowserPanel<'_> {
             cx.backend,
             dropdown,
             &crate::widgets::button::tokens_from_theme(&self.theme),
-        );
-        cx.backend.fill_rect(
-            Rect {
-                origin: Point2D::new(panel.origin.x, row_top + KIT_ROW_H),
-                size: Point2D::new(panel.size.x, 1.0),
-            },
-            self.theme.border,
         );
 
         // Imported-kit management rows.
@@ -347,22 +342,18 @@ impl ComponentBrowserPanel<'_> {
                     1.4,
                 );
             }
-            cx.backend.fill_rect(
-                Rect {
-                    origin: Point2D::new(panel.origin.x, row.origin.y + IMPORTED_ROW_H),
-                    size: Point2D::new(panel.size.x, 1.0),
-                },
-                self.theme.border,
-            );
         }
     }
 
     /// The open kit-filter popover (painted after everything else).
     pub(in crate::widgets) fn paint_kit_picker(&self, cx: &mut PaintCx<'_>, panel: Rect) {
         let popover = self.kit_popover_rect(panel);
-        cx.backend.fill_round_rect(popover, 6.0, self.theme.popover);
-        cx.backend
-            .stroke_round_rect(popover, 6.0, self.theme.border, 1.0);
+        crate::widgets::file_menu::popup::paint_popup_surface(
+            cx.backend,
+            &self.theme,
+            popover,
+            8.0,
+        );
         let active = self.state.editor_ui.component_browser_kit_id.as_deref();
         for (i, (rect, id)) in self.kit_option_rects(panel).into_iter().enumerate() {
             paint_button_feedback_wash(

@@ -208,8 +208,6 @@ pub(super) fn paint_button(
     );
     if hovered && enabled {
         cx.backend.fill_round_rect(rect, 6.0, theme.button_hover);
-        cx.backend
-            .stroke_round_rect(rect, 6.0, theme.foreground.with_alpha(0.12), 1.0);
     }
     let color = if primary {
         theme.primary_foreground

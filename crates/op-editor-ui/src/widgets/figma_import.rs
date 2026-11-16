@@ -253,9 +253,7 @@ impl Widget for FigmaImportModal {
     }
 
     fn paint(&self, cx: &mut PaintCx<'_>, rect: Rect) {
-        cx.backend.fill_round_rect(rect, 12.0, self.theme.card);
-        cx.backend
-            .stroke_round_rect(rect, 12.0, self.theme.border, 1.0);
+        super::file_menu::popup::paint_popup_surface(cx.backend, &self.theme, rect, 12.0);
 
         let title = TextLayout::single_run(
             t(self.locale, self.source, "title"),
@@ -311,8 +309,6 @@ impl Widget for FigmaImportModal {
             self.hover == Some(op_editor_core::FigmaImportButton::DropZone),
             self.pressed == Some(op_editor_core::FigmaImportButton::DropZone),
         );
-        cx.backend
-            .stroke_round_rect(drop, 10.0, self.theme.border, 1.0);
 
         // Keep Figma branded while HTML and archive imports use a
         // neutral file glyph.

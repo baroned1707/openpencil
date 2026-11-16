@@ -32,10 +32,12 @@ const SECTION_SIZE: f32 = 11.5;
 impl SceneTemplatePanel<'_> {
     /// Paint the complete gallery.
     pub fn paint(&self, cx: &mut PaintCx<'_>, panel: Rect) {
-        cx.backend
-            .fill_round_rect(panel, PANEL_RADIUS, self.theme.popover);
-        cx.backend
-            .stroke_round_rect(panel, PANEL_RADIUS, self.theme.border, 1.0);
+        crate::widgets::file_menu::popup::paint_popup_surface(
+            cx.backend,
+            &self.theme,
+            panel,
+            PANEL_RADIUS,
+        );
         self.paint_header(cx, panel);
         self.paint_tab_chips(cx, panel);
         self.paint_search(cx, panel);
@@ -115,21 +117,16 @@ impl SceneTemplatePanel<'_> {
             close,
             &crate::widgets::button::tokens_from_theme(&self.theme),
         );
-
-        cx.backend.fill_rect(
-            Rect::xywh(
-                panel.origin.x,
-                panel.origin.y + self.header_height_for(panel),
-                panel.size.x,
-                1.0,
-            ),
-            self.theme.border,
-        );
     }
 
     fn paint_search(&self, cx: &mut PaintCx<'_>, panel: Rect) {
         let rect = self.search_rect_for(panel);
-        self.paint_field_frame(cx, rect, Icon::Search);
+        self.paint_field_frame(
+            cx,
+            rect,
+            Icon::Search,
+            self.field_focused(SceneTemplateFocus::Search),
+        );
         paint_text_input_view(
             cx,
             &self.theme,
@@ -157,11 +154,13 @@ impl SceneTemplatePanel<'_> {
     /// topic field are the same control with a different placeholder — and
     /// two copies is how they ended up with the glyph at a hard-coded
     /// `y + 11` that only centred at one field height.
-    fn paint_field_frame(&self, cx: &mut PaintCx<'_>, rect: Rect, icon: Icon) {
+    fn paint_field_frame(&self, cx: &mut PaintCx<'_>, rect: Rect, icon: Icon, focused: bool) {
         cx.backend
-            .fill_round_rect(rect, CONTROL_RADIUS, self.theme.muted);
-        cx.backend
-            .stroke_round_rect(rect, CONTROL_RADIUS, self.theme.input, 1.0);
+            .fill_round_rect(rect, CONTROL_RADIUS, self.theme.input);
+        if focused {
+            cx.backend
+                .stroke_round_rect(rect, CONTROL_RADIUS, self.theme.primary, 1.0);
+        }
         const GLYPH: f32 = 16.0;
         draw_icon(
             cx.backend,
@@ -190,7 +189,12 @@ impl SceneTemplatePanel<'_> {
 
         self.paint_basis_chip(cx, panel);
 
-        self.paint_field_frame(cx, input, Icon::Sparkles);
+        self.paint_field_frame(
+            cx,
+            input,
+            Icon::Sparkles,
+            self.field_focused(SceneTemplateFocus::Generate),
+        );
         paint_text_input_view(
             cx,
             &self.theme,
@@ -330,14 +334,12 @@ impl SceneTemplatePanel<'_> {
         else {
             return;
         };
-        // Same surface + hairline a resting filter chip gets: it is a chip,
-        // and one that painted itself differently would read as a different
-        // kind of object standing in the control row.
+        // Same flat surface a resting filter chip gets: it is a chip, and one
+        // that painted itself differently would read as a different kind of
+        // object standing in the control row.
         let radius = CHIP_RADIUS;
         cx.backend
             .fill_round_rect(chip, radius, self.theme.secondary);
-        cx.backend
-            .stroke_round_rect(chip, radius, self.theme.border, 1.0);
 
         let dismiss_w = self
             .basis_chip_dismiss_rect(panel)

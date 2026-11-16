@@ -135,8 +135,8 @@ impl GitPanel<'_> {
         let t = self.theme;
         let card = self.card_rect_at(rect, card_top);
         Card {
-            fill: Some(alpha(t.muted, 0.55)),
-            border: Some(alpha(t.border, 0.60)),
+            fill: Some(t.muted),
+            border: None,
             radius: 8.0,
         }
         .paint(

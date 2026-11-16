@@ -87,7 +87,7 @@ impl SceneTemplatePanel<'_> {
             return;
         };
         // A chip, painted the way every other chip in the panel is: the same
-        // surface, the same hairline, the same pointer ladder.
+        // flat surface, the same pointer ladder.
         let hovered =
             self.state.editor_ui.scene_template_center.hover == Some(SCENE_TEMPLATE_IMPORT_HOVER);
         let pressed = self.is_pressed(SCENE_TEMPLATE_IMPORT_HOVER);
@@ -96,8 +96,6 @@ impl SceneTemplatePanel<'_> {
             CHIP_RADIUS,
             control_fill(self.theme.secondary, hovered, pressed),
         );
-        cx.backend
-            .stroke_round_rect(rect, CHIP_RADIUS, self.theme.border, 1.0);
         let label = self.style_import_label();
         let label_w = estimated_text_width(label, IMPORT_LABEL_SIZE);
         let glyph = 12.0;
@@ -132,17 +130,14 @@ impl SceneTemplatePanel<'_> {
     ) {
         let is_pinned = card.is_pinned(pinned);
         cx.backend
-            .fill_round_rect(rect, CARD_RADIUS, self.theme.card);
+            .fill_round_rect(rect, CARD_RADIUS, self.theme.muted);
         // The pinned card is outlined in the primary colour at double width.
         // A pin survives the panel closing and steers every later generation,
         // so it has to read as state, not as hover.
-        let (border, border_w) = if is_pinned {
-            (self.theme.primary, 2.0)
-        } else {
-            (self.theme.border, 1.0)
-        };
-        cx.backend
-            .stroke_round_rect(rect, CARD_RADIUS, border, border_w);
+        if is_pinned {
+            cx.backend
+                .stroke_round_rect(rect, CARD_RADIUS, self.theme.primary, 2.0);
+        }
         paint_button_feedback_wash(
             cx.backend,
             &self.theme,
@@ -259,9 +254,5 @@ impl SceneTemplatePanel<'_> {
             );
             cx.backend.fill_rect(swatch, *color);
         }
-        // One hairline around the whole band rather than per swatch: a light
-        // guide's near-white background is otherwise invisible on the card.
-        cx.backend
-            .stroke_round_rect(band, 3.0, self.theme.border, 1.0);
     }
 }

@@ -249,13 +249,6 @@ pub fn paint_bar(
     hover: Option<SlidesPanelTarget>,
 ) {
     cx.backend.fill_rect(layout.bar, theme.card);
-    cx.backend.fill_rect(
-        Rect {
-            origin: layout.bar.origin,
-            size: Point2D::new(layout.bar.size.x, 1.0),
-        },
-        theme.border,
-    );
     paint_present_button(cx, theme, layout, labels.present, hover);
     paint_export_button(cx, theme, layout, labels.export, hover);
 }
@@ -275,9 +268,7 @@ pub fn paint_menu(
     let Some(menu) = layout.menu else {
         return;
     };
-    cx.backend.fill_round_rect(menu, MENU_RADIUS, theme.card);
-    cx.backend
-        .stroke_round_rect(menu, MENU_RADIUS, theme.border, 1.0);
+    crate::widgets::file_menu::popup::paint_popup_surface(cx.backend, theme, menu, MENU_RADIUS);
     for (index, row) in MENU_ROWS.iter().enumerate() {
         let Some(rect) = layout.menu_row_rect(index) else {
             continue;
@@ -402,8 +393,6 @@ fn paint_export_button(
         BUTTON_RADIUS,
         if lit { theme.button_hover } else { theme.muted },
     );
-    cx.backend
-        .stroke_round_rect(button, BUTTON_RADIUS, theme.border, 1.0);
     let label = crate::widgets::file_menu::truncate_to_width(
         cx,
         label,

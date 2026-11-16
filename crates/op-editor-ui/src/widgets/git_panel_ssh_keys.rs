@@ -62,8 +62,7 @@ impl GitPanel<'_> {
     pub(super) fn paint_ssh_keys(&self, cx: &mut PaintCx<'_>, panel_rect: Rect) {
         let t = self.theme;
         let p = self.ssh_keys_panel(panel_rect);
-        cx.backend.fill_round_rect(p, 8.0, t.popover);
-        cx.backend.stroke_round_rect(p, 8.0, t.border, 1.0);
+        crate::widgets::file_menu::popup::paint_popup_surface(cx.backend, &t, p, 8.0);
         let left = p.origin.x + SSH_PAD;
         // ‹ Back header.
         let back_y = p.origin.y + SSH_PAD;

@@ -63,9 +63,7 @@ impl PreviewDeviceSwitcher<'_> {
 
     pub fn paint(&self, cx: &mut PaintCx<'_>, canvas: Rect, theme: &Theme) {
         let pill = Self::pill_rect(canvas);
-        cx.backend.fill_round_rect(pill, RADIUS, theme.card);
-        cx.backend
-            .stroke_round_rect(pill, RADIUS, theme.border, 1.0);
+        super::file_menu::popup::paint_popup_surface(cx.backend, theme, pill, RADIUS);
         for (index, (kind, rect)) in Self::segment_rects(canvas).into_iter().enumerate() {
             let wash = if self.selected == Some(kind) {
                 Some(theme.accent)

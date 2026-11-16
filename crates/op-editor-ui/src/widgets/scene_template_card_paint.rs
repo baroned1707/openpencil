@@ -83,28 +83,16 @@ impl SceneTemplatePanel<'_> {
         index: usize,
     ) {
         let hovered = self.card_actions_visible(index);
-        // Hover elevates rather than outlines. A 1 px accent border on a card
-        // whose top three-quarters is a photograph reads as an artefact of
-        // the picture; a lifted surface behind it reads as the card coming
-        // forward, which is what hovering it means.
+        // Hover elevates: a lifted surface behind the photograph reads as the
+        // card coming forward, which is what hovering it means.
         cx.backend.fill_round_rect(
             rect,
             CARD_RADIUS,
             if hovered {
                 self.theme.accent
             } else {
-                self.theme.card
+                self.theme.muted
             },
-        );
-        cx.backend.stroke_round_rect(
-            rect,
-            CARD_RADIUS,
-            if hovered {
-                self.theme.foreground.with_alpha(0.22)
-            } else {
-                self.theme.border
-            },
-            1.0,
         );
         // The wash goes on top of the lifted fill rather than instead of it.
         // `accent` sits only ~6% off `card` in both themes — enough to read
@@ -145,10 +133,6 @@ impl SceneTemplatePanel<'_> {
         self.paint_card_picture(cx, picture, template);
         self.paint_card_palette(cx, Self::card_palette_rect(card), template);
         cx.backend.restore();
-        // A hairline around the whole block: a template whose ground is
-        // near-white otherwise has no edge against the card behind it.
-        cx.backend
-            .stroke_round_rect(block, PREVIEW_RADIUS, self.theme.border, 1.0);
     }
 
     fn paint_card_picture(
@@ -501,18 +485,8 @@ impl SceneTemplatePanel<'_> {
             if hovered {
                 self.theme.accent
             } else {
-                self.theme.card
+                self.theme.muted
             },
-        );
-        cx.backend.stroke_round_rect(
-            rect,
-            CARD_RADIUS,
-            if hovered {
-                self.theme.foreground.with_alpha(0.22)
-            } else {
-                self.theme.border
-            },
-            1.0,
         );
         paint_button_feedback_wash(
             cx.backend,
@@ -550,8 +524,6 @@ impl SceneTemplatePanel<'_> {
         cx.backend
             .fill_rect(Self::card_palette_rect(card), self.theme.muted);
         cx.backend.restore();
-        cx.backend
-            .stroke_round_rect(block, PREVIEW_RADIUS, self.theme.border, 1.0);
     }
 
     fn paint_user_picture(&self, cx: &mut PaintCx<'_>, picture: Rect, template: &UserTemplateCard) {

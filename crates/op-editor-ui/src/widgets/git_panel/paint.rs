@@ -10,10 +10,8 @@ use crate::widgets::text_metrics;
 impl GitPanel<'_> {
     /// Paint the panel into `rect`.
     pub fn paint(&self, cx: &mut PaintCx<'_>, rect: Rect) {
-        // TS popover radius is `rounded-md` = 6px (Rust was 10px, too round).
-        cx.backend.fill_round_rect(rect, 6.0, self.theme.popover);
-        cx.backend
-            .stroke_round_rect(rect, 6.0, self.theme.border, 1.0);
+        // Figma UI3 floating surface: soft shadow + flat fill, no outline.
+        crate::widgets::file_menu::popup::paint_popup_surface(cx.backend, &self.theme, rect, 10.0);
 
         // The inline clone wizard replaces the whole body.
         if self.state.clone_form.is_some() {
@@ -119,8 +117,6 @@ impl GitPanel<'_> {
             status_color,
         );
 
-        self.divider(cx, left, top + DIVIDER_1_Y, rect.size.x);
-
         // Action area. Normal mode: commit input + Commit / Refresh
         // / Pull / Push. Merge mode: a warning banner + Abort /
         // Refresh / Complete (Complete only once conflicts resolve).
@@ -192,8 +188,6 @@ impl GitPanel<'_> {
                 Some(GitPanelHit::Push),
             );
         }
-
-        self.divider(cx, left, top + DIVIDER_2_Y, rect.size.x);
 
         // List section — conflicts (merge), the per-file staging
         // list (dirty tree), or recent commits (clean tree).
@@ -394,10 +388,6 @@ impl GitPanel<'_> {
                 pressed,
             );
         }
-        if !primary {
-            cx.backend
-                .stroke_round_rect(rect, 6.0, self.theme.border, 1.0);
-        }
         // Centre the label using the real measured width so CJK labels
         // (e.g. "保存为里程碑", ~2× a Latin glyph) centre correctly
         // instead of overflowing the right edge. A long localized label
@@ -410,22 +400,5 @@ impl GitPanel<'_> {
         cx.backend.clip_rect(rect);
         self.text(cx, label, text_x, baseline, 12.0, text_color);
         cx.backend.restore();
-    }
-
-    /// Paint a 1-px divider line.
-    pub(in crate::widgets) fn divider(
-        &self,
-        cx: &mut PaintCx<'_>,
-        left: f32,
-        y: f32,
-        panel_width: f32,
-    ) {
-        cx.backend.fill_rect(
-            Rect {
-                origin: Point2D::new(left, y),
-                size: Point2D::new(panel_width - PAD * 2.0, 1.0),
-            },
-            self.theme.border,
-        );
     }
 }

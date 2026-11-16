@@ -131,8 +131,6 @@ impl GitPanel<'_> {
             135.0,
             1.0,
         );
-        cx.backend
-            .stroke_round_rect(box_rect, 16.0, alpha(t.border, 0.60), 1.0);
         let hist = 22.0;
         draw_icon(
             cx.backend,
@@ -217,24 +215,9 @@ impl GitPanel<'_> {
             card
         };
 
-        // Body — hover `bg-accent/30` over `bg-card`, else `bg-card`.
-        let body = if active {
-            over(t.card, alpha(t.accent, 0.30))
-        } else {
-            t.card
-        };
+        // Body — a flat `muted` card, lifted to `accent` on hover; no outline.
+        let body = if active { t.accent } else { t.muted };
         cx.backend.fill_round_rect(card, 12.0, alpha(body, o));
-        // Border — hover `border-primary/40`, else `border-border/70`
-        // (enabled) / `border-border/60` (disabled).
-        let border = if active {
-            alpha(t.primary, 0.40)
-        } else if enabled {
-            alpha(t.border, 0.70)
-        } else {
-            alpha(t.border, 0.60)
-        };
-        cx.backend
-            .stroke_round_rect(card, 12.0, alpha(border, o), 1.0);
 
         let card_cx = card.origin.x + card.size.x / 2.0;
         let ib = EMPTY_CARD_ICON_BOX;
@@ -349,11 +332,4 @@ impl GitPanel<'_> {
 /// Tailwind `/NN` opacity modifier (e.g. `bg-muted/60`).
 fn alpha(c: Color, factor: f32) -> Color {
     crate::util::alpha(c, factor)
-}
-
-/// `top` (a translucent colour) composited over the opaque `base`,
-/// yielding an opaque colour — so a `bg-accent/30`-over-`bg-card` hover
-/// fill paints in a single pass.
-fn over(base: Color, top: Color) -> Color {
-    crate::util::over(base, top)
 }

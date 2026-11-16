@@ -44,8 +44,7 @@ pub(super) fn paint_menus(
     // `variable-row.tsx:183-211`). Painted manually instead of via
     // `paint_popover_rows` for the destructive tint on Delete.
     if let Some((_, menu)) = panel.row_menu_rect(rect) {
-        cx.backend.fill_round_rect(menu, 12.0, theme.popover);
-        cx.backend.stroke_round_rect(menu, 12.0, theme.border, 1.0);
+        crate::widgets::file_menu::popup::paint_popup_surface(cx.backend, &theme, menu, 12.0);
         let rows = [
             (labels.rename, Icon::Pencil, theme.popover_foreground),
             (labels.delete, Icon::Trash, theme.destructive),
@@ -175,9 +174,7 @@ fn paint_axis_dropdown(panel: &VariablesPanel, cx: &mut PaintCx<'_>, rect: Rect)
         origin: Point2D::new(chip_rect.origin.x, menu_y),
         size: Point2D::new(DROPDOWN_WIDTH, DROPDOWN_ROW_HEIGHT * (values.len() as f32)),
     };
-    cx.backend.fill_round_rect(menu_rect, 12.0, theme.popover);
-    cx.backend
-        .stroke_round_rect(menu_rect, 12.0, theme.border, 1.0);
+    crate::widgets::file_menu::popup::paint_popup_surface(cx.backend, &theme, menu_rect, 12.0);
     let active_value = panel
         .chips
         .iter()
@@ -222,8 +219,7 @@ fn paint_popover_rows(
     hover_row: Option<usize>,
     pressed_row: Option<usize>,
 ) {
-    cx.backend.fill_round_rect(rect, 12.0, theme.popover);
-    cx.backend.stroke_round_rect(rect, 12.0, theme.border, 1.0);
+    crate::widgets::file_menu::popup::paint_popup_surface(cx.backend, &theme, rect, 12.0);
     for (idx, label) in rows.iter().enumerate() {
         let row_y = rect.origin.y + idx as f32 * ADD_VARIABLE_MENU_ROW_HEIGHT;
         let hovered = hover_row == Some(idx);

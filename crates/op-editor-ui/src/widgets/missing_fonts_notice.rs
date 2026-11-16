@@ -77,8 +77,7 @@ impl<'a> MissingFontsNotice<'a> {
     pub fn paint(&self, cx: &mut PaintCx<'_>, rect: Rect) {
         let ui = &self.state.editor_ui;
         let theme = theme_for(ui);
-        cx.backend.fill_round_rect(rect, 8.0, theme.popover);
-        cx.backend.stroke_round_rect(rect, 8.0, theme.border, 1.0);
+        super::file_menu::popup::paint_popup_surface(cx.backend, &theme, rect, 8.0);
         let manage = Self::manage_rect(rect);
         let available = (manage.origin.x - rect.origin.x - 20.0).max(0.0);
         let message = text_metrics::fit_chrome(

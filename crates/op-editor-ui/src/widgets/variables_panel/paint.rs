@@ -40,16 +40,10 @@ fn paint_feedback(
 pub(super) fn paint_panel(panel: &VariablesPanel, cx: &mut PaintCx<'_>, rect: Rect) {
     let theme = panel.theme;
     let labels = panel.labels();
+    crate::widgets::file_menu::popup::paint_soft_shadow(cx.backend, &theme, rect, PANEL_RADIUS);
     cx.backend.fill_round_rect(rect, PANEL_RADIUS, theme.card);
-    cx.backend
-        .stroke_round_rect(rect, PANEL_RADIUS, theme.border, 1.0);
 
-    let header_bottom = rect.origin.y + HEADER_HEIGHT;
-    let column_bottom = header_bottom + COLUMN_HEADER_HEIGHT;
     let footer_top = rect.origin.y + rect.size.y - FOOTER_HEIGHT;
-    paint_hairline(cx, rect.origin.x, header_bottom, rect.size.x, theme.border);
-    paint_hairline(cx, rect.origin.x, column_bottom, rect.size.x, theme.border);
-    paint_hairline(cx, rect.origin.x, footer_top, rect.size.x, theme.border);
 
     paint_theme_header(panel, cx, rect);
     paint_variant_header(panel, cx, rect, &labels);
@@ -73,7 +67,7 @@ fn paint_search_row(
     }
     let theme = panel.theme;
     let input = panel.search_input_rect(rect);
-    cx.backend.fill_round_rect(input, INPUT_RADIUS, theme.muted);
+    cx.backend.fill_round_rect(input, INPUT_RADIUS, theme.input);
     if panel.search_focus {
         cx.backend
             .stroke_round_rect(input, INPUT_RADIUS, theme.primary, INPUT_BORDER_WIDTH);
@@ -107,13 +101,6 @@ fn paint_search_row(
         panel.now_ms,
         labels.search_placeholder,
         panel.search_focus,
-    );
-    paint_hairline(
-        cx,
-        rect.origin.x,
-        input.origin.y + input.size.y + 7.0,
-        rect.size.x,
-        theme.border,
     );
 }
 
@@ -509,7 +496,6 @@ fn paint_value_cell(
                 size: Point2D::new(SWATCH_SIZE, SWATCH_SIZE),
             };
             cx.backend.fill_round_rect(swatch, 3.0, rgba);
-            cx.backend.stroke_round_rect(swatch, 3.0, theme.border, 1.0);
             // Inline hex editing (TS ColorCell's text `<input>`) — the
             // swatch stays painted, the hex label swaps for an input.
             if panel.editing_value_cell == Some(cell) {
@@ -667,21 +653,6 @@ fn paint_footer(
     );
 }
 
-pub(super) fn paint_hairline(cx: &mut PaintCx<'_>, x: f32, y: f32, w: f32, color: Color) {
-    jian_widgets::components::separator::Separator {
-        orientation: jian_widgets::components::separator::Orientation::Horizontal,
-        thickness: 1.0,
-    }
-    .paint(
-        cx.backend,
-        Rect {
-            origin: Point2D::new(x, y),
-            size: Point2D::new(w, 1.0),
-        },
-        color,
-    );
-}
-
 fn paint_text_input(
     cx: &mut PaintCx<'_>,
     theme: Theme,
@@ -691,7 +662,7 @@ fn paint_text_input(
     padding_x: f32,
     now_ms: u64,
 ) {
-    cx.backend.fill_round_rect(rect, INPUT_RADIUS, theme.muted);
+    cx.backend.fill_round_rect(rect, INPUT_RADIUS, theme.input);
     cx.backend
         .stroke_round_rect(rect, INPUT_RADIUS, theme.primary, INPUT_BORDER_WIDTH);
     let baseline_y = rect.origin.y + rect.size.y / 2.0 + 4.0;

@@ -302,22 +302,7 @@ impl GitPanel<'_> {
         let top = rect.origin.y;
         let width = rect.size.x;
 
-        // ── Header bar (TS `border-b border-border/60 bg-card/40`) ──
-        cx.backend.fill_rect(
-            Rect {
-                origin: rect.origin,
-                size: Point2D::new(width, HEADER_H),
-            },
-            alpha(t.card, 0.40),
-        );
-        cx.backend.fill_rect(
-            Rect {
-                origin: Point2D::new(rect.origin.x, top + HEADER_H),
-                size: Point2D::new(width, 1.0),
-            },
-            alpha(t.border, 0.60),
-        );
-
+        // ── Header bar — flat on the panel surface, no divider below ──
         // Branch button — `⎇ <branch> ▾`, with a `hover:bg-accent` wash
         // (TS the branch trigger is a ghost button).
         let branch_r = self.ready_branch_rect(rect);
@@ -399,13 +384,10 @@ impl GitPanel<'_> {
             self.paint_author_form(cx, rect);
         } else {
             let box_r = self.ready_commit_box(rect);
-            cx.backend.fill_round_rect(box_r, 8.0, t.card);
-            let border = if self.state.commit_focused {
-                alpha(t.primary, 0.50)
-            } else {
-                alpha(t.border, 0.70)
-            };
-            cx.backend.stroke_round_rect(box_r, 8.0, border, 1.0);
+            cx.backend.fill_round_rect(box_r, 8.0, t.input);
+            if self.state.commit_focused {
+                cx.backend.stroke_round_rect(box_r, 8.0, t.primary, 1.0);
+            }
             let text_r = Rect {
                 origin: box_r.origin,
                 size: Point2D::new(box_r.size.x, (box_r.size.y - 38.0).max(0.0)),
@@ -455,15 +437,6 @@ impl GitPanel<'_> {
                 );
             }
         }
-        // Divider below the commit box / form, just above the history.
-        cx.backend.fill_rect(
-            Rect {
-                origin: Point2D::new(rect.origin.x, rect.origin.y + self.history_first() - 18.0),
-                size: Point2D::new(width, 1.0),
-            },
-            alpha(t.border, 0.60),
-        );
-
         // ── Recent-commit history (TS `git-panel-history-list`) ──
         // No section header — the timeline / empty line sits directly
         // under the commit-box divider. Clipped to the panel rect —
@@ -502,7 +475,7 @@ impl GitPanel<'_> {
                     origin: Point2D::new(rail_x, history_top - 8.0),
                     size: Point2D::new(1.0, n as f32 * ROW_H + self.expanded_card_extra()),
                 },
-                alpha(t.border, 0.60),
+                t.muted,
             );
             // Row rects are the SAME geometry `ready_hit` walks — sharing
             // them here means the hover wash (added below) can never land

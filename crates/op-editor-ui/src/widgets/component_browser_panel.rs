@@ -461,18 +461,15 @@ impl<'a> ComponentBrowserPanel<'a> {
 
     /// Paint the panel into `rect`.
     pub fn paint(&self, cx: &mut PaintCx<'_>, rect: Rect) {
+        crate::widgets::file_menu::popup::paint_soft_shadow(cx.backend, &self.theme, rect, 12.0);
         cx.backend.fill_round_rect(rect, 12.0, self.theme.card);
-        cx.backend
-            .stroke_round_rect(rect, 12.0, self.theme.border, 1.0);
 
         // Header: title + close.
-        self.text(
+        self.title_text(
             cx,
             self.t("componentBrowser.title"),
             rect.origin.x + PAD,
             rect.origin.y + HEADER_H / 2.0 + 4.0,
-            13.0,
-            self.theme.foreground,
         );
         let close = Self::close_rect(rect);
         cx.backend.fill_round_rect(close, 6.0, self.theme.muted);
@@ -523,13 +520,6 @@ impl<'a> ComponentBrowserPanel<'a> {
                 &crate::widgets::button::tokens_from_theme(&self.theme),
             );
         }
-        cx.backend.fill_rect(
-            Rect {
-                origin: Point2D::new(rect.origin.x, rect.origin.y + HEADER_H),
-                size: Point2D::new(rect.size.x, 1.0),
-            },
-            self.theme.border,
-        );
 
         // Kit-filter row + imported-kit management rows (sibling file).
         self.paint_kit_strip(cx, rect);
@@ -544,9 +534,10 @@ impl<'a> ComponentBrowserPanel<'a> {
             size: Point2D::new(rect.size.x - PAD * 2.0, 28.0),
         };
         cx.backend
-            .fill_round_rect(search_rect, 6.0, self.theme.muted);
+            .fill_round_rect(search_rect, 6.0, self.theme.input);
+        // The panel owns the keyboard while open, so the field is always focused.
         cx.backend
-            .stroke_round_rect(search_rect, 6.0, self.theme.border, 1.0);
+            .stroke_round_rect(search_rect, 6.0, self.theme.primary, 1.0);
         draw_icon(
             cx.backend,
             Icon::Search,
@@ -612,13 +603,6 @@ impl<'a> ComponentBrowserPanel<'a> {
             );
         }
         let clip_top = self.grid_clip_top(rect);
-        cx.backend.fill_rect(
-            Rect {
-                origin: Point2D::new(rect.origin.x, clip_top),
-                size: Point2D::new(rect.size.x, 1.0),
-            },
-            self.theme.border,
-        );
 
         // Card grid — clip so an over-tall component list cannot bleed
         // past the panel foot.
@@ -681,8 +665,6 @@ impl<'a> ComponentBrowserPanel<'a> {
     ) {
         cx.backend.fill_round_rect(rect, 8.0, self.theme.muted);
         paint_button_feedback_wash(cx.backend, &self.theme, rect, 8.0, hovered, pressed);
-        cx.backend
-            .stroke_round_rect(rect, 8.0, self.theme.border, 1.0);
         // Preview rect — scaled down to fit, anchored centre-top.
         let avail_w = rect.size.x - PREVIEW_INSET * 2.0;
         let avail_h = rect.size.y - PREVIEW_INSET * 2.0 - 18.0;
@@ -728,6 +710,19 @@ impl<'a> ComponentBrowserPanel<'a> {
             (color).to_jian(),
             Point2D::new(0.0, 0.0),
         );
+        cx.backend.draw_text(&layout, Point2D::new(x, baseline));
+    }
+
+    /// Semi-bold panel heading (Figma UI3 section-header weight).
+    fn title_text(&self, cx: &mut PaintCx<'_>, s: &str, x: f32, baseline: f32) {
+        let layout = TextLayout::single_run(
+            s,
+            "system-ui",
+            13.0,
+            (self.theme.foreground).to_jian(),
+            Point2D::new(0.0, 0.0),
+        )
+        .with_font_weight(600);
         cx.backend.draw_text(&layout, Point2D::new(x, baseline));
     }
 }

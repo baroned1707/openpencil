@@ -173,13 +173,11 @@ impl GitPanel<'_> {
         focused: bool,
         placeholder: &str,
     ) {
-        cx.backend.fill_round_rect(rect, 6.0, self.theme.muted);
-        let border = if focused {
-            self.theme.primary
-        } else {
-            self.theme.border
-        };
-        cx.backend.stroke_round_rect(rect, 6.0, border, 1.0);
+        cx.backend.fill_round_rect(rect, 6.0, self.theme.input);
+        if focused {
+            cx.backend
+                .stroke_round_rect(rect, 6.0, self.theme.primary, 1.0);
+        }
         self.paint_text_input_view(cx, rect, input, placeholder, focused, 11.0, 8.0);
     }
 
@@ -195,13 +193,11 @@ impl GitPanel<'_> {
         focused: bool,
         placeholder: &str,
     ) {
-        cx.backend.fill_round_rect(rect, 6.0, self.theme.muted);
-        let border = if focused {
-            self.theme.primary
-        } else {
-            self.theme.border
-        };
-        cx.backend.stroke_round_rect(rect, 6.0, border, 1.0);
+        cx.backend.fill_round_rect(rect, 6.0, self.theme.input);
+        if focused {
+            cx.backend
+                .stroke_round_rect(rect, 6.0, self.theme.primary, 1.0);
+        }
         self.paint_text_input_view_masked(
             cx,
             rect,

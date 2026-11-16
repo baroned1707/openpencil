@@ -188,7 +188,6 @@ impl GitPanel<'_> {
             h == Some(GitButton::CloseDiff),
             self.pressed == Some(GitButton::CloseDiff),
         );
-        self.divider(cx, left, top + 42.0, rect.size.x);
 
         // Body — a visible window of diff lines, per-line coloured,
         // with intra-line highlight on the changed span.

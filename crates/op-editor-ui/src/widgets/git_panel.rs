@@ -34,12 +34,10 @@ pub(super) const PAD: f32 = 16.0;
 pub(super) const HEADER_BASELINE: f32 = 30.0;
 const BRANCH_BASELINE: f32 = 56.0;
 const STATUS_BASELINE: f32 = 78.0;
-const DIVIDER_1_Y: f32 = 90.0;
 const INPUT_TOP: f32 = 100.0;
 pub(super) const INPUT_H: f32 = 28.0;
 const BUTTON_TOP: f32 = 138.0;
 pub(super) const BUTTON_H: f32 = 28.0;
-const DIVIDER_2_Y: f32 = 180.0;
 const COMMITS_LABEL_BASELINE: f32 = 200.0;
 /// Baseline of the first commit row.
 const COMMITS_FIRST_BASELINE: f32 = 222.0;

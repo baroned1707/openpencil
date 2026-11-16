@@ -450,18 +450,21 @@ impl<'a> DesignMdPanel<'a> {
 
     /// Paint the panel into `rect`.
     pub fn paint(&self, cx: &mut PaintCx<'_>, rect: Rect) {
+        crate::widgets::file_menu::popup::paint_soft_shadow(cx.backend, &self.theme, rect, 12.0);
         cx.backend.fill_round_rect(rect, 12.0, self.theme.card);
-        cx.backend
-            .stroke_round_rect(rect, 12.0, self.theme.border, 1.0);
 
         // Header — title + import / export / close.
-        self.text(
-            cx,
+        let title = crate::TextLayout::single_run(
             self.t("designMd.title"),
-            rect.origin.x + PAD,
-            rect.origin.y + HEADER_H / 2.0 + 4.0,
+            "system-ui",
             13.0,
-            self.theme.foreground,
+            (self.theme.foreground).to_jian(),
+            Point2D::new(0.0, 0.0),
+        )
+        .with_font_weight(600);
+        cx.backend.draw_text(
+            &title,
+            Point2D::new(rect.origin.x + PAD, rect.origin.y + HEADER_H / 2.0 + 4.0),
         );
         let [import, auto, export, close] = Self::header_buttons(rect);
         use DesignMdButton as B;
@@ -496,13 +499,6 @@ impl<'a> DesignMdPanel<'a> {
             Icon::Close,
             self.hover == Some(B::Close),
             self.is_pressed(B::Close),
-        );
-        cx.backend.fill_rect(
-            Rect {
-                origin: Point2D::new(rect.origin.x, rect.origin.y + HEADER_H),
-                size: Point2D::new(rect.size.x, 1.0),
-            },
-            self.theme.border,
         );
 
         // Body — clipped so long content cannot bleed past the panel.

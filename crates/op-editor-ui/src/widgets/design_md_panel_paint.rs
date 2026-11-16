@@ -103,8 +103,6 @@ impl<'a> DesignMdPanel<'a> {
         };
         cx.backend
             .fill_round_rect(swatch, 4.0, hex_to_color(&color.hex));
-        cx.backend
-            .stroke_round_rect(swatch, 4.0, self.theme.border, 1.0);
         let text_x = left + 24.0;
         self.text(
             cx,
@@ -175,8 +173,6 @@ impl<'a> DesignMdPanel<'a> {
                         size: Point2D::new(10.0, 10.0),
                     };
                     cx.backend.fill_round_rect(swatch, 2.0, hex_to_color(hex));
-                    cx.backend
-                        .stroke_round_rect(swatch, 2.0, self.theme.border, 1.0);
                     self.text(cx, hex, cur + 14.0, baseline, size, self.theme.foreground);
                     cur += 14.0 + hex.chars().count() as f32 * CHAR_W;
                 }

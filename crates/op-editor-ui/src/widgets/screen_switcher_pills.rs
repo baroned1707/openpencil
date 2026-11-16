@@ -97,8 +97,6 @@ impl ScreenSwitcherPills<'_> {
                 theme.card
             };
             cx.backend.fill_round_rect(rect, RADIUS, fill);
-            cx.backend
-                .stroke_round_rect(rect, RADIUS, theme.border, 1.0);
 
             let max_label_w = (rect.size.x - LABEL_PAD_X * 2.0).max(0.0);
             let label = truncate_to_width(cx, &self.labels[index], LABEL_FONT, max_label_w);

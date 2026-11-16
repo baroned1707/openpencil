@@ -72,8 +72,10 @@ impl GitPanel<'_> {
             b: 0.04,
             a: 1.0,
         };
+        // Flat amber-tinted fill carries the merge state; no outline.
         cx.backend.fill_round_rect(rect, 6.0, self.theme.muted);
-        cx.backend.stroke_round_rect(rect, 6.0, amber, 1.0);
+        cx.backend
+            .fill_round_rect(rect, 6.0, amber.with_alpha(0.16));
         let baseline = rect.origin.y + rect.size.y / 2.0 + 4.0;
         self.text(
             cx,
@@ -87,13 +89,11 @@ impl GitPanel<'_> {
 
     /// Paint the commit-message input box.
     pub(super) fn paint_input(&self, cx: &mut PaintCx<'_>, rect: Rect) {
-        cx.backend.fill_round_rect(rect, 6.0, self.theme.muted);
-        let border = if self.state.commit_focused {
-            self.theme.primary
-        } else {
-            self.theme.border
-        };
-        cx.backend.stroke_round_rect(rect, 6.0, border, 1.0);
+        cx.backend.fill_round_rect(rect, 6.0, self.theme.input);
+        if self.state.commit_focused {
+            cx.backend
+                .stroke_round_rect(rect, 6.0, self.theme.primary, 1.0);
+        }
 
         let placeholder = if self.state.commit_focused {
             ""

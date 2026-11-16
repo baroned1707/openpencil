@@ -15,7 +15,6 @@ const TITLE_BASELINE: f32 = 30.0;
 /// Subtitle baseline.
 const SUBTITLE_BASELINE: f32 = 50.0;
 /// Divider y.
-const DIVIDER_Y: f32 = 60.0;
 /// Top of the first conflict row.
 const ROWS_TOP: f32 = 70.0;
 /// Conflict-row height.
@@ -125,7 +124,6 @@ impl GitPanel<'_> {
             11.0,
             self.theme.muted_foreground,
         );
-        self.divider(cx, left, top + DIVIDER_Y, rect.size.x);
 
         let layout = self.resolve_layout(rect);
         let rows = merge.rows();

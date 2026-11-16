@@ -120,9 +120,7 @@ impl Widget for CollabPanel<'_> {
     }
 
     fn paint(&self, cx: &mut PaintCx<'_>, rect: Rect) {
-        cx.backend.fill_round_rect(rect, 10.0, self.theme.popover);
-        cx.backend
-            .stroke_round_rect(rect, 10.0, self.theme.border, 1.0);
+        crate::widgets::file_menu::popup::paint_popup_surface(cx.backend, &self.theme, rect, 10.0);
         paint_text(
             cx,
             &self.model.title,
@@ -150,15 +148,6 @@ impl Widget for CollabPanel<'_> {
                 self.theme.muted_foreground
             },
             1.4,
-        );
-        cx.backend.fill_rect(
-            Rect::xywh(
-                rect.origin.x,
-                rect.origin.y + HEADER_HEIGHT - 1.0,
-                rect.size.x,
-                1.0,
-            ),
-            self.theme.border,
         );
 
         // Keep the bottom action row reachable on a short viewport without
@@ -263,21 +252,12 @@ impl Widget for CollabPanel<'_> {
                     Some(CollabPanelHover::JoinAddress | CollabPanelHover::ClearJoinAddress)
                 );
                 if input_hovered && !self.ui.collab.panel.join_address_focused {
-                    cx.backend
-                        .fill_round_rect(input, 6.0, self.theme.button_hover);
+                    cx.backend.fill_round_rect(input, 6.0, self.theme.accent);
                 }
-                cx.backend.stroke_round_rect(
-                    input,
-                    6.0,
-                    if self.ui.collab.panel.join_address_focused {
-                        self.theme.ring
-                    } else if input_hovered {
-                        self.theme.muted_foreground.with_alpha(0.55)
-                    } else {
-                        self.theme.border
-                    },
-                    1.0,
-                );
+                if self.ui.collab.panel.join_address_focused {
+                    cx.backend
+                        .stroke_round_rect(input, 6.0, self.theme.ring, 1.0);
+                }
                 let clear = self.clear_join_rect(rect, body_top + 22.0);
                 let text_inset = if clear.is_some() {
                     CLEAR_BUTTON_SIZE + 5.0

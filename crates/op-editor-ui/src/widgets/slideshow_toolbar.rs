@@ -122,6 +122,7 @@ impl SlideshowToolbar<'_> {
 
     pub fn paint(&self, cx: &mut PaintCx<'_>, canvas: Rect, theme: &Theme) {
         let pill = Self::pill_rect(canvas, self.label);
+        super::file_menu::popup::paint_soft_shadow(cx.backend, theme, pill, RADIUS);
         cx.backend.fill_round_rect(
             pill,
             RADIUS,
@@ -130,12 +131,10 @@ impl SlideshowToolbar<'_> {
                 ..theme.popover
             },
         );
-        cx.backend
-            .stroke_round_rect(pill, RADIUS, theme.border, 1.0);
 
         // Exit is intentionally a visible terminal segment. It remains a
-        // calm neutral surface, but the divider and persistent wash make the
-        // way out discoverable on touch without turning it into an alarm.
+        // calm neutral surface, but the persistent wash makes the way out
+        // discoverable on touch without turning it into an alarm.
         let exit_rect = Self::button_rects(canvas, self.label)[2].1;
         cx.backend.fill_round_rect(
             inset(exit_rect, 4.0),
@@ -144,15 +143,6 @@ impl SlideshowToolbar<'_> {
                 a: 0.12,
                 ..theme.button_hover
             },
-        );
-        cx.backend.stroke_line(
-            Point2D::new(exit_rect.origin.x, exit_rect.origin.y + 10.0),
-            Point2D::new(
-                exit_rect.origin.x,
-                exit_rect.origin.y + exit_rect.size.y - 10.0,
-            ),
-            theme.border,
-            1.0,
         );
 
         for (button, rect) in Self::button_rects(canvas, self.label) {

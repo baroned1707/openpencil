@@ -170,17 +170,14 @@ impl<'a> EditorToast<'a> {
         // `popover` rather than `card`: the banner floats over the canvas
         // rather than sitting in the chrome, and popover is the surface every
         // other floating notice in the editor already uses.
-        cx.backend
-            .fill_round_rect(rect, TOAST_RADIUS, theme.popover);
-        // The level shows in the border, not the fill. A fully tinted banner
-        // reads as an error state; a tinted edge marks urgency while keeping
-        // the sentence on the same readable surface as every other notice.
-        let border = match self.level() {
-            EditorToastLevel::Info => theme.border,
-            EditorToastLevel::Warn => theme.status_warning,
-        };
-        cx.backend
-            .stroke_round_rect(rect, TOAST_RADIUS, border, 1.0);
+        super::file_menu::popup::paint_popup_surface(cx.backend, theme, rect, TOAST_RADIUS);
+        // The level shows as a light wash over the surface, not an outline: a
+        // faint warning tint marks urgency while the sentence stays on the
+        // same readable surface as every other notice.
+        if self.level() == EditorToastLevel::Warn {
+            cx.backend
+                .fill_round_rect(rect, TOAST_RADIUS, theme.status_warning.with_alpha(0.16));
+        }
 
         let baseline_y = jian_widgets::centered_text_baseline_y(rect, TOAST_FONT_SIZE);
         let text = TextLayout::single_run(
