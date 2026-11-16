@@ -18,10 +18,15 @@ impl DesktopApp {
         // gesture. Retire the OLD worker before launching that send; otherwise
         // the pointer/redraw tail consumes the reset and aborts the NEW run.
         let retired = self.drain_new_chat();
-        let launched = chat_session::launch_if_pending(
+        // Agents start in the project root of the document on screen at launch
+        // time (not wherever the app was started); an untitled document keeps
+        // the old behaviour.
+        let context = chat_session::ChatLaunchContext::for_document(self.current_path.as_deref());
+        let launched = chat_session::launch_if_pending_with(
             &mut self.host,
             &mut self.current_chat,
             &mut self.current_design,
+            &context,
         );
         if launched && (self.current_chat.is_some() || self.current_design.is_some()) {
             self.chat_running_tab = Some(self.host.editor_state().chat.active_index());

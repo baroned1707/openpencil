@@ -81,6 +81,7 @@ pub(crate) mod launch_variants;
 /// receiver drops.
 ///
 /// Returns true when *any* turn was launched (caller redraws).
+#[cfg(test)]
 pub fn launch_if_pending(
     host: &mut WidgetHostNative,
     current_chat: &mut Option<ChatSession>,

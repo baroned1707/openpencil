@@ -87,6 +87,7 @@ impl DesktopApp {
     }
 
     /// Queue a tab request for the next frame, as a click on the strip does.
+    #[cfg(test)]
     pub(crate) fn request_document_tab(&mut self, request: DocumentTabRequest) {
         self.host
             .editor_state_mut()

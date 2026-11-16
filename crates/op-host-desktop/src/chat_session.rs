@@ -23,10 +23,13 @@ pub(crate) use launch::builtin_provider_with_tools;
 // The two halves of the scenario gate, re-exported so the entry points that
 // have to keep satisfying it can assert against the real predicates rather
 // than a restatement of them.
+#[cfg(test)]
+pub use launch::launch_if_pending;
 pub(crate) use launch::reconcile_starter_ghost;
 #[cfg(test)]
 pub(crate) use launch::{active_page_is_blank_starter_frame, launch_design::design_turn_scenario};
-pub use launch::{drain_new_chat_request, drain_stop_request, launch_if_pending};
+pub use launch::{drain_new_chat_request, drain_stop_request};
+pub(crate) use launch::{launch_if_pending_with, ChatLaunchContext};
 pub(crate) use launch::{provider_for_selected_model, selected_cli_model_id};
 // Sub-agent launcher (Task 3.1) reuses the design-toolset provider builder
 // and the design-turn thinking policy.

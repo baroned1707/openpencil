@@ -34,9 +34,6 @@ pub struct ChatLaunchContext {
 
 impl ChatLaunchContext {
     /// Context for the document stored at `path` (`None` = untitled).
-    // Called by the host once `DesktopApp.current_path` is wired in; see
-    // `TODO(phase3-wire)` in `keyboard_chat_tabs.rs`.
-    #[allow(dead_code)]
     pub fn for_document(path: Option<&Path>) -> Self {
         Self {
             project_cwd: op_host_services::project_root::project_root_for_document(path)
@@ -334,6 +331,39 @@ pub(super) fn selected_provider_label(host: &WidgetHostNative) -> String {
 #[cfg(test)]
 mod routing_tests {
     use super::*;
+
+    #[test]
+    fn launch_context_uses_the_open_documents_project_root() {
+        let dir = std::env::temp_dir().join(format!(
+            "openpencil-launch-ctx-{}-{}",
+            std::process::id(),
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .map(|d| d.as_nanos())
+                .unwrap_or(0)
+        ));
+        let designs = dir.join("designs");
+        std::fs::create_dir_all(&designs).unwrap();
+        std::fs::write(dir.join("package.json"), "{}").unwrap();
+        let file = designs.join("home.op");
+        std::fs::write(&file, "{}").unwrap();
+
+        let context = ChatLaunchContext::for_document(Some(&file));
+        assert_eq!(
+            context
+                .project_cwd
+                .as_deref()
+                .map(|p| p.canonicalize().unwrap()),
+            Some(dir.canonicalize().unwrap()),
+            "the agent starts in the project root, not the file's folder"
+        );
+        assert_eq!(
+            ChatLaunchContext::for_document(None),
+            ChatLaunchContext::default(),
+            "an untitled document keeps the inherited cwd"
+        );
+        let _ = std::fs::remove_dir_all(dir);
+    }
 
     #[test]
     fn deepseek_harness_routes_to_the_dsh_subprocess_provider() {
