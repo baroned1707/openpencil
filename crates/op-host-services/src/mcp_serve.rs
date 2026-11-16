@@ -69,6 +69,7 @@ use op_mcp::{
 pub(crate) mod auto_finalize;
 pub mod error;
 pub mod file_path;
+pub mod file_path_error;
 mod sniff;
 
 pub use error::McpServeError;
@@ -193,7 +194,10 @@ fn process_message_with_auto_finalize(
     mut auto_finalize: Option<&mut auto_finalize::AutoFinalize>,
     profile: tool_profile::McpAccessProfile,
 ) -> Result<Option<String>, McpServeError> {
-    if let Some(response) = file_path::process_message_for_file_path_arg(Some(path), line, profile)?
+    // The headless transport owns its backing file outright (no editor holds
+    // it in memory), so there are no "open elsewhere" paths to refuse.
+    if let Some(response) =
+        file_path::process_message_for_file_path_arg(Some(path), &[], line, profile)?
     {
         return Ok(Some(response));
     }

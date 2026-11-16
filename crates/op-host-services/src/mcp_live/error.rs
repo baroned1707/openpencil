@@ -44,6 +44,12 @@ pub enum McpLiveError {
     /// [`ExportError`] so the screenshot glue can report the renderer's own
     /// reason inside its `Renderer reported failure: …` envelope.
     Screenshot(ExportError),
+    /// The on-screen document was replaced (Open, New, import, whole-document
+    /// sync) between a tool call's snapshot and its apply, so the apply was
+    /// refused rather than landed on a different document that happens to
+    /// reuse the same node ids. A client-visible tool error: the agent should
+    /// re-read the document and retry.
+    DocumentChanged,
 }
 
 impl fmt::Display for McpLiveError {
@@ -52,6 +58,9 @@ impl fmt::Display for McpLiveError {
             McpLiveError::Startup(m) | McpLiveError::UiThread(m) => f.write_str(m),
             McpLiveError::Transport(e) => e.fmt(f),
             McpLiveError::Screenshot(e) => e.fmt(f),
+            McpLiveError::DocumentChanged => f.write_str(
+                "the open document changed while this call was running; re-read and retry",
+            ),
         }
     }
 }

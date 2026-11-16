@@ -7,25 +7,46 @@
 
 use std::path::{Path, PathBuf};
 
+use super::file_path_error::FilePathError;
 use super::McpServeError;
 
 const LIVE_CANVAS_SENTINELS: &[&str] = &["live://canvas", "live://canvas/current"];
 
 struct TargetFileCall {
+    id: op_mcp::RequestId,
     tool: String,
     path: PathBuf,
 }
 
 /// `profile` is the session's: a call retargeted at another file is served
 /// under the same catalog and deployment rules as one against the primary.
+///
+/// `current_path` is the transport's own backing document: a `filePath`
+/// naming it falls through to that document (`Ok(None)`). `open_paths` are
+/// documents some editor holds in memory; a `filePath` naming one of those is
+/// REFUSED with an `isError` tool result, because loading it from disk,
+/// editing and writing it back would bypass the editor and be overwritten by
+/// its next Save. Both sides are canonicalized, so symlinks, `..` segments and
+/// relative spellings of the same file all match. A target that does not exist
+/// cannot match and behaves as before.
 pub fn process_message_for_file_path_arg(
     current_path: Option<&Path>,
+    open_paths: &[PathBuf],
     line: &str,
     profile: super::tool_profile::McpAccessProfile,
 ) -> Result<Option<String>, McpServeError> {
     let Some(target) = target_file_call(line, current_path)? else {
         return Ok(None);
     };
+    if open_paths.iter().any(|open| same_path(&target.path, open)) {
+        return Ok(Some(op_mcp::tool_response_to_json(
+            &op_mcp::ToolResponse::Err {
+                id: target.id,
+                code: op_mcp::ToolErrorCode::ToolFailed,
+                message: FilePathError::OpenInEditor { path: target.path }.to_string(),
+            },
+        )));
+    }
     if target.tool == "open_document" && !target.path.exists() {
         create_empty_document(&target.path)?;
     }
@@ -81,6 +102,7 @@ fn target_file_call(
         return Ok(None);
     }
     Ok(Some(TargetFileCall {
+        id: call.id,
         tool: call.tool,
         path: target,
     }))
@@ -104,3 +126,7 @@ fn same_path(target: &Path, current: &Path) -> bool {
         _ => false,
     }
 }
+
+#[cfg(test)]
+#[path = "file_path_tests.rs"]
+mod tests;

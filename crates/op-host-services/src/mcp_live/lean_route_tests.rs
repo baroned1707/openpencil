@@ -1,7 +1,6 @@
 //! The live server's `/mcp/lean` endpoint, driven through the real
 //! `serve_connection` router with a stub UI thread.
 
-use super::super::*;
 use super::*;
 
 const PORT: u16 = 51235;
@@ -38,7 +37,9 @@ fn post(path: &str, body: &str) -> (String, Vec<&'static str>) {
             match request {
                 UiRequest::Snapshot { ack } => {
                     seen.push("snapshot");
-                    let _ = ack.send(EditorState::new());
+                    let state = EditorState::new();
+                    let epoch = DocumentEpoch::of(0, &state);
+                    let _ = ack.send(SnapshotAck { state, epoch });
                 }
                 UiRequest::ListPages { .. } => seen.push("list_pages"),
                 UiRequest::Apply { .. } => seen.push("apply"),
@@ -68,6 +69,7 @@ fn post(path: &str, body: &str) -> (String, Vec<&'static str>) {
         &quit_flag,
         &wake_ui,
         &client_identity,
+        &OpenDocumentPaths::default(),
     )
     .expect("served");
     drop(req_tx);

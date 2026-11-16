@@ -101,6 +101,7 @@ impl DesktopApp {
             Ok(server) => {
                 let bound_port = server.port();
                 self.mcp_server = Some(server);
+                self.sync_mcp_host();
                 self.note_bound_mcp_port(forced, setting_running, bound_port);
                 true
             }
@@ -117,6 +118,7 @@ impl DesktopApp {
                                 "openpencil-desktop mcp: fell back to 127.0.0.1:{bound_port}/mcp"
                             );
                             self.mcp_server = Some(server);
+                            self.sync_mcp_host();
                             self.note_bound_mcp_port(forced, setting_running, bound_port);
                             return true;
                         }
@@ -174,7 +176,20 @@ impl DesktopApp {
         }
     }
 
+    /// Tell the live MCP server what only this host knows: the document epoch
+    /// (so a tool call whose document was swapped mid-call is refused) and the
+    /// file open in the editor (so a `filePath` argument naming it is refused
+    /// instead of edited on disk behind the editor). Cheap — no filesystem
+    /// access; the server canonicalizes when it compares.
+    fn sync_mcp_host(&mut self) {
+        let document_epoch = self.host.document_epoch();
+        if let Some(server) = self.mcp_server.as_mut() {
+            server.sync_host(document_epoch, self.current_path.as_slice());
+        }
+    }
+
     pub(crate) fn poll_mcp_server(&mut self) -> bool {
+        self.sync_mcp_host();
         let (outcome, pending_design_md) = {
             let Some(server) = self.mcp_server.as_mut() else {
                 return false;

@@ -75,7 +75,10 @@ fn snapshot_request_wakes_ui_event_loop_after_queueing() {
     let UiRequest::Snapshot { ack } = request else {
         panic!("expected snapshot request");
     };
-    ack.send(EditorState::new()).expect("ack snapshot");
+    let state = EditorState::new();
+    let epoch = DocumentEpoch::of(0, &state);
+    ack.send(SnapshotAck { state, epoch })
+        .expect("ack snapshot");
     requester
         .join()
         .expect("requester thread should not panic")
@@ -95,6 +98,7 @@ fn set_active_page_fast_path_sends_apply_without_full_snapshot() {
     let UiRequest::Apply {
         tool_name,
         cmd: EditorCommand::SetActivePage { index },
+        expected_epoch: None,
         ack,
     } = request
     else {
@@ -102,7 +106,11 @@ fn set_active_page_fast_path_sends_apply_without_full_snapshot() {
     };
     assert_eq!(tool_name, "set_active_page");
     assert_eq!(index, 1);
-    ack.send(ApplyAck { applied: true }).expect("ack apply");
+    ack.send(ApplyAck {
+        applied: true,
+        document_changed: false,
+    })
+    .expect("ack apply");
 
     let response = requester
         .join()
@@ -160,6 +168,8 @@ fn pump_yields_after_ui_request_budget() {
         client_identity: Arc::new(Mutex::new(None)),
         last_mcp_epoch: 0,
         pending_design_md: VecDeque::new(),
+        host_document_epoch: 0,
+        open_paths: OpenDocumentPaths::default(),
     };
     let mut state = EditorState::new();
     let mut acks = Vec::new();
@@ -169,6 +179,7 @@ fn pump_yields_after_ui_request_budget() {
         req_tx
             .send(UiRequest::Apply {
                 tool_name: "set_viewport".to_string(),
+                expected_epoch: None,
                 cmd: EditorCommand::SetViewport {
                     pan_x: Some(index as i32),
                     pan_y: None,
@@ -204,6 +215,8 @@ fn pump_fulfills_screenshot_requests_off_the_live_state() {
         client_identity: Arc::new(Mutex::new(None)),
         last_mcp_epoch: 0,
         pending_design_md: VecDeque::new(),
+        host_document_epoch: 0,
+        open_paths: OpenDocumentPaths::default(),
     };
     let mut state = EditorState::new();
     assert!(state.apply(EditorCommand::InsertNode {
@@ -251,6 +264,8 @@ fn pump_marks_layout_dirty_only_for_layout_affecting_commands() {
         client_identity: Arc::new(Mutex::new(None)),
         last_mcp_epoch: 0,
         pending_design_md: VecDeque::new(),
+        host_document_epoch: 0,
+        open_paths: OpenDocumentPaths::default(),
     };
     let mut state = EditorState::new();
     state.selection.anchor = op_editor_core::NodeId::new("n1");
@@ -260,6 +275,7 @@ fn pump_marks_layout_dirty_only_for_layout_affecting_commands() {
     req_tx
         .send(UiRequest::Apply {
             tool_name: "clear_selection".to_string(),
+            expected_epoch: None,
             cmd: EditorCommand::ClearSelection,
             ack: selection_ack_tx,
         })
@@ -275,6 +291,7 @@ fn pump_marks_layout_dirty_only_for_layout_affecting_commands() {
     req_tx
         .send(UiRequest::Apply {
             tool_name: "insert_node".to_string(),
+            expected_epoch: None,
             cmd: EditorCommand::InsertNode {
                 kind: "rect".to_string(),
                 name: "Box".to_string(),
@@ -320,6 +337,8 @@ fn pump_flags_document_replaced_only_for_replace_document_requests() {
         client_identity: Arc::new(Mutex::new(None)),
         last_mcp_epoch: 0,
         pending_design_md: VecDeque::new(),
+        host_document_epoch: 0,
+        open_paths: OpenDocumentPaths::default(),
     };
     let mut state = EditorState::new();
     let replacement_doc = op_pen_loader::load_canonical(
@@ -404,6 +423,7 @@ fn pump_rejects_mcp_document_writes_during_active_collaboration() {
     req_tx
         .send(UiRequest::Apply {
             tool_name: "insert_node".to_string(),
+            expected_epoch: None,
             cmd: EditorCommand::InsertNode {
                 kind: "rect".to_string(),
                 name: "Blocked".to_string(),
@@ -487,6 +507,8 @@ fn fresh_mcp_server(req_rx: Receiver<UiRequest>, stop_tx: Sender<()>) -> McpLive
         client_identity: Arc::new(Mutex::new(None)),
         last_mcp_epoch: 0,
         pending_design_md: VecDeque::new(),
+        host_document_epoch: 0,
+        open_paths: OpenDocumentPaths::default(),
     }
 }
 
@@ -508,6 +530,7 @@ fn send_batch_design_insert(req_tx: &Sender<UiRequest>, node: PenNode) -> mpsc::
     req_tx
         .send(UiRequest::Apply {
             tool_name: "batch_design".to_string(),
+            expected_epoch: None,
             // `InsertAuthoredSubtree`, not `InsertSubtree` — the
             // latter remaps every incoming id to a fresh editor id
             // (`command.rs`'s own doc: "the caller's ids are
@@ -577,6 +600,7 @@ fn batch_design_apply_is_a_noop_when_nothing_new_landed() {
     req_tx
         .send(UiRequest::Apply {
             tool_name: "batch_design".to_string(),
+            expected_epoch: None,
             cmd: EditorCommand::InsertSubtree {
                 nodes: vec![],
                 parent_id: op_editor_core::NodeId::NONE,

@@ -5,10 +5,13 @@
 
 use super::*;
 
+/// Snapshot the live document and learn which document it is. The returned
+/// [`DocumentEpoch`] must ride back on the call's apply (see
+/// [`request_apply`]) so a swap in between is caught.
 pub(super) fn request_snapshot(
     req_tx: &Sender<UiRequest>,
     wake_ui: &UiWake,
-) -> Result<EditorState, McpLiveError> {
+) -> Result<(EditorState, DocumentEpoch), McpLiveError> {
     let (ack_tx, ack_rx) = mpsc::sync_channel(1);
     req_tx
         .send(UiRequest::Snapshot { ack: ack_tx })
@@ -16,7 +19,9 @@ pub(super) fn request_snapshot(
             McpLiveError::UiThread("UI thread is not accepting MCP snapshot requests".to_string())
         })?;
     wake_ui();
-    recv_with_timeout(ack_rx.recv_timeout(UI_ACK_TIMEOUT), "snapshot")
+    let SnapshotAck { state, epoch } =
+        recv_with_timeout(ack_rx.recv_timeout(UI_ACK_TIMEOUT), "snapshot")?;
+    Ok((state, epoch))
 }
 
 pub(super) fn request_list_pages(
@@ -33,24 +38,34 @@ pub(super) fn request_list_pages(
     recv_with_timeout(ack_rx.recv_timeout(UI_ACK_TIMEOUT), "page-list")
 }
 
+/// Ask the UI thread to apply `cmd`. `expected_epoch` is the epoch from the
+/// call's snapshot (`None` for a call that took none); when the live document
+/// no longer matches it the apply is refused and this reports
+/// [`McpLiveError::DocumentChanged`].
 pub(super) fn request_apply(
     req_tx: &Sender<UiRequest>,
     wake_ui: &UiWake,
     tool_name: String,
     cmd: EditorCommand,
+    expected_epoch: Option<DocumentEpoch>,
 ) -> Result<ApplyAck, McpLiveError> {
     let (ack_tx, ack_rx) = mpsc::sync_channel(1);
     req_tx
         .send(UiRequest::Apply {
             tool_name,
             cmd,
+            expected_epoch,
             ack: ack_tx,
         })
         .map_err(|_| {
             McpLiveError::UiThread("UI thread is not accepting MCP apply requests".to_string())
         })?;
     wake_ui();
-    recv_with_timeout(ack_rx.recv_timeout(UI_ACK_TIMEOUT), "apply")
+    let ack = recv_with_timeout(ack_rx.recv_timeout(UI_ACK_TIMEOUT), "apply")?;
+    if ack.document_changed {
+        return Err(McpLiveError::DocumentChanged);
+    }
+    Ok(ack)
 }
 
 /// Ask the UI thread to render a `debug_screenshot` capture. Bounded

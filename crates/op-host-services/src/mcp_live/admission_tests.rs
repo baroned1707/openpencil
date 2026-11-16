@@ -53,6 +53,7 @@ fn drive(request: &str, req_tx: &Sender<UiRequest>) -> String {
         &quit_flag,
         &wake_ui,
         &client_identity,
+        &OpenDocumentPaths::default(),
     )
     .expect("a refused request is answered on the wire, never a server error");
     String::from_utf8_lossy(&stream.output).into_owned()
@@ -337,11 +338,16 @@ fn extension_snapshot_ingress_inserts_without_a_token() {
         while let Ok(request) = req_rx.recv_timeout(Duration::from_secs(5)) {
             match request {
                 UiRequest::Snapshot { ack } => {
-                    let _ = ack.send(EditorState::starter());
+                    let state = EditorState::starter();
+                    let epoch = DocumentEpoch::of(0, &state);
+                    let _ = ack.send(SnapshotAck { state, epoch });
                 }
                 UiRequest::Apply { ack, .. } => {
                     applied += 1;
-                    let _ = ack.send(ApplyAck { applied: true });
+                    let _ = ack.send(ApplyAck {
+                        applied: true,
+                        document_changed: false,
+                    });
                     break;
                 }
                 _ => break,

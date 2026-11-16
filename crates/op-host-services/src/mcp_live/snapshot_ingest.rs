@@ -223,8 +223,9 @@ pub(super) fn serve_snapshot_ingest<S: std::io::Read + std::io::Write>(
     let _guard = stateful_lock
         .lock()
         .unwrap_or_else(|poison| poison.into_inner());
-    let mut state = request_snapshot(req_tx, wake_ui)?;
-    let response = crate::mcp_serve::process_message_with_applier(
+    let (mut state, epoch) = request_snapshot(req_tx, wake_ui)?;
+    let mut document_changed = false;
+    let mut response = crate::mcp_serve::process_message_with_applier(
         &mut state,
         &call,
         |tool_name, local_state, cmd| match request_apply(
@@ -232,12 +233,17 @@ pub(super) fn serve_snapshot_ingest<S: std::io::Read + std::io::Write>(
             wake_ui,
             tool_name.to_string(),
             cmd.clone(),
+            Some(epoch),
         ) {
             Ok(ack) => {
                 if ack.applied {
                     let _ = local_state.apply(cmd.clone());
                 }
                 ack.applied
+            }
+            Err(McpLiveError::DocumentChanged) => {
+                document_changed = true;
+                false
             }
             Err(e) => {
                 eprintln!("openpencil-desktop mcp: snapshot ingest apply failed: {e}");
@@ -246,6 +252,9 @@ pub(super) fn serve_snapshot_ingest<S: std::io::Read + std::io::Write>(
         },
     )?
     .unwrap_or_default();
+    if document_changed {
+        response = document_changed_response(&call).unwrap_or(response);
+    }
     let (status, body) = rest_reply(&response);
     write_http_with_origin(stream, status, &body, cors_origin)
 }

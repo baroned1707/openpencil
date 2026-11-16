@@ -26,6 +26,7 @@ pub(super) fn server_loop(
     quit_flag: Arc<AtomicBool>,
     wake_ui: UiWake,
     client_identity: Arc<Mutex<Option<(String, String)>>>,
+    open_paths: OpenDocumentPaths,
 ) {
     // Serializes only *stateful* requests so a concurrent multi-apply batch
     // can't interleave. Stateless probes (`ping`/`initialize`) bypass it, so
@@ -65,6 +66,7 @@ pub(super) fn server_loop(
                 let conns = Arc::clone(&conn_count);
                 let wake = Arc::clone(&wake_ui);
                 let identity = Arc::clone(&client_identity);
+                let open_paths = open_paths.clone();
                 let spawned = thread::Builder::new()
                     .name("op-mcp-live-conn".into())
                     .stack_size(LIVE_CONN_STACK_SIZE)
@@ -85,6 +87,7 @@ pub(super) fn server_loop(
                             &quit,
                             &wake,
                             &identity,
+                            &open_paths,
                         ) {
                             eprintln!("openpencil-desktop mcp: {e}");
                             let _ = crate::mcp_serve::write_mcp_http_response(
@@ -120,6 +123,7 @@ pub(super) fn serve_connection<S: std::io::Read + std::io::Write>(
     quit_flag: &AtomicBool,
     wake_ui: &UiWake,
     client_identity: &Mutex<Option<(String, String)>>,
+    open_paths: &OpenDocumentPaths,
 ) -> Result<(), McpLiveError> {
     // A refused body FRAMING (over a route's declared cap, or missing the
     // `Content-Length` a route requires) is a client fault detected before a
@@ -259,11 +263,15 @@ pub(super) fn serve_connection<S: std::io::Read + std::io::Write>(
     let _guard = stateful_lock
         .lock()
         .unwrap_or_else(|poison| poison.into_inner());
-    // File-backed path (`--file` arg): handle the whole read-modify-write
-    // while holding the lock.
-    if let Some(response) =
-        crate::mcp_serve::file_path::process_message_for_file_path_arg(None, &req.body, profile)?
-    {
+    // File-backed path (`filePath` arg): handle the whole read-modify-write
+    // while holding the lock. A `filePath` naming a document the editor has
+    // open is refused there instead of edited on disk behind the editor.
+    if let Some(response) = crate::mcp_serve::file_path::process_message_for_file_path_arg(
+        None,
+        &open_paths.snapshot(),
+        &req.body,
+        profile,
+    )? {
         return write_json_rpc_response(stream, &response);
     }
     // `debug_screenshot` against the LIVE canvas: route through the
@@ -293,8 +301,9 @@ pub(super) fn serve_connection<S: std::io::Read + std::io::Write>(
             return write_json_rpc_response(stream, &response);
         }
     }
-    let mut state = request_snapshot(req_tx, wake_ui)?;
-    let response = crate::mcp_serve::process_message_with_applier_profiled(
+    let (mut state, epoch) = request_snapshot(req_tx, wake_ui)?;
+    let mut document_changed = false;
+    let mut response = crate::mcp_serve::process_message_with_applier_profiled(
         &mut state,
         &req.body,
         profile,
@@ -303,12 +312,17 @@ pub(super) fn serve_connection<S: std::io::Read + std::io::Write>(
             wake_ui,
             tool_name.to_string(),
             cmd.clone(),
+            Some(epoch),
         ) {
             Ok(ack) => {
                 if ack.applied {
                     let _ = local_state.apply(cmd.clone());
                 }
                 ack.applied
+            }
+            Err(McpLiveError::DocumentChanged) => {
+                document_changed = true;
+                false
             }
             Err(e) => {
                 eprintln!("openpencil-desktop mcp: apply failed: {e}");
@@ -317,6 +331,11 @@ pub(super) fn serve_connection<S: std::io::Read + std::io::Write>(
         },
     )?
     .unwrap_or_default();
+    if document_changed {
+        // The dispatcher only knows the applier said `false`; give the client
+        // the real reason as a tool error instead of "host rejected command".
+        response = document_changed_response(&req.body).unwrap_or(response);
+    }
     write_json_rpc_response(stream, &response)
 }
 
@@ -349,7 +368,9 @@ pub(super) fn process_lightweight_live_tool(
             if !is_write {
                 return false;
             }
-            match request_apply(req_tx, wake_ui, tool_name.to_string(), cmd.clone()) {
+            // No snapshot was taken on this path, so there is no epoch to hold
+            // the apply to.
+            match request_apply(req_tx, wake_ui, tool_name.to_string(), cmd.clone(), None) {
                 Ok(ack) => ack.applied,
                 Err(e) => {
                     eprintln!("openpencil-desktop mcp: apply failed: {e}");
