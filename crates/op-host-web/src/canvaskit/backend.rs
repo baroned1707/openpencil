@@ -47,9 +47,11 @@ impl RenderBackend for CanvasKitBackend {
         ops::stroke_rect(&self.ck, rect, color, width);
     }
     fn fill_round_rect(&mut self, rect: Rect, radius: f32, color: Color) {
+        let radius = op_editor_core::square_chrome::square_radius(rect.size.x, rect.size.y, radius);
         ops::fill_round_rect(&self.ck, rect, radius, color);
     }
     fn fill_round_rect_per_corner(&mut self, rect: Rect, radii: [f32; 4], color: Color) {
+        let radii = op_editor_core::square_chrome::square_radii(rect.size.x, rect.size.y, radii);
         ops::fill_round_rect_per_corner(&self.ck, rect, radii, color);
     }
     fn fill_round_rect_linear_gradient(
@@ -167,6 +169,7 @@ impl RenderBackend for CanvasKitBackend {
         );
     }
     fn stroke_round_rect(&mut self, rect: Rect, radius: f32, color: Color, width: f32) {
+        let radius = op_editor_core::square_chrome::square_radius(rect.size.x, rect.size.y, radius);
         ops::stroke_round_rect(&self.ck, rect, radius, color, width);
     }
     fn stroke_round_rect_per_corner(
@@ -176,6 +179,7 @@ impl RenderBackend for CanvasKitBackend {
         color: Color,
         width: f32,
     ) {
+        let radii = op_editor_core::square_chrome::square_radii(rect.size.x, rect.size.y, radii);
         ops::stroke_round_rect_per_corner(&self.ck, rect, radii, color, width);
     }
     fn fill_oval(&mut self, bounds: Rect, color: Color) {
@@ -618,6 +622,7 @@ impl RenderBackend for CanvasKitBackend {
             .clip_rect(rect.origin.x, rect.origin.y, rect.size.x, rect.size.y);
     }
     fn clip_round_rect(&mut self, rect: Rect, radius: f32) {
+        let radius = op_editor_core::square_chrome::square_radius(rect.size.x, rect.size.y, radius);
         self.ck.clip_round_rect(
             rect.origin.x,
             rect.origin.y,
@@ -627,6 +632,7 @@ impl RenderBackend for CanvasKitBackend {
         );
     }
     fn clip_round_rect_per_corner(&mut self, rect: Rect, radii: [f32; 4]) {
+        let radii = op_editor_core::square_chrome::square_radii(rect.size.x, rect.size.y, radii);
         self.ck.clip_round_rect_per_corner(
             rect.origin.x,
             rect.origin.y,

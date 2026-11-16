@@ -39,10 +39,12 @@ impl<'a> RenderBackend for NativeFrameBackend<'a> {
     }
 
     fn clip_round_rect(&mut self, rect: Rect, radius: f32) {
+        let radius = op_editor_core::square_chrome::square_radius(rect.size.x, rect.size.y, radius);
         self.inner.clip_round_rect(self.canvas, rect, radius);
     }
 
     fn clip_round_rect_per_corner(&mut self, rect: Rect, radii: [f32; 4]) {
+        let radii = op_editor_core::square_chrome::square_radii(rect.size.x, rect.size.y, radii);
         self.inner
             .clip_round_rect_per_corner(self.canvas, rect, radii);
     }
@@ -110,20 +112,24 @@ impl<'a> RenderBackend for NativeFrameBackend<'a> {
     }
 
     fn fill_round_rect(&mut self, rect: Rect, radius: f32, color: Color) {
+        let radius = op_editor_core::square_chrome::square_radius(rect.size.x, rect.size.y, radius);
         self.inner.fill_round_rect(self.canvas, rect, radius, color);
     }
 
     fn fill_round_rect_per_corner(&mut self, rect: Rect, radii: [f32; 4], color: Color) {
+        let radii = op_editor_core::square_chrome::square_radii(rect.size.x, rect.size.y, radii);
         self.inner
             .fill_round_rect_per_corner(self.canvas, rect, radii, color);
     }
 
     fn fill_drop_shadow(&mut self, rect: Rect, radius: f32, blur: f32, color: Color) {
+        let radius = op_editor_core::square_chrome::square_radius(rect.size.x, rect.size.y, radius);
         self.inner
             .fill_drop_shadow(self.canvas, rect, radius, blur, color);
     }
 
     fn stroke_round_rect(&mut self, rect: Rect, radius: f32, color: Color, width: f32) {
+        let radius = op_editor_core::square_chrome::square_radius(rect.size.x, rect.size.y, radius);
         self.inner
             .stroke_round_rect(self.canvas, rect, radius, color, width);
     }
@@ -135,6 +141,7 @@ impl<'a> RenderBackend for NativeFrameBackend<'a> {
         color: Color,
         width: f32,
     ) {
+        let radii = op_editor_core::square_chrome::square_radii(rect.size.x, rect.size.y, radii);
         self.inner
             .stroke_round_rect_per_corner(self.canvas, rect, radii, color, width);
     }

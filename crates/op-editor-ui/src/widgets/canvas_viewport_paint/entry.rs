@@ -168,6 +168,9 @@ fn paint_node_with_options_hiding_mode<'a>(
     fast_interaction: bool,
     show_video_badge: bool,
 ) -> PaintNodeHits<'a> {
+    // Design content keeps its authored corner radii even though the editor
+    // chrome around it is painted square.
+    let _content_corners = op_editor_core::square_chrome::SquareChrome::suspend();
     let options = PaintNodeOptions {
         viewport_origin,
         zoom,
@@ -293,6 +296,9 @@ fn paint_scene_nodes_with_options_hiding_mode<'a>(
     fast_interaction: bool,
     show_video_badge: bool,
 ) -> PaintNodeHits<'a> {
+    // Design content keeps its authored corner radii even though the editor
+    // chrome around it is painted square.
+    let _content_corners = op_editor_core::square_chrome::SquareChrome::suspend();
     let options = PaintNodeOptions {
         viewport_origin,
         zoom,

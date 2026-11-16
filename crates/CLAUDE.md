@@ -168,6 +168,10 @@ Mutators on `Document`:
 
   Catalog integrity tests enforce the exact cross-locale key set across all four shards, reject duplicate or unsupported match arms, and require every translation to preserve the English placeholder set. The `i18n/mod.rs` tests were split into sibling modules alongside it (`tests.rs`, `catalog_integrity_tests.rs`, plus per-feature key guards: `figma_property_panel_key_tests.rs`, `html_import_key_tests.rs`, `missing_fonts_key_tests.rs`, `preview_device_key_tests.rs`, `vector_fidelity_property_keys.rs`) — add a feature's key guard next to those rather than growing `mod.rs`. `tools/convert-locales.py` is a deliberate failing shim because its retired TypeScript source no longer exists. Runtime lookup still falls back through English and then the raw key for debug visibility, while the tests prevent shipped locale gaps.
 
+## Square chrome (Figma UI3 look)
+
+The editor chrome is painted with square corners. Widgets still pass their old radii; the host paint pass turns on `op_editor_core::square_chrome::SquareChrome::enter()` (thread-local) and both backends (`NativeFrameBackend`, `CanvasKitBackend`) route every round-rect fill/stroke/clip/shadow through `square_radius` / `square_radii`. Canvas content suspends it (`SquareChrome::suspend()` in `canvas_viewport_paint/entry.rs`) so authored node radii, thumbnails and exports keep their corners. True circles (square box, radius >= half side) stay round; pills are squared. Paint a new design-content path with the `suspend()` guard, not by special-casing radii.
+
 ## Toolbar shape-tool dropdown
 
 The toolbar's compound `ShapeSlot` paints whichever shape variant is current (`ui.shape_tool`, default `Rect`) plus a small chevron-down in the gutter directly below the button (`SHAPE_SLOT_BOTTOM_EXTRA = 10 px`). Click anywhere on the slot — including the chevron — to toggle `ui.shape_picker_open`.

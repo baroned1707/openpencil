@@ -158,6 +158,7 @@ pub mod scroll_viewport;
 pub mod selection;
 pub mod selection_resolve;
 pub mod share_routes;
+pub mod square_chrome;
 pub mod state;
 pub mod statusbar_state;
 pub mod svg_import;

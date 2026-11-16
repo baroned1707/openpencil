@@ -22,6 +22,8 @@ impl WidgetHostNative {
         viewport_width: f32,
         viewport_height: f32,
     ) {
+        // Figma-style square chrome; canvas content suspends it itself.
+        let _square = op_editor_core::square_chrome::SquareChrome::enter();
         self.image_input_geometry = None;
         self.publish_viewport_geometry(viewport_width, viewport_height);
         // Rotate the transcript-cache owner if the active chat session changed

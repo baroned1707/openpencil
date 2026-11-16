@@ -26,6 +26,8 @@ impl WidgetHost {
         viewport_width: f32,
         viewport_height: f32,
     ) {
+        // Figma-style square chrome; canvas content suspends it itself.
+        let _square = op_editor_core::square_chrome::SquareChrome::enter();
         self.paint_editor(backend, viewport_width, viewport_height);
     }
 
