@@ -12,6 +12,8 @@ mod menus;
 mod panels;
 #[path = "ui3_proof_settings_tests.rs"]
 mod settings;
+#[path = "document_swap_render_tests.rs"]
+mod swap_render;
 #[path = "ui3_proof_tabs_tests.rs"]
 mod tabs;
 
