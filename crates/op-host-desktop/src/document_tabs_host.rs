@@ -39,7 +39,6 @@ impl DesktopApp {
         &self,
         ignore_import_sessions: bool,
     ) -> Option<BlockReason> {
-        let state = self.host.editor_state();
         let import_session =
             self.current_figma_import.is_some() || self.current_html_import.is_some();
         ActivityFlags {
@@ -54,7 +53,11 @@ impl DesktopApp {
                 || self.git_push_job.is_some()
                 || self.git_clone_job.is_some(),
             background_save: self.save_session.is_active(),
-            collaboration: persistence::requires_background_save_as_fork(state),
+            // A live session does NOT block switching: it stays attached to its
+            // document while parked. Only a session that is not established
+            // yet, or an edit still being captured, does (see
+            // `collab_blocks_document_switch`).
+            collaboration: self.collab_blocks_document_switch(),
         }
         .blocked_by()
     }
@@ -171,6 +174,7 @@ impl DesktopApp {
         let Some(mut incoming) = self.documents.take_parked(target) else {
             return false;
         };
+        self.prepare_collab_for_leaving_document();
         self.settle_leaving_document();
         if !self.host.swap_document(&mut incoming) {
             self.documents.restore_parked(target, incoming);
@@ -178,8 +182,9 @@ impl DesktopApp {
         }
         // `incoming` now holds the document that was on screen.
         let git_before = self.git_binding();
-        let leaving = self.stash_local_state();
-        let arriving = self.documents.take_local(target);
+        let mut leaving = self.stash_local_state();
+        let mut arriving = self.documents.take_local(target);
+        self.rotate_collab_runtimes(&mut incoming, &mut leaving, &mut arriving);
         self.documents.finish_switch(target, incoming, leaving);
         self.adopt_local_state(arriving);
         self.finish_document_switch(git_before);
@@ -194,6 +199,9 @@ impl DesktopApp {
             git_session: Some(std::mem::take(&mut self.git_session)),
             collab_fork_saves: std::mem::take(&mut self.collab_fork_saves),
             runs: std::mem::take(&mut self.runs),
+            // Which runtime stays with the leaving document is decided by
+            // `rotate_collab_runtimes`, once both sides are known.
+            collab_runtime: None,
         }
     }
 
@@ -241,18 +249,21 @@ impl DesktopApp {
         path: Option<PathBuf>,
     ) -> bool {
         self.sync_active_slot();
+        self.prepare_collab_for_leaving_document();
         self.settle_leaving_document();
         if !self.host.swap_document(&mut incoming) {
             return false;
         }
         let git_before = self.git_binding();
-        let leaving = self.stash_local_state();
+        let mut leaving = self.stash_local_state();
         let slot = self.documents.new_slot();
-        self.documents.push_active(incoming, leaving, slot);
-        self.adopt_local_state(SlotLocalState {
+        let mut arriving = SlotLocalState {
             path,
             ..Default::default()
-        });
+        };
+        self.rotate_collab_runtimes(&mut incoming, &mut leaving, &mut arriving);
+        self.documents.push_active(incoming, leaving, slot);
+        self.adopt_local_state(arriving);
         self.finish_document_switch(git_before);
         true
     }
@@ -446,6 +457,13 @@ impl DesktopApp {
             self.refuse_document_switch(reason);
             return false;
         }
+        // A live session comes first: closing the tab ends it (for an owner,
+        // for everyone in it). Nothing is left until the close is certain, so
+        // answering No here, or Cancel at the save prompt, changes nothing.
+        let has_session = self.slot_session_stake(index).is_some();
+        if has_session && !self.confirm_leave_session_to_close(index, &mut ask) {
+            return false;
+        }
         // Closing stops the document's agent: say so before anything else, so
         // answering No leaves everything as it was. The runs themselves are
         // stopped only once the save prompt has also been answered without
@@ -467,6 +485,9 @@ impl DesktopApp {
         }
         if has_live_run {
             self.cancel_runs_of_slot(index);
+        }
+        if has_session {
+            self.leave_slot_session(index, false);
         }
         self.discard_document_tab(index)
     }

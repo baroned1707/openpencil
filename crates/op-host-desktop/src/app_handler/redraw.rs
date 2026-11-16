@@ -62,14 +62,11 @@ impl DesktopApp {
             self.request_background_save_as();
             self.redraw_dirty = true;
         }
-        if self.collab_runtime.poll(&mut self.host) {
+        if self.poll_collaboration() {
             self.redraw_dirty = true;
         }
         if self.settle_guest_join_tab() {
             self.redraw_dirty = true;
-        }
-        for status in self.collab_runtime.drain_status_events() {
-            eprintln!("[collab] {status:?}");
         }
         let collab_cursor = self.host.canvas_doc_point(
             self.cursor_x,

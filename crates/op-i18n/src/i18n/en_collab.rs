@@ -583,6 +583,7 @@ pub fn lookup(key: &str) -> Option<&'static str> {
         "projects.newDesign" => "New design",
         "projects.needsReview" => "{{count}} need review",
         "projects.running" => "{{count}} running",
+        "projects.newDesignFailed" => "Could not create a new design: {{reason}}",
         "dialog.agentRunningTitle" => "Agent still working",
         "dialog.agentRunningBody" => "“{{name}}” has an agent still working.\n\nClosing stops it.\n\nYes = Stop and close · No or Cancel = keep working.",
         "recovery.titleOne" => "Recover 1 unsaved document?",
@@ -597,6 +598,10 @@ pub fn lookup(key: &str) -> Option<&'static str> {
         "menu.revertAgentRun.nothing" => "There is no agent run to revert in this document.",
         "menu.revertAgentRun.runLive" => "An agent is still working in this document. Stop it first, then revert.",
         "menu.revertAgentRun.replaced" => "This document was replaced after the agent ran, so there is nothing to revert.",
+        "documents.collabAlreadyActive" => "A collaboration session is already active in another tab. Leave it before starting or joining another.",
+        "dialog.collabEndTitle" => "Collaboration session",
+        "dialog.collabOwnerEndBody" => "“{{name}}” is shared in a live session.\n\nThis ends the session for {{count}} participant(s).\n\nYes = End the session and continue · No or Cancel = keep it.",
+        "dialog.collabGuestLeaveBody" => "You are in a live session in “{{name}}”.\n\nLeave the session?\n\nYes = Leave and continue · No or Cancel = stay.",
         _ => return None,
     })
 }

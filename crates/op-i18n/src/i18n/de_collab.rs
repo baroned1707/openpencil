@@ -543,6 +543,7 @@ pub fn lookup(key: &str) -> Option<&'static str> {
         "projects.newDesign" => "Neues Design",
         "projects.needsReview" => "{{count}} zu prüfen",
         "projects.running" => "{{count}} laufen",
+        "projects.newDesignFailed" => "Neues Design konnte nicht erstellt werden: {{reason}}",
         "dialog.agentRunningTitle" => "Agent arbeitet noch",
         "dialog.agentRunningBody" => "„{{name}}“ hat noch einen laufenden Agenten.\n\nBeim Schließen wird er gestoppt.\n\nJa = Stoppen und schließen · Nein oder Abbrechen = weiterarbeiten lassen.",
         "recovery.titleOne" => "1 nicht gespeichertes Dokument wiederherstellen?",
@@ -557,6 +558,10 @@ pub fn lookup(key: &str) -> Option<&'static str> {
         "menu.revertAgentRun.nothing" => "In diesem Dokument gibt es keinen Agentenlauf zum Rückgängigmachen.",
         "menu.revertAgentRun.runLive" => "In diesem Dokument arbeitet noch ein Agent. Beenden Sie ihn zuerst und machen Sie den Lauf dann rückgängig.",
         "menu.revertAgentRun.replaced" => "Dieses Dokument wurde nach dem Agentenlauf ersetzt, daher gibt es nichts rückgängig zu machen.",
+        "documents.collabAlreadyActive" => "In einem anderen Tab läuft bereits eine Zusammenarbeitssitzung. Verlasse sie, bevor du eine neue startest oder beitrittst.",
+        "dialog.collabEndTitle" => "Zusammenarbeitssitzung",
+        "dialog.collabOwnerEndBody" => "„{{name}}“ wird in einer laufenden Sitzung geteilt.\n\nDadurch endet die Sitzung für {{count}} Teilnehmende.\n\nJa = Sitzung beenden und fortfahren · Nein oder Abbrechen = geöffnet lassen.",
+        "dialog.collabGuestLeaveBody" => "Du bist in „{{name}}“ in einer laufenden Sitzung.\n\nSitzung verlassen?\n\nJa = Verlassen und fortfahren · Nein oder Abbrechen = bleiben.",
         _ => return None,
     })
 }

@@ -73,13 +73,12 @@ impl DesktopApp {
         // An idle app with an unsaved document must still wake when its
         // crash-recovery snapshot is due: take the sooner of the two.
         if let Some(due) = self.recovery.next_deadline() {
-            match event_loop.control_flow() {
-                ControlFlow::Wait => event_loop.set_control_flow(ControlFlow::WaitUntil(due)),
-                ControlFlow::WaitUntil(current) if due < current => {
-                    event_loop.set_control_flow(ControlFlow::WaitUntil(due))
-                }
-                _ => {}
-            }
+            wake_no_later_than(event_loop, due);
+        }
+        // A guest whose link dropped retries on a timer the runtime only acts on
+        // when it is polled; that holds for a parked document's session too.
+        if let Some(due) = self.next_collab_deadline() {
+            wake_no_later_than(event_loop, due);
         }
     }
 
@@ -299,5 +298,17 @@ mod tests {
         assert!(!render_surface_not_ready(
             &op_host_native::SharedSkiaError::GlInterface
         ));
+    }
+}
+
+/// Make the event loop wake at `due` at the latest, keeping an earlier wake it
+/// was already going to take.
+fn wake_no_later_than(event_loop: &ActiveEventLoop, due: Instant) {
+    match event_loop.control_flow() {
+        ControlFlow::Wait => event_loop.set_control_flow(ControlFlow::WaitUntil(due)),
+        ControlFlow::WaitUntil(current) if due < current => {
+            event_loop.set_control_flow(ControlFlow::WaitUntil(due))
+        }
+        _ => {}
     }
 }

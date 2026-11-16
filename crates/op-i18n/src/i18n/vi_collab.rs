@@ -555,6 +555,7 @@ pub fn lookup(key: &str) -> Option<&'static str> {
         "projects.newDesign" => "Thiết kế mới",
         "projects.needsReview" => "{{count}} cần duyệt",
         "projects.running" => "{{count}} đang chạy",
+        "projects.newDesignFailed" => "Không thể tạo thiết kế mới: {{reason}}",
         "dialog.agentRunningTitle" => "Agent vẫn đang chạy",
         "dialog.agentRunningBody" => "“{{name}}” có một agent đang chạy.\n\nĐóng sẽ dừng agent.\n\nCó = Dừng và đóng · Không hoặc Hủy = tiếp tục làm việc.",
         "recovery.titleOne" => "Khôi phục 1 tài liệu chưa lưu?",
@@ -569,6 +570,10 @@ pub fn lookup(key: &str) -> Option<&'static str> {
         "menu.revertAgentRun.nothing" => "Tài liệu này không có lần chạy agent nào để hoàn tác.",
         "menu.revertAgentRun.runLive" => "Agent vẫn đang làm việc trong tài liệu này. Hãy dừng nó trước, rồi hoàn tác.",
         "menu.revertAgentRun.replaced" => "Tài liệu này đã bị thay thế sau khi agent chạy nên không có gì để hoàn tác.",
+        "documents.collabAlreadyActive" => "Một phiên cộng tác đã đang hoạt động ở tab khác. Hãy rời phiên đó trước khi bắt đầu hoặc tham gia phiên khác.",
+        "dialog.collabEndTitle" => "Phiên cộng tác",
+        "dialog.collabOwnerEndBody" => "“{{name}}” đang được chia sẻ trong một phiên đang chạy.\n\nThao tác này kết thúc phiên đối với {{count}} người tham gia.\n\nCó = Kết thúc phiên và tiếp tục · Không hoặc Hủy = giữ nguyên.",
+        "dialog.collabGuestLeaveBody" => "Bạn đang ở trong một phiên đang chạy tại “{{name}}”.\n\nRời khỏi phiên?\n\nCó = Rời và tiếp tục · Không hoặc Hủy = ở lại.",
         _ => return None,
     })
 }

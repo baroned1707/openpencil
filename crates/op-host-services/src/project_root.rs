@@ -14,6 +14,13 @@
 
 use std::path::{Path, PathBuf};
 
+#[path = "project_root_cache.rs"]
+mod cache;
+pub use cache::{
+    cached_project_root_for, invalidate_cached_project_root, shared as shared_cache,
+    ProjectRootCache,
+};
+
 /// Entries whose presence marks a directory as a project root. `.git` may be a
 /// directory or a file (worktrees and submodules use a `.git` file), so every
 /// marker is tested with `exists()`.

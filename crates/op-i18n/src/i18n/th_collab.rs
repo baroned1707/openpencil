@@ -545,6 +545,7 @@ pub fn lookup(key: &str) -> Option<&'static str> {
         "projects.newDesign" => "ดีไซน์ใหม่",
         "projects.needsReview" => "{{count}} รอตรวจ",
         "projects.running" => "{{count}} กำลังทำงาน",
+        "projects.newDesignFailed" => "ไม่สามารถสร้างดีไซน์ใหม่ได้: {{reason}}",
         "dialog.agentRunningTitle" => "เอเจนต์ยังทำงานอยู่",
         "dialog.agentRunningBody" => "“{{name}}” มีเอเจนต์ที่ยังทำงานอยู่\n\nการปิดจะหยุดเอเจนต์\n\nใช่ = หยุดและปิด · ไม่ หรือ ยกเลิก = ทำงานต่อ",
         "recovery.titleOne" => "กู้คืนเอกสารที่ยังไม่ได้บันทึก 1 รายการหรือไม่?",
@@ -559,6 +560,10 @@ pub fn lookup(key: &str) -> Option<&'static str> {
         "menu.revertAgentRun.nothing" => "ไม่มีการรันเอเจนต์ให้ย้อนกลับในเอกสารนี้",
         "menu.revertAgentRun.runLive" => "เอเจนต์ยังทำงานอยู่ในเอกสารนี้ โปรดหยุดก่อน แล้วจึงย้อนกลับ",
         "menu.revertAgentRun.replaced" => "เอกสารนี้ถูกแทนที่หลังเอเจนต์รัน จึงไม่มีอะไรให้ย้อนกลับ",
+        "documents.collabAlreadyActive" => "มีเซสชันการทำงานร่วมกันที่ใช้งานอยู่ในแท็บอื่นแล้ว โปรดออกจากเซสชันนั้นก่อนเริ่มหรือเข้าร่วมเซสชันอื่น",
+        "dialog.collabEndTitle" => "เซสชันการทำงานร่วมกัน",
+        "dialog.collabOwnerEndBody" => "“{{name}}” กำลังแชร์อยู่ในเซสชันที่ทำงานอยู่\n\nการดำเนินการนี้จะสิ้นสุดเซสชันสำหรับผู้เข้าร่วม {{count}} คน\n\nใช่ = สิ้นสุดเซสชันและดำเนินการต่อ · ไม่ หรือ ยกเลิก = คงไว้",
+        "dialog.collabGuestLeaveBody" => "คุณอยู่ในเซสชันที่ทำงานอยู่ใน “{{name}}”\n\nออกจากเซสชันหรือไม่?\n\nใช่ = ออกและดำเนินการต่อ · ไม่ หรือ ยกเลิก = อยู่ต่อ",
         _ => return None,
     })
 }

@@ -33,7 +33,7 @@ impl ApplicationHandler<DesktopEvent> for DesktopApp {
         if self.poll_mcp_server() {
             self.request_redraw(true);
         }
-        if self.collab_runtime.poll(&mut self.host) {
+        if self.poll_collaboration() {
             self.request_redraw(true);
         }
         // A token-authed `op stop` goes through the same unsaved-changes prompts
@@ -391,7 +391,7 @@ impl ApplicationHandler<DesktopEvent> for DesktopApp {
                 }
             }
             DesktopEvent::CollabWake => {
-                if self.collab_runtime.poll(&mut self.host) {
+                if self.poll_collaboration() {
                     self.request_redraw(true);
                 }
             }
@@ -578,8 +578,9 @@ impl ApplicationHandler<DesktopEvent> for DesktopApp {
         // about unsaved tabs (macOS Dock / logout, which end here through
         // `applicationWillTerminate`) must not lose them.
         self.recovery_on_exit();
-        // Queue an authenticated Bye before transport workers are stopped.
-        self.collab_runtime.leave(&mut self.host);
+        // Queue an authenticated Bye before transport workers are stopped, for
+        // every session: a parked document keeps its own.
+        self.leave_every_session_on_exit();
         // macOS Cmd+Q / Alt+F4 / WM-close can deliver `exiting` without
         // `CloseRequested`; flush MCP port draft before snapshotting so
         // a focused-but-uncommitted edit isn't silently dropped.

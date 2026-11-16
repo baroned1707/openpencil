@@ -185,3 +185,24 @@ fn discovery_follows_the_user_across_a_switch_but_a_session_does_not() {
     assert_session_identical(&live.editor_ui.collab, &before);
     assert_app_prefs(&live);
 }
+
+#[test]
+fn discovery_stays_behind_when_the_arriving_document_has_a_session() {
+    // The arriving document's own session display must reach the screen
+    // intact; discovery does not overwrite it, and the arriving session does
+    // not end up on the document that leaves.
+    let mut discovering = crate::CollabUiState::default();
+    discovering.set_phase(CollabConnectionPhase::Discovering);
+    discovering.panel.open = true;
+    let discovering_before = discovering.clone();
+    let mut live = with_session(discovering);
+    let session = populated_session();
+    let session_before = session.clone();
+    let mut other = DocumentScope::from_state(with_session(session));
+
+    live.switch_document_scope(&mut other);
+
+    assert_session_identical(&live.editor_ui.collab, &session_before);
+    assert_session_identical(other.collab(), &discovering_before);
+    assert_app_prefs(&live);
+}

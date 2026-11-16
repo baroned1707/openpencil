@@ -364,3 +364,7 @@ libc = "0.2"
 
 [dev-dependencies]
 static_assertions = "1"
+# Controlled collaboration sessions for the tab-switching tests (the
+# open-source build has no ticket issuer, so a real session cannot start).
+# Dev-only: the shipped binary links op-collab-host without the fixtures.
+op-collab-host = { path = "../op-collab-host", features = ["test-support"] }

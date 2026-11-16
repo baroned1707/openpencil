@@ -543,6 +543,7 @@ pub fn lookup(key: &str) -> Option<&'static str> {
         "projects.newDesign" => "Novo design",
         "projects.needsReview" => "{{count}} para revisar",
         "projects.running" => "{{count}} em execução",
+        "projects.newDesignFailed" => "Não foi possível criar um novo design: {{reason}}",
         "dialog.agentRunningTitle" => "O agente ainda está trabalhando",
         "dialog.agentRunningBody" => "“{{name}}” tem um agente em execução.\n\nFechar interrompe o agente.\n\nSim = Parar e fechar · Não ou Cancelar = continuar trabalhando.",
         "recovery.titleOne" => "Recuperar 1 documento não salvo?",
@@ -557,6 +558,10 @@ pub fn lookup(key: &str) -> Option<&'static str> {
         "menu.revertAgentRun.nothing" => "Não há nenhuma execução do agente para reverter neste documento.",
         "menu.revertAgentRun.runLive" => "Um agente ainda está trabalhando neste documento. Pare-o primeiro e depois reverta.",
         "menu.revertAgentRun.replaced" => "Este documento foi substituído depois da execução do agente, então não há nada para reverter.",
+        "documents.collabAlreadyActive" => "Já há uma sessão de colaboração ativa em outra aba. Saia dela antes de iniciar ou entrar em outra.",
+        "dialog.collabEndTitle" => "Sessão de colaboração",
+        "dialog.collabOwnerEndBody" => "“{{name}}” está compartilhado em uma sessão ativa.\n\nIsso encerra a sessão para {{count}} participante(s).\n\nSim = Encerrar a sessão e continuar · Não ou Cancelar = mantê-la.",
+        "dialog.collabGuestLeaveBody" => "Você está em uma sessão ativa em “{{name}}”.\n\nSair da sessão?\n\nSim = Sair e continuar · Não ou Cancelar = ficar.",
         _ => return None,
     })
 }

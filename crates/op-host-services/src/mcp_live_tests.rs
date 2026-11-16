@@ -414,7 +414,10 @@ fn pump_flags_document_replaced_only_for_replace_document_requests() {
         })
         .expect("queue metadata-only request");
     let metadata = server.pump(&mut SingleDocumentResolver::new(&mut state));
-    assert!(ack_rx.try_recv().is_ok(), "metadata update must ack");
+    assert_eq!(
+        ack_rx.try_recv().expect("metadata update must ack"),
+        Ok(true)
+    );
     assert!(metadata.repaint);
     assert!(metadata.layout_dirty);
     assert!(!metadata.document_replaced);
@@ -513,6 +516,44 @@ fn pump_rejects_whole_document_sync_during_active_collaboration() {
             op_editor_core::CollabUnsupportedFeature::ReplaceDocument
         ))
     ));
+}
+
+#[test]
+fn pump_rejects_editor_metadata_sync_during_active_collaboration() {
+    let (req_tx, req_rx) = mpsc::channel();
+    let (stop_tx, _stop_rx) = mpsc::channel();
+    let mut server = fresh_mcp_server(req_rx, stop_tx);
+    let mut state = EditorState::new();
+    set_active_collaboration(&mut state, op_editor_core::CollabUiRole::Owner);
+    state.ui.active_page_index = 0;
+    let preserve_before = state.editor_ui.preserve_authored_geometry;
+
+    let (ack_tx, ack_rx) = mpsc::sync_channel(1);
+    req_tx
+        .send(UiRequest::UpdateEditorMeta {
+            editor_meta: op_pen_loader::EditorMeta {
+                active_page_index: 0,
+                preserve_authored_geometry: !preserve_before,
+                scenario: None,
+                work_family: None,
+                pinned_style_guide: None,
+                share_recipe: None,
+                imported_from: None,
+            },
+            ticket: Ticket::unbounded(),
+            ack: ack_tx,
+        })
+        .expect("queue metadata-only request");
+
+    let outcome = server.pump(&mut SingleDocumentResolver::new(&mut state));
+
+    assert_eq!(ack_rx.try_recv().expect("metadata ack"), Ok(false));
+    assert_eq!(
+        state.editor_ui.preserve_authored_geometry, preserve_before,
+        "the refused write must not touch the document's metadata"
+    );
+    assert!(!outcome.layout_dirty);
+    assert!(state.editor_ui.collab.notice.is_some());
 }
 
 // ── MCP-driven canvas generation indicators ─────────────────────────

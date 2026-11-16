@@ -3,7 +3,8 @@
 //! The editor shows one document at a time: the one in
 //! `WidgetHostNative::editor_state`. Every other open document is parked here
 //! as a [`ParkedDocument`] together with the desktop-side state that belongs to
-//! it (file path, Git binding, pending collaboration fork saves). This module
+//! it (file path, Git binding, pending collaboration fork saves, and the
+//! collaboration runtime of a document that has a session). This module
 //! is plain data and bookkeeping with no window or event loop, so the rules
 //! (ids, de-duplication by path, which tab becomes active, what is dirty) are
 //! unit-testable on their own. `document_tabs_host` drives it from `DesktopApp`.
@@ -36,6 +37,12 @@ pub(crate) struct SlotLocalState {
     /// The agent runs bound to this document. For the on-screen slot this is
     /// empty apart from `status`, a mirror of `DesktopApp::runs`.
     pub runs: DocumentRuns,
+    /// The collaboration runtime of a PARKED document that has a session bound
+    /// (see `collab_slots_host`). `None` for the on-screen slot (its runtime is
+    /// `DesktopApp::collab_runtime`) and for a document with no session of its
+    /// own, whose runtime is the shared one that follows the screen. Boxed: a
+    /// runtime is large and most slots hold none.
+    pub collab_runtime: Option<Box<crate::collab_runtime::DesktopCollabRuntime>>,
 }
 
 /// One open document.
@@ -67,7 +74,7 @@ impl DocumentSlot {
                 return name.clone();
             }
         }
-        let name = op_host_services::project_root::project_root_for(path)
+        let name = op_host_services::project_root::cached_project_root_for(path)
             .map(|project| project.name)
             .or_else(|| {
                 path.parent()
@@ -203,6 +210,88 @@ impl DocumentRegistry {
         let slot = &mut self.slots[index];
         slot.parked = Some(parked);
         slot.local.runs = runs;
+    }
+
+    /// Positions of the parked documents that have a collaboration session
+    /// bound, in tab order.
+    pub fn parked_with_collab_session(&self) -> Vec<usize> {
+        self.slots
+            .iter()
+            .enumerate()
+            .filter(|&(index, slot)| {
+                index != self.active
+                    && slot
+                        .parked
+                        .as_ref()
+                        .is_some_and(ParkedDocument::collab_session_is_bound)
+            })
+            .map(|(index, _)| index)
+            .collect()
+    }
+
+    /// The soonest moment a parked collaboration runtime wants to run again (a
+    /// guest's reconnect attempt). The event loop sleeps through idle time, so
+    /// without this a parked guest would retry only when something unrelated
+    /// woke it.
+    pub fn next_parked_collab_deadline(&self) -> Option<std::time::Instant> {
+        self.slots
+            .iter()
+            .filter_map(|slot| slot.local.collab_runtime.as_deref())
+            .filter_map(|runtime| runtime.next_reconnect_deadline())
+            .min()
+    }
+
+    /// The parked document at `index`, if that slot holds one.
+    pub fn parked_document(&self, index: usize) -> Option<&ParkedDocument> {
+        if index == self.active {
+            return None;
+        }
+        self.slots.get(index)?.parked.as_ref()
+    }
+
+    /// The session display of the parked document at `index`.
+    pub fn parked_collab(&self, index: usize) -> Option<&op_editor_core::CollabUiState> {
+        if index == self.active {
+            return None;
+        }
+        self.slots
+            .get(index)?
+            .parked
+            .as_ref()
+            .map(|parked| parked.scope().collab())
+    }
+
+    /// Take a parked document and its collaboration runtime out of their slot
+    /// so the host can run the runtime against it. Give both back with
+    /// [`Self::return_collab_session`]. `None` when the slot is on screen, holds
+    /// no parked document or has no runtime of its own.
+    pub fn take_collab_session(
+        &mut self,
+        index: usize,
+    ) -> Option<(
+        ParkedDocument,
+        Box<crate::collab_runtime::DesktopCollabRuntime>,
+    )> {
+        if index == self.active {
+            return None;
+        }
+        let slot = self.slots.get_mut(index)?;
+        slot.local.collab_runtime.as_ref()?;
+        let parked = slot.parked.take()?;
+        let runtime = slot.local.collab_runtime.take()?;
+        Some((parked, runtime))
+    }
+
+    /// Put back what [`Self::take_collab_session`] took.
+    pub fn return_collab_session(
+        &mut self,
+        index: usize,
+        parked: ParkedDocument,
+        runtime: Box<crate::collab_runtime::DesktopCollabRuntime>,
+    ) {
+        let slot = &mut self.slots[index];
+        slot.parked = Some(parked);
+        slot.local.collab_runtime = Some(runtime);
     }
 
     /// The slot already showing `path`, matched on the canonical path so a
@@ -388,7 +477,7 @@ impl std::fmt::Display for BlockReason {
             Self::Import => "an import is in progress",
             Self::GitJob => "a Git pull, push or clone is running",
             Self::BackgroundSave => "a save is being written",
-            Self::Collaboration => "a collaboration session is active",
+            Self::Collaboration => "a collaboration session is starting or an edit is being sent",
         })
     }
 }

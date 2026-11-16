@@ -543,6 +543,7 @@ pub fn lookup(key: &str) -> Option<&'static str> {
         "projects.newDesign" => "新增設計",
         "projects.needsReview" => "{{count}} 個待審閱",
         "projects.running" => "{{count}} 個執行中",
+        "projects.newDesignFailed" => "無法建立新設計：{{reason}}",
         "dialog.agentRunningTitle" => "智慧代理仍在工作",
         "dialog.agentRunningBody" => "「{{name}}」中有一個智慧代理仍在執行。\n\n關閉會停止它。\n\n是 = 停止並關閉 · 否或取消 = 繼續工作。",
         "recovery.titleOne" => "復原 1 個未儲存的文件？",
@@ -557,6 +558,10 @@ pub fn lookup(key: &str) -> Option<&'static str> {
         "menu.revertAgentRun.nothing" => "此文件中沒有可還原的智慧代理執行。",
         "menu.revertAgentRun.runLive" => "智慧代理仍在此文件中工作。請先停止它，然後再還原。",
         "menu.revertAgentRun.replaced" => "此文件在智慧代理執行之後已被取代，因此沒有可還原的內容。",
+        "documents.collabAlreadyActive" => "另一個分頁中已有協作工作階段正在進行。請先離開該工作階段，再開始或加入新的工作階段。",
+        "dialog.collabEndTitle" => "協作工作階段",
+        "dialog.collabOwnerEndBody" => "「{{name}}」正在進行中的工作階段中共用。\n\n這會為 {{count}} 位參與者結束該工作階段。\n\n是 = 結束工作階段並繼續 · 否或取消 = 保持不變。",
+        "dialog.collabGuestLeaveBody" => "你正在「{{name}}」的工作階段中。\n\n要離開該工作階段嗎？\n\n是 = 離開並繼續 · 否或取消 = 留下。",
         _ => return None,
     })
 }

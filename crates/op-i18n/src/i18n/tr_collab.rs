@@ -543,6 +543,7 @@ pub fn lookup(key: &str) -> Option<&'static str> {
         "projects.newDesign" => "Yeni tasarım",
         "projects.needsReview" => "{{count}} incelenecek",
         "projects.running" => "{{count}} çalışıyor",
+        "projects.newDesignFailed" => "Yeni tasarım oluşturulamadı: {{reason}}",
         "dialog.agentRunningTitle" => "Ajan hâlâ çalışıyor",
         "dialog.agentRunningBody" => "“{{name}}” içinde çalışan bir ajan var.\n\nKapatmak onu durdurur.\n\nEvet = Durdur ve kapat · Hayır veya İptal = çalışmaya devam et.",
         "recovery.titleOne" => "1 kaydedilmemiş belge kurtarılsın mı?",
@@ -557,6 +558,10 @@ pub fn lookup(key: &str) -> Option<&'static str> {
         "menu.revertAgentRun.nothing" => "Bu belgede geri alınacak bir ajan çalıştırması yok.",
         "menu.revertAgentRun.runLive" => "Bu belgede bir ajan hâlâ çalışıyor. Önce durdurun, sonra geri alın.",
         "menu.revertAgentRun.replaced" => "Bu belge, ajan çalıştıktan sonra değiştirildi; geri alınacak bir şey yok.",
+        "documents.collabAlreadyActive" => "Başka bir sekmede zaten bir iş birliği oturumu etkin. Yenisini başlatmadan veya katılmadan önce ondan ayrılın.",
+        "dialog.collabEndTitle" => "İş birliği oturumu",
+        "dialog.collabOwnerEndBody" => "“{{name}}” etkin bir oturumda paylaşılıyor.\n\nBu işlem oturumu {{count}} katılımcı için sonlandırır.\n\nEvet = Oturumu sonlandır ve devam et · Hayır veya İptal = olduğu gibi bırak.",
+        "dialog.collabGuestLeaveBody" => "“{{name}}” içinde etkin bir oturumdasınız.\n\nOturumdan ayrılınsın mı?\n\nEvet = Ayrıl ve devam et · Hayır veya İptal = kal.",
         _ => return None,
     })
 }

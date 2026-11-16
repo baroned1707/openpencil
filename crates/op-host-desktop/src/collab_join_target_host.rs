@@ -9,8 +9,12 @@
 //! Ordering, on purpose: the tab is created and on screen BEFORE the runtime
 //! is asked to start the join (`pump_collaboration_transition_with`), so the
 //! Snapshot can never arrive while the old document is showing. Once a join
-//! is under way the tab system is frozen (`requires_background_save_as_fork`),
-//! so nothing can switch away from the join's tab before the Snapshot lands.
+//! is under way (Starting / Joining / Authenticating) the tab system refuses to
+//! switch (`collab_blocks_document_switch`), so nothing can switch away from
+//! the join's tab before the Snapshot lands. The cleanup below still judges the
+//! tab by ITS slot (epoch and phase), on screen or parked, never by what is
+//! showing. One session per process: a join (or start) is refused while another
+//! document holds a session.
 //!
 //! The session's display state (queued join action, typed address, panel, a
 //! failure notice) moves with the join: out of the guest's tab into the new
@@ -50,6 +54,11 @@ impl DesktopApp {
         edit_in_flight: bool,
         drain: impl FnOnce(&mut Self) -> bool,
     ) -> bool {
+        // One session per process: a document that holds one makes every start,
+        // join or discovery from another document a refusal.
+        if self.refuse_collab_action_while_another_document_collaborates() {
+            return true;
+        }
         let pending = self
             .host
             .editor_state()
@@ -104,6 +113,13 @@ impl DesktopApp {
         self.sync_active_slot();
         if self.active_document_is_pristine_untitled() {
             return true;
+        }
+        // A tab that already holds a session cannot start another one in a new
+        // tab: that would be two sessions in one process.
+        if self.host.editor_state().editor_ui.collab.binds_session() {
+            eprintln!("[collab] join refused, this document already holds a session");
+            self.show_collab_toast(crate::collab_slots_host::ALREADY_ACTIVE_KEY);
+            return false;
         }
         if let Some(reason) = self.document_switch_blocked() {
             eprintln!("[collab] join refused, no tab can be opened: {reason}");
@@ -168,20 +184,26 @@ impl DesktopApp {
         let Some(tab) = self.guest_join_tab else {
             return false;
         };
+        // Judge the join's own tab, wherever it is: its epoch and its session
+        // phase, from the slot that holds it.
         let on_screen = self.documents.active_id() == tab.document;
-        let received_snapshot = self.host.document_epoch() != tab.epoch;
-        if !on_screen || received_snapshot {
+        let Some((epoch, phase)) = self.join_tab_epoch_and_phase(tab.document, on_screen) else {
+            self.guest_join_tab = None;
+            return false;
+        };
+        if epoch != tab.epoch {
+            // The Snapshot installed: the tab is the shared document and stays.
             self.guest_join_tab = None;
             return false;
         }
-        let join_over = matches!(
-            self.host.editor_state().editor_ui.collab.phase,
-            CollabConnectionPhase::Idle | CollabConnectionPhase::Discovering
-        );
-        if !join_over {
+        // Still being connected or admitted: nothing to settle yet.
+        if phase.binds_session() {
             return false;
         }
         self.guest_join_tab = None;
+        if !on_screen {
+            return self.close_unused_parked_join_tab(tab.document);
+        }
         // Never close anything that has content.
         if !self.active_document_is_pristine_untitled() {
             return false;
@@ -207,6 +229,42 @@ impl DesktopApp {
                 self.recovery_forget(tab.document);
             }
         }
+        self.publish_document_tabs();
+        true
+    }
+
+    /// The epoch and session phase of the document `id`, on screen or parked.
+    /// `None` when no such tab is open any more.
+    fn join_tab_epoch_and_phase(
+        &self,
+        id: DocumentId,
+        on_screen: bool,
+    ) -> Option<(u64, CollabConnectionPhase)> {
+        if on_screen {
+            return Some((
+                self.host.document_epoch(),
+                self.host.editor_state().editor_ui.collab.phase,
+            ));
+        }
+        let index = self.documents.index_of(id)?;
+        let parked = self.documents.parked_document(index)?;
+        Some((parked.epoch(), parked.scope().collab().phase))
+    }
+
+    /// A join that fell through while the user was looking at another tab: the
+    /// empty tab it opened is closed, unless something was put in it.
+    fn close_unused_parked_join_tab(&mut self, id: DocumentId) -> bool {
+        let Some(index) = self.documents.index_of(id) else {
+            return false;
+        };
+        let pristine = self
+            .documents
+            .parked_document(index)
+            .is_some_and(|parked| parked.scope().is_pristine());
+        if !pristine || !self.remove_slot(index) {
+            return false;
+        }
+        self.recovery_forget(id);
         self.publish_document_tabs();
         true
     }

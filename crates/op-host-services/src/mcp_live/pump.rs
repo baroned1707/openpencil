@@ -139,14 +139,31 @@ impl McpLiveServer {
                     editor_meta, ack, ..
                 } => {
                     let mut editor_meta = Some(editor_meta);
+                    let mut accepted = false;
                     let resolved = self.with_active(resolver, &mut |state, _| {
+                        // Root metadata is part of the shared document while a
+                        // session is bound: an MCP write must not change it.
+                        if let Err(reason) = CollabGatePolicy::from(&state.editor_ui.collab).check(
+                            CollabGateAction::Document(CollabDocumentMutation::Unsupported(
+                                CollabUnsupportedFeature::RootMetadata,
+                            )),
+                            CollabEditSource::Mcp,
+                        ) {
+                            state.editor_ui.collab.set_notice(
+                                reason.notice_kind(),
+                                crate::design_agent_tools::reveal_now_millis(),
+                            );
+                            outcome.repaint = true;
+                            return;
+                        }
                         if let Some(meta) = editor_meta.take() {
                             op_pen_loader::apply_editor_meta(state, meta);
                         }
+                        accepted = true;
                         outcome.repaint = true;
                         outcome.layout_dirty = true;
                     });
-                    let _ = ack.send(resolved);
+                    let _ = ack.send(resolved.map(|()| accepted));
                 }
                 UiRequest::GenerateDesignMd { request } => {
                     self.pending_design_md.push_back(request);

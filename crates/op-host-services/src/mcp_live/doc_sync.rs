@@ -41,10 +41,17 @@ pub(super) fn serve_document_sync<S: std::io::Read + std::io::Write>(
         let gate = documents.gate(active);
         let _guard = lock_gate(&gate);
         return match request_update_editor_meta(req_tx, wake_ui, editor_meta) {
-            Ok(()) => write_http(
+            Ok(true) => write_http(
                 stream,
                 "200 OK",
                 &crate::mcp_serve::document_sync_ok(LIVE_SYNC_VERSION.load(Ordering::Relaxed)),
+            ),
+            Ok(false) => write_http(
+                stream,
+                "409 Conflict",
+                &crate::mcp_serve::rest_error_body(
+                    "editor metadata sync is disabled while collaboration is active",
+                ),
             ),
             Err(transport_err) => write_http(
                 stream,

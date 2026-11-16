@@ -547,6 +547,7 @@ pub fn lookup(key: &str) -> Option<&'static str> {
         "projects.newDesign" => "नया डिज़ाइन",
         "projects.needsReview" => "{{count}} समीक्षा के लिए",
         "projects.running" => "{{count}} चल रहे हैं",
+        "projects.newDesignFailed" => "नया डिज़ाइन नहीं बनाया जा सका: {{reason}}",
         "dialog.agentRunningTitle" => "एजेंट अभी काम कर रहा है",
         "dialog.agentRunningBody" => "“{{name}}” में एक एजेंट अभी चल रहा है।\n\nबंद करने पर वह रुक जाएगा।\n\nहाँ = रोकें और बंद करें · नहीं या रद्द करें = काम जारी रखें।",
         "recovery.titleOne" => "1 असहेजा दस्तावेज़ पुनर्प्राप्त करें?",
@@ -561,6 +562,10 @@ pub fn lookup(key: &str) -> Option<&'static str> {
         "menu.revertAgentRun.nothing" => "इस दस्तावेज़ में वापस लेने लायक कोई एजेंट रन नहीं है।",
         "menu.revertAgentRun.runLive" => "इस दस्तावेज़ में एजेंट अभी भी काम कर रहा है। पहले उसे रोकें, फिर वापस लें।",
         "menu.revertAgentRun.replaced" => "एजेंट के चलने के बाद यह दस्तावेज़ बदल दिया गया था, इसलिए वापस लेने के लिए कुछ नहीं है।",
+        "documents.collabAlreadyActive" => "किसी दूसरे टैब में सहयोग सत्र पहले से चल रहा है। नया सत्र शुरू करने या उसमें जुड़ने से पहले उसे छोड़ें।",
+        "dialog.collabEndTitle" => "सहयोग सत्र",
+        "dialog.collabOwnerEndBody" => "“{{name}}” एक चालू सत्र में साझा है।\n\nइससे {{count}} प्रतिभागियों के लिए सत्र समाप्त हो जाएगा।\n\nहाँ = सत्र समाप्त करें और जारी रखें · नहीं या रद्द करें = बनाए रखें।",
+        "dialog.collabGuestLeaveBody" => "आप “{{name}}” में एक चालू सत्र में हैं।\n\nसत्र छोड़ें?\n\nहाँ = छोड़ें और जारी रखें · नहीं या रद्द करें = रुकें।",
         _ => return None,
     })
 }

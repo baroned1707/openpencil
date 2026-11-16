@@ -618,6 +618,8 @@ impl CollabUiState {
 
 pub(crate) mod session_scope;
 
+mod session_binding;
+
 #[cfg(test)]
 mod presence_merge_tests;
 

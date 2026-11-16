@@ -166,6 +166,12 @@ impl DocumentScope {
         &self.editor_ui.collab
     }
 
+    /// Mutable access to the session display of a document that is not on
+    /// screen, for a host that ends a session the document cannot show.
+    pub fn collab_mut(&mut self) -> &mut crate::CollabUiState {
+        &mut self.editor_ui.collab
+    }
+
     /// The chat tabs of this document.
     pub fn chat(&self) -> &ChatSessions {
         &self.chat
@@ -272,13 +278,16 @@ impl EditorState {
     /// is not yet bound", and the host runtime keeps publishing the endpoint
     /// list to whichever document is on screen. It therefore stays with the
     /// user, exactly as the app-wide display state did before sessions moved
-    /// with their document. The collaboration app-level fields (availability,
-    /// transports, relay region) never move at all, see
-    /// `CollabUiState::exchange_session`.
+    /// with their document. The exception ends at a document that has a
+    /// session bound: its own session display must arrive intact, so discovery
+    /// stays behind with the document it was started in. The collaboration
+    /// app-level fields (availability, transports, relay region) never move at
+    /// all, see `CollabUiState::exchange_session`.
     pub fn switch_document_scope(&mut self, scope: &mut DocumentScope) {
         let prefs = self.chat.app_prefs();
-        let discovery_follows_user =
-            self.editor_ui.collab.phase == crate::CollabConnectionPhase::Discovering;
+        let discovery_follows_user = self.editor_ui.collab.phase
+            == crate::CollabConnectionPhase::Discovering
+            && !scope.collab().binds_session();
         self.exchange_document_scope(scope);
         if discovery_follows_user {
             self.editor_ui

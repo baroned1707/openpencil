@@ -145,7 +145,7 @@ impl DesktopApp {
     }
 
     /// The name of the document at `index` as a dialog shows it.
-    fn slot_display_name(&mut self, index: usize) -> String {
+    pub(crate) fn slot_display_name(&mut self, index: usize) -> String {
         self.sync_active_slot();
         let locale = self.host.editor_state().editor_ui.locale;
         self.documents

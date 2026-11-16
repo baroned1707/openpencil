@@ -543,6 +543,7 @@ pub fn lookup(key: &str) -> Option<&'static str> {
         "projects.newDesign" => "Nouveau design",
         "projects.needsReview" => "{{count}} à relire",
         "projects.running" => "{{count}} en cours",
+        "projects.newDesignFailed" => "Impossible de créer un nouveau design : {{reason}}",
         "dialog.agentRunningTitle" => "L’agent travaille encore",
         "dialog.agentRunningBody" => "« {{name}} » a un agent en cours d’exécution.\n\nLa fermeture l’arrête.\n\nOui = Arrêter et fermer · Non ou Annuler = continuer le travail.",
         "recovery.titleOne" => "Récupérer 1 document non enregistré ?",
@@ -557,6 +558,10 @@ pub fn lookup(key: &str) -> Option<&'static str> {
         "menu.revertAgentRun.nothing" => "Aucune exécution d’agent à annuler dans ce document.",
         "menu.revertAgentRun.runLive" => "Un agent travaille encore dans ce document. Arrêtez-le d’abord, puis annulez.",
         "menu.revertAgentRun.replaced" => "Ce document a été remplacé après l’exécution de l’agent : il n’y a rien à annuler.",
+        "documents.collabAlreadyActive" => "Une session de collaboration est déjà active dans un autre onglet. Quittez-la avant d’en démarrer ou d’en rejoindre une autre.",
+        "dialog.collabEndTitle" => "Session de collaboration",
+        "dialog.collabOwnerEndBody" => "« {{name}} » est partagé dans une session en cours.\n\nCela met fin à la session pour {{count}} participant(s).\n\nOui = Terminer la session et continuer · Non ou Annuler = la conserver.",
+        "dialog.collabGuestLeaveBody" => "Vous êtes dans une session en cours dans « {{name}} ».\n\nQuitter la session ?\n\nOui = Quitter et continuer · Non ou Annuler = rester.",
         _ => return None,
     })
 }

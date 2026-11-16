@@ -559,6 +559,7 @@ pub fn lookup(key: &str) -> Option<&'static str> {
         "projects.newDesign" => "新しいデザイン",
         "projects.needsReview" => "{{count}} 件が確認待ち",
         "projects.running" => "{{count}} 件を実行中",
+        "projects.newDesignFailed" => "新しいデザインを作成できませんでした: {{reason}}",
         "dialog.agentRunningTitle" => "エージェントが作業中です",
         "dialog.agentRunningBody" => "「{{name}}」ではエージェントが実行中です。\n\n閉じると停止します。\n\nはい = 停止して閉じる · いいえ / キャンセル = 作業を続ける。",
         "recovery.titleOne" => "未保存のドキュメント 1 件を復元しますか？",
@@ -573,6 +574,10 @@ pub fn lookup(key: &str) -> Option<&'static str> {
         "menu.revertAgentRun.nothing" => "このドキュメントには元に戻せるエージェント実行がありません。",
         "menu.revertAgentRun.runLive" => "このドキュメントではエージェントがまだ作業中です。先に停止してから元に戻してください。",
         "menu.revertAgentRun.replaced" => "エージェントの実行後にこのドキュメントが置き換えられたため、元に戻すものがありません。",
+        "documents.collabAlreadyActive" => "別のタブで共同作業セッションがすでに有効です。新しく開始または参加する前に、そのセッションを退出してください。",
+        "dialog.collabEndTitle" => "共同作業セッション",
+        "dialog.collabOwnerEndBody" => "「{{name}}」はアクティブなセッションで共有されています。\n\nこの操作で、{{count}} 人の参加者のセッションが終了します。\n\nはい = セッションを終了して続ける · いいえ / キャンセル = そのままにする。",
+        "dialog.collabGuestLeaveBody" => "「{{name}}」のアクティブなセッションに参加しています。\n\nセッションを退出しますか？\n\nはい = 退出して続ける · いいえ / キャンセル = 留まる。",
         _ => return None,
     })
 }

@@ -121,7 +121,10 @@ fn lens_has_no_user_visible_side_effects() {
 }
 
 #[test]
-fn lens_refuses_while_collaboration_forbids_replacing_the_document() {
+fn lens_is_not_refused_by_a_session_on_the_screen_document() {
+    // The refusal depends on the TARGET document. A session bound to the one
+    // on screen says nothing about a plain parked document, which stays
+    // reachable (parked MCP calls, agent runs and recovery keep working).
     let mut host = host_showing("docA");
     host.editor_state_mut().editor_ui.collab.phase = op_editor_core::CollabConnectionPhase::Active;
     let before = on_screen_fingerprint(&host);
@@ -130,8 +133,24 @@ fn lens_refuses_while_collaboration_forbids_replacing_the_document() {
 
     let result = host.with_parked_document(&mut parked_b, |_host| ran = true);
 
+    assert!(result.is_some());
+    assert!(ran);
+    assert_eq!(on_screen_fingerprint(&host), before);
+}
+
+#[test]
+fn lens_refuses_a_parked_document_that_has_a_session_bound() {
+    let mut host = host_showing("docA");
+    let before = on_screen_fingerprint(&host);
+    let mut collaborated = state_named("docB");
+    collaborated.editor_ui.collab.phase = op_editor_core::CollabConnectionPhase::Active;
+    let mut parked_b = ParkedDocument::from_state(collaborated, Default::default());
+    let mut ran = false;
+
+    let result = host.with_parked_document(&mut parked_b, |_host| ran = true);
+
     assert!(result.is_none());
-    assert!(!ran, "the closure must not run against the wrong document");
+    assert!(!ran, "the closure must not run against a shared document");
     assert_eq!(on_screen_fingerprint(&host), before);
     assert!(
         host.editor_state().editor_ui.editor_toast.is_none(),

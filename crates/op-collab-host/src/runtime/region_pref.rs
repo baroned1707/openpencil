@@ -32,6 +32,14 @@ impl CollabRuntime {
         protocol_region(*self.relay_region_pref.get_or_insert_with(load))
     }
 
+    /// Take `region` as the preference without touching the disk. A host that
+    /// keeps one runtime per open document calls this when a runtime starts
+    /// driving the screen, with the value the previous runtime projected into
+    /// the panel: the preference is app-wide, but each runtime caches it.
+    pub fn adopt_relay_region(&mut self, region: CollabRelayRegion) {
+        self.relay_region_pref = Some(region);
+    }
+
     pub(super) fn set_relay_region(
         &mut self,
         host: &mut impl CollabHost,
@@ -80,6 +88,22 @@ fn store(region: CollabRelayRegion) {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn an_adopted_region_is_projected_without_reading_the_disk() {
+        let mut runtime = CollabRuntime::new();
+        let mut host = crate::host::HeadlessCollabHost::new();
+        let adopted = CollabRelayRegion::Global;
+        assert_ne!(CollabRelayRegion::default(), adopted, "pick a non-default");
+
+        runtime.adopt_relay_region(adopted);
+        runtime.sync_relay_region(&mut host);
+
+        assert_eq!(
+            host.editor_state().editor_ui.collab.panel.relay_region,
+            adopted
+        );
+    }
 
     #[test]
     fn round_trips_both_regions_through_the_wire_shape() {

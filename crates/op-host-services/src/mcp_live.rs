@@ -17,7 +17,8 @@ use std::time::{Duration, SystemTime, UNIX_EPOCH};
 use jian_ops_schema::node::PenNode;
 use op_editor_core::pen_node_ext::PenNodeExt;
 use op_editor_core::{
-    CollabEditSource, CollabGateAction, CollabGatePolicy, DocumentId, EditorCommand, EditorState,
+    CollabDocumentMutation, CollabEditSource, CollabGateAction, CollabGatePolicy,
+    CollabUnsupportedFeature, DocumentId, EditorCommand, EditorState,
 };
 
 pub mod error;
@@ -206,11 +207,12 @@ enum UiRequest {
         ack: SyncSender<Result<bool, ResolveError>>,
     },
     /// Editor-only live-sync update. Page switches must not install an
-    /// identical whole document as an undoable replacement.
+    /// identical whole document as an undoable replacement. The bool ack is
+    /// false when the current collaboration session refuses a metadata write.
     UpdateEditorMeta {
         editor_meta: op_pen_loader::EditorMeta,
         ticket: Arc<Ticket>,
-        ack: SyncSender<Result<(), ResolveError>>,
+        ack: SyncSender<Result<bool, ResolveError>>,
     },
     GenerateDesignMd {
         request: PendingDesignMdRequest,

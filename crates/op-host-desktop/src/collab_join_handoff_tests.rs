@@ -170,14 +170,11 @@ fn an_idle_panel_stays_with_its_tab_and_app_prefs_follow_the_user() {
 }
 
 #[test]
-fn the_tab_system_stays_frozen_during_a_live_session() {
+fn only_a_session_that_is_not_established_freezes_the_tab_system() {
     for phase in [
         CollabConnectionPhase::Starting,
         CollabConnectionPhase::Joining,
         CollabConnectionPhase::Authenticating,
-        CollabConnectionPhase::Reconnecting,
-        CollabConnectionPhase::ReadOnly,
-        CollabConnectionPhase::Ended,
     ] {
         let mut app = app_with_work();
         app.host
@@ -192,5 +189,21 @@ fn the_tab_system_stays_frozen_during_a_live_session() {
         );
         assert!(!app.open_untitled_tab(), "{phase:?}");
         assert_eq!(app.documents.len(), 1, "{phase:?}");
+    }
+    // An established session (also a reconnecting, read-only or ended one) stays
+    // attached to its document, so the tabs stay free.
+    for phase in [
+        CollabConnectionPhase::Active,
+        CollabConnectionPhase::Reconnecting,
+        CollabConnectionPhase::ReadOnly,
+        CollabConnectionPhase::Ended,
+    ] {
+        let mut app = app_with_work();
+        app.host
+            .editor_state_mut()
+            .editor_ui
+            .collab
+            .set_phase(phase);
+        assert_eq!(app.document_switch_blocked(), None, "{phase:?}");
     }
 }

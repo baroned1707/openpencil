@@ -203,7 +203,7 @@ impl DesktopApp {
             collab_avatars: collab_avatar_host::CollabAvatarHost::new(),
             image_decodes: image_decode_host::ImageDecodeHost::new(),
             mcp_wake_proxy: None,
-            collab_runtime: crate::collab_runtime::DesktopCollabRuntime::new(),
+            collab_runtime: crate::collab_runtime::new_runtime(),
             guest_join_tab: None,
             forwarded_files: single_instance::ForwardQueue::default(),
             iconify_job: None,
@@ -599,6 +599,11 @@ impl DesktopApp {
         self.sync_active_slot();
         self.recovery.quit_confirmed = false;
         self.recovery.discarded.clear();
+        // A live session ends with the process: warn once, before any save
+        // prompt, and let Cancel back out of the whole quit.
+        if !self.confirm_leave_session_to_quit(&mut ask) {
+            return false;
+        }
         // Live agents die with the process: name them and ask whether to stop
         // them. Only the question comes first; the runs themselves are stopped
         // after every save prompt has been answered, so Cancel at any prompt

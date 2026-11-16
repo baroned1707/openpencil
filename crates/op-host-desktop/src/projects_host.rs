@@ -3,35 +3,101 @@
 //!
 //! A project is the folder `project_root_for` resolves for a file. Its files
 //! are every `*.op` in `<root>/designs/` plus any other document open from it.
-//! The tree is rebuilt only when its inputs change (open documents, known
-//! projects, collapse flags) or the periodic disk rescan comes due, so a frame
-//! costs two comparisons.
+//!
+//! A frame does no file-system work here:
+//! * the project root of each open document comes from a shared cache
+//!   (`op_host_services::project_root::ProjectRootCache`), refreshed in the
+//!   background when it ages;
+//! * `<root>/designs` is listed by a worker thread (`projects_host_scheduler.rs`)
+//!   whose finished result the frame only drains;
+//! * the tree is rebuilt only when `input_key` (open documents, roots, folds,
+//!   listing version) changes.
+//!
+//! Creating a design (`+`) is the one request that writes the disk, and it does
+//! so only when the user clicks.
 
-use std::collections::{BTreeMap, BTreeSet, HashSet};
+use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
+use std::hash::{Hash, Hasher};
 use std::path::{Path, PathBuf};
+use std::sync::Arc;
 use std::time::{Duration, Instant};
 
+use op_editor_core::editor_toast::EditorToastLevel;
 use op_editor_core::{
     DocumentId, DocumentTabStatus, DocumentTabView, ProjectFileView, ProjectRequest, ProjectView,
 };
+use op_host_services::project_root::ProjectRootCache;
 
 use crate::DesktopApp;
 
-/// How often `<root>/designs` is re-read while nothing else changed, so a file
-/// an agent created from outside the editor shows up.
-const RESCAN_EVERY: Duration = Duration::from_secs(3);
+#[path = "projects_host_new_design.rs"]
+mod new_design;
+#[path = "projects_host_scan.rs"]
+mod scan;
+#[path = "projects_host_scheduler.rs"]
+mod scheduler;
+
+#[cfg(test)]
+pub(crate) use scan::list_design_files;
+use scan::ScanStatus;
+use scheduler::ScanScheduler;
+
+/// A second `+` on the same project inside this window is a double click, not a
+/// second design.
+const NEW_DESIGN_DEBOUNCE: Duration = Duration::from_secs(1);
+
+/// i18n key of the toast raised when a new design could not be created.
+const NEW_DESIGN_FAILED_KEY: &str = "projects.newDesignFailed";
 
 /// Host-side memory behind the tab: which projects exist, which are folded,
 /// and the last disk listing.
-#[derive(Default)]
 pub(crate) struct ProjectsHostState {
     /// Every project root seen this session, so closing the last tab of a
     /// project does not make the project vanish from the list.
     known: BTreeSet<PathBuf>,
     collapsed: HashSet<PathBuf>,
-    listing: BTreeMap<PathBuf, Vec<PathBuf>>,
-    scanned_at: Option<Instant>,
+    /// Memo of `document path -> project root`; the only way a frame learns a
+    /// root.
+    roots: Arc<ProjectRootCache>,
+    /// The disk listing, kept fresh by a worker thread.
+    scan: ScanScheduler,
+    /// Hash of everything the published tree was built from; an unchanged
+    /// value means there is nothing to rebuild.
     published_key: Option<u64>,
+    /// The path each open document had last frame, to drop the old path's root
+    /// when a document moves or closes.
+    document_paths: HashMap<DocumentId, PathBuf>,
+    /// The last accepted `+` per project, for the double-click guard.
+    last_new_design: Option<(PathBuf, Instant)>,
+    new_design_debounce: Duration,
+    /// Statuses already reported, so a persistent condition is logged once.
+    logged_status: BTreeMap<PathBuf, ScanStatus>,
+}
+
+impl Default for ProjectsHostState {
+    fn default() -> Self {
+        let roots = op_host_services::project_root::shared_cache();
+        let scan = ScanScheduler::new(scheduler::disk_scan_job(Arc::clone(&roots)));
+        Self::with_parts(roots, scan)
+    }
+}
+
+impl ProjectsHostState {
+    /// A state over the given root cache and scanner (tests inject counting
+    /// stand-ins).
+    pub(crate) fn with_parts(roots: Arc<ProjectRootCache>, scan: ScanScheduler) -> Self {
+        Self {
+            known: BTreeSet::new(),
+            collapsed: HashSet::new(),
+            roots,
+            scan,
+            published_key: None,
+            document_paths: HashMap::new(),
+            last_new_design: None,
+            new_design_debounce: NEW_DESIGN_DEBOUNCE,
+            logged_status: BTreeMap::new(),
+        }
+    }
 }
 
 /// One open document as the builder sees it.
@@ -41,21 +107,6 @@ pub(crate) struct OpenDoc {
     pub dirty: bool,
     pub status: DocumentTabStatus,
     pub active: bool,
-}
-
-/// `<root>/designs/*.op`, sorted by name. Missing or unreadable folders give
-/// an empty list.
-pub(crate) fn list_design_files(root: &Path) -> Vec<PathBuf> {
-    let Ok(entries) = std::fs::read_dir(root.join("designs")) else {
-        return Vec::new();
-    };
-    let mut files: Vec<PathBuf> = entries
-        .filter_map(Result::ok)
-        .map(|entry| entry.path())
-        .filter(|path| path.is_file() && path.extension().is_some_and(|ext| ext == "op"))
-        .collect();
-    files.sort();
-    files
 }
 
 fn file_label(path: &Path) -> String {
@@ -114,22 +165,68 @@ pub(crate) fn build_projects(
         .collect()
 }
 
-/// A path for a new design in `root` that does not exist yet:
-/// `untitled.op`, then `untitled-2.op`, ...
-pub(crate) fn next_untitled_design(root: &Path) -> PathBuf {
-    let designs = root.join("designs");
-    let first = designs.join("untitled.op");
-    if !first.exists() {
-        return first;
+impl ProjectsHostState {
+    /// Forget the cached root of every path a document no longer has (it was
+    /// saved elsewhere, renamed or closed). Memory only.
+    fn track_document_paths(&mut self, open: &[OpenDoc]) {
+        let unchanged = open.iter().filter(|doc| doc.path.is_some()).count()
+            == self.document_paths.len()
+            && open.iter().all(|doc| match doc.path.as_ref() {
+                Some(path) => self.document_paths.get(&doc.id) == Some(path),
+                None => true,
+            });
+        if unchanged {
+            return;
+        }
+        let current: HashMap<DocumentId, PathBuf> = open
+            .iter()
+            .filter_map(|doc| doc.path.clone().map(|path| (doc.id, path)))
+            .collect();
+        for (id, old_path) in &self.document_paths {
+            if current.get(id) != Some(old_path) {
+                self.roots.invalidate(old_path);
+            }
+        }
+        self.document_paths = current;
     }
-    (2..)
-        .map(|n| designs.join(format!("untitled-{n}.op")))
-        .find(|path| !path.exists())
-        .expect("an unused name exists")
-}
 
-fn root_of_path(path: &Path) -> Option<PathBuf> {
-    op_host_services::project_root::project_root_for(path).map(|project| project.root)
+    /// Everything the published tree depends on, as one number.
+    fn input_key(&self, open: &[OpenDoc], doc_roots: &[Option<PathBuf>]) -> u64 {
+        let mut hasher = std::collections::hash_map::DefaultHasher::new();
+        for (doc, root) in open.iter().zip(doc_roots) {
+            doc.id.hash(&mut hasher);
+            doc.path.hash(&mut hasher);
+            doc.dirty.hash(&mut hasher);
+            (doc.status as u8).hash(&mut hasher);
+            doc.active.hash(&mut hasher);
+            root.hash(&mut hasher);
+        }
+        self.known.hash(&mut hasher);
+        // `HashSet` iterates in no fixed order; sort for a stable hash.
+        let mut collapsed: Vec<&PathBuf> = self.collapsed.iter().collect();
+        collapsed.sort();
+        collapsed.hash(&mut hasher);
+        self.scan.version().hash(&mut hasher);
+        hasher.finish()
+    }
+
+    /// Log a project's scan status when it changes to something other than Ok.
+    fn log_scan_status_changes(&mut self) {
+        for root in &self.known {
+            let status = self.scan.status(root).unwrap_or(ScanStatus::Ok);
+            let previous = self
+                .logged_status
+                .get(root)
+                .copied()
+                .unwrap_or(ScanStatus::Ok);
+            if status != previous {
+                if status != ScanStatus::Ok {
+                    eprintln!("[projects] {}: {status}", root.display());
+                }
+                self.logged_status.insert(root.clone(), status);
+            }
+        }
+    }
 }
 
 impl DesktopApp {
@@ -189,58 +286,108 @@ impl DesktopApp {
         }
         // A request can change what is open or folded.
         self.projects_host.published_key = None;
+        self.projects_host.scan.request_now();
     }
 
     /// Create `<root>/designs/untitled[-n].op` with a starter document and open
-    /// it in a new tab. Refuses (toast) while a tab switch is blocked.
+    /// it in a new tab. Refuses (toast) while a tab switch is blocked; a failed
+    /// creation shows a toast and leaves nothing behind.
     fn create_design_in(&mut self, root: &Path) {
         if let Some(reason) = self.document_switch_blocked() {
             self.refuse_document_switch(reason);
             return;
         }
-        let target = next_untitled_design(root);
-        if let Some(dir) = target.parent() {
-            if std::fs::create_dir_all(dir).is_err() {
+        let state = &mut self.projects_host;
+        let now = Instant::now();
+        if let Some((last_root, at)) = state.last_new_design.as_ref() {
+            if last_root == root && now.saturating_duration_since(*at) < state.new_design_debounce {
                 return;
             }
         }
+        state.last_new_design = Some((root.to_path_buf(), now));
         let starter = op_editor_core::EditorState::starter();
-        if op_host_services::doc_io::save_new_to_path(&starter, &target).is_ok() {
-            self.projects_host.known.insert(root.to_path_buf());
-            self.projects_host.scanned_at = None;
-            self.open_document_tab(target);
+        let created = new_design::create_design_file(root, &|target| {
+            op_host_services::doc_io::save_new_to_path(&starter, target)
+        });
+        match created {
+            Ok(target) => {
+                self.projects_host.known.insert(root.to_path_buf());
+                // The target's folder may not have existed when its root was
+                // last resolved.
+                self.projects_host.roots.invalidate(&target);
+                self.open_document_tab(target);
+            }
+            Err(error) => {
+                eprintln!("[projects] new design in {}: {error}", root.display());
+                let now_ms = self.host.now_ms();
+                self.host.editor_state_mut().editor_ui.show_toast(
+                    NEW_DESIGN_FAILED_KEY,
+                    vec![("reason".to_string(), error.to_string())],
+                    EditorToastLevel::Warn,
+                    now_ms,
+                );
+                self.host.mark_editor_state_dirty();
+                self.request_redraw(true);
+            }
         }
     }
 
     /// Mirror open documents and the disk into `editor_ui.projects_panel`.
     pub(crate) fn publish_projects(&mut self) -> bool {
         let open = self.open_docs();
-        for doc in &open {
-            if let Some(root) = doc.path.as_deref().and_then(root_of_path) {
-                self.projects_host.known.insert(root);
+        self.projects_host.track_document_paths(&open);
+        let doc_roots: Vec<Option<PathBuf>> = open
+            .iter()
+            .map(|doc| {
+                doc.path
+                    .as_deref()
+                    .and_then(|path| self.projects_host.roots.get(path))
+                    .map(|project| project.root)
+            })
+            .collect();
+        for root in doc_roots.iter().flatten() {
+            if self.projects_host.known.insert(root.clone()) {
+                self.projects_host.scan.request_now();
             }
         }
-        let due = self
-            .projects_host
-            .scanned_at
-            .map_or(true, |at| at.elapsed() >= RESCAN_EVERY);
-        if due {
-            let listing: BTreeMap<PathBuf, Vec<PathBuf>> = self
-                .projects_host
-                .known
-                .iter()
-                .map(|root| (root.clone(), list_design_files(root)))
-                .collect();
-            self.projects_host.listing = listing;
-            self.projects_host.scanned_at = Some(Instant::now());
+        let window = self.window.as_ref();
+        let state = &mut self.projects_host;
+        state
+            .scan
+            .poll(&state.known, || window.is_none_or(|w| w.has_focus()));
+        let scanning = state.scan.in_flight();
+        state.log_scan_status_changes();
+        if scanning {
+            // The worker cannot wake the event loop, so keep frames coming
+            // until its result is drained.
+            self.request_redraw(false);
         }
+        let key = self.projects_host.input_key(&open, &doc_roots);
+        let panel_rows = self
+            .host
+            .editor_state()
+            .editor_ui
+            .projects_panel
+            .projects
+            .len();
+        if self.projects_host.published_key == Some(key)
+            && panel_rows == self.projects_host.known.len()
+        {
+            return false;
+        }
+        let root_by_path: HashMap<&Path, &PathBuf> = open
+            .iter()
+            .zip(&doc_roots)
+            .filter_map(|(doc, root)| Some((doc.path.as_deref()?, root.as_ref()?)))
+            .collect();
         let projects = build_projects(
             &self.projects_host.known,
-            &self.projects_host.listing,
+            self.projects_host.scan.files(),
             &open,
             &self.projects_host.collapsed,
-            &root_of_path,
+            &|path| root_by_path.get(path).map(|root| (*root).clone()),
         );
+        self.projects_host.published_key = Some(key);
         let panel = &mut self.host.editor_state_mut().editor_ui.projects_panel;
         if panel.projects == projects {
             return false;

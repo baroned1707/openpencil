@@ -573,6 +573,7 @@ pub fn lookup(key: &str) -> Option<&'static str> {
         "projects.newDesign" => "Новый дизайн",
         "projects.needsReview" => "{{count}} на проверке",
         "projects.running" => "{{count}} выполняется",
+        "projects.newDesignFailed" => "Не удалось создать новый дизайн: {{reason}}",
         "dialog.agentRunningTitle" => "Агент ещё работает",
         "dialog.agentRunningBody" => "В «{{name}}» ещё работает агент.\n\nПри закрытии он будет остановлен.\n\nДа = остановить и закрыть · Нет или Отмена = продолжить работу.",
         "recovery.titleOne" => "Восстановить 1 несохранённый документ?",
@@ -587,6 +588,10 @@ pub fn lookup(key: &str) -> Option<&'static str> {
         "menu.revertAgentRun.nothing" => "В этом документе нет запуска агента, который можно отменить.",
         "menu.revertAgentRun.runLive" => "В этом документе агент ещё работает. Сначала остановите его, затем отмените запуск.",
         "menu.revertAgentRun.replaced" => "Этот документ был заменён после запуска агента, поэтому отменять нечего.",
+        "documents.collabAlreadyActive" => "В другой вкладке уже идёт сеанс совместной работы. Выйдите из него, прежде чем начинать или присоединяться к другому.",
+        "dialog.collabEndTitle" => "Сеанс совместной работы",
+        "dialog.collabOwnerEndBody" => "«{{name}}» открыт для общей работы в активном сеансе.\n\nЭто завершит сеанс для участников: {{count}}.\n\nДа = завершить сеанс и продолжить · Нет или Отмена = оставить.",
+        "dialog.collabGuestLeaveBody" => "Вы участвуете в активном сеансе в «{{name}}».\n\nВыйти из сеанса?\n\nДа = выйти и продолжить · Нет или Отмена = остаться.",
         _ => return None,
     })
 }

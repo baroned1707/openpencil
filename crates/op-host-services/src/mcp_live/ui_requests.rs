@@ -297,11 +297,12 @@ pub(super) fn request_replace(
     .map_err(no_document_on_screen)
 }
 
+/// `Ok(false)` means the collaboration session refused the metadata write.
 pub(super) fn request_update_editor_meta(
     req_tx: &UiSender,
     wake_ui: &UiWake,
     editor_meta: op_pen_loader::EditorMeta,
-) -> Result<(), McpLiveError> {
+) -> Result<bool, McpLiveError> {
     round_trip(
         req_tx,
         wake_ui,

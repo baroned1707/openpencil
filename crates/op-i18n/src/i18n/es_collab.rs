@@ -543,6 +543,7 @@ pub fn lookup(key: &str) -> Option<&'static str> {
         "projects.newDesign" => "Nuevo diseño",
         "projects.needsReview" => "{{count}} por revisar",
         "projects.running" => "{{count}} en curso",
+        "projects.newDesignFailed" => "No se pudo crear un nuevo diseño: {{reason}}",
         "dialog.agentRunningTitle" => "El agente sigue trabajando",
         "dialog.agentRunningBody" => "«{{name}}» tiene un agente en ejecución.\n\nAl cerrar se detiene.\n\nSí = Detener y cerrar · No o Cancelar = seguir trabajando.",
         "recovery.titleOne" => "¿Recuperar 1 documento sin guardar?",
@@ -557,6 +558,10 @@ pub fn lookup(key: &str) -> Option<&'static str> {
         "menu.revertAgentRun.nothing" => "No hay ninguna ejecución del agente que revertir en este documento.",
         "menu.revertAgentRun.runLive" => "Un agente sigue trabajando en este documento. Deténlo primero y luego revierte.",
         "menu.revertAgentRun.replaced" => "Este documento se reemplazó después de que el agente se ejecutara, así que no hay nada que revertir.",
+        "documents.collabAlreadyActive" => "Ya hay una sesión de colaboración activa en otra pestaña. Sal de ella antes de iniciar o unirte a otra.",
+        "dialog.collabEndTitle" => "Sesión de colaboración",
+        "dialog.collabOwnerEndBody" => "«{{name}}» se comparte en una sesión en curso.\n\nEsto finaliza la sesión para {{count}} participante(s).\n\nSí = Finalizar la sesión y continuar · No o Cancelar = mantenerla.",
+        "dialog.collabGuestLeaveBody" => "Estás en una sesión en curso en «{{name}}».\n\n¿Salir de la sesión?\n\nSí = Salir y continuar · No o Cancelar = quedarse.",
         _ => return None,
     })
 }

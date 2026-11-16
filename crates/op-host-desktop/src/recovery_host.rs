@@ -4,7 +4,7 @@
 //! Every snapshot goes through [`DesktopApp::snapshot_dirty_documents`] (or its
 //! per-document form for an agent run). It captures the document on the UI
 //! thread, from the live state or, for a parked tab, through the host's lens
-//! (`with_parked_document`, so the tab is never switched to), and hands the
+//! (`read_parked_document`, so the tab is never switched to), and hands the
 //! capture to the writer thread. Three things trigger it:
 //!
 //! * the per-loop tick ([`DesktopApp::pump_recovery`]): a dirty document whose
@@ -204,6 +204,10 @@ struct SlotView {
     path: Option<PathBuf>,
     /// Untouched since it was created (nothing worth keeping).
     pristine: bool,
+    /// A parked document that is another person's shared document, held as a
+    /// guest. A guest must not persist someone else's document, so it is never
+    /// written to the recovery directory.
+    guest_shared: bool,
 }
 
 impl DesktopApp {
@@ -226,14 +230,16 @@ impl DesktopApp {
                 let slot = self.documents.slot_mut(index)?;
                 let path = slot.local.path.clone();
                 let id = slot.id;
-                let (dirty, revision, pristine) = if index == active {
-                    live
+                let (dirty, revision, pristine, guest_shared) = if index == active {
+                    (live.0, live.1, live.2, false)
                 } else {
-                    let scope = slot.parked.as_ref()?.scope();
+                    let parked = slot.parked.as_ref()?;
+                    let scope = parked.scope();
                     (
                         scope.is_dirty(),
                         (scope.document_generation(), scope.document_revision()),
                         scope.is_pristine(),
+                        parked.holds_a_guests_shared_document(),
                     )
                 };
                 Some(SlotView {
@@ -242,14 +248,16 @@ impl DesktopApp {
                     revision,
                     path,
                     pristine,
+                    guest_shared,
                 })
             })
             .collect()
     }
 
     /// Capture the document at `index` for the writer. A parked document is
-    /// borrowed through the lens without being switched to; a collaboration
-    /// session that forbids the lens makes this fail (and the caller retry).
+    /// looked at through the read-only lens without being switched to; it is
+    /// allowed for a document that has a collaboration session too (the owner's
+    /// own document), because nothing can be written through it.
     fn capture_recovery_snapshot(
         &mut self,
         index: usize,
@@ -264,13 +272,11 @@ impl DesktopApp {
                 detail: "the document is not parked".to_string(),
             });
         };
-        let captured = self.host.with_parked_document(&mut parked, |host| {
+        let captured = self.host.read_parked_document(&mut parked, |host| {
             CanonicalSaveSnapshot::capture(host.editor_state())
         });
         self.documents.restore_parked(index, parked);
-        captured.map(Box::new).ok_or(RecoveryError::Capture {
-            detail: "a collaboration session does not lend the parked document".to_string(),
-        })
+        Ok(Box::new(captured))
     }
 
     fn recovery_label(&self, path: Option<&PathBuf>) -> String {
@@ -381,6 +387,12 @@ impl DesktopApp {
         let mut queued = 0;
         for view in self.slot_views() {
             if only.is_some_and(|id| id != view.id) {
+                continue;
+            }
+            if view.guest_shared {
+                // Someone else's document: nothing is written, and an entry
+                // from when it was still on screen does not outlive its leaving.
+                self.recovery_clear(view.id);
                 continue;
             }
             let wanted = view.dirty

@@ -19,6 +19,13 @@
 //!
 //! App-level state (theme, locale, agent connections, chat, clipboard, window
 //! chrome, collaboration availability / transports / relay region) never moves.
+//!
+//! A collaboration session stays attached to ONE document while the user
+//! switches tabs, so switching is not a replacement and `swap_document` does
+//! not ask the collaboration gate. What a parked document may be used for
+//! depends on that document's own session, not on the one on screen: see the
+//! four entry points ([`WidgetHostNative::swap_document`], `with_parked_document`,
+//! `with_parked_collab_session`, `read_parked_document`).
 
 use super::*;
 use jian_ops_schema::image_thumbs::{capture_snapshot, restore_snapshot, ImageThumbSnapshot};
@@ -111,6 +118,18 @@ impl ParkedDocument {
     pub fn is_dirty(&self) -> bool {
         self.scope.is_dirty()
     }
+
+    /// Whether a collaboration session is bound to this document (its phase
+    /// is anything but `Idle` / `Discovering`).
+    pub fn collab_session_is_bound(&self) -> bool {
+        self.scope.collab().binds_session()
+    }
+
+    /// Whether this is another person's shared document, held as a guest.
+    /// See [`op_editor_core::CollabUiState::holds_a_guests_shared_document`].
+    pub fn holds_a_guests_shared_document(&self) -> bool {
+        self.scope.collab().holds_a_guests_shared_document()
+    }
 }
 
 /// Run a document loader and return its result together with the thumbnail
@@ -134,20 +153,19 @@ pub fn capture_loaded_thumbnails<T>(load: impl FnOnce() -> T) -> (T, ImageThumbS
 impl WidgetHostNative {
     /// Exchange the document on screen with `parked`: afterwards `parked`
     /// holds the document that was showing and the host shows the one that was
-    /// parked. Returns `false` (and changes nothing) when an active
-    /// collaboration session forbids replacing the document.
+    /// parked.
+    ///
+    /// A collaboration session does not forbid this: it stays attached to the
+    /// document it belongs to and travels with it, so showing another tab is
+    /// not a replacement. The caller decides whether a switch is safe right now
+    /// (for example, not in the middle of a local edit capture).
     ///
     /// Pending input is committed first so a half-typed edit lands in the
     /// document it was typed in, and every transient gesture or runtime tied to
     /// the outgoing document is cancelled so none of it can act on the
     /// incoming one.
     pub fn swap_document(&mut self, parked: &mut ParkedDocument) -> bool {
-        if !self.collab_allows_user_action(op_editor_core::CollabGateAction::ReplaceDocument) {
-            return false;
-        }
-        self.commit_pending_input_pub();
-        self.editor_state.rename_commit();
-        self.editor_state.text_edit_commit();
+        self.commit_pending_input_for_switch();
         self.drop_preview_runtime();
         self.cancel_document_gestures();
 
@@ -163,6 +181,16 @@ impl WidgetHostNative {
         self.editor_state_dirty = true;
         self.drop_pan_cache();
         true
+    }
+
+    /// Commit every half-finished input (a property draft, a layer rename, a
+    /// canvas text edit) into the document it was typed in. Idempotent. A host
+    /// that shares the document with other people runs this inside its own
+    /// edit capture BEFORE a switch, so the commit reaches them.
+    pub fn commit_pending_input_for_switch(&mut self) {
+        self.commit_pending_input_pub();
+        self.editor_state.rename_commit();
+        self.editor_state.text_edit_commit();
     }
 
     /// Exchange everything that makes a document what it is: its editor data,
@@ -210,28 +238,72 @@ impl WidgetHostNative {
     /// restored exactly as it was. Both exchanges are pointer swaps (the
     /// thumbnail registry clones a map of `Arc`s).
     ///
-    /// Returns `None` without running `f` (and without a toast) when an active
-    /// collaboration session forbids replacing the document. `f` must not call `swap_document` or
-    /// this method.
+    /// Returns `None` without running `f` (and without a toast) when a
+    /// collaboration session is bound to the PARKED document: general writers
+    /// (an agent run, an MCP write, an import) must not edit a document other
+    /// people are editing. The refusal depends on the target only; whatever is
+    /// on screen is irrelevant, so a plain parked document stays reachable
+    /// while another tab collaborates. The session's own pump uses
+    /// [`Self::with_parked_collab_session`], and a read-only look (a recovery
+    /// snapshot) uses [`Self::read_parked_document`]. `f` must not call
+    /// `swap_document` or this method.
     pub fn with_parked_document<R>(
         &mut self,
         parked: &mut ParkedDocument,
         f: impl FnOnce(&mut Self) -> R,
     ) -> Option<R> {
-        // Asked of the gate directly: a refusal here is routine (it repeats every
-        // frame a parked run is waiting), so it must not raise the toast
-        // `swap_document` raises for a click.
-        let allowed = self.editor_state.editor_ui.collab.gate(
-            op_editor_core::CollabGateAction::ReplaceDocument,
-            op_editor_core::CollabEditSource::User,
-        );
-        if allowed.is_err() {
+        // A refusal here is routine (it repeats every frame a parked run is
+        // waiting), so it must not raise a toast.
+        if parked.collab_session_is_bound() {
             return None;
         }
+        Some(self.run_lens(parked, f))
+    }
+
+    /// The lens for the collaboration runtime's own pump: poll, drain events,
+    /// leave. The ONLY entry that lets code mutate a parked document that has a
+    /// session bound; it returns `None` for any other document so it cannot be
+    /// used as a way around [`Self::with_parked_document`].
+    ///
+    /// On top of the plain lens it keeps the pan bitmap cache of the document
+    /// on screen: applying a remote change marks the (parked) document dirty,
+    /// and that path drops the host's pan cache, which belongs to whatever is
+    /// showing. Nothing the user sees may change because another tab received
+    /// an update.
+    pub fn with_parked_collab_session<R>(
+        &mut self,
+        parked: &mut ParkedDocument,
+        f: impl FnOnce(&mut Self) -> R,
+    ) -> Option<R> {
+        if !parked.collab_session_is_bound() {
+            return None;
+        }
+        let on_screen_pan_cache = (self.pan_cache.take(), self.pan_cache_restore.take());
+        let result = self.run_lens(parked, f);
+        (self.pan_cache, self.pan_cache_restore) = on_screen_pan_cache;
+        Some(result)
+    }
+
+    /// Look at a parked document without being able to change it: `f` gets a
+    /// shared reference to the host with the document standing in. Allowed for
+    /// every document, collaborated or not, because nothing can be written
+    /// through it. A crash-recovery snapshot reads through this.
+    pub fn read_parked_document<R>(
+        &mut self,
+        parked: &mut ParkedDocument,
+        f: impl FnOnce(&Self) -> R,
+    ) -> R {
         self.exchange_parked_state(parked, false);
         let result = f(self);
         self.exchange_parked_state(parked, false);
-        Some(result)
+        result
+    }
+
+    fn run_lens<R>(&mut self, parked: &mut ParkedDocument, f: impl FnOnce(&mut Self) -> R) -> R {
+        self.exchange_parked_state(parked, false);
+        let result = f(self);
+        self.exchange_parked_state(parked, false);
+        result
     }
 
     /// Whether a pointer gesture or a canvas text edit is in progress: a drag

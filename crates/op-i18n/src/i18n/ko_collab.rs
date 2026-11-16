@@ -559,6 +559,7 @@ pub fn lookup(key: &str) -> Option<&'static str> {
         "projects.newDesign" => "새 디자인",
         "projects.needsReview" => "{{count}}개 검토 필요",
         "projects.running" => "{{count}}개 실행 중",
+        "projects.newDesignFailed" => "새 디자인을 만들 수 없습니다: {{reason}}",
         "dialog.agentRunningTitle" => "에이전트가 작업 중입니다",
         "dialog.agentRunningBody" => "“{{name}}”에서 에이전트가 실행 중입니다.\n\n닫으면 중지됩니다.\n\n예 = 중지하고 닫기 · 아니요 / 취소 = 계속 작업.",
         "recovery.titleOne" => "저장되지 않은 문서 1개를 복구할까요?",
@@ -573,6 +574,10 @@ pub fn lookup(key: &str) -> Option<&'static str> {
         "menu.revertAgentRun.nothing" => "이 문서에는 되돌릴 에이전트 실행이 없습니다.",
         "menu.revertAgentRun.runLive" => "이 문서에서 에이전트가 아직 작업 중입니다. 먼저 중지한 다음 되돌리세요.",
         "menu.revertAgentRun.replaced" => "에이전트 실행 후 이 문서가 교체되어 되돌릴 내용이 없습니다.",
+        "documents.collabAlreadyActive" => "다른 탭에서 이미 협업 세션이 활성화되어 있습니다. 새로 시작하거나 참여하기 전에 그 세션을 나가세요.",
+        "dialog.collabEndTitle" => "협업 세션",
+        "dialog.collabOwnerEndBody" => "“{{name}}”은(는) 진행 중인 세션에서 공유되고 있습니다.\n\n계속하면 참가자 {{count}}명의 세션이 종료됩니다.\n\n예 = 세션 종료 후 계속 · 아니요 / 취소 = 그대로 유지.",
+        "dialog.collabGuestLeaveBody" => "“{{name}}”의 진행 중인 세션에 참여하고 있습니다.\n\n세션을 나가시겠습니까?\n\n예 = 나가고 계속 · 아니요 / 취소 = 머무르기.",
         _ => return None,
     })
 }

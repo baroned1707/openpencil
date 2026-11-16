@@ -543,6 +543,7 @@ pub fn lookup(key: &str) -> Option<&'static str> {
         "projects.newDesign" => "Desain baru",
         "projects.needsReview" => "{{count}} perlu ditinjau",
         "projects.running" => "{{count}} berjalan",
+        "projects.newDesignFailed" => "Tidak dapat membuat desain baru: {{reason}}",
         "dialog.agentRunningTitle" => "Agen masih bekerja",
         "dialog.agentRunningBody" => "“{{name}}” memiliki agen yang masih berjalan.\n\nMenutup akan menghentikannya.\n\nYa = Hentikan dan tutup · Tidak atau Batal = lanjutkan bekerja.",
         "recovery.titleOne" => "Pulihkan 1 dokumen yang belum disimpan?",
@@ -557,6 +558,10 @@ pub fn lookup(key: &str) -> Option<&'static str> {
         "menu.revertAgentRun.nothing" => "Tidak ada eksekusi agen yang dapat diurungkan di dokumen ini.",
         "menu.revertAgentRun.runLive" => "Agen masih bekerja di dokumen ini. Hentikan dulu, lalu urungkan.",
         "menu.revertAgentRun.replaced" => "Dokumen ini diganti setelah agen berjalan, jadi tidak ada yang dapat diurungkan.",
+        "documents.collabAlreadyActive" => "Sesi kolaborasi sudah aktif di tab lain. Keluar dari sesi itu sebelum memulai atau bergabung ke sesi lain.",
+        "dialog.collabEndTitle" => "Sesi kolaborasi",
+        "dialog.collabOwnerEndBody" => "“{{name}}” dibagikan dalam sesi yang sedang berjalan.\n\nIni mengakhiri sesi untuk {{count}} peserta.\n\nYa = Akhiri sesi dan lanjutkan · Tidak atau Batal = biarkan tetap terbuka.",
+        "dialog.collabGuestLeaveBody" => "Anda berada dalam sesi yang sedang berjalan di “{{name}}”.\n\nKeluar dari sesi?\n\nYa = Keluar dan lanjutkan · Tidak atau Batal = tetap di sini.",
         _ => return None,
     })
 }

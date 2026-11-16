@@ -543,6 +543,7 @@ pub fn lookup(key: &str) -> Option<&'static str> {
         "projects.newDesign" => "新建设计",
         "projects.needsReview" => "{{count}} 个待审阅",
         "projects.running" => "{{count}} 个运行中",
+        "projects.newDesignFailed" => "无法创建新设计：{{reason}}",
         "dialog.agentRunningTitle" => "智能体仍在工作",
         "dialog.agentRunningBody" => "“{{name}}”中有一个智能体仍在运行。\n\n关闭会停止它。\n\n是 = 停止并关闭 · 否或取消 = 继续工作。",
         "recovery.titleOne" => "恢复 1 个未保存的文档？",
@@ -557,6 +558,10 @@ pub fn lookup(key: &str) -> Option<&'static str> {
         "menu.revertAgentRun.nothing" => "此文档中没有可撤销的智能体运行。",
         "menu.revertAgentRun.runLive" => "智能体仍在此文档中工作。请先停止它，然后再撤销。",
         "menu.revertAgentRun.replaced" => "此文档在智能体运行之后已被替换，因此没有可撤销的内容。",
+        "documents.collabAlreadyActive" => "另一个标签页中已有协作会话正在进行。请先退出该会话，再开始或加入新的会话。",
+        "dialog.collabEndTitle" => "协作会话",
+        "dialog.collabOwnerEndBody" => "“{{name}}”正在进行中的会话里共享。\n\n这会为 {{count}} 位参与者结束该会话。\n\n是 = 结束会话并继续 · 否或取消 = 保持不变。",
+        "dialog.collabGuestLeaveBody" => "你正在“{{name}}”的会话中。\n\n要退出该会话吗？\n\n是 = 退出并继续 · 否或取消 = 留下。",
         _ => return None,
     })
 }
