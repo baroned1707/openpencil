@@ -11,8 +11,10 @@ use crate::widgets::icons::{draw_icon, draw_spinning_loader, Icon};
 use crate::widgets::PaintCx;
 use crate::{Color, Point2D, Rect};
 
-const CARD_RADIUS: f32 = 6.0;
-const LABEL_X: f32 = 12.0;
+const WELL_RADIUS: f32 = 6.0;
+/// Status glyph sits at the row's left edge, like Claude Code's tool list.
+const STATUS_X: f32 = 4.0;
+const LABEL_X: f32 = 24.0;
 const STATUS_GLYPH: f32 = 11.0;
 const EXPANDER_GLYPH: f32 = 11.0;
 const EXPANDER_RIGHT_OFFSET: f32 = 24.0;
@@ -27,15 +29,15 @@ pub(crate) enum TranscriptActivityStatus {
 }
 
 /// Shared visual chrome for CLI activities and built-in tool calls. Their
-/// payload bodies remain backend-specific, while surface, label, lifecycle,
-/// and disclosure affordance are painted once here.
+/// payload bodies remain backend-specific, while label, lifecycle, and
+/// disclosure affordance are painted once here. A row is flat — a status
+/// glyph and a label on the panel; only an expanded body gets a filled
+/// `theme.muted` well, never an outline.
 pub(crate) struct TranscriptActivityChrome<'a> {
     pub rect: Rect,
     pub header: Rect,
     pub label: &'a str,
     pub label_color: Color,
-    pub background: Color,
-    pub border: Color,
     pub status: TranscriptActivityStatus,
     /// `None` means this row has no disclosure body.
     pub expanded: Option<bool>,
@@ -49,10 +51,19 @@ pub(crate) fn paint_activity_chrome(
     chrome: TranscriptActivityChrome<'_>,
     now_ms: u64,
 ) {
-    cx.backend
-        .fill_round_rect(chrome.rect, CARD_RADIUS, chrome.background);
-    cx.backend
-        .stroke_round_rect(chrome.rect, CARD_RADIUS, chrome.border, 1.0);
+    let body_h = chrome.rect.size.y - chrome.header.size.y;
+    if body_h > 0.0 {
+        cx.backend.fill_round_rect(
+            Rect::xywh(
+                chrome.rect.origin.x,
+                chrome.header.origin.y + chrome.header.size.y,
+                chrome.rect.size.x,
+                body_h,
+            ),
+            WELL_RADIUS,
+            theme.muted,
+        );
+    }
 
     let label_x = chrome.header.origin.x + LABEL_X;
     let label_w = (chrome.header.size.x - LABEL_X - chrome.right_reserve).max(1.0);
@@ -74,17 +85,11 @@ pub(crate) fn paint_activity_chrome(
     );
     cx.backend.restore();
 
-    let label_units: u32 = label
-        .chars()
-        .map(super::ai_chat_transcript_text::char_display_units)
-        .sum();
-    let status_limit = chrome.header.origin.x + chrome.header.size.x - chrome.right_reserve;
-    let status_x = (label_x + label_units as f32 * 6.0 + 8.0).min(status_limit);
     paint_activity_status(
         cx,
         theme,
         Point2D::new(
-            status_x,
+            chrome.header.origin.x + STATUS_X,
             chrome.header.origin.y + (chrome.header.size.y - STATUS_GLYPH) / 2.0,
         ),
         STATUS_GLYPH,
@@ -158,19 +163,6 @@ pub(crate) fn paint_activity_status(
             1.3,
         ),
         TranscriptActivityStatus::Done => {
-            let center_x = top_left.x + size / 2.0;
-            let center_y = top_left.y + size / 2.0;
-            let radius = size / 2.0 + 1.5;
-            cx.backend.stroke_oval(
-                Rect::xywh(
-                    center_x - radius,
-                    center_y - radius,
-                    radius * 2.0,
-                    radius * 2.0,
-                ),
-                theme.status_success,
-                1.0,
-            );
             draw_icon(
                 cx.backend,
                 Icon::Check,

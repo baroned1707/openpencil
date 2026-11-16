@@ -13,7 +13,7 @@
 
 use crate::widgets::icons::{draw_icon, Icon};
 use crate::widgets::{text_metrics, PaintCx};
-use crate::{Color, Point2D, Rect, TextLayout, Theme};
+use crate::{Point2D, Rect, TextLayout, Theme};
 
 /// Row height when the notice is showing. `0` otherwise — see
 /// `AIChatPlaceholder::mcp_notice_row_h`, which mirrors the
@@ -25,6 +25,7 @@ const PAD_X: f32 = 8.0;
 const GAP: f32 = 6.0;
 const FONT_SIZE: f32 = 11.0;
 const RADIUS: f32 = 6.0;
+const NOTICE_BOTTOM_GAP: f32 = 4.0;
 
 /// The clickable rect for the notice inside `row`. The whole row is the
 /// target — a 30pt-tall strip is already at the small end for a pointer, so
@@ -39,11 +40,18 @@ pub(crate) fn paint_mcp_notice(cx: &mut PaintCx<'_>, row: Rect, theme: Theme, la
     if row.size.x <= 0.0 || row.size.y <= 0.0 {
         return;
     }
-    // A muted surface rather than a destructive one: nothing has failed yet,
-    // and painting it red would read as an error the user already caused.
-    let fill = mix(theme.background, theme.card, 0.6);
-    cx.backend.fill_round_rect(row, RADIUS, fill);
-    cx.backend.stroke_round_rect(row, RADIUS, theme.border, 1.0);
+    // Paint-only: leave a gap above whatever sits under the notice, so two
+    // filled surfaces never touch. The whole `row` stays the hit target.
+    let row = Rect::xywh(
+        row.origin.x,
+        row.origin.y,
+        row.size.x,
+        (row.size.y - NOTICE_BOTTOM_GAP).max(0.0),
+    );
+    // A filled neutral surface rather than a destructive one: nothing has
+    // failed yet, and painting it red would read as an error the user
+    // already caused. Tone separates it from the panel; no outline.
+    cx.backend.fill_round_rect(row, RADIUS, theme.muted);
 
     let icon_rect = Rect {
         origin: Point2D::new(
@@ -52,13 +60,12 @@ pub(crate) fn paint_mcp_notice(cx: &mut PaintCx<'_>, row: Rect, theme: Theme, la
         ),
         size: Point2D::new(ICON_SIZE, ICON_SIZE),
     };
-    let accent = theme.accent;
     draw_icon(
         cx.backend,
         Icon::AlertTriangle,
         icon_rect.origin,
         ICON_SIZE,
-        accent,
+        theme.status_warning,
         1.6,
     );
 
@@ -79,15 +86,6 @@ pub(crate) fn paint_mcp_notice(cx: &mut PaintCx<'_>, row: Rect, theme: Theme, la
             jian_widgets::centered_text_baseline_y(row, FONT_SIZE),
         ),
     );
-}
-
-fn mix(from: Color, to: Color, amount: f32) -> Color {
-    Color {
-        r: from.r + (to.r - from.r) * amount,
-        g: from.g + (to.g - from.g) * amount,
-        b: from.b + (to.b - from.b) * amount,
-        a: from.a + (to.a - from.a) * amount,
-    }
 }
 
 #[cfg(test)]

@@ -6,6 +6,14 @@
 
 use super::*;
 
+/// Inset between the composer field's edge and its content.
+const COMPOSER_FIELD_PAD: f32 = 8.0;
+/// Field edge above the text area / below the toolbar row.
+const COMPOSER_FIELD_TOP_INSET: f32 = 0.0;
+const COMPOSER_FIELD_BOTTOM_INSET: f32 = 4.0;
+/// Corner radius of the filled composer field.
+const COMPOSER_FIELD_RADIUS: f32 = 8.0;
+
 impl<'a> Widget for AIChatPlaceholder<'a> {
     fn id(&self) -> WidgetId {
         self.id
@@ -47,25 +55,11 @@ impl<'a> Widget for AIChatPlaceholder<'a> {
         let can_use_model = !self.state.available_models.is_empty();
         let input_h = self.input_height_for_rect(rect);
         let sep_y = rect.origin.y + rect.size.y - input_h;
-        // The body chrome is the header hairline, the transcript wash and
-        // the divider above the composer. A composer-only card has none
-        // of those above it — painting them drew a rule across an empty
-        // card.
-        // Pinned, the rail already bounds the panel, so the header's own
-        // hairline is a second rule inside one surface — Pencil separates
-        // its session row from the body with space alone. The composer
-        // card has no body above it at all.
+        // Tone alone separates the header, the transcript and the composer
+        // (Figma UI3 draws no rules). A composer-only card has no body
+        // above it, and a pinned chat already sits on the rail's ground.
         if !self.composer_only && !self.column_pinned {
             paint_panel_body_chrome(cx, &self.theme, rect, sep_y);
-        } else if self.column_pinned {
-            // The divider ABOVE the composer stays: it is the one edge
-            // that keeps a long transcript from running into the input.
-            crate::widgets::ai_chat_panel_paint::paint_composer_divider(
-                cx,
-                &self.theme,
-                rect,
-                sep_y,
-            );
         }
 
         // Composer-only: the rail is showing another tab, so the card
@@ -140,8 +134,6 @@ impl<'a> Widget for AIChatPlaceholder<'a> {
             };
             cx.backend
                 .fill_round_rect(new_chat_rect, NEW_CHAT_R, new_chat_fill);
-            cx.backend
-                .stroke_round_rect(new_chat_rect, NEW_CHAT_R, self.theme.border, 1.0);
             draw_icon(
                 cx.backend,
                 Icon::Plus,
@@ -278,6 +270,26 @@ impl<'a> Widget for AIChatPlaceholder<'a> {
             ),
         };
         let input_area_h = input_rect.size.y;
+
+        // The composer is one filled, rounded field holding the text area
+        // and the toolbar row. The composer-only card is already that
+        // field, so it paints none of its own.
+        if !self.composer_only {
+            // The toolbar row is the panel's last 40 px, so the field ends a
+            // little above the panel edge and holds the whole row.
+            let field_top = input_rect.origin.y - COMPOSER_FIELD_TOP_INSET;
+            let field_bottom =
+                input_rect.origin.y + input_area_h + self.attachment_row_h() + INPUT_TOOLBAR_HEIGHT
+                    - COMPOSER_FIELD_BOTTOM_INSET;
+            let field = Rect::xywh(
+                rect.origin.x + PAD - COMPOSER_FIELD_PAD,
+                field_top,
+                rect.size.x - (PAD - COMPOSER_FIELD_PAD) * 2.0,
+                (field_bottom - field_top).max(0.0),
+            );
+            cx.backend
+                .fill_round_rect(field, COMPOSER_FIELD_RADIUS, self.theme.input);
+        }
 
         crate::widgets::ai_chat_input_text::paint_input_text_area(
             cx,

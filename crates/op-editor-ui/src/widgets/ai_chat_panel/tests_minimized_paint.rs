@@ -30,18 +30,16 @@ fn paint_minimized_bar_reads_as_a_compact_input() {
 
     panel.paint(&mut cx, rect);
 
-    // A single, very light shadow layer under the surface — the bar is a
-    // strip, not a window; a visible drop shadow makes it read as a slab.
+    // A soft two-layer shadow under the surface, no outline: the near
+    // layer sits 3 px low, the far one 8 px low and fainter still.
     let shadow = backend.round_rects[0];
-    assert_close(shadow.0.origin.y, rect.origin.y + 2.0);
-    assert!(
-        shadow.2.a <= 0.06,
-        "the bar's shadow must stay barely-there, got alpha {}",
-        shadow.2.a
-    );
-    // Capsule surface next, at the bar's own radius.
-    assert_eq!(backend.round_rects[1].0, rect);
-    assert_close(backend.round_rects[1].1, 12.0);
+    assert_close(shadow.0.origin.y, rect.origin.y + 8.0);
+    assert!(shadow.2.a <= 0.06, "the far shadow layer stays faint");
+    assert_close(backend.round_rects[1].0.origin.y, rect.origin.y + 3.0);
+    // Capsule surface next, at the bar's own radius, in the card tone.
+    assert_eq!(backend.round_rects[2].0, rect);
+    assert_close(backend.round_rects[2].1, 12.0);
+    assert!(color_close(backend.round_rects[2].2, panel.theme.card));
     // The placeholder is the same string the expanded textarea shows —
     // the bar must not invent its own prompt copy.
     assert!(

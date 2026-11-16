@@ -61,8 +61,7 @@ fn paint_header_uses_auto_generated_chat_title() {
 
 #[test]
 fn paint_quick_action_card_hover_adds_visible_feedback() {
-    // old→new (#33): pills use EXAMPLE_PILL_RADIUS (~20px) not 8px.
-    // old→new (#37): pills now use EXAMPLE_PILL_RADIUS=14px (compact).
+    // UI3: pills are filled 8px-radius fields with no outline.
     let mut s = EditorState::new();
     // The expanded panel only exists where the conversation lives:
     // the rail's Agent tab. Elsewhere the chat is composer-only.
@@ -82,17 +81,16 @@ fn paint_quick_action_card_hover_adds_visible_feedback() {
     assert!(
         backend.round_rects.iter().any(|(r, radius, color)| {
             rect_close(*r, cards[0])
-                && *radius >= 12.0
+                && (*radius - 8.0).abs() < 0.01
                 && color_close(*color, panel.theme.button_hover)
         }),
-        "hovered quick-action pill should paint a visible hover wash with large radius"
+        "hovered quick-action pill should paint a visible hover wash at the field radius"
     );
 }
 
 #[test]
 fn paint_quick_action_card_pressed_uses_shared_feedback() {
-    // old→new (#33): pills use EXAMPLE_PILL_RADIUS (~20px) not 8px.
-    // old→new (#37): pills now use EXAMPLE_PILL_RADIUS=14px (compact).
+    // UI3: pills are filled 8px-radius fields with no outline.
     let mut s = EditorState::new();
     // The expanded panel only exists where the conversation lives:
     // the rail's Agent tab. Elsewhere the chat is composer-only.
@@ -115,9 +113,11 @@ fn paint_quick_action_card_pressed_uses_shared_feedback() {
 
     assert!(
         backend.round_rects.iter().any(|(r, radius, color)| {
-            rect_close(*r, cards[0]) && *radius >= 12.0 && color_close(*color, expected)
+            rect_close(*r, cards[0])
+                && (*radius - 8.0).abs() < 0.01
+                && color_close(*color, expected)
         }),
-        "pressed quick-action pill should paint the shared pressed feedback token with large radius"
+        "pressed quick-action pill should paint the shared pressed feedback token at the field radius"
     );
 }
 
@@ -164,7 +164,7 @@ fn paint_new_chat_tooltip_after_transcript_bubbles() {
                 PanelPaintOp::FillRoundRect { rect, radius, color }
                     if rect_close(*rect, user_bubble)
                         && (*radius - 14.0).abs() < 0.01
-                        && color_close(*color, panel.theme.user_bubble)
+                        && color_close(*color, panel.theme.muted)
             )
         })
         .expect("user transcript bubble painted");
@@ -685,9 +685,9 @@ fn paint_draws_header_divider_and_message_body_background() {
 
     panel.paint(&mut cx, rect);
 
-    // Pinned into the rail the panel keeps ONE rule, the one above the
-    // composer: the rail already bounds it, so the header hairline and
-    // the transcript wash would be a second border inside one surface.
+    // Pinned into the rail the panel draws NO rule at all: tone separates
+    // the header, the transcript and the composer, so neither the header
+    // hairline nor a divider above the composer exists.
     assert!(
         !has_fill_rect(
             &backend.fills,
@@ -701,10 +701,17 @@ fn paint_draws_header_divider_and_message_body_background() {
         "no header hairline in the rail"
     );
     assert!(
-        has_fill_rect(
+        !has_fill_rect(
             &backend.fills,
             Rect::xywh(rect.origin.x + 1.0, sep_y, rect.size.x - 2.0, 1.0)
         ),
-        "the composer still has its rule"
+        "no rule above the composer"
+    );
+    // The composer is one filled `theme.input` field, radius 8.
+    assert!(
+        backend.round_rects.iter().any(|(_, radius, color)| {
+            (*radius - 8.0).abs() < 0.01 && color_close(*color, panel.theme.input)
+        }),
+        "the composer is a filled input field"
     );
 }

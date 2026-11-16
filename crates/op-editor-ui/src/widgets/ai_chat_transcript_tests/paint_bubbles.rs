@@ -82,8 +82,8 @@ fn paint_transcript_leaves_assistant_answer_unframed() {
 
 #[test]
 fn paint_transcript_keeps_user_answer_bubble_background() {
-    // #27 restyle: user bubble uses theme.user_bubble (medium-gray),
-    // replacing the old theme.row_selected_primary (blue-tinted wash).
+    // UI3: the user bubble is a filled neutral well (theme.muted) with
+    // no outline, replacing the old blue-tinted wash.
     let messages = [ChatMessage::user("user prompt")];
     let theme = crate::Theme::dark();
     let mut backend = TranscriptPaintBackend::default();
@@ -101,8 +101,7 @@ fn paint_transcript_keeps_user_answer_bubble_background() {
     );
 
     assert_eq!(backend.round_rects.len(), 1);
-    // Old: theme.row_selected_primary (blue-tinted). New: theme.user_bubble (medium-gray).
-    assert_eq!(backend.round_rect_colors[0], theme.user_bubble);
+    assert_eq!(backend.round_rect_colors[0], theme.muted);
     assert_ne!(backend.round_rect_colors[0], theme.primary);
 }
 

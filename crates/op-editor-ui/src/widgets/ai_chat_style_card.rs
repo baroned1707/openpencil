@@ -456,10 +456,13 @@ pub(crate) fn paint_style_card(
     locale: op_editor_core::Locale,
 ) -> Rect {
     let layout = layout_style_card(cx, card, chip, panel, locale);
-    cx.backend
-        .fill_round_rect(layout.rect, TOOLTIP_RADIUS, theme.popover);
-    cx.backend
-        .stroke_round_rect(layout.rect, TOOLTIP_RADIUS, theme.border, 1.0);
+    // Raised read-out: soft shadow + popover tone, no outline.
+    crate::widgets::ai_chat_panel_paint::paint_soft_shadow(cx, layout.rect, TOOLTIP_RADIUS);
+    cx.backend.fill_round_rect(
+        layout.rect,
+        TOOLTIP_RADIUS,
+        crate::widgets::ai_chat_panel_paint::raised_surface(theme),
+    );
     // Nothing may spill past the rounded edge on a panel too short for the
     // whole card — the drop ladder in `layout_style_card` sizes for the space,
     // and this is the floor under it.
@@ -504,10 +507,6 @@ pub(crate) fn paint_style_card(
                 SWATCH_SIZE,
             );
             cx.backend.fill_round_rect(swatch, SWATCH_RADIUS, *color);
-            // A near-background swatch would otherwise be an invisible hole in
-            // the band; the hairline states its edge without stating a colour.
-            cx.backend
-                .stroke_round_rect(swatch, SWATCH_RADIUS, theme.border, 1.0);
             let label_x = text_metrics::centered_text_x(
                 cx.backend,
                 hex,

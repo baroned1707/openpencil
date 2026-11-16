@@ -14,8 +14,8 @@ use crate::{Color, Point2D, Rect, TextLayout};
 pub(crate) const EXAMPLE_CARD_GAP: f32 = 8.0;
 /// Height of each example pill (~40px, compact rounded / stadium).
 pub(crate) const EXAMPLE_CARD_HEIGHT: f32 = 40.0;
-/// Corner radius for each pill — large enough to look like a stadium.
-const EXAMPLE_PILL_RADIUS: f32 = 14.0;
+/// Corner radius for each pill — the shared Figma UI3 field radius.
+const EXAMPLE_PILL_RADIUS: f32 = 8.0;
 /// Left padding inside each pill for the prompt text.
 const EXAMPLE_PILL_TEXT_PAD: f32 = 16.0;
 const EXAMPLE_TITLE_FONT: f32 = 13.0;
@@ -63,63 +63,55 @@ fn ellipsize(cx: &mut PaintCx<'_>, text: &str, max_w: f32, size: f32) -> String 
     format!("{s}…")
 }
 
-/// Paint the floating chat panel shell. TS uses
-/// `rounded-xl border bg-card/95 shadow-lg backdrop-blur-sm`; Skia here
-/// has no blur primitive, so we fake one with two translucent rounded
-/// rects behind the card. The near layer carries most of the (light)
-/// shadow right at the panel edge; the far layer is very faint so the
-/// shadow fades out instead of ending in a hard full-width grey band.
+/// Paint the floating chat panel shell. Figma UI3 floats a card with a
+/// soft shadow and a tone step against the canvas, never a stroke. Skia
+/// here has no blur primitive, so the shadow is faked with translucent
+/// rounded rects behind the card: the near layer carries most of the
+/// shadow right at the panel edge, the far layer is very faint so the
+/// shadow fades out instead of ending in a hard grey band.
 pub(crate) fn paint_panel_surface(cx: &mut PaintCx<'_>, theme: &Theme, rect: Rect) {
-    let shadow_far = Rect {
-        origin: Point2D::new(rect.origin.x, rect.origin.y + 8.0),
-        size: rect.size,
-    };
-    let shadow_near = Rect {
-        origin: Point2D::new(rect.origin.x, rect.origin.y + 3.0),
-        size: rect.size,
-    };
-    cx.backend
-        .fill_round_rect(shadow_far, 14.0, (Color::BLACK).with_alpha(0.025));
-    cx.backend
-        .fill_round_rect(shadow_near, 14.0, (Color::BLACK).with_alpha(0.07));
-    cx.backend
-        .fill_round_rect(rect, 14.0, (theme.card).with_alpha(0.98));
-    cx.backend
-        .stroke_round_rect(rect, 14.0, (theme.border).with_alpha(0.82), 1.0);
+    paint_soft_shadow(cx, rect, 14.0);
+    cx.backend.fill_round_rect(rect, 14.0, theme.card);
 }
 
-/// Paint the message body's TS-style background and internal dividers.
-/// Just the rule above the composer, for the pinned rail where the
-/// panel's other chrome would be a second border inside one surface.
-pub(crate) fn paint_composer_divider(cx: &mut PaintCx<'_>, theme: &Theme, rect: Rect, sep_y: f32) {
-    let inner_x = rect.origin.x + 1.0;
-    let inner_w = (rect.size.x - 2.0).max(0.0);
-    cx.backend.fill_rect(
-        Rect::xywh(inner_x, sep_y, inner_w, 1.0),
-        (theme.border).with_alpha(0.75),
-    );
+/// Fill of a surface that floats above the panel (model picker, style card,
+/// parallel-agents picker). Figma UI3 floats menus darker than the panel in
+/// the dark theme (the canvas tone) and white in the light one; a shadow
+/// alone would vanish on a dark ground. The `Theme` carries no mode flag, so
+/// luminance of its popover token decides.
+pub(crate) fn raised_surface(theme: &Theme) -> Color {
+    let c = theme.popover;
+    if 0.2126 * c.r + 0.7152 * c.g + 0.0722 * c.b < 0.5 {
+        theme.canvas_surface
+    } else {
+        theme.popover
+    }
 }
 
+/// The two translucent layers behind a floating surface (panel card, model
+/// picker, tooltip-style cards). A raised surface separates from what is
+/// under it by this shadow plus its own tone — never by an outline.
+pub(crate) fn paint_soft_shadow(cx: &mut PaintCx<'_>, rect: Rect, radius: f32) {
+    let shadow_far = Rect::xywh(rect.origin.x, rect.origin.y + 8.0, rect.size.x, rect.size.y);
+    let shadow_near = Rect::xywh(rect.origin.x, rect.origin.y + 3.0, rect.size.x, rect.size.y);
+    cx.backend
+        .fill_round_rect(shadow_far, radius, (Color::BLACK).with_alpha(0.05));
+    cx.backend
+        .fill_round_rect(shadow_near, radius, (Color::BLACK).with_alpha(0.12));
+}
+
+/// Paint the message body's background wash. Tone alone separates the
+/// header, the transcript and the composer — no rules.
 pub(crate) fn paint_panel_body_chrome(cx: &mut PaintCx<'_>, theme: &Theme, rect: Rect, sep_y: f32) {
     let inner_x = rect.origin.x + 1.0;
     let inner_w = (rect.size.x - 2.0).max(0.0);
-    cx.backend.fill_rect(
-        Rect::xywh(inner_x, rect.origin.y + HEADER_HEIGHT, inner_w, 1.0),
-        (theme.border).with_alpha(0.75),
-    );
-    let body_y = rect.origin.y + HEADER_HEIGHT + 1.0;
+    let body_y = rect.origin.y + HEADER_HEIGHT;
     if sep_y > body_y {
         cx.backend.fill_rect(
             Rect::xywh(inner_x, body_y, inner_w, sep_y - body_y),
             (theme.background).with_alpha(0.72),
         );
     }
-    // Full-width divider above the input (TS `border-t` spans the whole
-    // panel, not just the padded content column).
-    cx.backend.fill_rect(
-        Rect::xywh(inner_x, sep_y, inner_w, 1.0),
-        (theme.border).with_alpha(0.75),
-    );
 }
 
 /// Paint the empty-state: centered hint, 4 full-width rounded pills, then two tip lines.
@@ -178,10 +170,9 @@ pub(crate) fn paint_examples(
         .draw_text(&hint, Point2D::new(rect.origin.x + PAD, hint_y));
 
     // ── 4 stacked full-width pills ───────────────────────────────────────────
-    // Pill fill is slightly lighter than the panel bg — use card color with
-    // a subtle alpha so it reads as a distinct surface.
-    let pill_bg = (theme.secondary).with_alpha(0.85 * opacity);
-    let pill_border = (theme.border).with_alpha(0.7 * opacity);
+    // A filled field tone, no outline: the pill reads as a surface by
+    // tone alone, like every Figma UI3 input.
+    let pill_bg = (theme.input).with_alpha(opacity);
     let text_color = (theme.foreground).with_alpha(opacity);
 
     for (idx, (pill, ex)) in example_card_rects(rect)
@@ -211,15 +202,6 @@ pub(crate) fn paint_examples(
                 pressed,
             );
         }
-
-        // Border: slightly accent-tinted on hover/press, subtle otherwise.
-        let border = if hovered || pressed {
-            (theme.primary).with_alpha(0.35)
-        } else {
-            pill_border
-        };
-        cx.backend
-            .stroke_round_rect(*pill, EXAMPLE_PILL_RADIUS, border, 1.0);
 
         // Single-line prompt label, left-padded, ellipsized if needed.
         let text_max_w = (pill.size.x - EXAMPLE_PILL_TEXT_PAD * 2.0).max(0.0);
@@ -470,12 +452,12 @@ mod tests {
         );
     }
 
-    /// #37: pill radius is the new compact value (14px).
+    /// UI3: pills are filled fields at the 8px field radius.
     #[test]
-    fn example_pill_radius_is_compact_14px() {
+    fn example_pill_radius_is_the_8px_field_radius() {
         assert!(
-            (EXAMPLE_PILL_RADIUS - 14.0).abs() < 0.01,
-            "pill radius should be 14px (#37 compact), got {}",
+            (EXAMPLE_PILL_RADIUS - 8.0).abs() < 0.01,
+            "pill radius should be 8px (UI3 field radius), got {}",
             EXAMPLE_PILL_RADIUS
         );
     }
@@ -511,10 +493,10 @@ mod tests {
             .iter()
             .filter(|(_, r)| *r >= EXAMPLE_PILL_RADIUS - 0.01)
             .collect();
-        // 2 pills × (fill + stroke) — pills 3 and 4 are dropped entirely.
+        // 2 pills × fill (no outline) — pills 3 and 4 are dropped entirely.
         assert_eq!(
             pill_rects.len(),
-            4,
+            2,
             "only the pills that fully fit may paint, got {} rects",
             pill_rects.len()
         );
@@ -566,7 +548,7 @@ mod tests {
             .iter()
             .filter(|(_, r)| *r >= EXAMPLE_PILL_RADIUS - 0.01)
             .count();
-        assert_eq!(pill_rects, 8, "all four pills still paint (fill + stroke)");
+        assert_eq!(pill_rects, 4, "all four pills still paint (fill only)");
     }
 
     /// #37: two tip lines must not overlap each other.

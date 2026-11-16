@@ -73,8 +73,6 @@ pub(crate) fn paint_action_step(
             ),
             label: &step.label,
             label_color,
-            background: theme.card,
-            border: theme.border,
             status,
             expanded: (!step.details.is_empty()).then_some(step.expanded),
             right_reserve: base_right_reserve(step)
@@ -98,15 +96,6 @@ pub(crate) fn paint_action_step(
     }
 
     if step.expanded && !step.details.is_empty() {
-        cx.backend.stroke_line(
-            Point2D::new(step.rect.origin.x, step.rect.origin.y + ACTION_STEP_H),
-            Point2D::new(
-                step.rect.origin.x + step.rect.size.x,
-                step.rect.origin.y + ACTION_STEP_H,
-            ),
-            theme.border,
-            1.0,
-        );
         cx.backend.save();
         cx.backend.clip_rect(step.rect);
         let mut baseline = step.rect.origin.y + ACTION_STEP_H + ACTION_DETAIL_GAP + 9.0;

@@ -552,16 +552,11 @@ pub(crate) fn paint_design_block(
     block: &DesignBlock,
     copy_visible: bool,
 ) {
-    let fill = if block.expanded {
-        theme.muted.with_alpha(0.40)
-    } else {
-        theme.background.with_alpha(0.40)
-    };
-    let border = theme
-        .border
-        .with_alpha(if block.expanded { 0.60 } else { 0.30 });
-    cx.backend.fill_round_rect(block.rect, 6.0, fill);
-    cx.backend.stroke_round_rect(block.rect, 6.0, border, 1.0);
+    // Flat row when collapsed; an expanded block is one filled neutral well
+    // holding a recessed code well and the Apply button — no outlines.
+    if block.expanded {
+        cx.backend.fill_round_rect(block.rect, 8.0, theme.muted);
+    }
 
     let icon_bg = theme.primary.with_alpha(0.10);
     let icon_bg_rect = Rect::xywh(
@@ -640,13 +635,8 @@ pub(crate) fn paint_design_block(
     );
 
     if block.body.size.y > 0.0 {
-        let mut body_fill = theme.card;
-        body_fill.a *= 0.5;
-        let mut body_border = theme.border;
-        body_border.a *= 0.3;
-        cx.backend.fill_round_rect(block.body, 6.0, body_fill);
         cx.backend
-            .stroke_round_rect(block.body, 6.0, body_border, 1.0);
+            .fill_round_rect(block.body, 6.0, theme.canvas_surface);
         cx.backend.save();
         cx.backend.clip_rect(block.body);
         let mut baseline = block.body.origin.y + 18.0;
@@ -666,17 +656,12 @@ pub(crate) fn paint_design_block(
     }
 
     if let Some(apply) = block.apply {
-        let mut apply_fill = theme.muted;
-        apply_fill.a *= 0.35;
-        let mut apply_border = theme.border;
-        apply_border.a *= 0.3;
-        cx.backend.fill_round_rect(apply, 6.0, apply_fill);
-        cx.backend.stroke_round_rect(apply, 6.0, apply_border, 1.0);
+        cx.backend.fill_round_rect(apply, 6.0, theme.primary);
         let layout = TextLayout::single_run(
             "Apply to Canvas",
             "system-ui",
             10.0,
-            (theme.muted_foreground).to_jian(),
+            (theme.primary_foreground).to_jian(),
             Point2D::new(0.0, 0.0),
         );
         let text_x = apply.origin.x + (apply.size.x - 84.0).max(0.0) / 2.0;

@@ -383,7 +383,6 @@ pub(crate) fn paint_tool_panel(
 }
 
 fn paint_tool_panel_header(cx: &mut PaintCx<'_>, theme: &Theme, panel: &ToolPanel) {
-    cx.backend.fill_round_rect(panel.header, 6.0, theme.muted);
     let icon = if panel.collapsed {
         Icon::ChevronRight
     } else {
@@ -411,14 +410,6 @@ fn paint_tool_panel_header(cx: &mut PaintCx<'_>, theme: &Theme, panel: &ToolPane
 }
 
 fn paint_tool_card(cx: &mut PaintCx<'_>, theme: &Theme, card: &ToolCallCard, now_ms: u64) {
-    let mut bg = theme.card;
-    let mut border = theme.border;
-    if card.level == ToolLevel::Delete {
-        border = theme.destructive;
-        border.a *= 0.35;
-        bg = theme.destructive;
-        bg.a *= 0.08;
-    }
     let text_color = if card.level == ToolLevel::Delete {
         theme.destructive
     } else {
@@ -447,8 +438,6 @@ fn paint_tool_card(cx: &mut PaintCx<'_>, theme: &Theme, card: &ToolCallCard, now
             header: card.header,
             label: verb_for_tool(&card.name),
             label_color: text_color,
-            background: bg,
-            border,
             status,
             expanded: Some(card.expanded),
             right_reserve: source_reserve,
@@ -462,12 +451,6 @@ fn paint_tool_card(cx: &mut PaintCx<'_>, theme: &Theme, card: &ToolCallCard, now
     }
 
     if card.body.size.y > 0.0 {
-        cx.backend.stroke_line(
-            Point2D::new(card.body.origin.x, card.body.origin.y),
-            Point2D::new(card.body.origin.x + card.body.size.x, card.body.origin.y),
-            theme.border,
-            1.0,
-        );
         cx.backend.save();
         cx.backend.clip_rect(card.body);
         let mut baseline = card.body.origin.y + CARD_PAD_Y + 9.0;
@@ -577,7 +560,7 @@ mod tests {
     }
 
     #[test]
-    fn expanded_tool_card_paints_ts_body_separator() {
+    fn expanded_tool_card_paints_a_filled_body_well_and_no_divider() {
         let mut backend = StatusIconBackend::default();
         let mut cx = PaintCx {
             backend: &mut backend,
@@ -587,14 +570,14 @@ mod tests {
 
         paint_tool_card(&mut cx, &theme, &card, 0);
 
+        assert!(
+            backend.separator_lines.is_empty(),
+            "the body is separated by tone, not a rule"
+        );
         assert_eq!(
-            backend.separator_lines,
-            vec![(
-                Point2D::new(card.body.origin.x, card.body.origin.y),
-                Point2D::new(card.body.origin.x + card.body.size.x, card.body.origin.y),
-                theme.border,
-                1.0,
-            )]
+            backend.fills,
+            vec![(card.body, 6.0, theme.muted)],
+            "the args / result lines sit in one filled muted well"
         );
     }
 
@@ -678,6 +661,7 @@ mod tests {
         status_paths: Vec<&'static str>,
         status_colors: Vec<Color>,
         separator_lines: Vec<(Point2D, Point2D, Color, f32)>,
+        fills: Vec<(Rect, f32, Color)>,
         rotations: Vec<f32>,
     }
 
@@ -691,7 +675,9 @@ mod tests {
         fn stroke_line(&mut self, from: Point2D, to: Point2D, color: Color, width: f32) {
             self.separator_lines.push((from, to, color, width));
         }
-        fn fill_round_rect(&mut self, _: Rect, _: f32, _: Color) {}
+        fn fill_round_rect(&mut self, rect: Rect, radius: f32, color: Color) {
+            self.fills.push((rect, radius, color));
+        }
         fn stroke_round_rect(&mut self, _: Rect, _: f32, _: Color, _: f32) {}
         fn stroke_svg_path(&mut self, d: &str, _at: Point2D, _: f32, color: Color, _: f32) {
             // Record only glyphs from the STATUS icon set — the expander

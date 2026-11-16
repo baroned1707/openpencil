@@ -432,9 +432,9 @@ fn pressed_model_row_paints_studio_pressed_pill() {
     // pressed token on the 6 px-inset radius-8 pill. Previously the
     // shared select feedback wash at a 4 px inset / radius 6 with
     // `theme.button_hover × 1.8`; the dark pressed token is now
-    // derived from `theme.muted`.
+    // derived from `theme.row_selected`.
     let expected_rect = model_row_pill_rect(rect, row_y);
-    let expected = theme.muted;
+    let expected = theme.row_selected;
 
     paint_model_picker(
         &mut cx,
@@ -677,9 +677,9 @@ fn selected_row_pill_stays_inside_popover_at_minimum_width() {
     let check_top = row_y + (MODEL_ROW_H - 14.0) / 2.0;
     assert!(check_top >= pill.origin.y - 0.01);
     assert!(check_top + 14.0 <= pill.origin.y + pill.size.y + 0.01);
-    // The light-theme selected fill is the Studio `#EAF2FF` pill at
+    // The light-theme selected fill is the primary-tinted row token at
     // radius 8, painted at exactly the pill rect.
-    let studio_selected = Color::rgb_u8(0xEA, 0xF2, 0xFF);
+    let studio_selected = theme.row_selected_primary;
     assert!(
         backend.fills.iter().any(|(fill, radius, color)| {
             *fill == pill && (*radius - 8.0).abs() < 0.01 && color_close(*color, studio_selected)

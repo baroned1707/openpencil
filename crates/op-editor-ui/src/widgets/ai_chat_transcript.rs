@@ -648,10 +648,10 @@ pub(crate) fn paint_transcript_with_selection(
             paint_design_block(cx, theme, block, copy_visible);
         }
         if let Some(bubble) = &item.bubble {
-            // #27 restyle: user bubble = medium-gray (theme.user_bubble),
-            // assistant text = plain (no bubble background).
+            // UI3: user bubble = filled neutral well (theme.muted), no
+            // outline; assistant text = plain (no bubble background).
             let (bg, fg) = match item.role {
-                ChatRole::User => (theme.user_bubble, theme.user_bubble_foreground),
+                ChatRole::User => (theme.muted, theme.foreground),
                 ChatRole::Assistant => (theme.muted, theme.foreground),
             };
             if bubble.typing {
@@ -758,7 +758,6 @@ pub(crate) fn paint_transcript_with_selection(
                 1.5,
             );
             cx.backend.draw_image(*rect, img.id, &img.data);
-            cx.backend.stroke_round_rect(*rect, 6.0, theme.border, 1.0);
         }
     }
     cx.backend.restore();

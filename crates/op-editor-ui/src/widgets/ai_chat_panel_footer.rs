@@ -263,10 +263,13 @@ pub(crate) fn paint_parallel_agents_picker(
 ) {
     let picker = parallel_agents_picker_rect(footer);
 
-    // Card background + border.
-    cx.backend.fill_round_rect(picker, 8.0, theme.card);
-    cx.backend
-        .stroke_round_rect(picker, 8.0, (theme.border).with_alpha(0.8), 1.0);
+    // Raised card: soft shadow + popover tone, no outline.
+    crate::widgets::ai_chat_panel_paint::paint_soft_shadow(cx, picker, 8.0);
+    cx.backend.fill_round_rect(
+        picker,
+        8.0,
+        crate::widgets::ai_chat_panel_paint::raised_surface(theme),
+    );
 
     // Title row — "PARALLEL AGENTS" in muted small caps.
     let title_x = picker.origin.x + 10.0;
@@ -362,15 +365,8 @@ pub(crate) fn paint_bottom_toolbar(
 ) {
     use op_editor_core::ChatFooterButton;
 
-    // --- Model picker pill (left anchor) ---
-    cx.backend
-        .fill_round_rect(footer.model, 8.0, (widget.theme.muted).with_alpha(0.3));
-    cx.backend.stroke_round_rect(
-        footer.model,
-        8.0,
-        (widget.theme.border).with_alpha(0.75),
-        1.0,
-    );
+    // --- Model chip (left anchor) — quiet text button: no resting fill,
+    //     only the hover / press wash below. ---
     if widget.footer_hover == Some(ChatFooterButton::ModelPicker)
         || widget.footer_pressed == Some(ChatFooterButton::ModelPicker)
     {
@@ -605,20 +601,14 @@ pub(crate) fn paint_bottom_toolbar(
         let stop_pressed = widget.footer_pressed == Some(ChatFooterButton::Stop);
         let stop_hovered = widget.footer_hover == Some(ChatFooterButton::Stop);
         let stop_bg = if stop_pressed {
-            (widget.theme.muted).with_alpha(0.55)
+            widget.theme.row_selected
         } else if stop_hovered {
-            (widget.theme.muted).with_alpha(0.45)
+            widget.theme.accent
         } else {
-            (widget.theme.muted).with_alpha(0.35)
+            (widget.theme.accent).with_alpha(0.7)
         };
         cx.backend
             .fill_round_rect(stop_rect, FOOTER_CIRCLE_D / 2.0, stop_bg);
-        cx.backend.stroke_round_rect(
-            stop_rect,
-            FOOTER_CIRCLE_D / 2.0,
-            (widget.theme.border).with_alpha(0.6),
-            1.0,
-        );
         // Filled red stop square at the center — the universal "recording /
         // running, press to stop" affordance; a muted 8px outline read as a
         // mystery dot (user feedback 2026-07-12).
@@ -660,7 +650,7 @@ pub(crate) fn paint_bottom_toolbar(
         } else {
             // Disabled state — faded.
             (
-                (widget.theme.muted).with_alpha(0.25),
+                widget.theme.accent,
                 Color {
                     a: 0.3,
                     ..widget.theme.muted_foreground

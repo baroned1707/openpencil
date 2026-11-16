@@ -173,9 +173,9 @@ fn paint_draws_header_divider_and_message_body_background() {
 
     panel.paint(&mut cx, rect);
 
-    // Pinned into the rail the panel keeps ONE rule, the one above the
-    // composer: the rail already bounds it, so the header hairline and
-    // the transcript wash would be a second border inside one surface.
+    // Pinned into the rail the panel draws NO rule at all: tone separates
+    // the header, the transcript and the composer, so neither the header
+    // hairline nor a divider above the composer exists.
     assert!(
         !has_fill_rect(
             &backend.fills,
@@ -189,11 +189,19 @@ fn paint_draws_header_divider_and_message_body_background() {
         "no header hairline in the rail"
     );
     assert!(
-        has_fill_rect(
+        !has_fill_rect(
             &backend.fills,
             Rect::xywh(rect.origin.x + 1.0, sep_y, rect.size.x - 2.0, 1.0)
         ),
-        "the composer still has its rule"
+        "no rule above the composer"
+    );
+    // The composer is one filled `theme.input` field, radius 8.
+    assert!(
+        backend.round_rects.iter().any(|(_, radius, color)| {
+            (*radius - 8.0).abs() < 0.01
+                && super::tests_paint::color_close(*color, panel.theme.input)
+        }),
+        "the composer is a filled input field"
     );
 }
 

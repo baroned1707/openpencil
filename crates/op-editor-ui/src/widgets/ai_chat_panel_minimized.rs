@@ -119,19 +119,11 @@ pub(crate) fn paint_minimized_bar(
 ) {
     use op_editor_core::ChatHeaderButton;
 
-    // Lift the bar off the canvas with ONE very light shadow layer — the
-    // expanded panel stacks two because it is a window; the bar is a
-    // strip and reads heavy the moment its shadow is visible as such.
-    cx.backend.fill_round_rect(
-        Rect {
-            origin: Point2D::new(rect.origin.x, rect.origin.y + 2.0),
-            size: rect.size,
-        },
-        MINIMIZED_RADIUS,
-        (Color::BLACK).with_alpha(0.05),
-    );
+    // Lift the bar off the canvas with a soft shadow and its own tone —
+    // never an outline.
+    crate::widgets::ai_chat_panel_paint::paint_soft_shadow(cx, rect, MINIMIZED_RADIUS);
     cx.backend
-        .fill_round_rect(rect, MINIMIZED_RADIUS, (theme.card).with_alpha(0.98));
+        .fill_round_rect(rect, MINIMIZED_RADIUS, theme.card);
     // The whole bar is one button, so its feedback wash covers the whole
     // surface — the same neutral hover/press pair the header buttons use.
     let hovered = widget.header_hover == Some(ChatHeaderButton::ToggleCollapse);
@@ -143,8 +135,6 @@ pub(crate) fn paint_minimized_bar(
             chat_neutral_feedback_color(theme, pressed),
         );
     }
-    cx.backend
-        .stroke_round_rect(rect, MINIMIZED_RADIUS, (theme.border).with_alpha(0.82), 1.0);
 
     let selected_model = widget.state.selected_model_entry();
     let model_name: &str = selected_model

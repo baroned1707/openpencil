@@ -94,8 +94,8 @@ pub fn paint_attachment_row(
 ) {
     let rects = attachment_chip_rects(row_rect, state.pending_attachments.len());
     for (chip, att) in rects.iter().zip(state.pending_attachments.iter()) {
-        cx.backend.fill_round_rect(*chip, 6.0, theme.muted);
-        cx.backend.stroke_round_rect(*chip, 6.0, theme.border, 1.0);
+        // Sits on the composer field (`theme.input`), so it lifts one tone.
+        cx.backend.fill_round_rect(*chip, 6.0, theme.accent);
         let cy = chip.origin.y + chip.size.y / 2.0;
         let name = TextLayout::single_run(
             &truncate_name(&att.name),

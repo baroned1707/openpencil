@@ -3,12 +3,10 @@
 //! this sibling (declared from there via `#[path]`) keeps the paint
 //! pass under the 800-line cap.
 //!
-//! Light-mode values restate the founder-approved Studio Home
-//! palette — origin: `home_surface_palette.rs`. Several are verbatim
-//! `tab_*` tokens (hover fill `#F0F5FD`, selected fill `#EAF2FF`,
-//! border `#E1EAF7`, focus line `#C8DBFF`). The picker is painted
-//! from the generic editor `Theme`, which carries no Studio tokens,
-//! so dark mode derives each value from the closest `Theme` field.
+//! Every colour comes from the editor `Theme` (Figma UI3 palette), so
+//! the popover follows the shell in both themes. It separates from the
+//! panel by a soft shadow and its own tone, never by an outline; the
+//! search well strokes only while engaged (the functional focus ring).
 
 use super::{
     is_acp, is_builtin, model_list_rect, model_row_pill_rect, normalized_query, paint_model_logo,
@@ -25,24 +23,6 @@ use jian_core::text_input::TextInputState;
 use jian_widgets::components::select::SelectState;
 use op_editor_core::chat::ModelEntry;
 use op_editor_core::Locale;
-
-// Studio light tokens (see the module doc for their origin).
-const STUDIO_CARD: Color = Color::rgb_u8(0xFF, 0xFF, 0xFF);
-const STUDIO_BORDER: Color = Color::rgb_u8(0xE1, 0xEA, 0xF7);
-/// Popover shadow ink `#283548` at 10 % — `0 12px 32px`.
-const STUDIO_SHADOW: Color = Color::rgba_u8(0x28, 0x35, 0x48, 0.10);
-const STUDIO_SEARCH_WELL: Color = Color::rgb_u8(0xF5, 0xF8, 0xFD);
-const STUDIO_HOVER_FILL: Color = Color::rgb_u8(0xF0, 0xF5, 0xFD);
-/// One step darker than the hover fill (no Studio token exists for
-/// the pressed step).
-const STUDIO_PRESSED_FILL: Color = Color::rgb_u8(0xE7, 0xEF, 0xFB);
-const STUDIO_SELECTED_FILL: Color = Color::rgb_u8(0xEA, 0xF2, 0xFF);
-const STUDIO_SELECTED_INK: Color = Color::rgb_u8(0x25, 0x63, 0xEB);
-const STUDIO_INK: Color = Color::rgb_u8(0x11, 0x1A, 0x32);
-const STUDIO_MUTED: Color = Color::rgb_u8(0x78, 0x85, 0x9C);
-const STUDIO_PLACEHOLDER: Color = Color::rgb_u8(0x92, 0x9D, 0xAF);
-const STUDIO_HAIRLINE: Color = Color::rgb_u8(0xE8, 0xEE, 0xF7);
-const STUDIO_ACTION_BLUE: Color = Color::rgb_u8(0x07, 0x5B, 0xFF);
 
 /// Popover corner radius.
 const POPOVER_RADIUS: f32 = 12.0;
@@ -73,10 +53,8 @@ const CHECK_SIZE: f32 = 14.0;
 /// Resolved picker colours for one paint pass.
 struct PickerTokens {
     card: Color,
-    border: Color,
     shadow: Color,
     search_well: Color,
-    search_border: Color,
     search_focus_border: Color,
     hover_fill: Color,
     pressed_fill: Color,
@@ -85,59 +63,26 @@ struct PickerTokens {
     ink: Color,
     muted: Color,
     placeholder: Color,
-    hairline: Color,
     action_blue: Color,
 }
 
 impl PickerTokens {
     fn for_theme(theme: &Theme) -> Self {
-        if theme_is_dark(theme) {
-            // Dark mode: derive from the editor Theme so the popover
-            // harmonises with the dark shell it floats over.
-            Self {
-                card: theme.popover,
-                border: theme.border,
-                shadow: Color::rgb_u8(0x00, 0x00, 0x00).with_alpha(0.32),
-                search_well: theme.muted,
-                search_border: theme.border,
-                search_focus_border: theme.ring,
-                hover_fill: theme.accent,
-                pressed_fill: theme.muted,
-                selected_fill: theme.row_selected_primary,
-                selected_ink: theme.primary,
-                ink: theme.foreground,
-                muted: theme.muted_foreground,
-                placeholder: theme.muted_foreground,
-                hairline: theme.border,
-                action_blue: theme.primary,
-            }
-        } else {
-            Self {
-                card: STUDIO_CARD,
-                border: STUDIO_BORDER,
-                shadow: STUDIO_SHADOW,
-                search_well: STUDIO_SEARCH_WELL,
-                search_border: STUDIO_BORDER,
-                search_focus_border: Color::rgb_u8(0xC8, 0xDB, 0xFF),
-                hover_fill: STUDIO_HOVER_FILL,
-                pressed_fill: STUDIO_PRESSED_FILL,
-                selected_fill: STUDIO_SELECTED_FILL,
-                selected_ink: STUDIO_SELECTED_INK,
-                ink: STUDIO_INK,
-                muted: STUDIO_MUTED,
-                placeholder: STUDIO_PLACEHOLDER,
-                hairline: STUDIO_HAIRLINE,
-                action_blue: STUDIO_ACTION_BLUE,
-            }
+        Self {
+            card: crate::widgets::ai_chat_panel_paint::raised_surface(theme),
+            shadow: Color::rgb_u8(0x00, 0x00, 0x00).with_alpha(0.24),
+            search_well: theme.input,
+            search_focus_border: theme.ring,
+            hover_fill: theme.accent,
+            pressed_fill: theme.row_selected,
+            selected_fill: theme.row_selected_primary,
+            selected_ink: theme.primary,
+            ink: theme.foreground,
+            muted: theme.muted_foreground,
+            placeholder: theme.muted_foreground,
+            action_blue: theme.primary,
         }
     }
-}
-
-/// The editor `Theme` carries no mode flag; its card fill is the
-/// reliable proxy (light `#F7F7F7` vs dark `#1E1E1E`).
-fn theme_is_dark(theme: &Theme) -> bool {
-    let c = theme.card;
-    0.2126 * c.r + 0.7152 * c.g + 0.0722 * c.b < 0.5
 }
 
 /// The laid-out text of one model row: the ellipsized name plus the
@@ -250,8 +195,6 @@ pub fn paint_model_picker(
     );
     cx.backend
         .fill_round_rect(rect, POPOVER_RADIUS, tokens.card);
-    cx.backend
-        .stroke_round_rect(rect, POPOVER_RADIUS, tokens.border, 1.0);
     // Extreme keyboard occlusion can leave less than the fixed chrome's
     // natural height. Keep every painted control inside the resolved card.
     cx.backend.save();
@@ -333,8 +276,7 @@ pub fn paint_model_picker(
     cx.backend.restore();
 }
 
-/// Group header: hairline above every group but the first, then the
-/// 10 px w600 uppercase label with 0.6 px letter-spacing at the
+/// Group header: the 10 px w600 uppercase label with 0.6 px letter-spacing at the
 /// shared 12 px inset. Tracked text has no backend primitive, so the
 /// label paints per glyph (the Home eyebrow precedent).
 fn paint_group_header(
@@ -342,18 +284,9 @@ fn paint_group_header(
     tokens: &PickerTokens,
     rect: Rect,
     y: f32,
-    first_group: bool,
+    _first_group: bool,
     label: &str,
 ) {
-    if !first_group {
-        cx.backend.fill_rect(
-            Rect {
-                origin: Point2D::new(rect.origin.x + ROW_INSET_X, y),
-                size: Point2D::new((rect.size.x - ROW_INSET_X * 2.0).max(0.0), 1.0),
-            },
-            tokens.hairline,
-        );
-    }
     let baseline = y + MODEL_GROUP_H / 2.0 + GROUP_LABEL_SIZE * 0.35;
     let mut x = rect.origin.x + ROW_INSET_X;
     for character in label.chars() {
@@ -470,10 +403,9 @@ fn paint_model_row(
 }
 
 /// Search strip: the 32 px rounded-8 well with its 14 px glyph and
-/// 12 px placeholder. The well shows its focus border once the field
-/// is engaged (text present or caret moved) — the popover's search
-/// owns editor focus whenever it is open, so a fresh untouched field
-/// is the only state that shows the rest border.
+/// 12 px placeholder. The well shows its focus ring once the field
+/// is engaged (text present or caret moved); at rest it is a plain
+/// filled well.
 fn paint_search_row(
     cx: &mut PaintCx<'_>,
     theme: &Theme,
@@ -487,12 +419,10 @@ fn paint_search_row(
     let well = search_field_rect(rect);
     cx.backend.fill_round_rect(well, 8.0, tokens.search_well);
     let engaged = !raw.is_empty() || input.caret() > 0;
-    let border = if engaged {
-        tokens.search_focus_border
-    } else {
-        tokens.search_border
-    };
-    cx.backend.stroke_round_rect(well, 8.0, border, 1.0);
+    if engaged {
+        cx.backend
+            .stroke_round_rect(well, 8.0, tokens.search_focus_border, 1.0);
+    }
     draw_icon(
         cx.backend,
         Icon::Search,
@@ -541,7 +471,7 @@ fn paint_search_row(
     }
 }
 
-/// Footer action row: a full-width hairline, then the 14 px plus
+/// Footer action row: the 14 px plus
 /// glyph and the blue label so the row reads as an action rather
 /// than another model.
 fn paint_footer_row(cx: &mut PaintCx<'_>, tokens: &PickerTokens, rect: Rect, locale: Locale) {
@@ -550,13 +480,6 @@ fn paint_footer_row(cx: &mut PaintCx<'_>, tokens: &PickerTokens, rect: Rect, loc
         return;
     }
     let top = row.origin.y;
-    cx.backend.fill_rect(
-        Rect {
-            origin: Point2D::new(rect.origin.x, top),
-            size: Point2D::new(rect.size.x, 1.0),
-        },
-        tokens.hairline,
-    );
     draw_icon(
         cx.backend,
         Icon::Plus,
