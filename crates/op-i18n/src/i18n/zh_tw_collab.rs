@@ -544,6 +544,12 @@ pub fn lookup(key: &str) -> Option<&'static str> {
         "projects.running" => "{{count}} 個執行中",
         "dialog.agentRunningTitle" => "智慧代理仍在工作",
         "dialog.agentRunningBody" => "「{{name}}」中有一個智慧代理仍在執行。\n\n關閉會停止它。\n\n是 = 停止並關閉 · 否或取消 = 繼續工作。",
+        "recovery.titleOne" => "復原 1 個未儲存的文件？",
+        "recovery.titleMany" => "復原 {{count}} 個未儲存的文件？",
+        "recovery.body" => "OpenPencil 上次未正常關閉。以下文件含有未儲存的變更：\n\n{{list}}\n\n選擇「是」復原它們，選擇「否」捨棄它們。",
+        "recovery.more" => "另外還有 {{count}} 個",
+        "recovery.noteNewer" => "磁碟上的檔案較新，因此將以未命名副本開啟",
+        "recovery.noteGone" => "原檔案已不存在，因此將以未命名副本開啟",
         _ => return None,
     })
 }

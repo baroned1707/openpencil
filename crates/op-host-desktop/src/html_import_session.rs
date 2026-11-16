@@ -39,6 +39,9 @@ struct HtmlPrepared {
 pub struct HtmlImportSession {
     path: PathBuf,
     rx: Receiver<Result<HtmlPrepared, HtmlImportError>>,
+    /// A finished parse that may not replace the document on screen yet; held
+    /// while the host opens a fresh tab for it.
+    landed: Option<HtmlPrepared>,
 }
 
 /// Spawn a worker thread that reads `path`, converts a single page or
@@ -69,7 +72,11 @@ pub fn spawn(host: &mut WidgetHostNative, path: PathBuf) -> HtmlImportSession {
         let _ = tx.send(Err(HtmlImportError::WorkerSpawn(err.to_string())));
     }
 
-    HtmlImportSession { path, rx }
+    HtmlImportSession {
+        path,
+        rx,
+        landed: None,
+    }
 }
 
 fn parse_path(path: &Path) -> Result<HtmlPrepared, HtmlImportError> {
@@ -215,17 +222,28 @@ fn hex_value(byte: u8) -> Option<u8> {
 }
 
 /// Non-blocking drain — same contract as
-/// `figma_import_session::pump`.
+/// `figma_import_session::pump`, including `can_replace_active`: a finished
+/// parse is parked and `NeedsFreshTab` returned when the document on screen
+/// holds work.
 pub fn pump(
     host: &mut WidgetHostNative,
     session: &mut Option<HtmlImportSession>,
     current_path: &mut Option<PathBuf>,
     window: Option<&winit::window::Window>,
+    can_replace_active: bool,
 ) -> PumpOutcome {
     let Some(sess) = session.as_mut() else {
         return PumpOutcome::Idle;
     };
-    match sess.rx.try_recv() {
+    let received = match sess.landed.take() {
+        Some(landed) => Ok(Ok(landed)),
+        None => sess.rx.try_recv(),
+    };
+    match received {
+        Ok(Ok(landed)) if !can_replace_active => {
+            sess.landed = Some(landed);
+            PumpOutcome::NeedsFreshTab
+        }
         Ok(Ok(landed)) => {
             let HtmlPrepared {
                 mut prepared,
@@ -340,12 +358,13 @@ mod tests {
         let mut session = Some(HtmlImportSession {
             path: PathBuf::from("fixture.html"),
             rx,
+            landed: None,
         });
         let mut host = WidgetHostNative::new();
         let mut current_path = Some(PathBuf::from("old.op"));
 
         assert_eq!(
-            pump(&mut host, &mut session, &mut current_path, None),
+            pump(&mut host, &mut session, &mut current_path, None, true),
             PumpOutcome::CompletedOk
         );
         assert!(host.editor_state().is_dirty());

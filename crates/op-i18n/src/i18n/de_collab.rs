@@ -544,6 +544,12 @@ pub fn lookup(key: &str) -> Option<&'static str> {
         "projects.running" => "{{count}} laufen",
         "dialog.agentRunningTitle" => "Agent arbeitet noch",
         "dialog.agentRunningBody" => "„{{name}}“ hat noch einen laufenden Agenten.\n\nBeim Schließen wird er gestoppt.\n\nJa = Stoppen und schließen · Nein oder Abbrechen = weiterarbeiten lassen.",
+        "recovery.titleOne" => "1 nicht gespeichertes Dokument wiederherstellen?",
+        "recovery.titleMany" => "{{count}} nicht gespeicherte Dokumente wiederherstellen?",
+        "recovery.body" => "OpenPencil wurde nicht ordnungsgemäß beendet. Diese Dokumente hatten ungespeicherte Änderungen:\n\n{{list}}\n\nWähle „Ja“, um sie wiederherzustellen, oder „Nein“, um sie zu verwerfen.",
+        "recovery.more" => "und {{count}} weitere",
+        "recovery.noteNewer" => "die Datei auf dem Datenträger ist neuer, daher wird sie als unbenannte Kopie geöffnet",
+        "recovery.noteGone" => "die Originaldatei existiert nicht mehr, daher wird sie als unbenannte Kopie geöffnet",
         _ => return None,
     })
 }

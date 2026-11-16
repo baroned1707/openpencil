@@ -27,6 +27,7 @@ pub mod screenshot;
 pub use crate::mcp_serve::document_address::mcp_url_for_document;
 pub use design_md_route::{DesignMdResponder, DesignMdResponseError, PendingDesignMdRequest};
 pub use error::McpLiveError;
+pub use live_timing::{Clock, SystemClock};
 pub use resolver::{DocumentListing, DocumentResolver, ResolveError, SingleDocumentResolver};
 
 /// Per-request budget for a UI-thread snapshot/apply ack. Sized to cover a
@@ -90,6 +91,12 @@ pub struct McpLiveServer {
     /// provider worker. Kept separate from `EditorState`: this route neither
     /// reads nor mutates the live document.
     pending_design_md: VecDeque<PendingDesignMdRequest>,
+    /// The clock and budgets every request's deadline is measured on; the
+    /// connection threads hold the same value.
+    timing: LiveTiming,
+    /// Requests the pump dropped unrun because their caller had stopped
+    /// waiting (deadline passed, or already cancelled). UI-thread-only.
+    expired_requests: u64,
 }
 
 #[derive(Default)]
@@ -129,6 +136,7 @@ enum UiRequest {
     },
     Snapshot {
         document: DocumentId,
+        ticket: Arc<Ticket>,
         ack: SyncSender<Result<SnapshotAck, ResolveError>>,
     },
     /// Lightweight read snapshot for `list_pages`. Copying only page metadata
@@ -136,6 +144,7 @@ enum UiRequest {
     /// ids, names, and the active index.
     ListPages {
         document: DocumentId,
+        ticket: Arc<Ticket>,
         ack: SyncSender<Result<op_mcp::ListPages, ResolveError>>,
     },
     Apply {
@@ -152,6 +161,10 @@ enum UiRequest {
         /// call that took no snapshot (the lightweight `set_active_page`
         /// path), which has nothing to compare against.
         expected_epoch: Option<DocumentEpoch>,
+        /// Carries the caller's deadline. The pump drops the request unapplied
+        /// once it has passed, and the caller reports the outcome by which side
+        /// won the ticket (see `request_ticket`).
+        ticket: Arc<Ticket>,
         ack: SyncSender<ApplyAck>,
     },
     /// Whole-document sync (TS REST `/api/mcp/document` parity), always into
@@ -163,12 +176,14 @@ enum UiRequest {
     ReplaceDocument {
         doc: Box<jian_ops_schema::PenDocument>,
         editor_meta: op_pen_loader::EditorMeta,
+        ticket: Arc<Ticket>,
         ack: SyncSender<Result<bool, ResolveError>>,
     },
     /// Editor-only live-sync update. Page switches must not install an
     /// identical whole document as an undoable replacement.
     UpdateEditorMeta {
         editor_meta: op_pen_loader::EditorMeta,
+        ticket: Arc<Ticket>,
         ack: SyncSender<Result<(), ResolveError>>,
     },
     GenerateDesignMd {
@@ -182,6 +197,7 @@ enum UiRequest {
         project_root: String,
         name: String,
         expected_epoch: DocumentEpoch,
+        ticket: Arc<Ticket>,
         ack: SyncSender<CreateAck>,
     },
     /// `debug_screenshot` against the LIVE canvas — the connection
@@ -202,6 +218,39 @@ enum UiRequest {
     },
 }
 
+impl UiRequest {
+    /// The ticket of a request the connection thread waits on and may give up
+    /// on. `None` for requests nobody waits for an answer to.
+    fn ticket(&self) -> Option<&Arc<Ticket>> {
+        match self {
+            UiRequest::Snapshot { ticket, .. }
+            | UiRequest::ListPages { ticket, .. }
+            | UiRequest::Apply { ticket, .. }
+            | UiRequest::ReplaceDocument { ticket, .. }
+            | UiRequest::UpdateEditorMeta { ticket, .. }
+            | UiRequest::CreateDocument { ticket, .. } => Some(ticket),
+            UiRequest::Documents { .. } | UiRequest::GenerateDesignMd { .. } => None,
+            #[cfg(feature = "mcp-debug-tools")]
+            UiRequest::Screenshot { .. } => None,
+        }
+    }
+
+    fn kind(&self) -> &'static str {
+        match self {
+            UiRequest::Documents { .. } => "documents",
+            UiRequest::Snapshot { .. } => "snapshot",
+            UiRequest::ListPages { .. } => "list-pages",
+            UiRequest::Apply { .. } => "apply",
+            UiRequest::ReplaceDocument { .. } => "document-sync",
+            UiRequest::UpdateEditorMeta { .. } => "metadata-sync",
+            UiRequest::GenerateDesignMd { .. } => "design-md",
+            UiRequest::CreateDocument { .. } => "create-document",
+            #[cfg(feature = "mcp-debug-tools")]
+            UiRequest::Screenshot { .. } => "screenshot",
+        }
+    }
+}
+
 impl McpLiveServer {
     #[doc(hidden)]
     pub fn start(port: u16) -> Result<Self, McpLiveError> {
@@ -209,6 +258,27 @@ impl McpLiveServer {
     }
 
     pub fn start_with_wake<F>(port: u16, wake_ui: F) -> Result<Self, McpLiveError>
+    where
+        F: Fn() + Send + Sync + 'static,
+    {
+        Self::start_with_timing(port, wake_ui, LiveTiming::system())
+    }
+
+    /// [`Self::start_with_wake`] on a caller-supplied clock: request deadlines
+    /// are measured on it by both the connection threads and the pump.
+    #[doc(hidden)]
+    pub fn start_with_wake_and_clock<F>(
+        port: u16,
+        wake_ui: F,
+        clock: Arc<dyn Clock>,
+    ) -> Result<Self, McpLiveError>
+    where
+        F: Fn() + Send + Sync + 'static,
+    {
+        Self::start_with_timing(port, wake_ui, LiveTiming::with_clock(clock))
+    }
+
+    fn start_with_timing<F>(port: u16, wake_ui: F, timing: LiveTiming) -> Result<Self, McpLiveError>
     where
         F: Fn() + Send + Sync + 'static,
     {
@@ -222,6 +292,7 @@ impl McpLiveServer {
             .set_nonblocking(true)
             .map_err(|e| McpLiveError::Startup(format!("set nonblocking: {e}")))?;
         let (req_tx, req_rx) = mpsc::channel();
+        let req_tx = UiSender::new(req_tx, timing.clone());
         let (stop_tx, stop_rx) = mpsc::channel();
         let token = make_live_token();
         // The connection threads need both halves of the admission material:
@@ -261,6 +332,8 @@ impl McpLiveServer {
             client_identity,
             last_mcp_epoch: 0,
             pending_design_md: VecDeque::new(),
+            timing,
+            expired_requests: 0,
         })
     }
 
@@ -273,10 +346,23 @@ impl McpLiveServer {
         &self.token
     }
 
+    /// How many queued requests the pump dropped unrun because their caller
+    /// had already stopped waiting. Each one is a change that was NOT applied.
+    pub fn expired_requests_dropped(&self) -> u64 {
+        self.expired_requests
+    }
+
     /// Whether a token-authed `openpencil/shutdown` was received — the UI
     /// thread should exit the event loop.
     pub fn shutdown_requested(&self) -> bool {
         self.quit_flag.load(Ordering::Acquire)
+    }
+
+    /// Consume a pending `openpencil/shutdown`: `true` once per request. The UI
+    /// thread uses this so that a quit the user cancels at the unsaved-changes
+    /// prompt is dropped instead of being asked again on every loop turn.
+    pub fn take_shutdown_request(&self) -> bool {
+        self.quit_flag.swap(false, Ordering::AcqRel)
     }
 
     /// Take the next extension design-analysis request for asynchronous
@@ -431,8 +517,10 @@ mod document_epoch;
 mod document_gates;
 mod document_target;
 mod live_call;
+mod live_timing;
 mod operation_log;
 mod pump;
+mod request_ticket;
 mod resolver;
 /// `pub(crate)` for two consts only: the shared HTTP parser
 /// (`mcp_serve::read_http_request`) has to recognise this route's path to
@@ -449,11 +537,16 @@ use doc_sync::*;
 use document_epoch::*;
 use document_gates::*;
 use document_target::active_document;
+use live_timing::{LiveTiming, UiSender};
+use request_ticket::Ticket;
 use ui_requests::*;
 
 #[cfg(test)]
 #[path = "mcp_live/document_addressing_tests.rs"]
 mod document_addressing_tests;
+#[cfg(test)]
+#[path = "mcp_live/request_deadline_tests.rs"]
+mod request_deadline_tests;
 #[cfg(test)]
 #[path = "mcp_live_tests.rs"]
 mod tests;

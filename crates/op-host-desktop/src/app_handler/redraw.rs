@@ -3,9 +3,7 @@
 //! the `app_handler.rs` spine to keep it under the 800-line cap; pure
 //! code motion.
 
-use crate::{
-    chat_session, codegen_session, figma_import_session, frame, html_import_session, DesktopApp,
-};
+use crate::{chat_session, codegen_session, figma_import_session, frame, DesktopApp};
 use std::time::{Duration, Instant};
 use winit::event_loop::ActiveEventLoop;
 
@@ -196,59 +194,10 @@ impl DesktopApp {
         if self.drain_preview_entry_figma_import_cancel() {
             self.redraw_dirty = true;
         }
-        match figma_import_session::pump(
-            &mut self.host,
-            &mut self.current_figma_import,
-            &mut self.current_path,
-            self.window.as_ref(),
-        ) {
-            figma_import_session::PumpOutcome::CompletedOk
-            | figma_import_session::PumpOutcome::CompletedSaved => {
-                self.rebind_git_session_for_current_path();
-                // The import installed a fresh `EditorState` whose
-                // revision restarts at 0 AND whose node ids can
-                // collide with ids from the document just replaced.
-                // A gate-only invalidation isn't enough: stale
-                // `in_flight`/`completed` node ids could suppress a
-                // same-id target in the new document, or a
-                // still-pending job could apply its stale result to
-                // a same-id node once it resolves. `reset()` drops
-                // the whole session (sets + in-flight jobs + the
-                // scan gate) so the new document starts clean.
-                self.image_search.reset();
-                self.redraw_dirty = true;
-            }
-            figma_import_session::PumpOutcome::CompletedErr => {
-                self.redraw_dirty = true;
-            }
-            figma_import_session::PumpOutcome::SelectionReady
-            | figma_import_session::PumpOutcome::Cancelled => {
-                self.redraw_dirty = true;
-            }
-            figma_import_session::PumpOutcome::StillPending
-            | figma_import_session::PumpOutcome::Idle => {}
-        }
-        match html_import_session::pump(
-            &mut self.host,
-            &mut self.current_html_import,
-            &mut self.current_path,
-            self.window.as_ref(),
-        ) {
-            figma_import_session::PumpOutcome::CompletedOk
-            | figma_import_session::PumpOutcome::CompletedSaved => {
-                self.rebind_git_session_for_current_path();
-                // Same fresh-EditorState reasoning as the Figma
-                // pump above: drop stale image-search state.
-                self.image_search.reset();
-                self.redraw_dirty = true;
-            }
-            figma_import_session::PumpOutcome::CompletedErr => {
-                self.redraw_dirty = true;
-            }
-            figma_import_session::PumpOutcome::SelectionReady
-            | figma_import_session::PumpOutcome::Cancelled => {}
-            figma_import_session::PumpOutcome::Idle
-            | figma_import_session::PumpOutcome::StillPending => {}
+        // Finished imports install into a pristine untitled tab, or into a new
+        // tab opened first (`import_target_host`).
+        if self.pump_import_sessions() {
+            self.redraw_dirty = true;
         }
         // Each pump retires its session when the turn finishes — once the
         // on-screen document has no chat / design / sub-agent run in flight,
@@ -432,14 +381,11 @@ impl DesktopApp {
         if self.poll_mcp_server() {
             self.redraw_dirty = true;
         }
-        // A token-authed `op stop` asked the live MCP server to quit
-        // — exit the event loop cleanly (runs `exiting()`, saving
-        // window state + settings and removing the discovery file).
-        if self.mcp_shutdown_requested() {
-            // Finalize-lifecycle invariant (0718-1-k3-1 postmortem)
-            // — see `chat_session::finalize_design_session_if_needed`'s
-            // doc comment.
-            self.finalize_runs_before_exit();
+        // A token-authed `op stop` asked the live MCP server to quit — it runs
+        // through the unsaved-changes prompts first (Cancel drops the request),
+        // then exits the event loop cleanly (runs `exiting()`, saving window
+        // state + settings and removing the discovery file).
+        if self.mcp_quit_confirmed() {
             event_loop.exit();
         }
         // Keep an open Git panel fresh against external repo

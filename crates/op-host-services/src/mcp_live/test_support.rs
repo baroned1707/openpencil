@@ -104,7 +104,7 @@ impl TestResolver {
 
     /// What the desktop does after a pump that created a file: bind the path
     /// to the document on screen.
-    fn bind_created(&mut self, path: PathBuf) {
+    pub(super) fn bind_created(&mut self, path: PathBuf) {
         if let Some(active) = self.documents.iter_mut().find(|document| document.active) {
             active.label = path
                 .file_name()
@@ -151,6 +151,11 @@ impl DocumentResolver for TestResolver {
 
 /// A server with a queue the test feeds by hand (no listener, no threads).
 pub(super) fn server_with_queue() -> (McpLiveServer, Sender<UiRequest>) {
+    server_with_timing(LiveTiming::system())
+}
+
+/// [`server_with_queue`] on the given clock and budgets.
+pub(super) fn server_with_timing(timing: LiveTiming) -> (McpLiveServer, Sender<UiRequest>) {
     let (req_tx, req_rx) = mpsc::channel();
     let (stop_tx, _stop_rx) = mpsc::channel();
     let server = McpLiveServer {
@@ -162,6 +167,8 @@ pub(super) fn server_with_queue() -> (McpLiveServer, Sender<UiRequest>) {
         client_identity: Arc::new(Mutex::new(None)),
         last_mcp_epoch: 0,
         pending_design_md: VecDeque::new(),
+        timing,
+        expired_requests: 0,
     };
     (server, req_tx)
 }
@@ -259,6 +266,23 @@ pub(super) fn serve_one(
     documents: &LiveDocuments,
     req_tx: &Sender<UiRequest>,
 ) -> String {
+    serve_one_via(
+        path,
+        extra_headers,
+        body,
+        documents,
+        &UiSender::from(req_tx.clone()),
+    )
+}
+
+/// [`serve_one`] over a queue that carries its own clock and budgets.
+pub(super) fn serve_one_via(
+    path: &str,
+    extra_headers: &str,
+    body: &str,
+    documents: &LiveDocuments,
+    req_tx: &UiSender,
+) -> String {
     let admission = LiveAdmission::new("tok".to_string(), TEST_PORT);
     let quit_flag = AtomicBool::new(false);
     let wake_ui: UiWake = Arc::new(|| {});
@@ -279,6 +303,43 @@ pub(super) fn serve_one(
     )
     .expect("served");
     stream.response()
+}
+
+/// A clock the test moves by hand: real time at creation plus an offset.
+#[derive(Clone)]
+pub(super) struct TestClock {
+    base: std::time::Instant,
+    offset_millis: Arc<AtomicU64>,
+}
+
+impl TestClock {
+    pub(super) fn new() -> Self {
+        Self {
+            base: std::time::Instant::now(),
+            offset_millis: Arc::new(AtomicU64::new(0)),
+        }
+    }
+
+    pub(super) fn advance(&self, by: Duration) {
+        self.offset_millis
+            .fetch_add(by.as_millis() as u64, Ordering::SeqCst);
+    }
+
+    /// Timing on this clock with a 5 s budget and the production 2 s grace,
+    /// none of which a test ever sleeps through.
+    pub(super) fn timing(&self) -> LiveTiming {
+        LiveTiming::new(
+            Arc::new(self.clone()),
+            Duration::from_secs(5),
+            live_timing::STARTED_GRACE,
+        )
+    }
+}
+
+impl Clock for TestClock {
+    fn now(&self) -> std::time::Instant {
+        self.base + Duration::from_millis(self.offset_millis.load(Ordering::SeqCst))
+    }
 }
 
 /// A `tools/call` body.

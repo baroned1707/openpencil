@@ -81,3 +81,31 @@ fn replay_response_restamps_the_id_and_marks_replayed() {
     let named = replay_response(stored, &op_mcp::RequestId::Str("req-7".into()));
     assert!(named.contains(r#""id":"req-7""#), "{named}");
 }
+
+#[test]
+fn an_in_doubt_call_is_remembered_and_refuses_a_retry_of_the_same_call() {
+    let start = Instant::now();
+    let call = fingerprint("add_page", &[("name", "Landing")]);
+    let mut log = OperationLog::default();
+
+    log.record_in_doubt("op-1", call, start);
+
+    assert_eq!(log.lookup("op-1", call, start), Lookup::InDoubt);
+    // Same id, different call: still a client bug, not a retry.
+    let other = fingerprint("add_page", &[("name", "Pricing")]);
+    assert_eq!(log.lookup("op-1", other, start), Lookup::Conflict);
+    // The doubt is forgotten with everything else after the TTL.
+    let later = start + OPERATION_LOG_TTL;
+    assert_eq!(log.lookup("op-1", call, later), Lookup::Miss);
+}
+
+#[test]
+fn a_call_that_was_never_recorded_leaves_its_id_free() {
+    let start = Instant::now();
+    let call = fingerprint("add_page", &[("name", "Landing")]);
+    let mut log = OperationLog::default();
+
+    // A cancelled call records nothing, so the retry is a plain miss.
+    assert_eq!(log.lookup("op-9", call, start), Lookup::Miss);
+    assert_eq!(log.len(), 0);
+}

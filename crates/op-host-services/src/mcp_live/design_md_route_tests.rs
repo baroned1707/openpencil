@@ -148,6 +148,7 @@ fn queues_content_free_prompts_and_returns_valid_markdown() {
     let _serial = ROUTE_TEST_LOCK.lock().unwrap_or_else(|p| p.into_inner());
     reset_job_store();
     let (req_tx, req_rx) = mpsc::channel();
+    let req_tx = UiSender::from(req_tx);
     let wake: UiWake = Arc::new(|| {});
     let mut stream = Cursor::new(Vec::new());
     serve_design_md(
@@ -222,6 +223,7 @@ fn strict_content_type_and_schema_fail_before_queueing() {
     let _serial = ROUTE_TEST_LOCK.lock().unwrap_or_else(|p| p.into_inner());
     reset_job_store();
     let (req_tx, req_rx) = mpsc::channel();
+    let req_tx = UiSender::from(req_tx);
     let wake: UiWake = Arc::new(|| {});
     let mut stream = Cursor::new(Vec::new());
     serve_design_md(
@@ -257,6 +259,7 @@ fn failed_start_reply_cancels_unobservable_job_without_releasing_live_worker_slo
     let _serial = ROUTE_TEST_LOCK.lock().unwrap_or_else(|p| p.into_inner());
     reset_job_store();
     let (req_tx, req_rx) = mpsc::channel();
+    let req_tx = UiSender::from(req_tx);
     let wake: UiWake = Arc::new(|| {});
     let error = serve_design_md(
         &mut FailingWrite,
@@ -292,6 +295,7 @@ fn watchdog_spawn_failure_fails_start_without_queueing_or_leaking_slot() {
     reset_job_store();
     FORCE_WATCHDOG_SPAWN_FAILURE.store(true, Ordering::Release);
     let (req_tx, req_rx) = mpsc::channel();
+    let req_tx = UiSender::from(req_tx);
     let wake: UiWake = Arc::new(|| {});
     let mut stream = Cursor::new(Vec::new());
     let result = serve_design_md(
@@ -359,6 +363,7 @@ fn polling_is_capability_bound_and_cancel_keeps_slot_until_responder_drops() {
     let _serial = ROUTE_TEST_LOCK.lock().unwrap_or_else(|p| p.into_inner());
     reset_job_store();
     let (req_tx, req_rx) = mpsc::channel();
+    let req_tx = UiSender::from(req_tx);
     let wake: UiWake = Arc::new(|| {});
     let owner = "http://127.0.0.1:3100";
     let mut first = Cursor::new(Vec::new());
@@ -470,6 +475,7 @@ fn responder_errors_use_stable_status_and_code() {
     let _serial = ROUTE_TEST_LOCK.lock().unwrap_or_else(|p| p.into_inner());
     reset_job_store();
     let (req_tx, req_rx) = mpsc::channel();
+    let req_tx = UiSender::from(req_tx);
     let wake: UiWake = Arc::new(|| {});
     let mut stream = Cursor::new(Vec::new());
     serve_design_md(
@@ -549,6 +555,7 @@ fn expired_job_cancels_work_but_holds_singleflight_until_worker_drops() {
     let _serial = ROUTE_TEST_LOCK.lock().unwrap_or_else(|p| p.into_inner());
     reset_job_store();
     let (req_tx, req_rx) = mpsc::channel();
+    let req_tx = UiSender::from(req_tx);
     let wake: UiWake = Arc::new(|| {});
     let mut start = Cursor::new(Vec::new());
     serve_design_md(

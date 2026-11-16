@@ -48,7 +48,7 @@ fn drive(request: &str, req_tx: &Sender<UiRequest>) -> String {
     };
     serve_connection(
         &mut stream,
-        req_tx,
+        &UiSender::from(req_tx.clone()),
         &admission,
         &documents,
         &quit_flag,

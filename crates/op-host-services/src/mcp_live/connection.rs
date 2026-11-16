@@ -21,7 +21,7 @@ impl Drop for ConnGuard {
 #[allow(clippy::too_many_arguments)]
 pub(super) fn server_loop(
     listener: TcpListener,
-    req_tx: Sender<UiRequest>,
+    req_tx: UiSender,
     stop_rx: Receiver<()>,
     admission: Arc<LiveAdmission>,
     quit_flag: Arc<AtomicBool>,
@@ -116,7 +116,7 @@ pub(super) fn server_loop(
 #[allow(clippy::too_many_arguments)]
 pub(super) fn serve_connection<S: std::io::Read + std::io::Write>(
     stream: &mut S,
-    req_tx: &Sender<UiRequest>,
+    req_tx: &UiSender,
     admission: &LiveAdmission,
     documents: &LiveDocuments,
     quit_flag: &AtomicBool,
@@ -261,7 +261,7 @@ pub(super) fn serve_connection<S: std::io::Read + std::io::Write>(
 pub(super) fn process_lightweight_live_tool(
     line: &str,
     document: DocumentId,
-    req_tx: &Sender<UiRequest>,
+    req_tx: &UiSender,
     wake_ui: &UiWake,
 ) -> Result<Option<String>, McpLiveError> {
     let Some(call) = op_mcp::parse_tool_call(line) else {
@@ -307,6 +307,7 @@ pub(super) fn process_lightweight_live_tool(
             }
         })?;
     match failure {
+        Some(McpLiveError::OutcomeUnknown) => Err(McpLiveError::OutcomeUnknown),
         Some(error) => Ok(crate::mcp_serve::document_address::tool_error_response(
             line,
             error.to_string(),

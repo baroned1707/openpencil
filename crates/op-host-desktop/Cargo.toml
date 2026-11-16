@@ -356,5 +356,11 @@ accesskit_unix = "0.22"
 # the same screenshot back to PNG before it can build the image data URL.
 wl-clipboard-rs = "0.9"
 
+# Crash-recovery liveness probe (`recovery_liveness.rs`): `kill(pid, 0)` tells
+# whether the process that wrote a snapshot is still running. Already in the
+# lockfile through op-process-io.
+[target.'cfg(unix)'.dependencies]
+libc = "0.2"
+
 [dev-dependencies]
 static_assertions = "1"

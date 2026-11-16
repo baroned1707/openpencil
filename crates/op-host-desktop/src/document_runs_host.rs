@@ -101,6 +101,19 @@ impl DesktopApp {
         }
     }
 
+    /// Best-effort finalize of the design loop of the document at `index`
+    /// without stopping it, so a Save at the close prompt writes the finished
+    /// design. The run itself is stopped only once the close is confirmed.
+    pub(crate) fn finalize_runs_of_slot(&mut self, index: usize) {
+        self.with_slot_runs(index, |host, runs| {
+            chat_session::finalize_design_session_if_needed(
+                host,
+                &runs.current_chat,
+                "teardown-backstop",
+            );
+        });
+    }
+
     /// Best-effort finalize of every in-flight design loop before the process
     /// exits (see `chat_session::finalize_design_session_if_needed`).
     pub(crate) fn finalize_runs_before_exit(&mut self) {

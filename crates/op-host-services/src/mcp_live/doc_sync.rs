@@ -15,7 +15,7 @@ pub(super) static LIVE_SYNC_VERSION: AtomicU64 = AtomicU64::new(0);
 /// and reply `{ok:true,version}` (or HTTP 400 with `{ok:false,error}`).
 pub(super) fn serve_document_sync<S: std::io::Read + std::io::Write>(
     stream: &mut S,
-    req_tx: &Sender<UiRequest>,
+    req_tx: &UiSender,
     wake_ui: &UiWake,
     documents: &LiveDocuments,
     body: &str,

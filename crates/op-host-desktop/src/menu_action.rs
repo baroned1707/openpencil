@@ -218,7 +218,10 @@ impl DesktopApp {
             }
             A::Quit => {
                 // Route through the unsaved-changes prompt — Cancel
-                // there aborts the quit.
+                // there aborts the quit. Finalize any design loop first, like
+                // the window-close paths: what the prompt saves must already
+                // include that last pass.
+                self.finalize_runs_before_exit();
                 if self.confirm_close() {
                     event_loop.exit();
                 }

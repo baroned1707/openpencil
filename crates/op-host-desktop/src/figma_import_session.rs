@@ -53,6 +53,9 @@ enum SessionStage {
     Preparing(Receiver<PrepareResult>),
     AwaitingSelection(Option<op_figma::PreparedFig>),
     Converting(Receiver<PersistResult>),
+    /// Converted, but the document on screen may not be replaced (it holds
+    /// work); parked here while the host opens a fresh tab for it.
+    Landed(Option<Box<CompletedImport>>),
 }
 
 /// One import; its prepared tree is consumed once after page selection.
@@ -408,11 +411,17 @@ where
 /// old document in place; an adjacent-file write failure installs the result
 /// as dirty, clears `current_path`, and asks the user to Save As. Every terminal
 /// outcome clears the `*session` slot.
+///
+/// `can_replace_active` says whether the document on screen is a pristine
+/// untitled one a finished import may take the place of. When it is not, the
+/// finished import is parked in the session and `NeedsFreshTab` is returned;
+/// the caller opens a new tab and pumps again with `true`.
 pub fn pump(
     host: &mut WidgetHostNative,
     session: &mut Option<FigmaImportSession>,
     current_path: &mut Option<PathBuf>,
     window: Option<&winit::window::Window>,
+    can_replace_active: bool,
 ) -> PumpOutcome {
     let Some(sess) = session.as_mut() else {
         return PumpOutcome::Idle;
@@ -445,6 +454,10 @@ pub fn pump(
             Err(TryRecvError::Empty) => Event::Pending,
             Err(TryRecvError::Disconnected) => Event::Disconnected,
         },
+        SessionStage::Landed(slot) => match slot.take() {
+            Some(completed) => Event::Converted(completed),
+            None => Event::Disconnected,
+        },
     };
     match event {
         Event::Prepared(prepared) if prepared.pages().len() > 1 => {
@@ -475,6 +488,10 @@ pub fn pump(
                 op_editor_core::FigmaImportSelection::All,
             );
             PumpOutcome::StillPending
+        }
+        Event::Converted(completed) if !can_replace_active => {
+            sess.stage = SessionStage::Landed(Some(completed));
+            PumpOutcome::NeedsFreshTab
         }
         Event::Converted(completed) => {
             let outcome =
@@ -579,6 +596,9 @@ pub enum PumpOutcome {
     CompletedSaved,
     /// Worker finished with an error (dialog already shown).
     CompletedErr,
+    /// A result is ready but the document on screen holds work: open a new
+    /// tab, then pump again. The result stays parked in the session.
+    NeedsFreshTab,
 }
 
 fn refresh_title(current_path: &Option<PathBuf>, window: Option<&winit::window::Window>) {
@@ -593,6 +613,9 @@ fn refresh_title(current_path: &Option<PathBuf>, window: Option<&winit::window::
 #[cfg(test)]
 #[path = "figma_import_session/preview_cancel_tests.rs"]
 mod preview_cancel_tests;
+#[cfg(test)]
+#[path = "figma_import_session/tab_target_tests.rs"]
+mod tab_target_tests;
 #[cfg(test)]
 #[path = "figma_import_session/tests.rs"]
 mod tests;

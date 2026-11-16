@@ -293,7 +293,7 @@ fn manual_ui(
         let mut open_calls = 0usize;
         while let Ok(request) = conn_rx.recv_timeout(Duration::from_secs(5)) {
             match request {
-                UiRequest::Snapshot { document, ack } => {
+                UiRequest::Snapshot { document, ack, .. } => {
                     open_calls += 1;
                     on_snapshot(document, open_calls);
                     let state = EditorState::new();

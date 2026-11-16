@@ -37,8 +37,9 @@ pub enum McpLiveError {
     Startup(String),
     /// A UI-thread round-trip failed: the request channel is closed (the
     /// editor is shutting down) or the ack did not arrive inside the
-    /// per-request budget (`UI_ACK_TIMEOUT`, or the caller's own budget for
-    /// screenshots). A server fault — the wire answers 500.
+    /// per-request budget (the caller's own budget for screenshots and document
+    /// lists). A server fault — the wire answers 500. Mutations and snapshots
+    /// that time out are `HostBusy` / `OutcomeUnknown` instead.
     UiThread(String),
     /// The shared MCP transport refused the message or the socket write
     /// failed. Carries [`McpServeError`] so the classification the transport
@@ -74,6 +75,16 @@ pub enum McpLiveError {
     },
     /// An `operationId` was reused for a different call.
     OperationIdConflict { operation_id: String },
+    /// The UI thread did not start the request inside the caller's budget (a
+    /// modal dialog, a picker or a save is holding it). The request was
+    /// cancelled before it ran and the pump will never apply it, so retrying
+    /// with the same `operationId` is safe.
+    HostBusy,
+    /// The UI thread had already started a mutation when the caller's budget
+    /// ran out and never answered within the grace. The change may or may not
+    /// have landed, so a retry is refused until the agent has re-read the
+    /// document.
+    OutcomeUnknown,
 }
 
 impl McpLiveError {
@@ -88,6 +99,8 @@ impl McpLiveError {
                 | McpLiveError::DocumentNotOnScreen { .. }
                 | McpLiveError::DocumentIdConflict { .. }
                 | McpLiveError::OperationIdConflict { .. }
+                | McpLiveError::HostBusy
+                | McpLiveError::OutcomeUnknown
         )
     }
 }
@@ -128,6 +141,13 @@ impl fmt::Display for McpLiveError {
                 f,
                 "operationId '{operation_id}' was already used for a different call; use a new \
                  operationId for a new call"
+            ),
+            McpLiveError::HostBusy => f.write_str(
+                "the editor did not respond in time (a dialog may be open); the change was NOT \
+                 applied — retry",
+            ),
+            McpLiveError::OutcomeUnknown => f.write_str(
+                "the change may or may not have been applied; read the document before retrying",
             ),
         }
     }

@@ -65,6 +65,7 @@ mod image_generate_host;
 mod image_panel_host;
 mod image_search_session;
 mod ime_window;
+mod import_target_host;
 mod keyboard_chat_tabs;
 mod keyboard_clipboard_payload;
 mod keyboard_input;
@@ -99,6 +100,13 @@ mod persistence_share;
 mod projects_host;
 mod prompt_center_store;
 mod provider_probe_host;
+mod recovery_error;
+mod recovery_host;
+mod recovery_liveness;
+mod recovery_quit;
+mod recovery_startup;
+mod recovery_store;
+mod recovery_worker;
 mod reduced_motion;
 mod remote_image_host;
 mod render_cli;
@@ -106,6 +114,7 @@ mod render_cli_error;
 mod save_session;
 mod scene_template_generate;
 mod scene_template_open;
+mod scene_template_tab_host;
 mod settings_io;
 mod single_instance;
 mod site_import_host;
@@ -247,6 +256,8 @@ struct DesktopApp {
     /// parked here with the path, Git binding and fork saves that belong to them.
     documents: document_registry::DocumentRegistry,
     projects_host: projects_host::ProjectsHostState,
+    /// Crash-recovery snapshots of unsaved documents (`recovery_host`).
+    recovery: recovery_host::RecoveryHost,
     /// Documents open at the last quit, reopened once the window is ready.
     pending_session_restore: Vec<op_editor_core::SessionDocument>,
     /// At most one background document serialization / atomic write. Keeping

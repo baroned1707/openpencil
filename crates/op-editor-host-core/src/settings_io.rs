@@ -191,6 +191,15 @@ fn settings_path() -> Option<PathBuf> {
     Some(base.join(APP_DIR).join(FILE_NAME))
 }
 
+/// Directory that holds `settings.json` — the base the desktop keeps its other
+/// per-user state beside (the crash-recovery snapshots live in a `recovery/`
+/// folder in it). Resolved exactly like the settings file, so it inherits the
+/// explicit-root override and the cargo-test sandbox. `None` when no config
+/// base exists.
+pub fn settings_dir() -> Option<PathBuf> {
+    settings_path()?.parent().map(Path::to_path_buf)
+}
+
 #[path = "settings_io_test_process.rs"]
 mod test_process;
 

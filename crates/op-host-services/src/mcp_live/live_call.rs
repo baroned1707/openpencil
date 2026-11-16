@@ -12,9 +12,9 @@
 //!    document;
 //! 4. resolve the document (`document_target`), take ITS gate, replay a
 //!    retried `operationId`, then run the call against that document;
-//! 5. remember the response of a successful write under its `operationId`.
-
-use std::time::Instant;
+//! 5. remember the response of a successful write under its `operationId`, or
+//!    that its outcome is in doubt (a started write the UI thread never
+//!    answered); a write that never ran is not remembered.
 
 use op_mcp::{ToolCall, ToolResponse};
 
@@ -31,7 +31,7 @@ use document_target::{resolve_document, Addressing};
 
 /// What every step of a call shares.
 struct CallContext<'a> {
-    req_tx: &'a Sender<UiRequest>,
+    req_tx: &'a UiSender,
     wake_ui: &'a UiWake,
     documents: &'a LiveDocuments,
     profile: McpAccessProfile,
@@ -52,7 +52,7 @@ pub(super) fn serve_call<S: std::io::Write>(
     req: &crate::mcp_serve::HttpRequest,
     route: LiveRoute,
     profile: McpAccessProfile,
-    req_tx: &Sender<UiRequest>,
+    req_tx: &UiSender,
     wake_ui: &UiWake,
     documents: &LiveDocuments,
 ) -> Result<(), McpLiveError> {
@@ -159,6 +159,7 @@ fn run_call(context: &CallContext) -> Result<String, McpLiveError> {
 fn run_in_document(context: &CallContext, document: DocumentId) -> Result<String, McpLiveError> {
     let gate = context.documents.gate(document);
     let mut log = lock_gate(&gate);
+    let timing = context.req_tx.timing();
     let operation = context
         .tool_call
         .filter(|call| tool_writes(&call.tool))
@@ -171,8 +172,10 @@ fn run_in_document(context: &CallContext, document: DocumentId) -> Result<String
             )
         });
     if let Some((call, operation_id, fingerprint)) = &operation {
-        match log.lookup(operation_id, *fingerprint, Instant::now()) {
+        match log.lookup(operation_id, *fingerprint, timing.now()) {
             Lookup::Replay(stored) => return Ok(replay_response(&stored, &call.id)),
+            // The first attempt may have landed: refuse rather than apply twice.
+            Lookup::InDoubt => return Err(McpLiveError::OutcomeUnknown),
             Lookup::Conflict => {
                 return Err(McpLiveError::OperationIdConflict {
                     operation_id: operation_id.to_string(),
@@ -181,10 +184,23 @@ fn run_in_document(context: &CallContext, document: DocumentId) -> Result<String
             Lookup::Miss => {}
         }
     }
-    let mut response = dispatch(context, document)?;
+    let mut response = match dispatch(context, document) {
+        Ok(response) => response,
+        Err(McpLiveError::OutcomeUnknown) => {
+            // Recorded while this document's gate is still held, so a retry
+            // cannot slip in between the doubt and its record.
+            if let Some((_, operation_id, fingerprint)) = &operation {
+                log.record_in_doubt(operation_id, *fingerprint, timing.now());
+            }
+            return Err(McpLiveError::OutcomeUnknown);
+        }
+        Err(error) => return Err(error),
+    };
+    // Only an applied call is remembered. A refused or cancelled one (the UI
+    // thread was busy: `HostBusy`) ran nothing, so its id stays free.
     if let Some((_, operation_id, fingerprint)) = &operation {
         if crate::mcp_serve::mcp_response_succeeded(&response) {
-            log.record(operation_id, *fingerprint, response.clone(), Instant::now());
+            log.record(operation_id, *fingerprint, response.clone(), timing.now());
         }
     }
     if context.route.document.is_none() && context.lists_tools {
@@ -284,8 +300,11 @@ fn dispatch(context: &CallContext, document: DocumentId) -> Result<String, McpLi
     )?
     .unwrap_or_default();
     // The dispatcher only knows the applier said `false`; give the client the
-    // real reason as a tool error instead of "host rejected command".
+    // real reason as a tool error instead of "host rejected command". An
+    // unknown outcome travels up as an error instead: the caller records it
+    // against the call's `operationId`.
     match failure {
+        Some(McpLiveError::OutcomeUnknown) => Err(McpLiveError::OutcomeUnknown),
         Some(error) => Ok(tool_error_response(body, error.to_string()).unwrap_or(response)),
         None => Ok(response),
     }

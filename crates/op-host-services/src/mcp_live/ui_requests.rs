@@ -3,11 +3,14 @@
 //! editor-meta), plus the shared ack timeout and small JSON helpers. Split
 //! out of `mcp_live.rs` to keep the spine under the 800-line cap.
 
+use std::time::Instant;
+
+use super::request_ticket::{Cancel, CancelOnDrop, TicketState};
 use super::*;
 
 /// Every open document, freshly read on the UI thread.
 pub(super) fn request_documents(
-    req_tx: &Sender<UiRequest>,
+    req_tx: &UiSender,
     wake_ui: &UiWake,
 ) -> Result<Vec<DocumentListing>, McpLiveError> {
     let (ack_tx, ack_rx) = mpsc::sync_channel(1);
@@ -17,14 +20,17 @@ pub(super) fn request_documents(
             McpLiveError::UiThread("UI thread is not accepting MCP document requests".to_string())
         })?;
     wake_ui();
-    recv_with_timeout(ack_rx.recv_timeout(UI_ACK_TIMEOUT), "document-list")
+    recv_with_timeout(
+        ack_rx.recv_timeout(req_tx.timing().ack_budget),
+        "document-list",
+    )
 }
 
 /// Turn a resolver refusal into the error the agent should read. An unknown
 /// id lists the open documents, so one more round trip is spent here — only
 /// on the failure path.
 pub(super) fn resolve_failure(
-    req_tx: &Sender<UiRequest>,
+    req_tx: &UiSender,
     wake_ui: &UiWake,
     document: DocumentId,
     reason: ResolveError,
@@ -41,46 +47,149 @@ pub(super) fn resolve_failure(
     }
 }
 
+/// Whether a request changes the document. It decides what a caller may claim
+/// when the UI thread started the request but never answered.
+#[derive(Clone, Copy)]
+pub(super) enum Effect {
+    /// Nothing to undo: a request the UI thread dropped or half-ran is `HostBusy`.
+    ReadOnly,
+    /// The change may have landed: the honest answer is `OutcomeUnknown`.
+    Mutating,
+}
+
+/// What one wait for an answer ended with.
+enum Wait<T> {
+    Answer(T),
+    /// The UI side dropped the answer channel without answering.
+    Closed,
+    /// The time ran out.
+    Elapsed,
+}
+
+/// Longest stretch a caller blocks before re-reading the clock, so a clock
+/// that moves independently of the thread (a test's) is noticed promptly. A
+/// real answer wakes the caller at once; this only paces the timeout check.
+const CLOCK_POLL: Duration = Duration::from_millis(20);
+
+/// Wait for an answer until `until` on the server's clock.
+fn wait_until<T>(timing: &LiveTiming, ack_rx: &Receiver<T>, until: Instant) -> Wait<T> {
+    loop {
+        let remaining = until.saturating_duration_since(timing.now());
+        if remaining.is_zero() {
+            // An answer that landed at the line still counts.
+            return match ack_rx.try_recv() {
+                Ok(answer) => Wait::Answer(answer),
+                Err(TryRecvError::Disconnected) => Wait::Closed,
+                Err(TryRecvError::Empty) => Wait::Elapsed,
+            };
+        }
+        match ack_rx.recv_timeout(remaining.min(CLOCK_POLL)) {
+            Ok(answer) => return Wait::Answer(answer),
+            Err(RecvTimeoutError::Timeout) => {}
+            Err(RecvTimeoutError::Disconnected) => return Wait::Closed,
+        }
+    }
+}
+
+/// Send one ticketed request and wait for its answer under the caller's
+/// budget, with an outcome the agent can act on:
+///
+/// * answered in time: the answer;
+/// * out of time and still unstarted: the request is cancelled so the pump
+///   will never run it, and the caller reports [`McpLiveError::HostBusy`];
+/// * out of time but already started: the pump will finish it, so wait the
+///   grace for the real answer; with none, a mutation reports
+///   [`McpLiveError::OutcomeUnknown`] and a read reports `HostBusy`.
+///
+/// `label` names the request in the "not accepting" / "channel closed" faults.
+pub(super) fn round_trip<T>(
+    req_tx: &UiSender,
+    wake_ui: &UiWake,
+    label: &str,
+    effect: Effect,
+    build: impl FnOnce(Arc<Ticket>, mpsc::SyncSender<T>) -> UiRequest,
+) -> Result<T, McpLiveError> {
+    let timing = req_tx.timing();
+    let ticket = Ticket::new(timing.deadline());
+    // Whatever way this function ends (an early return, a panic unwinding the
+    // connection thread), a request nobody waits for any more must not run.
+    let _cancel_if_abandoned = CancelOnDrop::new(&ticket);
+    let (ack_tx, ack_rx) = mpsc::sync_channel(1);
+    req_tx
+        .send(build(Arc::clone(&ticket), ack_tx))
+        .map_err(|_| {
+            McpLiveError::UiThread(format!("UI thread is not accepting MCP {label} requests"))
+        })?;
+    wake_ui();
+    match wait_until(timing, &ack_rx, ticket.deadline()) {
+        Wait::Answer(answer) => return Ok(answer),
+        // The pump drops an expired request without answering it.
+        Wait::Closed if ticket.state() == TicketState::Cancelled => {
+            return Err(McpLiveError::HostBusy)
+        }
+        Wait::Closed => {
+            return Err(McpLiveError::UiThread(format!(
+                "UI {label} ack channel closed"
+            )))
+        }
+        Wait::Elapsed => {}
+    }
+    match ticket.cancel() {
+        Cancel::Won | Cancel::AlreadyCancelled => return Err(McpLiveError::HostBusy),
+        Cancel::TooLate => {}
+    }
+    timing.note_grace_wait();
+    match wait_until(timing, &ack_rx, timing.now() + timing.grace) {
+        Wait::Answer(answer) => Ok(answer),
+        Wait::Closed | Wait::Elapsed => Err(match effect {
+            Effect::ReadOnly => McpLiveError::HostBusy,
+            Effect::Mutating => McpLiveError::OutcomeUnknown,
+        }),
+    }
+}
+
 /// Snapshot document `document` and learn which lifetime of it this is. The
 /// returned [`DocumentEpoch`] must ride back on the call's apply (see
 /// [`request_apply`]) so a swap in between is caught.
 pub(super) fn request_snapshot(
-    req_tx: &Sender<UiRequest>,
+    req_tx: &UiSender,
     wake_ui: &UiWake,
     document: DocumentId,
 ) -> Result<(EditorState, DocumentEpoch), McpLiveError> {
-    let (ack_tx, ack_rx) = mpsc::sync_channel(1);
-    req_tx
-        .send(UiRequest::Snapshot {
+    let answer = round_trip(
+        req_tx,
+        wake_ui,
+        "snapshot",
+        Effect::ReadOnly,
+        |ticket, ack| UiRequest::Snapshot {
             document,
-            ack: ack_tx,
-        })
-        .map_err(|_| {
-            McpLiveError::UiThread("UI thread is not accepting MCP snapshot requests".to_string())
-        })?;
-    wake_ui();
-    match recv_with_timeout(ack_rx.recv_timeout(UI_ACK_TIMEOUT), "snapshot")? {
+            ticket,
+            ack,
+        },
+    )?;
+    match answer {
         Ok(SnapshotAck { state, epoch }) => Ok((state, epoch)),
         Err(reason) => Err(resolve_failure(req_tx, wake_ui, document, reason)),
     }
 }
 
 pub(super) fn request_list_pages(
-    req_tx: &Sender<UiRequest>,
+    req_tx: &UiSender,
     wake_ui: &UiWake,
     document: DocumentId,
 ) -> Result<op_mcp::ListPages, McpLiveError> {
-    let (ack_tx, ack_rx) = mpsc::sync_channel(1);
-    req_tx
-        .send(UiRequest::ListPages {
+    let answer = round_trip(
+        req_tx,
+        wake_ui,
+        "page-list",
+        Effect::ReadOnly,
+        |ticket, ack| UiRequest::ListPages {
             document,
-            ack: ack_tx,
-        })
-        .map_err(|_| {
-            McpLiveError::UiThread("UI thread is not accepting MCP page-list requests".to_string())
-        })?;
-    wake_ui();
-    match recv_with_timeout(ack_rx.recv_timeout(UI_ACK_TIMEOUT), "page-list")? {
+            ticket,
+            ack,
+        },
+    )?;
+    match answer {
         Ok(pages) => Ok(pages),
         Err(reason) => Err(resolve_failure(req_tx, wake_ui, document, reason)),
     }
@@ -91,27 +200,23 @@ pub(super) fn request_list_pages(
 /// took none); when the document no longer matches it the apply is refused
 /// and this reports [`McpLiveError::DocumentChanged`].
 pub(super) fn request_apply(
-    req_tx: &Sender<UiRequest>,
+    req_tx: &UiSender,
     wake_ui: &UiWake,
     document: DocumentId,
     tool_name: String,
     cmd: EditorCommand,
     expected_epoch: Option<DocumentEpoch>,
 ) -> Result<ApplyAck, McpLiveError> {
-    let (ack_tx, ack_rx) = mpsc::sync_channel(1);
-    req_tx
-        .send(UiRequest::Apply {
+    let ack = round_trip(req_tx, wake_ui, "apply", Effect::Mutating, |ticket, ack| {
+        UiRequest::Apply {
             document,
             tool_name,
             cmd,
             expected_epoch,
-            ack: ack_tx,
-        })
-        .map_err(|_| {
-            McpLiveError::UiThread("UI thread is not accepting MCP apply requests".to_string())
-        })?;
-    wake_ui();
-    let ack = recv_with_timeout(ack_rx.recv_timeout(UI_ACK_TIMEOUT), "apply")?;
+            ticket,
+            ack,
+        }
+    })?;
     if let Some(reason) = ack.unresolved {
         return Err(resolve_failure(req_tx, wake_ui, document, reason));
     }
@@ -127,7 +232,7 @@ pub(super) fn request_apply(
 /// use, so a stalled UI pump can never pin the connection thread.
 #[cfg(feature = "mcp-debug-tools")]
 pub(super) fn request_screenshot(
-    req_tx: &Sender<UiRequest>,
+    req_tx: &UiSender,
     wake_ui: &UiWake,
     document: DocumentId,
     req: op_mcp::ScreenshotRequest,
@@ -160,47 +265,43 @@ pub(super) fn request_screenshot(
 /// a channel/timeout fault. Load/validation failures are handled before this
 /// call and surface as 400.
 pub(super) fn request_replace(
-    req_tx: &Sender<UiRequest>,
+    req_tx: &UiSender,
     wake_ui: &UiWake,
     doc: jian_ops_schema::PenDocument,
     editor_meta: op_pen_loader::EditorMeta,
 ) -> Result<bool, McpLiveError> {
-    let (ack_tx, ack_rx) = mpsc::sync_channel(1);
-    req_tx
-        .send(UiRequest::ReplaceDocument {
+    round_trip(
+        req_tx,
+        wake_ui,
+        "document-sync",
+        Effect::Mutating,
+        |ticket, ack| UiRequest::ReplaceDocument {
             doc: Box::new(doc),
             editor_meta,
-            ack: ack_tx,
-        })
-        .map_err(|_| {
-            McpLiveError::UiThread(
-                "UI thread is not accepting MCP document-sync requests".to_string(),
-            )
-        })?;
-    wake_ui();
-    recv_with_timeout(ack_rx.recv_timeout(UI_ACK_TIMEOUT), "document-sync")?
-        .map_err(no_document_on_screen)
+            ticket,
+            ack,
+        },
+    )?
+    .map_err(no_document_on_screen)
 }
 
 pub(super) fn request_update_editor_meta(
-    req_tx: &Sender<UiRequest>,
+    req_tx: &UiSender,
     wake_ui: &UiWake,
     editor_meta: op_pen_loader::EditorMeta,
 ) -> Result<(), McpLiveError> {
-    let (ack_tx, ack_rx) = mpsc::sync_channel(1);
-    req_tx
-        .send(UiRequest::UpdateEditorMeta {
+    round_trip(
+        req_tx,
+        wake_ui,
+        "metadata-sync",
+        Effect::Mutating,
+        |ticket, ack| UiRequest::UpdateEditorMeta {
             editor_meta,
-            ack: ack_tx,
-        })
-        .map_err(|_| {
-            McpLiveError::UiThread(
-                "UI thread is not accepting MCP metadata-sync requests".to_string(),
-            )
-        })?;
-    wake_ui();
-    recv_with_timeout(ack_rx.recv_timeout(UI_ACK_TIMEOUT), "metadata-sync")?
-        .map_err(no_document_on_screen)
+            ticket,
+            ack,
+        },
+    )?
+    .map_err(no_document_on_screen)
 }
 
 /// The REST sync routes target "the document on screen"; a host that cannot

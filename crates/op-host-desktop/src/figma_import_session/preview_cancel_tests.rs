@@ -73,6 +73,7 @@ fn cmd_p_preview_cancels_late_figma_import_before_pump() {
         &mut app.current_figma_import,
         &mut app.current_path,
         None,
+        true,
     );
 
     assert_eq!(outcome, PumpOutcome::Idle);

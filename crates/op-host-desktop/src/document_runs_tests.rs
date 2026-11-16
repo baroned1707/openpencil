@@ -537,7 +537,7 @@ fn a_stop_raised_before_switching_is_served_by_the_document_it_was_raised_in() {
 }
 
 #[test]
-fn closing_a_dirty_tab_stops_its_run_before_the_save_prompt() {
+fn closing_a_dirty_tab_stops_its_run_only_after_the_save_prompt() {
     let _guard = agent_indicators::test_guard();
     let (mut app, _paths, dir) = app_with_documents("dirty-run", &["a.op", "b.op"]);
     let run = start_run(&mut app); // in B
@@ -556,7 +556,72 @@ fn closing_a_dirty_tab_stops_its_run_before_the_save_prompt() {
     });
 
     assert!(closed);
-    assert_eq!(run_was_stopped_at_save_prompt, Some(true));
+    assert_eq!(
+        run_was_stopped_at_save_prompt,
+        Some(false),
+        "the run is still alive while the save prompt is open"
+    );
+    assert!(run.is_cancelled(), "and stopped once the close went ahead");
+    let _ = std::fs::remove_dir_all(dir);
+}
+
+#[test]
+fn cancelling_a_save_prompt_leaves_agent_runs_alive() {
+    let _guard = agent_indicators::test_guard();
+    let (mut app, _paths, dir) = app_with_documents("cancel-save", &["a.op", "b.op"]);
+    let run = start_run(&mut app); // in B
+    app.host.editor_state_mut().mark_document_changed(); // B has unsaved edits
+    assert!(app.activate_document_slot(0)); // B is parked with its run
+    assert!(!app.document_is_dirty() && app.slot_has_live_run(1));
+
+    // Quit: agree to stop the agent, then Cancel at the save prompt.
+    let mut question = 0;
+    let quit = app.confirm_close_with(|_title, _body| {
+        question += 1;
+        Some(if question == 1 {
+            Choice::Yes
+        } else {
+            Choice::Cancel
+        })
+    });
+    assert!(!quit, "Cancel keeps the app open");
+    assert_eq!(question, 2, "the agent question, then the save prompt");
+    assert!(
+        app.slot_has_live_run(1),
+        "the run survived the cancelled quit"
+    );
+    assert!(!run.is_cancelled(), "its worker is untouched");
+
+    // Closing the tab behaves the same way.
+    let mut question = 0;
+    let closed = app.close_document_tab_with(1, |_title, _body| {
+        question += 1;
+        Some(if question == 1 {
+            Choice::Yes
+        } else {
+            Choice::Cancel
+        })
+    });
+    assert!(!closed);
+    assert_eq!(app.documents.len(), 2);
+    assert!(app.slot_has_live_run(1));
+    assert!(!run.is_cancelled());
+
+    // Declining to stop the agent leaves it running too.
+    assert!(!app.confirm_close_with(|_title, _body| Some(Choice::Cancel)));
+    assert!(app.slot_has_live_run(1));
+
+    // Finally, Don't Save: now the quit goes ahead and the run is stopped.
+    let mut question = 0;
+    assert!(app.confirm_close_with(|_title, _body| {
+        question += 1;
+        Some(if question == 1 {
+            Choice::Yes
+        } else {
+            Choice::No
+        })
+    }));
+    assert!(run.is_cancelled());
     let _ = std::fs::remove_dir_all(dir);
 }
 

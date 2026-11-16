@@ -6,8 +6,10 @@
 //! What "bringing it in" means depends on what is already open, and the
 //! choice is made here because only the host can see it:
 //!
-//! - **Untouched starter** → replace the document. Nothing is lost, and the
-//!   template simply *is* the new document. It becomes an UNSAVED document
+//! - **Blank starter page** → the template becomes the document, in a
+//!   pristine untitled tab (`scene_template_tab_host` opens a new tab first
+//!   when the document on screen is anything else, so no open document is ever
+//!   replaced). Nothing is lost, and the template simply *is* the new document. It becomes an UNSAVED document
 //!   with no bound path, like File > New rather than File > Open: the shipped
 //!   `.op` is read-only content, and binding it as the save target would let
 //!   the first Cmd+S overwrite the template for every future use.
@@ -25,20 +27,33 @@ use op_host_services::doc_io::preserve_app_preferences;
 
 use crate::persistence::{fit_loaded_document, refresh_title};
 
-/// Drain a pending template request. Returns true when the document changed.
-pub(crate) fn drain_pending_scene_template(
+/// What a pending template request turned into.
+pub(crate) enum TemplateRequest {
+    /// Nothing to do, or it was handled in place (appended, refused, failed).
+    /// `true` when the document changed.
+    Handled(bool),
+    /// The template must become the document. The caller picks the tab it is
+    /// installed into (`install_template_replacement`): replacing is only
+    /// allowed into a pristine untitled tab.
+    Replace(Box<op_editor_core::EditorState>),
+}
+
+/// Take a pending template request and do everything that does not replace
+/// the document: appending boards to a document that has content, and the
+/// load + collaboration gate for a replacement.
+pub(crate) fn prepare_pending_scene_template(
     host: &mut WidgetHostNative,
     current_path: &mut Option<PathBuf>,
     window: Option<&winit::window::Window>,
     now_ms: u64,
-) -> bool {
+) -> TemplateRequest {
     let Some(template_id) = host
         .editor_state_mut()
         .editor_ui
         .scene_template_center
         .take_pending_open()
     else {
-        return false;
+        return TemplateRequest::Handled(false);
     };
     let Some(source) = template_document_for(&template_id) else {
         if template_id.starts_with(op_editor_core::user_scene_templates::USER_TEMPLATE_ID_PREFIX) {
@@ -58,10 +73,16 @@ pub(crate) fn drain_pending_scene_template(
             // silently doing nothing under the user's click.
             eprintln!("[template] no embedded document for {template_id}");
         }
-        return false;
+        return TemplateRequest::Handled(false);
     };
     if !op_editor_core::blank_starter::active_page_is_blank_starter(host.editor_state()) {
-        return append_scene_template(host, &template_id, &source, current_path, window);
+        return TemplateRequest::Handled(append_scene_template(
+            host,
+            &template_id,
+            &source,
+            current_path,
+            window,
+        ));
     }
     // Replacing the document runs the same collaboration gate as File > New;
     // the panel's own press only opened a panel, which needed no gate.
@@ -69,19 +90,30 @@ pub(crate) fn drain_pending_scene_template(
         op_editor_core::CollabGateAction::ReplaceDocument,
         op_editor_core::CollabEditSource::User,
     ) {
-        return false;
+        return TemplateRequest::Handled(false);
     }
     let locale = host.editor_state().editor_ui.locale;
     let mut state = match op_host_services::doc_io::load_editor_state_from_source(&source, locale) {
         Ok(state) => state,
         Err(error) => {
             eprintln!("[template] {template_id}: {error}");
-            return false;
+            return TemplateRequest::Handled(false);
         }
     };
     preserve_app_preferences(host.editor_state(), &mut state);
     stamp_template_scenario(&mut state, &template_id);
     state.clear_selection();
+    TemplateRequest::Replace(Box::new(state))
+}
+
+/// Install `state` as the document on screen. The caller guarantees that
+/// document is a pristine untitled one (see `scene_template_tab_host`).
+pub(crate) fn install_template_replacement(
+    host: &mut WidgetHostNative,
+    current_path: &mut Option<PathBuf>,
+    window: Option<&winit::window::Window>,
+    state: op_editor_core::EditorState,
+) -> bool {
     if !host.replace_editor_state(state) {
         return false;
     }

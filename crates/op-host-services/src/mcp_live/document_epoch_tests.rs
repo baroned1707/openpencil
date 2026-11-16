@@ -17,6 +17,7 @@ fn take_snapshot(
     req_tx
         .send(UiRequest::Snapshot {
             document: DocumentId(document),
+            ticket: Ticket::unbounded(),
             ack: ack_tx,
         })
         .expect("queue snapshot");
@@ -51,6 +52,7 @@ fn apply_insert(
                 page_id: None,
             },
             expected_epoch,
+            ticket: Ticket::unbounded(),
             ack: ack_tx,
         })
         .expect("queue apply");

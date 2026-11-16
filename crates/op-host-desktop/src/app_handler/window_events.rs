@@ -109,7 +109,7 @@ impl DesktopApp {
         }
     }
 
-    pub(super) fn on_dropped_file(&mut self, path: PathBuf) {
+    pub(crate) fn on_dropped_file(&mut self, path: PathBuf) {
         // Resolve the release position BEFORE tearing down the hover
         // state — it is what decides fill-a-node vs insert-a-node.
         let drop_point = self

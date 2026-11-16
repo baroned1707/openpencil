@@ -172,6 +172,13 @@ impl DesktopApp {
             current_path: None,
             documents: crate::document_registry::DocumentRegistry::new(),
             projects_host: Default::default(),
+            // Unit tests must not write into the user's config directory: they
+            // install a store over a temp directory when they need one.
+            recovery: if cfg!(test) {
+                crate::recovery_host::RecoveryHost::disabled()
+            } else {
+                crate::recovery_host::RecoveryHost::for_user()
+            },
             pending_session_restore,
             save_session: save_session::SaveSession::new(),
             collab_fork_saves: Vec::new(),
@@ -424,6 +431,9 @@ impl DesktopApp {
         let Some(output_mode) = figma_import_session::prompt_output_mode(&self.host, &path) else {
             return false;
         };
+        if !self.import_may_start() {
+            return false;
+        }
         figma_import_session::cancel(&mut self.host, &mut self.current_figma_import);
         html_import_session::cancel(&mut self.host, &mut self.current_html_import);
         self.current_figma_import = Some(figma_import_session::spawn_approved(
@@ -441,6 +451,9 @@ impl DesktopApp {
             op_editor_core::CollabGateAction::ReplaceDocument,
             op_editor_core::CollabEditSource::Import,
         ) {
+            return false;
+        }
+        if !self.import_may_start() {
             return false;
         }
         figma_import_session::cancel(&mut self.host, &mut self.current_figma_import);
@@ -583,18 +596,25 @@ impl DesktopApp {
             return false;
         }
         self.sync_active_slot();
-        // Live agents die with the process: name them, and finalize their work
-        // before the save prompts so what the user saves is the finished design.
+        self.recovery.quit_confirmed = false;
+        self.recovery.discarded.clear();
+        // Live agents die with the process: name them and ask whether to stop
+        // them. Only the question comes first; the runs themselves are stopped
+        // after every save prompt has been answered, so Cancel at any prompt
+        // leaves them running.
         if !self.confirm_stop_runs_to_quit(&mut ask) {
             return false;
         }
-        self.cancel_all_runs();
         let dirty: Vec<_> = self
             .documents
             .dirty_indices(self.document_is_dirty())
             .into_iter()
             .filter_map(|index| self.documents.id_at(index))
             .collect();
+        // Documents the user chose Don't Save for. Their recovery entries are
+        // deleted only once the whole quit is confirmed: a Cancel at a later
+        // prompt keeps the app (and those documents) alive.
+        let mut discarded = Vec::new();
         for id in dirty {
             if id != self.documents.active_id() {
                 if let Some(reason) = self.document_switch_blocked() {
@@ -608,10 +628,19 @@ impl DesktopApp {
                     return false;
                 }
             }
-            if !self.confirm_close_active_document(&mut ask) {
-                return false;
+            match self.close_decision_for_active_document(&mut ask) {
+                CloseDecision::Abort => return false,
+                CloseDecision::Discard => discarded.push(id),
+                CloseDecision::Proceed => {}
             }
         }
+        self.cancel_all_runs();
+        for id in discarded {
+            self.recovery_forget(id);
+            self.recovery.discarded.insert(id);
+        }
+        // Every unsaved document was saved or discarded on purpose.
+        self.recovery.quit_confirmed = true;
         true
     }
 
@@ -621,8 +650,17 @@ impl DesktopApp {
         &mut self,
         ask: &mut impl FnMut(&str, &str) -> Option<crate::message_dialog::Choice>,
     ) -> bool {
+        self.close_decision_for_active_document(ask) != CloseDecision::Abort
+    }
+
+    /// [`Self::confirm_close_active_document`], saying whether the document was
+    /// let go of because the user chose Don't Save.
+    pub(crate) fn close_decision_for_active_document(
+        &mut self,
+        ask: &mut impl FnMut(&str, &str) -> Option<crate::message_dialog::Choice>,
+    ) -> CloseDecision {
         if !self.document_is_dirty() {
-            return true;
+            return CloseDecision::Proceed;
         }
         let locale = self.host.editor_state().editor_ui.locale;
         let name = self
@@ -642,12 +680,28 @@ impl DesktopApp {
                 // Save, then close only if the document actually
                 // persisted (a cancelled Save-As must abort the close).
                 self.host.commit_variable_row_focus_if_any_pub();
-                self.request_background_save() && self.finish_background_saves()
+                if self.request_background_save() && self.finish_background_saves() {
+                    CloseDecision::Proceed
+                } else {
+                    CloseDecision::Abort
+                }
             }
-            Some(crate::message_dialog::Choice::No) => true,
-            Some(crate::message_dialog::Choice::Cancel) => false,
+            Some(crate::message_dialog::Choice::No) => CloseDecision::Discard,
+            Some(crate::message_dialog::Choice::Cancel) => CloseDecision::Abort,
         }
     }
+}
+
+/// What the user decided about a document with unsaved edits at a close or quit
+/// prompt.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum CloseDecision {
+    /// Cancel, or a Save that failed or was itself cancelled: keep the document.
+    Abort,
+    /// Nothing to ask, or it was saved: let go of it.
+    Proceed,
+    /// Don't Save: let go of it and its unsaved edits.
+    Discard,
 }
 
 #[cfg(test)]

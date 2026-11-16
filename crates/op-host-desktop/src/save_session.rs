@@ -652,6 +652,8 @@ impl crate::DesktopApp {
         self.host.mark_editor_state_dirty();
         self.image_search.reset();
         self.rebind_git_session_for_current_path();
+        // The file now holds the content the crash-recovery snapshot did.
+        self.clear_obsolete_recovery_entries();
         if fork {
             // Leaving rotates the collab avatar generation (op-collab-host's
             // `advance_generation`), which evicts every cached avatar byte

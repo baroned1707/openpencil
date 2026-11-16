@@ -544,6 +544,12 @@ pub fn lookup(key: &str) -> Option<&'static str> {
         "projects.running" => "{{count}} berjalan",
         "dialog.agentRunningTitle" => "Agen masih bekerja",
         "dialog.agentRunningBody" => "“{{name}}” memiliki agen yang masih berjalan.\n\nMenutup akan menghentikannya.\n\nYa = Hentikan dan tutup · Tidak atau Batal = lanjutkan bekerja.",
+        "recovery.titleOne" => "Pulihkan 1 dokumen yang belum disimpan?",
+        "recovery.titleMany" => "Pulihkan {{count}} dokumen yang belum disimpan?",
+        "recovery.body" => "OpenPencil tidak ditutup dengan normal. Dokumen berikut memiliki perubahan yang belum disimpan:\n\n{{list}}\n\nPilih Ya untuk memulihkannya, atau Tidak untuk membuangnya.",
+        "recovery.more" => "dan {{count}} lainnya",
+        "recovery.noteNewer" => "file di disk lebih baru, jadi dibuka sebagai salinan tanpa judul",
+        "recovery.noteGone" => "file asli sudah tidak ada, jadi dibuka sebagai salinan tanpa judul",
         _ => return None,
     })
 }

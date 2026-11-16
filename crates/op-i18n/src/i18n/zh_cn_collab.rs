@@ -544,6 +544,12 @@ pub fn lookup(key: &str) -> Option<&'static str> {
         "projects.running" => "{{count}} 个运行中",
         "dialog.agentRunningTitle" => "智能体仍在工作",
         "dialog.agentRunningBody" => "“{{name}}”中有一个智能体仍在运行。\n\n关闭会停止它。\n\n是 = 停止并关闭 · 否或取消 = 继续工作。",
+        "recovery.titleOne" => "恢复 1 个未保存的文档？",
+        "recovery.titleMany" => "恢复 {{count}} 个未保存的文档？",
+        "recovery.body" => "OpenPencil 上次未正常关闭。以下文档含有未保存的更改：\n\n{{list}}\n\n选择“是”恢复它们，选择“否”放弃它们。",
+        "recovery.more" => "另外还有 {{count}} 个",
+        "recovery.noteNewer" => "磁盘上的文件更新，因此将作为未命名副本打开",
+        "recovery.noteGone" => "原文件已不存在，因此将作为未命名副本打开",
         _ => return None,
     })
 }

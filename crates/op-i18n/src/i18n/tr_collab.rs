@@ -544,6 +544,12 @@ pub fn lookup(key: &str) -> Option<&'static str> {
         "projects.running" => "{{count}} çalışıyor",
         "dialog.agentRunningTitle" => "Ajan hâlâ çalışıyor",
         "dialog.agentRunningBody" => "“{{name}}” içinde çalışan bir ajan var.\n\nKapatmak onu durdurur.\n\nEvet = Durdur ve kapat · Hayır veya İptal = çalışmaya devam et.",
+        "recovery.titleOne" => "1 kaydedilmemiş belge kurtarılsın mı?",
+        "recovery.titleMany" => "{{count}} kaydedilmemiş belge kurtarılsın mı?",
+        "recovery.body" => "OpenPencil düzgün kapanmadı. Bu belgelerde kaydedilmemiş değişiklikler vardı:\n\n{{list}}\n\nKurtarmak için Evet’i, silmek için Hayır’ı seçin.",
+        "recovery.more" => "ve {{count}} tane daha",
+        "recovery.noteNewer" => "diskteki dosya daha yeni olduğundan adsız bir kopya olarak açılır",
+        "recovery.noteGone" => "özgün dosya artık yok, bu yüzden adsız bir kopya olarak açılır",
         _ => return None,
     })
 }

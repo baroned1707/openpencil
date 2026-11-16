@@ -155,7 +155,7 @@ pub(super) fn write_preflight<S: std::io::Write>(
 
 pub(super) fn serve_design_md<S: std::io::Read + std::io::Write>(
     stream: &mut S,
-    req_tx: &Sender<UiRequest>,
+    req_tx: &UiSender,
     wake_ui: &UiWake,
     req: &crate::mcp_serve::HttpRequest,
     cors_origin: Option<&str>,
@@ -196,7 +196,7 @@ pub(super) fn serve_design_md<S: std::io::Read + std::io::Write>(
 
 fn start_design_md_job<S: std::io::Read + std::io::Write>(
     stream: &mut S,
-    req_tx: &Sender<UiRequest>,
+    req_tx: &UiSender,
     wake_ui: &UiWake,
     req: &crate::mcp_serve::HttpRequest,
     cors_origin: Option<&str>,

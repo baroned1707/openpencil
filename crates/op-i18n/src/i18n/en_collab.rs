@@ -584,6 +584,12 @@ pub fn lookup(key: &str) -> Option<&'static str> {
         "projects.running" => "{{count}} running",
         "dialog.agentRunningTitle" => "Agent still working",
         "dialog.agentRunningBody" => "“{{name}}” has an agent still working.\n\nClosing stops it.\n\nYes = Stop and close · No or Cancel = keep working.",
+        "recovery.titleOne" => "Recover 1 unsaved document?",
+        "recovery.titleMany" => "Recover {{count}} unsaved documents?",
+        "recovery.body" => "OpenPencil did not close normally. These documents had unsaved changes:\n\n{{list}}\n\nChoose Yes to recover them, or No to discard them.",
+        "recovery.more" => "and {{count}} more",
+        "recovery.noteNewer" => "the file on disk is newer, so it opens as an untitled copy",
+        "recovery.noteGone" => "the original file is gone, so it opens as an untitled copy",
         _ => return None,
     })
 }

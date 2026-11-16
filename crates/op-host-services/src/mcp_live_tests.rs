@@ -59,7 +59,8 @@ fn snapshot_request_wakes_ui_event_loop_after_queueing() {
         })
     };
 
-    let requester = thread::spawn(move || request_snapshot(&req_tx, &wake_ui, DocumentId(1)));
+    let link = UiSender::from(req_tx);
+    let requester = thread::spawn(move || request_snapshot(&link, &wake_ui, DocumentId(1)));
     let request = req_rx
         .recv_timeout(Duration::from_secs(1))
         .expect("snapshot request should be queued");
@@ -91,9 +92,9 @@ fn set_active_page_fast_path_sends_apply_without_full_snapshot() {
     let wake_ui: UiWake = Arc::new(|| {});
     let line = r#"{"jsonrpc":"2.0","id":7,"method":"tools/call","params":{"name":"set_active_page","arguments":{"index":"1"}}}"#;
 
-    let requester = thread::spawn(move || {
-        process_lightweight_live_tool(line, DocumentId(1), &req_tx, &wake_ui)
-    });
+    let link = UiSender::from(req_tx);
+    let requester =
+        thread::spawn(move || process_lightweight_live_tool(line, DocumentId(1), &link, &wake_ui));
     let request = req_rx
         .recv_timeout(Duration::from_secs(1))
         .expect("fast path should queue an apply request");
@@ -129,9 +130,9 @@ fn list_pages_fast_path_requests_only_page_metadata() {
     let wake_ui: UiWake = Arc::new(|| {});
     let line = r#"{"jsonrpc":"2.0","id":8,"method":"tools/call","params":{"name":"list_pages","arguments":{}}}"#;
 
-    let requester = thread::spawn(move || {
-        process_lightweight_live_tool(line, DocumentId(1), &req_tx, &wake_ui)
-    });
+    let link = UiSender::from(req_tx);
+    let requester =
+        thread::spawn(move || process_lightweight_live_tool(line, DocumentId(1), &link, &wake_ui));
     let request = req_rx
         .recv_timeout(Duration::from_secs(1))
         .expect("fast path should request page metadata");
@@ -173,6 +174,8 @@ fn pump_yields_after_ui_request_budget() {
         client_identity: Arc::new(Mutex::new(None)),
         last_mcp_epoch: 0,
         pending_design_md: VecDeque::new(),
+        timing: LiveTiming::system(),
+        expired_requests: 0,
     };
     let mut state = EditorState::new();
     let mut acks = Vec::new();
@@ -189,6 +192,7 @@ fn pump_yields_after_ui_request_budget() {
                     pan_y: None,
                     zoom_percent: None,
                 },
+                ticket: Ticket::unbounded(),
                 ack: ack_tx,
             })
             .expect("queue apply request");
@@ -219,6 +223,8 @@ fn pump_fulfills_screenshot_requests_off_the_live_state() {
         client_identity: Arc::new(Mutex::new(None)),
         last_mcp_epoch: 0,
         pending_design_md: VecDeque::new(),
+        timing: LiveTiming::system(),
+        expired_requests: 0,
     };
     let mut state = EditorState::new();
     assert!(state.apply(EditorCommand::InsertNode {
@@ -268,6 +274,8 @@ fn pump_marks_layout_dirty_only_for_layout_affecting_commands() {
         client_identity: Arc::new(Mutex::new(None)),
         last_mcp_epoch: 0,
         pending_design_md: VecDeque::new(),
+        timing: LiveTiming::system(),
+        expired_requests: 0,
     };
     let mut state = EditorState::new();
     state.selection.anchor = op_editor_core::NodeId::new("n1");
@@ -280,6 +288,7 @@ fn pump_marks_layout_dirty_only_for_layout_affecting_commands() {
             tool_name: "clear_selection".to_string(),
             expected_epoch: None,
             cmd: EditorCommand::ClearSelection,
+            ticket: Ticket::unbounded(),
             ack: selection_ack_tx,
         })
         .expect("queue selection request");
@@ -307,6 +316,7 @@ fn pump_marks_layout_dirty_only_for_layout_affecting_commands() {
                 target_parent: op_editor_core::NodeId::NONE,
                 page_id: None,
             },
+            ticket: Ticket::unbounded(),
             ack: insert_ack_tx,
         })
         .expect("queue insert request");
@@ -341,6 +351,8 @@ fn pump_flags_document_replaced_only_for_replace_document_requests() {
         client_identity: Arc::new(Mutex::new(None)),
         last_mcp_epoch: 0,
         pending_design_md: VecDeque::new(),
+        timing: LiveTiming::system(),
+        expired_requests: 0,
     };
     let mut state = EditorState::new();
     let replacement_doc = op_pen_loader::load_canonical(
@@ -362,6 +374,7 @@ fn pump_flags_document_replaced_only_for_replace_document_requests() {
                 share_recipe: None,
                 imported_from: None,
             },
+            ticket: Ticket::unbounded(),
             ack: ack_tx,
         })
         .expect("queue replace-document request");
@@ -388,6 +401,7 @@ fn pump_flags_document_replaced_only_for_replace_document_requests() {
                 share_recipe: None,
                 imported_from: None,
             },
+            ticket: Ticket::unbounded(),
             ack: ack_tx,
         })
         .expect("queue metadata-only request");
@@ -438,6 +452,7 @@ fn pump_rejects_mcp_document_writes_during_active_collaboration() {
                 target_parent: op_editor_core::NodeId::NONE,
                 page_id: None,
             },
+            ticket: Ticket::unbounded(),
             ack: ack_tx,
         })
         .expect("queue MCP write");
@@ -474,6 +489,7 @@ fn pump_rejects_whole_document_sync_during_active_collaboration() {
         .send(UiRequest::ReplaceDocument {
             doc: Box::new(replacement),
             editor_meta: op_pen_loader::EditorMeta::default(),
+            ticket: Ticket::unbounded(),
             ack: ack_tx,
         })
         .expect("queue whole-document sync");
@@ -510,6 +526,8 @@ fn fresh_mcp_server(req_rx: Receiver<UiRequest>, stop_tx: Sender<()>) -> McpLive
         client_identity: Arc::new(Mutex::new(None)),
         last_mcp_epoch: 0,
         pending_design_md: VecDeque::new(),
+        timing: LiveTiming::system(),
+        expired_requests: 0,
     }
 }
 
@@ -546,6 +564,7 @@ fn send_batch_design_insert(req_tx: &Sender<UiRequest>, node: PenNode) -> mpsc::
                 parent_id: op_editor_core::NodeId::NONE,
                 page_id: None,
             },
+            ticket: Ticket::unbounded(),
             ack: ack_tx,
         })
         .expect("queue batch_design apply");
@@ -609,6 +628,7 @@ fn batch_design_apply_is_a_noop_when_nothing_new_landed() {
                 parent_id: op_editor_core::NodeId::NONE,
                 page_id: None,
             },
+            ticket: Ticket::unbounded(),
             ack: ack_tx,
         })
         .expect("queue batch_design apply");

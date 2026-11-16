@@ -621,7 +621,7 @@ fn completed_persisted_import_binds_current_path_and_display_name() {
     let mut host = WidgetHostNative::new();
     let mut current_path = None;
 
-    let outcome = pump(&mut host, &mut session, &mut current_path, None);
+    let outcome = pump(&mut host, &mut session, &mut current_path, None, true);
 
     assert_eq!(outcome, PumpOutcome::CompletedSaved);
     assert_eq!(current_path.as_deref(), Some(output.as_path()));

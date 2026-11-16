@@ -28,12 +28,24 @@ impl DesktopApp {
     /// document is showing when they finish, so switching under one would
     /// hand it to the wrong document.
     pub(crate) fn document_switch_blocked(&self) -> Option<BlockReason> {
+        self.document_switch_blocked_with(false)
+    }
+
+    /// [`Self::document_switch_blocked`], optionally not counting the
+    /// whole-file import sessions. An import that is about to open the tab its
+    /// own result goes into (or is about to be superseded) must not be refused
+    /// by itself; clipboard pastes still count.
+    pub(crate) fn document_switch_blocked_with(
+        &self,
+        ignore_import_sessions: bool,
+    ) -> Option<BlockReason> {
         let state = self.host.editor_state();
+        let import_session =
+            self.current_figma_import.is_some() || self.current_html_import.is_some();
         ActivityFlags {
             codegen: self.current_codegen.is_some(),
             design_md: self.current_design_md.is_some(),
-            import: self.current_figma_import.is_some()
-                || self.current_html_import.is_some()
+            import: (import_session && !ignore_import_sessions)
                 || self.pending_figma_paste.is_some()
                 || self.pending_html_paste.is_some(),
             // Status and diff queries are cancelled by the switch itself
@@ -223,7 +235,7 @@ impl DesktopApp {
 
     /// Show a freshly built document in a new tab. `path` is the file it is
     /// bound to, if any. The document that was on screen is parked.
-    fn install_new_document_tab(
+    pub(crate) fn install_new_document_tab(
         &mut self,
         mut incoming: ParkedDocument,
         path: Option<PathBuf>,
@@ -247,7 +259,7 @@ impl DesktopApp {
 
     /// Whether the on-screen document is a blank untitled one nobody touched,
     /// which a freshly opened file may take the place of.
-    fn active_document_is_pristine_untitled(&self) -> bool {
+    pub(crate) fn active_document_is_pristine_untitled(&self) -> bool {
         let state = self.host.editor_state();
         self.current_path.is_none()
             && !self.runs.is_live()
@@ -257,6 +269,11 @@ impl DesktopApp {
             // The chat belongs to the document: replacing a tab whose chat was
             // used would delete the conversation.
             && state.chat.is_untouched()
+            // Revision 0 is not proof of emptiness: a document can arrive with
+            // pages already filled. Only a single blank page may be replaced.
+            && state.page_count() == 1
+            && (state.active_children().is_empty()
+                || op_editor_core::blank_starter::active_page_is_blank_starter(state))
     }
 
     /// Open the document at `path` in a new tab, or switch to it when it is
@@ -328,6 +345,12 @@ impl DesktopApp {
             self.refuse_document_switch(reason);
             return false;
         }
+        self.open_untitled_tab_unchecked()
+    }
+
+    /// [`Self::open_untitled_tab`] once the caller has already decided the
+    /// switch is allowed (and said so to the user when it is not).
+    pub(crate) fn open_untitled_tab_unchecked(&mut self) -> bool {
         let incoming = ParkedDocument::from_state(EditorState::starter(), Default::default());
         if !self.install_new_document_tab(incoming, None) {
             return false;
@@ -424,14 +447,16 @@ impl DesktopApp {
             return false;
         }
         // Closing stops the document's agent: say so before anything else, so
-        // answering No leaves everything as it was.
-        if self.slot_has_live_run(index) {
-            if !self.confirm_stop_runs_to_close(index, &mut ask) {
-                return false;
-            }
-            // Stopped before the save prompt, so a Save writes the finalized
-            // design (quit does the same).
-            self.cancel_runs_of_slot(index);
+        // answering No leaves everything as it was. The runs themselves are
+        // stopped only once the save prompt has also been answered without
+        // Cancel, so backing out of either leaves them running.
+        let has_live_run = self.slot_has_live_run(index);
+        if has_live_run && !self.confirm_stop_runs_to_close(index, &mut ask) {
+            return false;
+        }
+        if has_live_run {
+            // Not a stop: it lets a Save below write the finished design.
+            self.finalize_runs_of_slot(index);
         }
         if self.documents.is_dirty(index, self.document_is_dirty()) {
             // Ask against the document itself so Save writes the right file.
@@ -440,11 +465,14 @@ impl DesktopApp {
                 return false;
             }
         }
+        if has_live_run {
+            self.cancel_runs_of_slot(index);
+        }
         self.discard_document_tab(index)
     }
 
     /// Remove the parked tab at `index` and forget its indicators.
-    fn remove_slot(&mut self, index: usize) -> bool {
+    pub(crate) fn remove_slot(&mut self, index: usize) -> bool {
         let Some(slot) = self.documents.remove(index) else {
             return false;
         };
@@ -479,6 +507,11 @@ impl DesktopApp {
             return false;
         };
         let removed = self.remove_slot(index);
+        if removed {
+            // The tab went away on purpose (saved, or Don't Save), so its
+            // crash-recovery entry goes with it.
+            self.recovery_forget(id);
+        }
         self.publish_document_tabs();
         removed
     }
@@ -540,6 +573,8 @@ impl DesktopApp {
             .scope_mut()
             .mark_saved_revision_at(generation, revision);
         self.publish_document_tabs();
+        // The file now holds the content the crash-recovery snapshot did.
+        self.clear_obsolete_recovery_entries();
         marked
     }
 }

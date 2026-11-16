@@ -69,6 +69,21 @@ impl DesktopApp {
     /// made casement re-fire it immediately, spinning the loop at
     /// full speed until the next real event.
     pub(super) fn schedule_next_wake(&mut self, event_loop: &ActiveEventLoop) {
+        self.schedule_primary_wake(event_loop);
+        // An idle app with an unsaved document must still wake when its
+        // crash-recovery snapshot is due: take the sooner of the two.
+        if let Some(due) = self.recovery.next_deadline() {
+            match event_loop.control_flow() {
+                ControlFlow::Wait => event_loop.set_control_flow(ControlFlow::WaitUntil(due)),
+                ControlFlow::WaitUntil(current) if due < current => {
+                    event_loop.set_control_flow(ControlFlow::WaitUntil(due))
+                }
+                _ => {}
+            }
+        }
+    }
+
+    fn schedule_primary_wake(&mut self, event_loop: &ActiveEventLoop) {
         if let Some(deadline) = self.collab_runtime.next_presence_deadline() {
             event_loop.set_control_flow(ControlFlow::WaitUntil(deadline));
             return;

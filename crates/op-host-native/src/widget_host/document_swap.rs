@@ -233,6 +233,27 @@ impl WidgetHostNative {
         Some(result)
     }
 
+    /// Whether a pointer gesture or a canvas text edit is in progress: a drag
+    /// of the canvas, a node, a handle or a slider, or a caret in a text node.
+    /// The document is changing under the user's hand, so a snapshot taken now
+    /// would capture a half-finished edit; background writers wait it out.
+    pub fn pointer_gesture_in_progress(&self) -> bool {
+        self.drag.is_some()
+            || self.node_drag.is_some()
+            || self.handle_drag.is_some()
+            || self.rotate_drag.is_some()
+            || self.create_drag.is_some()
+            || self.marquee_drag.is_some()
+            || self.layer_drag.is_some()
+            || self.path_anchor_drag.is_some()
+            || self.arc_handle_drag.is_some()
+            || self.image_adjustment_drag.is_some()
+            || self.image_crop_drag.is_some()
+            || self.effect_radius_drag.is_some()
+            || self.text_edit_selection_drag.is_some()
+            || self.editor_state.ui.text_editing.is_some()
+    }
+
     /// Cancel every in-flight pointer gesture and per-node drag. They hold
     /// node ids and screen anchors of the document that is leaving.
     fn cancel_document_gestures(&mut self) {

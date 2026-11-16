@@ -4,7 +4,9 @@
 //! this turns that topic into a document. Two halves, in this order:
 //!
 //! 1. Replace the document with a blank starter — the same `EditorState`
-//!    File > New produces, not a template. A deck generated onto whatever
+//!    File > New produces, not a template. Only a pristine untitled tab is
+//!    replaced in place; any other document stays in its own tab and the deck
+//!    is generated in a new one (`scene_template_tab_host`). A deck generated onto whatever
 //!    the user had open would add slides to their work rather than build
 //!    them a deck, and the scenario gate downstream reads the same emptiness
 //!    to decide the document *is* a deck (`chat_session_launch_design`).
@@ -22,36 +24,52 @@ use op_host_services::doc_io::preserve_app_preferences;
 
 use crate::persistence::{fit_loaded_document, refresh_title};
 
-/// Drain a pending generate request. Returns true when a document was
-/// replaced and a turn queued.
-pub(crate) fn drain_pending_scene_template_generate(
+/// A generate request taken from the panel and validated, ready to run.
+pub(crate) struct GenerateRequest {
+    prompt: String,
+    /// The document-scoped style pin of the document the request was raised
+    /// in; it must be carried onto the document the deck is generated in.
+    pub(crate) pinned_style_guide: Option<String>,
+}
+
+/// Take a pending generate request: wrap the topic and pass the collaboration
+/// gate. Replacing happens later, in `install_generate_document`, into a tab
+/// the caller has made safe. `None` when there is nothing to do.
+pub(crate) fn prepare_pending_scene_template_generate(
     host: &mut WidgetHostNative,
-    current_path: &mut Option<PathBuf>,
-    window: Option<&winit::window::Window>,
-) -> bool {
-    let Some(topic) = host
+) -> Option<GenerateRequest> {
+    let topic = host
         .editor_state_mut()
         .editor_ui
         .scene_template_center
-        .take_pending_generate()
-    else {
-        return false;
-    };
+        .take_pending_generate()?;
     let locale = host.editor_state().editor_ui.locale;
     let scene = pending_generate_scene(host.editor_state());
     // The widget already rejects a blank topic; this is the second reader of
     // the same rule, and it must not invent a turn out of nothing either.
-    let Some(prompt) = scene_generate_prompt(scene, locale, &topic) else {
-        return false;
-    };
+    let prompt = scene_generate_prompt(scene, locale, &topic)?;
     // Replacing the document runs the same collaboration gate as File > New.
     if !host.gate_collaboration_action(
         op_editor_core::CollabGateAction::ReplaceDocument,
         op_editor_core::CollabEditSource::User,
     ) {
-        return false;
+        return None;
     }
+    Some(GenerateRequest {
+        prompt,
+        pinned_style_guide: host.editor_state().editor_ui.pinned_style_guide.clone(),
+    })
+}
 
+/// Replace the document on screen with a blank starter and queue the turn.
+/// The caller guarantees that document is a pristine untitled one, with the
+/// request's style pin already on it.
+pub(crate) fn install_generate_document(
+    host: &mut WidgetHostNative,
+    current_path: &mut Option<PathBuf>,
+    window: Option<&winit::window::Window>,
+    request: &GenerateRequest,
+) -> bool {
     let mut state = EditorState::starter();
     preserve_app_preferences(host.editor_state(), &mut state);
     carry_generate_basis(host.editor_state(), &mut state);
@@ -65,7 +83,7 @@ pub(crate) fn drain_pending_scene_template_generate(
     *current_path = None;
     refresh_title(current_path, window);
 
-    queue_generate_turn(host.editor_state_mut(), &prompt);
+    queue_generate_turn(host.editor_state_mut(), &request.prompt);
     host.mark_editor_state_dirty();
     true
 }

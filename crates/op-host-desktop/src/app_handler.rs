@@ -36,15 +36,16 @@ impl ApplicationHandler<DesktopEvent> for DesktopApp {
         if self.collab_runtime.poll(&mut self.host) {
             self.request_redraw(true);
         }
-        if self.mcp_shutdown_requested() {
-            // Finalize-lifecycle invariant (0718-1-k3-1 postmortem) — see
-            // `chat_session::finalize_design_session_if_needed`'s doc
-            // comment. MCP-driven shutdown can fire while a chat-launched
-            // design loop is still in flight in the same process.
-            self.finalize_runs_before_exit();
+        // A token-authed `op stop` goes through the same unsaved-changes prompts
+        // as the Quit menu item; Cancel there drops the request.
+        if self.mcp_quit_confirmed() {
             event_loop.exit();
             return;
         }
+        // Crash recovery: snapshot unsaved documents that are due. Runs on
+        // every wake, not only on repaints, so an idle app still writes the
+        // snapshot its deadline (`schedule_next_wake`) woke it for.
+        self.pump_recovery_on_wake();
         // When a WaitUntil deadline fires, only timed UI activity needs a paint
         // (caret blink, streaming chat, imports, background jobs). Live MCP uses
         // `DesktopEvent::McpWake`, so an idle server no longer creates timer
@@ -316,6 +317,25 @@ impl ApplicationHandler<DesktopEvent> for DesktopApp {
             }
         }
 
+        // `op start` launches us with `--live-mcp[=port]`. The force flag is
+        // honored directly by `reconcile_mcp_server_from_settings` (via
+        // `force_live_mcp_port`) WITHOUT mutating or persisting the user's
+        // MCP settings — mirroring TS's always-on editor MCP sync — so a
+        // one-off `op start` never rewrites the user's saved settings.
+        let bootstrap_changed = self.bootstrap_mcp_runtime_from_settings();
+        if bootstrap_changed && self.force_live_mcp_port.is_none() {
+            op_host_services::settings_io::save(self.host.editor_state());
+        }
+        // Publish (or clean up) the live MCP discovery file now that the
+        // launch-time server state is settled, so `op` can find this canvas.
+        self.publish_live_mcp_port();
+        // (Before any blocking recovery prompt below, so `op start` finds the
+        // live MCP port without waiting for the user to answer it.)
+
+        // Unsaved documents a previous run left behind come back first, so a
+        // session file they were bound to opens onto the recovered tab.
+        self.offer_recovery_at_startup();
+
         // File-association launch path: open the document handed in
         // via argv now that the host + window are ready. Routes `.op`
         // / `.pen` through `open_path`; `.fig` goes through the
@@ -336,19 +356,6 @@ impl ApplicationHandler<DesktopEvent> for DesktopApp {
         // `casement` winit fork), not argv — drain it before the
         // first paint so the launch document shows immediately.
         self.drain_opened_files();
-
-        // `op start` launches us with `--live-mcp[=port]`. The force flag is
-        // honored directly by `reconcile_mcp_server_from_settings` (via
-        // `force_live_mcp_port`) WITHOUT mutating or persisting the user's
-        // MCP settings — mirroring TS's always-on editor MCP sync — so a
-        // one-off `op start` never rewrites the user's saved settings.
-        let bootstrap_changed = self.bootstrap_mcp_runtime_from_settings();
-        if bootstrap_changed && self.force_live_mcp_port.is_none() {
-            op_host_services::settings_io::save(self.host.editor_state());
-        }
-        // Publish (or clean up) the live MCP discovery file now that the
-        // launch-time server state is settled, so `op` can find this canvas.
-        self.publish_live_mcp_port();
 
         if self.try_init_render_context(event_loop) {
             if let (Some(ctx), Some(backend)) = (self.ctx.as_mut(), self.backend.as_mut()) {
@@ -379,11 +386,7 @@ impl ApplicationHandler<DesktopEvent> for DesktopApp {
                 if self.poll_mcp_server() {
                     self.request_redraw(true);
                 }
-                if self.mcp_shutdown_requested() {
-                    // Finalize-lifecycle invariant (0718-1-k3-1 postmortem)
-                    // — see `chat_session::finalize_design_session_if_needed`'s
-                    // doc comment.
-                    self.finalize_runs_before_exit();
+                if self.mcp_quit_confirmed() {
                     event_loop.exit();
                 }
             }
@@ -571,6 +574,10 @@ impl ApplicationHandler<DesktopEvent> for DesktopApp {
     }
 
     fn exiting(&mut self, _event_loop: &ActiveEventLoop) {
+        // First, while every document is still intact: a quit that never asked
+        // about unsaved tabs (macOS Dock / logout, which end here through
+        // `applicationWillTerminate`) must not lose them.
+        self.recovery_on_exit();
         // Queue an authenticated Bye before transport workers are stopped.
         self.collab_runtime.leave(&mut self.host);
         // macOS Cmd+Q / Alt+F4 / WM-close can deliver `exiting` without

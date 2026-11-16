@@ -556,6 +556,12 @@ pub fn lookup(key: &str) -> Option<&'static str> {
         "projects.running" => "{{count}} đang chạy",
         "dialog.agentRunningTitle" => "Agent vẫn đang chạy",
         "dialog.agentRunningBody" => "“{{name}}” có một agent đang chạy.\n\nĐóng sẽ dừng agent.\n\nCó = Dừng và đóng · Không hoặc Hủy = tiếp tục làm việc.",
+        "recovery.titleOne" => "Khôi phục 1 tài liệu chưa lưu?",
+        "recovery.titleMany" => "Khôi phục {{count}} tài liệu chưa lưu?",
+        "recovery.body" => "OpenPencil đã không đóng bình thường. Các tài liệu này có thay đổi chưa lưu:\n\n{{list}}\n\nChọn Có để khôi phục, hoặc Không để bỏ chúng.",
+        "recovery.more" => "và {{count}} tài liệu khác",
+        "recovery.noteNewer" => "tệp trên đĩa mới hơn nên sẽ mở dưới dạng bản sao chưa đặt tên",
+        "recovery.noteGone" => "tệp gốc không còn nữa nên sẽ mở dưới dạng bản sao chưa đặt tên",
         _ => return None,
     })
 }

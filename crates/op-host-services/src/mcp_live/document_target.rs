@@ -28,7 +28,7 @@ pub(super) fn resolve_document(
     bound: Option<DocumentId>,
     argument: Option<&str>,
     addressing: Addressing,
-    req_tx: &Sender<UiRequest>,
+    req_tx: &UiSender,
     wake_ui: &UiWake,
 ) -> Result<DocumentId, McpLiveError> {
     if let Some(bound) = bound {
@@ -66,7 +66,7 @@ pub(super) fn resolve_document(
 /// browser extension's snapshot ingest) that name no document: they mean the
 /// canvas the user is looking at.
 pub(super) fn active_document(
-    req_tx: &Sender<UiRequest>,
+    req_tx: &UiSender,
     wake_ui: &UiWake,
 ) -> Result<DocumentId, McpLiveError> {
     let open = request_documents(req_tx, wake_ui)?;

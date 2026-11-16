@@ -44,7 +44,7 @@ pub(super) fn serve(
     body: &str,
     profile: McpAccessProfile,
     document: DocumentId,
-    req_tx: &Sender<UiRequest>,
+    req_tx: &UiSender,
     wake_ui: &UiWake,
 ) -> Result<Option<String>, McpLiveError> {
     let Some(call) = op_mcp::parse_tool_call(body.trim()) else {
@@ -105,29 +105,27 @@ fn success_response(id: RequestId, created: &CreatedDocument) -> String {
 
 /// Ask the UI thread to create the document's file.
 pub(super) fn request_create(
-    req_tx: &Sender<UiRequest>,
+    req_tx: &UiSender,
     wake_ui: &UiWake,
     document: DocumentId,
     project_root: String,
     name: String,
     expected_epoch: DocumentEpoch,
 ) -> Result<CreateAck, McpLiveError> {
-    let (ack_tx, ack_rx) = mpsc::sync_channel(1);
-    req_tx
-        .send(UiRequest::CreateDocument {
+    round_trip(
+        req_tx,
+        wake_ui,
+        "create-document",
+        Effect::Mutating,
+        |ticket, ack| UiRequest::CreateDocument {
             document,
             project_root,
             name,
             expected_epoch,
-            ack: ack_tx,
-        })
-        .map_err(|_| {
-            McpLiveError::UiThread(
-                "UI thread is not accepting MCP create-document requests".to_string(),
-            )
-        })?;
-    wake_ui();
-    recv_with_timeout(ack_rx.recv_timeout(UI_ACK_TIMEOUT), "create-document")
+            ticket,
+            ack,
+        },
+    )
 }
 
 /// UI-thread half. Re-checks against the live editor and writes the file and

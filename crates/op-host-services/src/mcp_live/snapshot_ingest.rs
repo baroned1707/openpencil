@@ -193,7 +193,7 @@ pub(super) fn rest_reply(response: &str) -> (&'static str, String) {
 /// and nothing else.
 pub(super) fn serve_snapshot_ingest<S: std::io::Read + std::io::Write>(
     stream: &mut S,
-    req_tx: &Sender<UiRequest>,
+    req_tx: &UiSender,
     wake_ui: &UiWake,
     documents: &LiveDocuments,
     req: &crate::mcp_serve::HttpRequest,
@@ -224,8 +224,21 @@ pub(super) fn serve_snapshot_ingest<S: std::io::Read + std::io::Write>(
     let document = active_document(req_tx, wake_ui)?;
     let gate = documents.gate(document);
     let _guard = lock_gate(&gate);
-    let (mut state, epoch) = request_snapshot(req_tx, wake_ui, document)?;
+    let (mut state, epoch) = match request_snapshot(req_tx, wake_ui, document) {
+        Ok(snapshot) => snapshot,
+        Err(error @ McpLiveError::HostBusy) => {
+            return write_http_with_origin(
+                stream,
+                "503 Service Unavailable",
+                &crate::mcp_serve::rest_error_body(&error.to_string()),
+                cors_origin,
+            );
+        }
+        Err(error) => return Err(error),
+    };
     let mut document_changed = false;
+    // The UI thread did not take (or did not finish) the apply in time.
+    let mut host_unavailable: Option<McpLiveError> = None;
     let mut response = crate::mcp_serve::process_message_with_applier(
         &mut state,
         &call,
@@ -247,6 +260,10 @@ pub(super) fn serve_snapshot_ingest<S: std::io::Read + std::io::Write>(
                 document_changed = true;
                 false
             }
+            Err(e @ (McpLiveError::HostBusy | McpLiveError::OutcomeUnknown)) => {
+                host_unavailable = Some(e);
+                false
+            }
             Err(e) => {
                 eprintln!("openpencil-desktop mcp: snapshot ingest apply failed: {e}");
                 false
@@ -254,6 +271,14 @@ pub(super) fn serve_snapshot_ingest<S: std::io::Read + std::io::Write>(
         },
     )?
     .unwrap_or_default();
+    if let Some(error) = host_unavailable {
+        return write_http_with_origin(
+            stream,
+            "503 Service Unavailable",
+            &crate::mcp_serve::rest_error_body(&error.to_string()),
+            cors_origin,
+        );
+    }
     if document_changed {
         response = document_changed_response(&call).unwrap_or(response);
     }

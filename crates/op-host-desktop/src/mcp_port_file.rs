@@ -19,6 +19,8 @@ use std::path::PathBuf;
 use std::time::{SystemTime, UNIX_EPOCH};
 
 fn port_file_path() -> Option<PathBuf> {
+    // A test must never publish into (or remove from) the real `~/.openpencil`.
+    crate::test_config_root::guard_user_config();
     op_config_store::ConfigStore::user()
         .ok()?
         .path(op_config_store::well_known::LIVE_MCP_PORT)

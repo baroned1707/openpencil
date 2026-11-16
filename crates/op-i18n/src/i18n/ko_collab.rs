@@ -560,6 +560,12 @@ pub fn lookup(key: &str) -> Option<&'static str> {
         "projects.running" => "{{count}}개 실행 중",
         "dialog.agentRunningTitle" => "에이전트가 작업 중입니다",
         "dialog.agentRunningBody" => "“{{name}}”에서 에이전트가 실행 중입니다.\n\n닫으면 중지됩니다.\n\n예 = 중지하고 닫기 · 아니요 / 취소 = 계속 작업.",
+        "recovery.titleOne" => "저장되지 않은 문서 1개를 복구할까요?",
+        "recovery.titleMany" => "저장되지 않은 문서 {{count}}개를 복구할까요?",
+        "recovery.body" => "OpenPencil이 정상적으로 종료되지 않았습니다. 다음 문서에 저장되지 않은 변경 사항이 있습니다:\n\n{{list}}\n\n복구하려면 ‘예’, 삭제하려면 ‘아니요’를 선택하세요.",
+        "recovery.more" => "외 {{count}}개",
+        "recovery.noteNewer" => "디스크의 파일이 더 최신이므로 제목 없는 사본으로 열립니다",
+        "recovery.noteGone" => "원본 파일이 없으므로 제목 없는 사본으로 열립니다",
         _ => return None,
     })
 }

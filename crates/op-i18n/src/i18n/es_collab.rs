@@ -544,6 +544,12 @@ pub fn lookup(key: &str) -> Option<&'static str> {
         "projects.running" => "{{count}} en curso",
         "dialog.agentRunningTitle" => "El agente sigue trabajando",
         "dialog.agentRunningBody" => "«{{name}}» tiene un agente en ejecución.\n\nAl cerrar se detiene.\n\nSí = Detener y cerrar · No o Cancelar = seguir trabajando.",
+        "recovery.titleOne" => "¿Recuperar 1 documento sin guardar?",
+        "recovery.titleMany" => "¿Recuperar {{count}} documentos sin guardar?",
+        "recovery.body" => "OpenPencil no se cerró correctamente. Estos documentos tenían cambios sin guardar:\n\n{{list}}\n\nElige Sí para recuperarlos o No para descartarlos.",
+        "recovery.more" => "y {{count}} más",
+        "recovery.noteNewer" => "el archivo en disco es más reciente, así que se abre como una copia sin título",
+        "recovery.noteGone" => "el archivo original ya no existe, así que se abre como una copia sin título",
         _ => return None,
     })
 }

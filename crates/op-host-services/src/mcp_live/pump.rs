@@ -8,21 +8,43 @@
 
 use super::*;
 
+/// See [`McpLiveServer::pump`].
+const STALE_REQUEST_SCAN_FACTOR: usize = 8;
+
 impl McpLiveServer {
     /// Answer up to [`UI_PUMP_REQUEST_BUDGET`] queued requests. Call it from
     /// the UI thread whenever the server wakes it, and on redraw.
+    ///
+    /// A request whose caller has stopped waiting is dropped without running
+    /// (see `request_ticket`). Dropping costs nothing, so it does not use up
+    /// the answer budget, but at most [`STALE_REQUEST_SCAN_FACTOR`] times the
+    /// budget is dequeued per call.
     pub fn pump(&mut self, resolver: &mut dyn DocumentResolver) -> McpPumpOutcome {
         let mut outcome = McpPumpOutcome::default();
-        for _ in 0..UI_PUMP_REQUEST_BUDGET {
+        let mut answered = 0;
+        for _ in 0..UI_PUMP_REQUEST_BUDGET * STALE_REQUEST_SCAN_FACTOR {
+            if answered == UI_PUMP_REQUEST_BUDGET {
+                break;
+            }
             let request = match self.req_rx.try_recv() {
                 Ok(request) => request,
                 Err(TryRecvError::Empty | TryRecvError::Disconnected) => break,
             };
+            // First thing, before any resolver or filesystem work: a request
+            // nobody is waiting for is dropped unrun.
+            let ticket = request.ticket().cloned();
+            if let Some(ticket) = &ticket {
+                if !self.admit(ticket, request.kind()) {
+                    continue;
+                }
+            }
+            answered += 1;
+            let mut stop_after = false;
             match request {
                 UiRequest::Documents { ack } => {
                     let _ = ack.send(resolver.documents());
                 }
-                UiRequest::Snapshot { document, ack } => {
+                UiRequest::Snapshot { document, ack, .. } => {
                     let mut taken = None;
                     let resolved = resolver.with_document(document, &mut |state, host_epoch| {
                         // Narrowed clone: the MCP registry + applier never
@@ -45,7 +67,7 @@ impl McpLiveServer {
                     let _ =
                         ack.send(resolved.and_then(|()| taken.ok_or(ResolveError::NotReachable)));
                 }
-                UiRequest::ListPages { document, ack } => {
+                UiRequest::ListPages { document, ack, .. } => {
                     let mut pages = None;
                     let resolved = resolver.with_document(document, &mut |state, _| {
                         pages = Some(op_mcp::list_pages_snapshot(state));
@@ -59,6 +81,7 @@ impl McpLiveServer {
                     cmd,
                     expected_epoch,
                     ack,
+                    ..
                 } => {
                     let mut applied = ApplyAck::default();
                     let resolved = resolver.with_document(document, &mut |state, host_epoch| {
@@ -78,6 +101,7 @@ impl McpLiveServer {
                     doc,
                     editor_meta,
                     ack,
+                    ..
                 } => {
                     // Whole-document sync (a REST route with no document id)
                     // always means the document on screen.
@@ -111,7 +135,9 @@ impl McpLiveServer {
                     });
                     let _ = ack.send(resolved.map(|()| accepted));
                 }
-                UiRequest::UpdateEditorMeta { editor_meta, ack } => {
+                UiRequest::UpdateEditorMeta {
+                    editor_meta, ack, ..
+                } => {
                     let mut editor_meta = Some(editor_meta);
                     let resolved = self.with_active(resolver, &mut |state, _| {
                         if let Some(meta) = editor_meta.take() {
@@ -131,6 +157,7 @@ impl McpLiveServer {
                     name,
                     expected_epoch,
                     ack,
+                    ..
                 } => {
                     let bound_path = resolver
                         .documents()
@@ -164,7 +191,7 @@ impl McpLiveServer {
                         // The host binds the new file to its document right
                         // after this pump returns. A request queued behind
                         // this one must see the bound path, so stop here.
-                        break;
+                        stop_after = true;
                     }
                 }
                 #[cfg(feature = "mcp-debug-tools")]
@@ -182,8 +209,31 @@ impl McpLiveServer {
                         .send(resolved.and_then(|()| captured.ok_or(ResolveError::NotReachable)));
                 }
             }
+            if let Some(ticket) = ticket {
+                ticket.finish();
+            }
+            if stop_after {
+                break;
+            }
         }
         outcome
+    }
+
+    /// Whether the request may run. `false`: its caller has stopped waiting
+    /// (the deadline passed, or the caller cancelled), so it is dropped
+    /// unrun, counted, and left unanswered. The caller learns it from the
+    /// ticket and the closed answer channel; if it is already gone, nothing
+    /// is lost.
+    fn admit(&mut self, ticket: &Ticket, kind: &str) -> bool {
+        if ticket.try_start(self.timing.now()) {
+            return true;
+        }
+        self.expired_requests += 1;
+        eprintln!(
+            "openpencil-desktop mcp: dropped an expired {kind} request unapplied ({} so far)",
+            self.expired_requests
+        );
+        false
     }
 
     /// Run `f` on the document on screen.

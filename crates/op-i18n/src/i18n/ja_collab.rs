@@ -560,6 +560,12 @@ pub fn lookup(key: &str) -> Option<&'static str> {
         "projects.running" => "{{count}} 件を実行中",
         "dialog.agentRunningTitle" => "エージェントが作業中です",
         "dialog.agentRunningBody" => "「{{name}}」ではエージェントが実行中です。\n\n閉じると停止します。\n\nはい = 停止して閉じる · いいえ / キャンセル = 作業を続ける。",
+        "recovery.titleOne" => "未保存のドキュメント 1 件を復元しますか？",
+        "recovery.titleMany" => "未保存のドキュメント {{count}} 件を復元しますか？",
+        "recovery.body" => "OpenPencil は正常に終了しませんでした。次のドキュメントに未保存の変更があります:\n\n{{list}}\n\n「はい」で復元、「いいえ」で破棄します。",
+        "recovery.more" => "ほか {{count}} 件",
+        "recovery.noteNewer" => "ディスク上のファイルの方が新しいため、無題のコピーとして開きます",
+        "recovery.noteGone" => "元のファイルが見つからないため、無題のコピーとして開きます",
         _ => return None,
     })
 }

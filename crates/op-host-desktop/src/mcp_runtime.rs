@@ -320,12 +320,13 @@ impl DesktopApp {
         self.mcp_server.is_some()
     }
 
-    /// Whether the live MCP server received a token-authed `op stop`
-    /// (`openpencil/shutdown`) and the editor should quit.
-    pub(crate) fn mcp_shutdown_requested(&self) -> bool {
+    /// Consume a token-authed `op stop` (`openpencil/shutdown`) the live MCP
+    /// server received. `true` once per request; the editor then runs it
+    /// through the unsaved-changes prompts (`mcp_quit_confirmed`).
+    pub(crate) fn take_mcp_shutdown_request(&self) -> bool {
         self.mcp_server
             .as_ref()
-            .is_some_and(|server| server.shutdown_requested())
+            .is_some_and(|server| server.take_shutdown_request())
     }
 
     /// Publish (or retract) the live MCP server's port to the TS-compatible
@@ -537,3 +538,7 @@ mod multi_document_e2e_tests;
 #[cfg(test)]
 #[path = "mcp_multi_document_e2e_lifecycle_tests.rs"]
 mod multi_document_e2e_lifecycle_tests;
+
+#[cfg(test)]
+#[path = "recovery_mcp_stop_tests.rs"]
+mod recovery_mcp_stop_tests;

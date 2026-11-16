@@ -6,6 +6,12 @@
 //! document, bounded in size and age, so a long-running agent cannot grow it
 //! without limit and a stale id cannot replay an hours-old answer.
 //!
+//! Only two outcomes are remembered: a call that was applied (its response is
+//! replayed) and a call whose outcome is in doubt (the UI thread started it
+//! and never answered, so it may have landed; a retry is refused rather than
+//! risk applying twice). A call that never ran (the UI thread was busy and the
+//! request was cancelled) is NOT remembered: its id stays free for the retry.
+//!
 //! The log takes `now` as an argument instead of reading a clock, so the
 //! expiry rules are tested without sleeping.
 
@@ -40,13 +46,20 @@ pub(super) enum Lookup {
     Miss,
     /// Seen with the same call: return this stored response, do not apply.
     Replay(String),
+    /// Seen with the same call, but whether it landed is unknown.
+    InDoubt,
     /// Seen with a different call.
     Conflict,
 }
 
+enum Outcome {
+    Applied(String),
+    InDoubt,
+}
+
 struct Entry {
     fingerprint: CallFingerprint,
-    response: String,
+    outcome: Outcome,
     stored_at: Instant,
     last_used: u64,
 }
@@ -76,7 +89,10 @@ impl OperationLog {
             return Lookup::Conflict;
         }
         entry.last_used = tick;
-        Lookup::Replay(entry.response.clone())
+        match &entry.outcome {
+            Outcome::Applied(response) => Lookup::Replay(response.clone()),
+            Outcome::InDoubt => Lookup::InDoubt,
+        }
     }
 
     /// Remember a successful response, evicting the least recently used
@@ -86,6 +102,26 @@ impl OperationLog {
         operation_id: &str,
         fingerprint: CallFingerprint,
         response: String,
+        now: Instant,
+    ) {
+        self.store(operation_id, fingerprint, Outcome::Applied(response), now);
+    }
+
+    /// Remember that the call may or may not have landed.
+    pub(super) fn record_in_doubt(
+        &mut self,
+        operation_id: &str,
+        fingerprint: CallFingerprint,
+        now: Instant,
+    ) {
+        self.store(operation_id, fingerprint, Outcome::InDoubt, now);
+    }
+
+    fn store(
+        &mut self,
+        operation_id: &str,
+        fingerprint: CallFingerprint,
+        outcome: Outcome,
         now: Instant,
     ) {
         self.expire(now);
@@ -105,7 +141,7 @@ impl OperationLog {
             operation_id.to_string(),
             Entry {
                 fingerprint,
-                response,
+                outcome,
                 stored_at: now,
                 last_used: self.tick,
             },
