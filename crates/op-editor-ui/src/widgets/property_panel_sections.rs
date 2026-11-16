@@ -717,15 +717,19 @@ fn paint_check_row(
         origin: Point2D::new(x, y + (row_h - box_size) / 2.0),
         size: Point2D::new(box_size, box_size),
     };
-    // The unchecked box is a control glyph, not a surface border: its edge
-    // must read on both themes, where the flat `input` fill almost vanishes.
-    let mut tokens = crate::widgets::button::tokens_from_theme(theme);
-    tokens.input = theme.muted_foreground.with_alpha(0.65);
-    jian_widgets::components::checkbox::Checkbox {
-        checked,
-        enabled: true,
+    if checked {
+        // Checked: the jian checkbox paints a flat primary fill + check glyph.
+        let tokens = crate::widgets::button::tokens_from_theme(theme);
+        jian_widgets::components::checkbox::Checkbox {
+            checked: true,
+            enabled: true,
+        }
+        .paint(cx.backend, box_rect, &tokens);
+    } else {
+        // Unchecked: a flat filled well. The jian checkbox outlines this
+        // state, so it is painted here to keep the rail borderless.
+        cx.backend.fill_round_rect(box_rect, 4.0, theme.input);
     }
-    .paint(cx.backend, box_rect, &tokens);
     let label =
         crate::widgets::text_metrics::fit_chrome(cx.backend, label, (w - label_x).max(0.0), 12.0);
     let lbl = TextLayout::single_run(

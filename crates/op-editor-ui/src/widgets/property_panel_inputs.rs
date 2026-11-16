@@ -171,10 +171,7 @@ pub fn paint_section_label_with_add(
     next_y
 }
 
-/// Paint a colour swatch preview with a faint inset edge.
-///
-/// A swatch is content, not a surface border: without the edge a white fill
-/// disappears on a white (light) panel and a dark fill on a dark one.
+/// Paint a colour swatch preview as a flat rounded fill (no edge).
 pub fn paint_color_swatch(
     cx: &mut PaintCx<'_>,
     theme: &Theme,
@@ -182,9 +179,8 @@ pub fn paint_color_swatch(
     radius: f32,
     color: crate::Color,
 ) {
+    let _ = theme;
     cx.backend.fill_round_rect(rect, radius, color);
-    cx.backend
-        .stroke_round_rect(rect, radius, theme.foreground.with_alpha(0.14), 1.0);
 }
 
 pub fn paint_input_with_prefix(

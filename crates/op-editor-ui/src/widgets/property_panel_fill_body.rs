@@ -296,8 +296,6 @@ pub(crate) fn paint_fill_gradient_body(
             swatch,
             &crate::widgets::button::tokens_from_theme(theme),
         );
-        cx.backend
-            .stroke_round_rect(swatch, 3.0, theme.foreground.with_alpha(0.14), 1.0);
         // Display only `#RRGGBB` — the swatch on the left already
         // conveys per-stop transparency. Alpha is preserved at
         // commit time, so the user never types raw alpha digits.

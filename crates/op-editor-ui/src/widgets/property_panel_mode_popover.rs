@@ -57,22 +57,22 @@ pub(crate) fn paint_radio_circle(
     size: f32,
     selected: bool,
 ) {
-    // The unselected ring is a control glyph; keep it readable on both
-    // themes where the flat `input` fill almost vanishes.
-    let mut tokens = crate::widgets::button::tokens_from_theme(theme);
-    tokens.input = theme.muted_foreground.with_alpha(0.65);
+    let rect = Rect {
+        origin: Point2D::new(x, y),
+        size: Point2D::new(size, size),
+    };
+    if !selected {
+        // Unselected: a flat filled disc. The jian radio outlines this
+        // state, so it is painted here to keep the panel borderless.
+        cx.backend.fill_round_rect(rect, size / 2.0, theme.input);
+        return;
+    }
+    let tokens = crate::widgets::button::tokens_from_theme(theme);
     jian_widgets::components::radio::Radio {
         selected,
         enabled: true,
     }
-    .paint(
-        cx.backend,
-        Rect {
-            origin: Point2D::new(x, y),
-            size: Point2D::new(size, size),
-        },
-        &tokens,
-    );
+    .paint(cx.backend, rect, &tokens);
 }
 
 /// Paint the popover box, title, and the three mode-radio rows.
