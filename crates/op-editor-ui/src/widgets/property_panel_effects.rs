@@ -4,7 +4,7 @@ use crate::theme::Theme;
 use crate::widgets::icons::{draw_icon, Icon};
 use crate::widgets::property_panel::{EffectKind, EffectSummary, PropertyPanelAction};
 use crate::widgets::property_panel_inputs::{
-    paint_section_divider, paint_section_label_with_add, INPUT_RADIUS, PAD_X, SECTION_GAP,
+    paint_section_label_with_add, INPUT_RADIUS, PAD_X, SECTION_GAP,
 };
 use crate::widgets::property_panel_sections::{EditContext, PropertyLabels};
 use crate::widgets::text_metrics;
@@ -98,7 +98,6 @@ pub fn paint_effects_section(
             row_y += EFFECT_ROW_HEIGHT + EFFECT_ROW_GAP;
         }
     }
-    paint_section_divider(cx, theme, x, row_y, width);
     row_y + SECTION_GAP
 }
 
@@ -157,10 +156,9 @@ pub(crate) fn paint_effect_add_menu(
     hover: Option<usize>,
 ) {
     let menu = effect_add_menu_rect(add_rect);
+    crate::widgets::panel_controls::paint_soft_shadow(cx.backend, menu, INPUT_RADIUS);
     cx.backend
         .fill_round_rect(menu, INPUT_RADIUS, theme.popover);
-    cx.backend
-        .stroke_round_rect(menu, INPUT_RADIUS, theme.border, 1.0);
     for (index, (_, kind)) in EFFECT_ADD_MENU_ROWS.iter().enumerate() {
         let row = Rect::xywh(
             menu.origin.x + 4.0,
@@ -217,8 +215,6 @@ fn paint_effect_row(
 ) {
     let rects = effect_row_rects(x, y, width, touch_controls);
     cx.backend.fill_round_rect(rects.row, 8.0, theme.muted);
-    cx.backend
-        .stroke_round_rect(rects.row, 8.0, theme.border, 1.0);
     let foreground = if effect.visible {
         theme.foreground
     } else {
@@ -255,7 +251,7 @@ fn paint_effect_row(
         rects.slider.size.x,
         4.0,
     );
-    cx.backend.fill_round_rect(track, 2.0, theme.border);
+    cx.backend.fill_round_rect(track, 2.0, theme.accent);
     cx.backend.fill_round_rect(
         Rect::xywh(
             track.origin.x,
@@ -279,16 +275,10 @@ fn paint_effect_row(
     let focus = PropertyFocus::EffectRadius(index);
     cx.backend
         .fill_round_rect(rects.value, 6.0, theme.background);
-    cx.backend.stroke_round_rect(
-        rects.value,
-        6.0,
-        if edit.focus == Some(focus) {
-            theme.ring
-        } else {
-            theme.border
-        },
-        if edit.focus == Some(focus) { 1.5 } else { 1.0 },
-    );
+    if edit.focus == Some(focus) {
+        cx.backend
+            .stroke_round_rect(rects.value, 6.0, theme.ring, 1.5);
+    }
     let fallback = format!("{}", value.round() as i32);
     let text = edit.value_for(focus, &fallback);
     if !edit.paint_input_view_at(

@@ -289,8 +289,8 @@ pub fn paint_picker(
         return;
     }
     let popup = popup_rect(anchor, viewport, target);
+    crate::widgets::panel_controls::paint_soft_shadow(cx.backend, popup, 7.0);
     cx.backend.fill_round_rect(popup, 7.0, theme.popover);
-    cx.backend.stroke_round_rect(popup, 7.0, theme.border, 1.0);
     let selected = selected_index(target, snapshot);
     for index in 0..row_count(target) {
         let Some(rect) = row_rect(popup, target, index) else {

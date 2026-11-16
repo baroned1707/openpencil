@@ -122,8 +122,8 @@ impl AlignToolbar {
         theme: &Theme,
         hovered: Option<AlignAction>,
     ) {
+        crate::widgets::panel_controls::paint_soft_shadow(backend, self.rect, CORNER_RADIUS);
         backend.fill_round_rect(self.rect, CORNER_RADIUS, theme.popover);
-        backend.stroke_round_rect(self.rect, CORNER_RADIUS, theme.border, 1.0);
         for (i, (action, icon)) in ITEMS.iter().enumerate() {
             jian_widgets::components::icon_button::IconButton {
                 icon_paths: icon.paths(),

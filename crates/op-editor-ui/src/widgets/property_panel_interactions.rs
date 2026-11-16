@@ -25,8 +25,8 @@
 use crate::theme::Theme;
 use crate::widgets::property_panel::PropertyPanelAction;
 use crate::widgets::property_panel_inputs::{
-    paint_dropdown, paint_section_divider, paint_section_label, INPUT_HEIGHT, INPUT_RADIUS, PAD_X,
-    SECTION_GAP, SECTION_HEADER_HEIGHT,
+    paint_dropdown, paint_section_label, INPUT_HEIGHT, INPUT_RADIUS, PAD_X, SECTION_GAP,
+    SECTION_HEADER_HEIGHT,
 };
 use crate::widgets::PaintCx;
 use crate::{Point2D, Rect, TextLayout};
@@ -282,7 +282,6 @@ pub fn paint_interactions_section(
         }
     }
     y += 6.0;
-    paint_section_divider(cx, theme, x, y, width);
     y + SECTION_GAP
 }
 
@@ -407,10 +406,9 @@ pub(crate) fn paint_interaction_menu(
     hover: Option<usize>,
 ) {
     let menu = interaction_menu_rect(anchor, rows.len());
+    crate::widgets::panel_controls::paint_soft_shadow(cx.backend, menu, INPUT_RADIUS);
     cx.backend
         .fill_round_rect(menu, INPUT_RADIUS, theme.popover);
-    cx.backend
-        .stroke_round_rect(menu, INPUT_RADIUS, theme.border, 1.0);
     for (i, (_, label)) in rows.iter().enumerate() {
         let ry = menu.origin.y + 4.0 + i as f32 * INTERACTION_MENU_ROW_H;
         if hover == Some(i) {

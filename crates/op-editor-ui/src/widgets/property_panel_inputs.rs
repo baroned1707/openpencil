@@ -171,19 +171,20 @@ pub fn paint_section_label_with_add(
     next_y
 }
 
-pub fn paint_section_divider(cx: &mut PaintCx<'_>, theme: &Theme, x: f32, y: f32, width: f32) {
-    jian_widgets::components::separator::Separator {
-        orientation: jian_widgets::components::separator::Orientation::Horizontal,
-        thickness: 1.0,
-    }
-    .paint(
-        cx.backend,
-        Rect {
-            origin: Point2D::new(x, y),
-            size: Point2D::new(width, 1.0),
-        },
-        theme.border,
-    );
+/// Paint a colour swatch preview with a faint inset edge.
+///
+/// A swatch is content, not a surface border: without the edge a white fill
+/// disappears on a white (light) panel and a dark fill on a dark one.
+pub fn paint_color_swatch(
+    cx: &mut PaintCx<'_>,
+    theme: &Theme,
+    rect: Rect,
+    radius: f32,
+    color: crate::Color,
+) {
+    cx.backend.fill_round_rect(rect, radius, color);
+    cx.backend
+        .stroke_round_rect(rect, radius, theme.foreground.with_alpha(0.14), 1.0);
 }
 
 pub fn paint_input_with_prefix(

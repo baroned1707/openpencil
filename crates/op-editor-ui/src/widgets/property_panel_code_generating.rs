@@ -32,8 +32,6 @@ pub(super) fn paint_generating_body(
 ) -> f32 {
     let card = progress_card_rect(state, x, y, w);
     cx.backend.fill_round_rect(card, CARD_RADIUS, theme.muted);
-    cx.backend
-        .stroke_round_rect(card, CARD_RADIUS, theme.border, 1.0);
     paint_header(cx, theme, state, strings, card);
 
     let mut row_y = card.origin.y + CARD_PAD_Y + HEADER_H;
@@ -204,7 +202,7 @@ fn paint_step(cx: &mut PaintCx<'_>, theme: &Theme, step: StepPaint<'_>) {
         cx.backend.stroke_line(
             Point2D::new(center_x, step.rect.origin.y),
             Point2D::new(center_x, center_y - 8.0),
-            theme.border,
+            theme.accent,
             1.0,
         );
     }
@@ -212,7 +210,7 @@ fn paint_step(cx: &mut PaintCx<'_>, theme: &Theme, step: StepPaint<'_>) {
         cx.backend.stroke_line(
             Point2D::new(center_x, center_y + 8.0),
             Point2D::new(center_x, step.rect.origin.y + STEP_H),
-            theme.border,
+            theme.accent,
             1.0,
         );
     }

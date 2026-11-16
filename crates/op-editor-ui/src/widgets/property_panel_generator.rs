@@ -17,8 +17,8 @@ use crate::theme::Theme;
 use crate::widgets::icons::{draw_icon, Icon};
 use crate::widgets::property_panel::{NodeSnapshot, PropertyPanelAction};
 use crate::widgets::property_panel_inputs::{
-    paint_input_with_prefix_focused_state, paint_section_divider, paint_section_label,
-    INPUT_HEIGHT, PAD_X, SECTION_GAP, SECTION_HEADER_HEIGHT,
+    paint_input_with_prefix_focused_state, paint_section_label, INPUT_HEIGHT, PAD_X, SECTION_GAP,
+    SECTION_HEADER_HEIGHT,
 };
 use crate::widgets::property_panel_sections::EditContext;
 use crate::widgets::{text_metrics, PaintCx};
@@ -313,7 +313,6 @@ pub fn paint_generator_section(
     );
     paint_button(cx, theme, detach, Icon::Unlink, t("generator.detach"));
     y += BUTTON_HEIGHT + 12.0;
-    paint_section_divider(cx, theme, x, y, width);
     y + 1.0 + SECTION_GAP
 }
 
@@ -391,8 +390,7 @@ fn paint_toggle(cx: &mut PaintCx<'_>, theme: &Theme, rect: Rect, label: &str, ch
 }
 
 fn paint_button(cx: &mut PaintCx<'_>, theme: &Theme, rect: Rect, icon: Icon, label: &str) {
-    cx.backend.fill_round_rect(rect, 6.0, theme.card);
-    cx.backend.stroke_round_rect(rect, 6.0, theme.border, 1.0);
+    cx.backend.fill_round_rect(rect, 6.0, theme.muted);
     let label = text_metrics::fit_chrome(cx.backend, label, rect.size.x - 30.0, NOTE_FONT);
     let label_w = text_metrics::measure_chrome(cx.backend, &label, NOTE_FONT);
     let start_x = rect.origin.x + (rect.size.x - label_w - 17.0) / 2.0;

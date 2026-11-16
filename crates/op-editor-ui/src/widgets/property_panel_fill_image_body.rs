@@ -21,8 +21,6 @@ pub(super) fn paint_fill_image_body(
         size: Point2D::new(usable_w, INPUT_HEIGHT),
     };
     cx.backend.fill_round_rect(row, INPUT_RADIUS, theme.muted);
-    cx.backend
-        .stroke_round_rect(row, INPUT_RADIUS, theme.border, 1.0);
     let summary = snapshot.image_fill.as_ref();
     let thumbnail = Rect {
         origin: Point2D::new(row.origin.x + 6.0, row.origin.y + 5.0),

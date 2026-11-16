@@ -28,10 +28,9 @@ pub(super) const GLOBE_BUTTON_WIDTH: f32 = 44.0;
 pub(super) const FILE_MENU_BUTTON_WIDTH: f32 = 46.0;
 pub(super) const GIT_BUTTON_PAD_X: f32 = (ICON_BUTTON - ICON_SIZE) / 2.0;
 pub(super) const PAD: f32 = 12.0;
-/// Top-bar vertical divider geometry (TS `w-px h-3.5 bg-border/60
-/// mx-1`): 1 px wide, 14 px tall, 4 px gap on each side.
+/// Top-bar group-gap geometry: 1 px slot + 4 px gap on each side. Groups
+/// are separated by this empty space (no divider line is painted).
 pub(super) const DIVIDER_W: f32 = 1.0;
-pub(super) const DIVIDER_H: f32 = 14.0;
 pub(super) const DIVIDER_GAP: f32 = 4.0;
 /// The git button needs a desktop git backend (`op-git` via the
 /// desktop host) to populate + paint the panel; the web/wasm build
@@ -670,25 +669,4 @@ pub(super) fn paint_import_button(
 /// one center line.
 pub(super) fn glyph_top(center_y: f32, size: f32) -> f32 {
     center_y - size / 2.0
-}
-
-/// Paint a top-bar vertical divider with its left edge at `x`,
-/// centred on `center_y` (TS `w-px h-3.5 bg-border/60`).
-pub(super) fn paint_divider(cx: &mut PaintCx<'_>, theme: &Theme, x: f32, center_y: f32) {
-    let color = Color {
-        a: theme.border.a * 0.6,
-        ..theme.border
-    };
-    jian_widgets::components::separator::Separator {
-        orientation: jian_widgets::components::separator::Orientation::Vertical,
-        thickness: DIVIDER_W,
-    }
-    .paint(
-        cx.backend,
-        Rect {
-            origin: Point2D::new(x, center_y - DIVIDER_H / 2.0),
-            size: Point2D::new(DIVIDER_W, DIVIDER_H),
-        },
-        color,
-    );
 }

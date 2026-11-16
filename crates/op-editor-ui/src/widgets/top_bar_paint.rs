@@ -16,14 +16,6 @@ use op_editor_core::TopBarButton;
 impl TopBar {
     pub(super) fn paint_chrome(&self, cx: &mut PaintCx<'_>, rect: Rect) {
         cx.backend.fill_rect(rect, self.theme.background);
-        // Bottom hairline.
-        cx.backend.fill_rect(
-            Rect {
-                origin: Point2D::new(rect.origin.x, rect.origin.y + rect.size.y - 1.0),
-                size: Point2D::new(rect.size.x, 1.0),
-            },
-            self.theme.border,
-        );
 
         let center_y = rect.origin.y + rect.size.y / 2.0;
         // ── Window-control dots ────────────────────────────────
@@ -135,11 +127,10 @@ impl TopBar {
         // file name + edited label + git-branch button) — hidden inside a
         // VS Code embed, where the workbench owns file identity. Includes
         // the two dividers that frame this group so hiding the buttons
-        // doesn't leave orphan divider lines.
+        // doesn't leave orphan gaps.
         if self.file_controls_visible() {
-            // Divider between the sidebar toggle and the file-menu.
+            // Gap between the sidebar toggle and the file-menu.
             let divider1_x = panel_left_x + ICON_BUTTON + DIVIDER_GAP;
-            paint_divider(cx, &self.theme, divider1_x, center_y);
             // File-menu compound: folder + tight chevron in one button.
             let file_menu_x = divider1_x + DIVIDER_W + DIVIDER_GAP;
             paint_file_menu_button(
@@ -150,9 +141,8 @@ impl TopBar {
                 self.is_hovered(TopBarButton::ToggleFileMenu),
                 self.is_pressed(TopBarButton::ToggleFileMenu),
             );
-            // Divider before the Figma import affordance.
+            // Gap before the Figma import affordance.
             let divider2_x = file_menu_x + FILE_MENU_BUTTON_WIDTH + DIVIDER_GAP;
-            paint_divider(cx, &self.theme, divider2_x, center_y);
             // Import button (Figma / HTML menu).
             let figma_x = divider2_x + DIVIDER_W + DIVIDER_GAP;
             paint_import_button(
@@ -163,14 +153,8 @@ impl TopBar {
                 self.is_hovered(TopBarButton::OpenImportMenu),
                 self.is_pressed(TopBarButton::OpenImportMenu),
             );
-            // Divider then Home (制图台) — return to the drafting table.
+            // Gap then Home (制图台) — return to the drafting table.
             let home = self.home_button_rect(rect);
-            paint_divider(
-                cx,
-                &self.theme,
-                home.origin.x - DIVIDER_GAP - DIVIDER_W,
-                center_y,
-            );
             paint_icon_button(
                 cx,
                 &self.theme,
@@ -389,10 +373,7 @@ impl TopBar {
                 self.is_hovered(TopBarButton::OpenCollaboration),
                 self.is_pressed(TopBarButton::OpenCollaboration),
             );
-            rx = collab_rect.origin.x;
         }
-        // `rx` now points at the LEFT edge of the chip's anchor —
-        // the chip anchors immediately to its left (small gap).
 
         // Agent chip — two states:
         //   - empty (agent_count == 0): LayoutGrid icon + an
@@ -453,8 +434,6 @@ impl TopBar {
                         ..self.theme.foreground
                     },
                 );
-                cx.backend
-                    .stroke_round_rect(chip_box, 5.0, self.theme.card, 1.0);
                 crate::widgets::ai_chat_model_picker::paint_provider_logo(
                     cx,
                     *provider,
@@ -494,11 +473,6 @@ impl TopBar {
         // 11 px text centred on the bar's center line (ascent ≈ 8 px).
         cx.backend
             .draw_text(&chip_label, Point2D::new(text_x, center_y + 4.0));
-
-        // Divider between the agent chip and the avatar button — groups
-        // the status chip apart from the account/locale/theme/fullscreen
-        // controls.
-        paint_divider(cx, &self.theme, rx - DIVIDER_GAP - DIVIDER_W, center_y);
     }
 }
 

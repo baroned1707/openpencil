@@ -14,7 +14,7 @@ use crate::widgets::property_panel_image_assets::{
 use crate::widgets::property_panel_image_popovers::warning_colors;
 use crate::widgets::property_panel_image_preview::paint_image_preview;
 use crate::widgets::property_panel_inputs::{
-    paint_section_divider, paint_section_label, INPUT_HEIGHT, INPUT_RADIUS, PAD_X, SECTION_GAP,
+    paint_section_label, INPUT_HEIGHT, INPUT_RADIUS, PAD_X, SECTION_GAP,
 };
 use crate::widgets::text_metrics;
 use crate::widgets::PaintCx;
@@ -159,8 +159,6 @@ pub fn paint_image_node_section(
         size: Point2D::new(usable_w, INPUT_HEIGHT),
     };
     cx.backend.fill_round_rect(row, INPUT_RADIUS, theme.muted);
-    cx.backend
-        .stroke_round_rect(row, INPUT_RADIUS, theme.border, 1.0);
 
     let summary = snapshot.image_fill.as_ref();
     let thumb = Rect {
@@ -255,7 +253,6 @@ pub fn paint_image_node_section(
     );
     y += IMAGE_BUTTON_H;
     y += 34.0;
-    paint_section_divider(cx, theme, x, y, width);
     y + SECTION_GAP
 }
 
@@ -272,9 +269,8 @@ fn paint_warning_row(
         origin: Point2D::new(x + PAD_X, y),
         size: Point2D::new(usable_w, IMAGE_WARNING_H),
     };
-    let (border, bg, icon, text) = warning_colors();
+    let (_, bg, icon, text) = warning_colors();
     cx.backend.fill_round_rect(row, 6.0, bg);
-    cx.backend.stroke_round_rect(row, 6.0, border, 1.0);
     draw_icon(
         cx.backend,
         Icon::AlertTriangle,
@@ -320,7 +316,7 @@ fn paint_warning_row(
         origin: Point2D::new(row.origin.x + usable_w - 50.0, row.origin.y + 8.0),
         size: Point2D::new(44.0, 24.0),
     };
-    cx.backend.stroke_round_rect(btn, 5.0, border, 1.0);
+    cx.backend.fill_round_rect(btn, 5.0, bg);
     let relink = TextLayout::single_run(
         "Relink",
         "system-ui",
@@ -340,8 +336,7 @@ fn paint_warning_row(
 }
 
 fn paint_outline_button(cx: &mut PaintCx<'_>, theme: &Theme, rect: Rect, icon: Icon, label: &str) {
-    cx.backend.fill_round_rect(rect, 6.0, theme.card);
-    cx.backend.stroke_round_rect(rect, 6.0, theme.border, 1.0);
+    cx.backend.fill_round_rect(rect, 6.0, theme.muted);
     let label_w = text_metrics::measure_chrome(cx.backend, label, 11.0);
     let start_x = rect.origin.x + (rect.size.x - label_w - 17.0) / 2.0;
     draw_icon(

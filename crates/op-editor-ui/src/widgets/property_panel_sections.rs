@@ -8,8 +8,8 @@ use crate::widgets::icons::{draw_icon, Icon};
 use crate::widgets::property_panel::NodeSnapshot;
 use crate::widgets::property_panel_inputs::{
     paint_input_with_icon_focused_state, paint_input_with_prefix_focused_state,
-    paint_section_divider, paint_section_label, paint_text_input_view_value, COMPONENT_ACCENT,
-    HEADER_HEIGHT, INPUT_HEIGHT, INSTANCE_ACCENT, PAD_X, SECTION_GAP, TAB_HEIGHT,
+    paint_section_label, paint_text_input_view_value, COMPONENT_ACCENT, HEADER_HEIGHT,
+    INPUT_HEIGHT, INSTANCE_ACCENT, PAD_X, SECTION_GAP, TAB_HEIGHT,
 };
 use crate::widgets::PaintCx;
 use crate::{Point2D, Rect, TextLayout};
@@ -343,7 +343,7 @@ pub fn paint_tab_strip(
     state: TabStripState,
     x: f32,
     y: f32,
-    width: f32,
+    _width: f32,
 ) -> f32 {
     use op_editor_core::PropertyTab;
     let active = state.active;
@@ -388,13 +388,6 @@ pub fn paint_tab_strip(
             ),
         );
     }
-    cx.backend.fill_rect(
-        Rect {
-            origin: Point2D::new(x, y + TAB_HEIGHT - 1.0),
-            size: Point2D::new(width, 1.0),
-        },
-        theme.border,
-    );
     y + TAB_HEIGHT
 }
 
@@ -581,7 +574,6 @@ pub fn paint_position_section(
         y += crate::widgets::property_panel_corner::CORNER_GRID_EXTRA_HEIGHT;
     }
     y += 12.0;
-    paint_section_divider(cx, theme, x, y, width);
     y + SECTION_GAP
 }
 
@@ -700,7 +692,6 @@ pub fn paint_size_section(
         y += row_h;
     }
     y += 12.0;
-    paint_section_divider(cx, theme, x, y, width);
     y + SECTION_GAP
 }
 
@@ -726,15 +717,15 @@ fn paint_check_row(
         origin: Point2D::new(x, y + (row_h - box_size) / 2.0),
         size: Point2D::new(box_size, box_size),
     };
+    // The unchecked box is a control glyph, not a surface border: its edge
+    // must read on both themes, where the flat `input` fill almost vanishes.
+    let mut tokens = crate::widgets::button::tokens_from_theme(theme);
+    tokens.input = theme.muted_foreground.with_alpha(0.65);
     jian_widgets::components::checkbox::Checkbox {
         checked,
         enabled: true,
     }
-    .paint(
-        cx.backend,
-        box_rect,
-        &crate::widgets::button::tokens_from_theme(theme),
-    );
+    .paint(cx.backend, box_rect, &tokens);
     let label =
         crate::widgets::text_metrics::fit_chrome(cx.backend, label, (w - label_x).max(0.0), 12.0);
     let lbl = TextLayout::single_run(

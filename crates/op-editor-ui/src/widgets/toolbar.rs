@@ -339,9 +339,8 @@ impl Widget for Toolbar {
         // Floating column on top of the canvas — paint a translucent
         // popover-ish background so it reads as a panel against any
         // canvas content beneath.
+        crate::widgets::panel_controls::paint_soft_shadow(cx.backend, rect, 12.0);
         cx.backend.fill_round_rect(rect, 12.0, self.theme.popover);
-        cx.backend
-            .stroke_round_rect(rect, 12.0, self.theme.border, 1.0);
 
         let button_x = rect.origin.x + (rect.size.x - BUTTON_SIZE) / 2.0;
         let mut y = rect.origin.y + PAD_TOP;
@@ -352,15 +351,7 @@ impl Widget for Toolbar {
                     if prev_was_item {
                         y += SECTION_GAP / 2.0;
                     }
-                    let sep_x = rect.origin.x + 10.0;
-                    let sep_w = rect.size.x - 20.0;
-                    cx.backend.fill_rect(
-                        Rect {
-                            origin: Point2D::new(sep_x, y),
-                            size: Point2D::new(sep_w, 1.0),
-                        },
-                        self.theme.border,
-                    );
+                    // Spacing alone separates tool groups (no hairline).
                     y += SECTION_GAP / 2.0;
                     prev_was_item = false;
                 }

@@ -103,8 +103,6 @@ pub(super) fn paint_error_body(
         size: Point2D::new((w - PAD_X * 2.0).max(0.0), card_height(state)),
     };
     cx.backend.fill_round_rect(card, CARD_RADIUS, theme.muted);
-    cx.backend
-        .stroke_round_rect(card, CARD_RADIUS, theme.border, 1.0);
 
     draw_icon(
         cx.backend,

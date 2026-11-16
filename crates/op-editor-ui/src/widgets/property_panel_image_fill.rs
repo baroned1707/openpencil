@@ -282,8 +282,8 @@ pub fn paint_image_fill_popover(
             highlights: 0.0,
             shadows: 0.0,
         });
+    crate::widgets::panel_controls::paint_soft_shadow(cx.backend, pop, 8.0);
     cx.backend.fill_round_rect(pop, 8.0, theme.popover);
-    cx.backend.stroke_round_rect(pop, 8.0, theme.border, 1.0);
 
     paint_label(
         cx,
@@ -493,7 +493,6 @@ fn paint_upload(
             size: Point2D::new((rect.size.x - 12.0).max(0.0), (rect.size.y - 12.0).max(0.0)),
         };
         if paint_image_preview(cx, preview, src, summary) {
-            cx.backend.stroke_round_rect(rect, 6.0, theme.border, 1.0);
             return;
         }
     }
@@ -523,7 +522,6 @@ fn paint_upload(
         },
         theme.muted_foreground,
     );
-    cx.backend.stroke_round_rect(rect, 6.0, theme.border, 1.0);
 }
 
 fn paint_adjustments(
@@ -535,14 +533,6 @@ fn paint_adjustments(
 ) {
     let show_tile_scale =
         summary.tile_scale.is_some() && summary.mode == op_editor_core::ImageFillMode::Tile;
-    let divider_y = match_ratio_rect(pop, show_tile_scale).origin.y + MATCH_RATIO_H + 12.0;
-    cx.backend.fill_rect(
-        Rect {
-            origin: Point2D::new(pop.origin.x, divider_y),
-            size: Point2D::new(pop.size.x, 1.0),
-        },
-        theme.border,
-    );
     let header_y = adjustments_header_y(pop, show_tile_scale);
     paint_label(
         cx,
@@ -581,7 +571,7 @@ fn paint_adjustments(
             origin: Point2D::new(pop.origin.x + 80.0, row_y + 17.0),
             size: Point2D::new(86.0, 4.0),
         };
-        cx.backend.fill_round_rect(track, 2.0, theme.border);
+        cx.backend.fill_round_rect(track, 2.0, theme.accent);
         let fill_w = ((value + 100.0) / 200.0 * track.size.x).clamp(0.0, track.size.x);
         cx.backend.fill_round_rect(
             Rect {

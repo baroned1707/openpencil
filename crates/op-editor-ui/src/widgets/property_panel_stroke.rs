@@ -7,7 +7,7 @@ use crate::widgets::property_panel::NodeSnapshot;
 use crate::widgets::property_panel_action::PropertyPanelAction;
 use crate::widgets::property_panel_color_variables::paint_color_variable_button;
 use crate::widgets::property_panel_inputs::{
-    format_color_hex, paint_input_with_prefix_focused_state, paint_section_divider,
+    format_color_hex, paint_color_swatch, paint_input_with_prefix_focused_state,
     paint_section_label, COLOR_VARIABLE_BUTTON_W, COLOR_VARIABLE_GAP, INPUT_HEIGHT, INPUT_RADIUS,
     PAD_X, SECTION_GAP,
 };
@@ -204,7 +204,6 @@ pub fn paint_stroke_section(
         );
     }
     y += stroke_section_body_height(mode);
-    paint_section_divider(cx, theme, x, y, width);
     y + SECTION_GAP
 }
 
@@ -246,7 +245,9 @@ fn paint_stroke_main_row(
         cx.backend
             .stroke_round_rect(hex_rect, INPUT_RADIUS, theme.primary, 1.5);
     }
-    cx.backend.fill_round_rect(
+    paint_color_swatch(
+        cx,
+        theme,
         Rect {
             origin: Point2D::new(hex_rect.origin.x + 6.0, hex_rect.origin.y + 7.0),
             size: Point2D::new(16.0, 16.0),

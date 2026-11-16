@@ -57,6 +57,10 @@ pub(crate) fn paint_radio_circle(
     size: f32,
     selected: bool,
 ) {
+    // The unselected ring is a control glyph; keep it readable on both
+    // themes where the flat `input` fill almost vanishes.
+    let mut tokens = crate::widgets::button::tokens_from_theme(theme);
+    tokens.input = theme.muted_foreground.with_alpha(0.65);
     jian_widgets::components::radio::Radio {
         selected,
         enabled: true,
@@ -67,7 +71,7 @@ pub(crate) fn paint_radio_circle(
             origin: Point2D::new(x, y),
             size: Point2D::new(size, size),
         },
-        &crate::widgets::button::tokens_from_theme(theme),
+        &tokens,
     );
 }
 
@@ -86,9 +90,8 @@ pub(crate) fn paint_mode_popover(
     radio_size: f32,
     radio_gutter: f32,
 ) {
+    crate::widgets::panel_controls::paint_soft_shadow(cx.backend, pop_box, 8.0);
     cx.backend.fill_round_rect(pop_box, 8.0, theme.popover);
-    cx.backend
-        .stroke_round_rect(pop_box, 8.0, theme.border, 1.0);
     let title = TextLayout::single_run(
         op_i18n::translate(locale, title_key),
         "system-ui",

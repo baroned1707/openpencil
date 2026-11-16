@@ -165,9 +165,8 @@ fn paint_font_picker_layout(
     let secondary_font = if touch { 14.0 } else { 11.0 };
     let group_font = if touch { 14.0 } else { 9.0 };
     let icon_size = if touch { 16.0 } else { 12.0 };
+    crate::widgets::panel_controls::paint_soft_shadow(cx.backend, layout.popup, 8.0);
     cx.backend.fill_round_rect(layout.popup, 8.0, theme.popover);
-    cx.backend
-        .stroke_round_rect(layout.popup, 8.0, theme.border, 1.0);
 
     // Search row — Search glyph + draft (or muted placeholder) +
     // steady caret, separated by a hairline (TS border-b).
@@ -203,13 +202,6 @@ fn paint_font_picker_layout(
         now_ms,
         op_i18n::translate(locale, "text.font.search"),
         true,
-    );
-    cx.backend.fill_rect(
-        Rect {
-            origin: Point2D::new(s.origin.x, s.origin.y + s.size.y - 1.0),
-            size: Point2D::new(s.size.x, 1.0),
-        },
-        theme.border,
     );
 
     // Scrolling list — clipped to the viewport.
@@ -292,14 +284,6 @@ fn paint_font_picker_layout(
                     };
                     paint_button_feedback_wash(cx.backend, theme, row_rect, 5.0, true, false);
                 }
-                // Top hairline separating the action from the list.
-                cx.backend.fill_rect(
-                    Rect {
-                        origin: Point2D::new(rect.origin.x, rect.origin.y),
-                        size: Point2D::new(rect.size.x, 1.0),
-                    },
-                    theme.border,
-                );
                 draw_icon(
                     cx.backend,
                     Icon::Plus,

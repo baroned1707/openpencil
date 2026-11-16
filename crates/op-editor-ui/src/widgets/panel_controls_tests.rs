@@ -196,3 +196,91 @@ fn the_accent_button_rides_the_same_pointer_ladder_as_the_selection() {
 }
 
 const CONTROL_H_FOR_TEST: f32 = crate::widgets::panel_control_metrics::CONTROL_H;
+
+/// Records every stroke so a test can prove a surface paints none (Figma UI3
+/// separates surfaces by tone and shadow, never by a hairline).
+#[derive(Default)]
+struct StrokeLog {
+    outlines: Vec<Color>,
+    fills: Vec<(Rect, f32, Color)>,
+}
+
+impl crate::RenderBackend for StrokeLog {
+    fn begin_frame(&mut self) {}
+    fn end_frame(&mut self) {}
+    fn fill_rect(&mut self, _: Rect, _: Color) {}
+    fn stroke_rect(&mut self, _: Rect, color: Color, _: f32) {
+        self.outlines.push(color);
+    }
+    fn draw_text(&mut self, _: &TextLayout, _: Point2D) {}
+    fn clip_rect(&mut self, _: Rect) {}
+    fn stroke_line(&mut self, _: Point2D, _: Point2D, _: Color, _: f32) {}
+    fn fill_round_rect(&mut self, rect: Rect, radius: f32, color: Color) {
+        self.fills.push((rect, radius, color));
+    }
+    fn stroke_round_rect(&mut self, _: Rect, _: f32, color: Color, _: f32) {
+        self.outlines.push(color);
+    }
+    fn stroke_svg_path(&mut self, _: &str, _: Point2D, _: f32, _: Color, _: f32) {}
+    fn save(&mut self) {}
+    fn restore(&mut self) {}
+    fn translate(&mut self, _: Point2D) {}
+    fn resize(&mut self, _: u32, _: u32) {}
+    fn dpi_scale(&self) -> f32 {
+        1.0
+    }
+}
+
+#[test]
+fn chips_and_neutral_buttons_paint_no_outline() {
+    use crate::widgets::Widget;
+    for theme in [Theme::dark(), Theme::light()] {
+        let mut log = StrokeLog::default();
+        let mut cx = PaintCx { backend: &mut log };
+        let rect = Rect::xywh(0.0, 0.0, 96.0, CONTROL_H_FOR_TEST);
+        for selected in [false, true] {
+            paint_panel_chip(
+                &mut cx,
+                &theme,
+                rect,
+                "Chip",
+                SegmentState {
+                    selected,
+                    hovered: false,
+                    pressed: false,
+                },
+            );
+        }
+        paint_neutral_button(
+            &mut cx,
+            &theme,
+            ButtonSpec {
+                rect,
+                radius: 6.0,
+                label: "Cancel",
+                label_size: 12.0,
+                hovered: false,
+                pressed: false,
+            },
+        );
+        // Floating chrome: the toolbar and the status pill.
+        let toolbar = crate::widgets::Toolbar::default_set();
+        toolbar.paint(&mut cx, Rect::xywh(0.0, 0.0, 44.0, 400.0));
+        crate::widgets::StatusBar::new().paint(&mut cx, Rect::xywh(0.0, 0.0, 140.0, 32.0));
+        assert!(log.outlines.is_empty(), "painted an outline");
+    }
+}
+
+#[test]
+fn soft_shadow_paints_below_the_surface_and_never_inside_it() {
+    let mut log = StrokeLog::default();
+    let surface = Rect::xywh(100.0, 100.0, 80.0, 40.0);
+    paint_soft_shadow(&mut log, surface, 8.0);
+    assert_eq!(log.fills.len(), 3, "three stacked low-alpha layers");
+    assert!(log.outlines.is_empty());
+    for (rect, radius, color) in &log.fills {
+        assert!(color.a <= 0.08, "a shadow layer must stay faint");
+        assert!(*radius >= 8.0);
+        assert!(rect.origin.y + rect.size.y > surface.origin.y + surface.size.y);
+    }
+}

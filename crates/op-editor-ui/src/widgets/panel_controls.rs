@@ -19,7 +19,7 @@ use crate::widgets::panel_control_metrics::{
 use crate::widgets::prompt_center_panel::estimated_text_width;
 use crate::widgets::text_metrics::{fit_chrome, measure_chrome};
 use crate::widgets::PaintCx;
-use crate::{Color, Point2D, Rect, TextLayout};
+use crate::{Color, Point2D, Rect, RenderBackend, TextLayout};
 
 /// Track width for a segmented control of `count` segments each `segment_w`
 /// wide. Segments are seam to seam — the track's padding is the only gap.
@@ -117,6 +117,31 @@ pub(crate) fn paint_segmented_control(
     }
 }
 
+/// Soft drop shadow for a floating surface (popover, toolbar, tooltip).
+///
+/// Figma UI3 separates floating chrome from the canvas by shadow, never by a
+/// border. The shadow is faked with three low-alpha round-rects fanning out
+/// below the surface (no blur primitive on `RenderBackend`); paint it BEFORE
+/// the surface fill so the surface covers the part that sits underneath.
+pub(crate) fn paint_soft_shadow(backend: &mut dyn RenderBackend, rect: Rect, radius: f32) {
+    for (grow, dy, alpha) in [
+        (6.0_f32, 8.0_f32, 0.025_f32),
+        (3.0, 4.0, 0.04),
+        (1.0, 1.5, 0.06),
+    ] {
+        backend.fill_round_rect(
+            Rect::xywh(
+                rect.origin.x - grow,
+                rect.origin.y - grow + dy,
+                rect.size.x + grow * 2.0,
+                rect.size.y + grow * 2.0,
+            ),
+            radius + grow,
+            Color::BLACK.with_alpha(alpha),
+        );
+    }
+}
+
 /// The trough behind a segmented control.
 ///
 /// Derived from `muted` rather than named as its own token because it must
@@ -127,12 +152,8 @@ fn track_color(theme: &Theme) -> Color {
 }
 
 /// A filter/action chip. `selected` fills it in the accent colour; the rest
-/// paint as a neutral surface with a hairline.
-///
-/// The hairline is what the old chips were missing. A filled `muted` pill on
-/// a `popover` surface differs from its background by a few percent, so a
-/// row of them read as text with a faint smudge behind it rather than as a
-/// row of controls; the border is what turns each one back into an object.
+/// paint as a flat `secondary` surface, borderless like every Figma UI3
+/// control — tone alone separates the chip from the panel behind it.
 pub(crate) fn paint_panel_chip(
     cx: &mut PaintCx<'_>,
     theme: &Theme,
@@ -153,8 +174,6 @@ pub(crate) fn paint_panel_chip(
             CHIP_RADIUS,
             control_fill(theme.secondary, state.hovered, state.pressed),
         );
-        cx.backend
-            .stroke_round_rect(rect, CHIP_RADIUS, theme.border, 1.0);
         if state.hovered || state.pressed {
             theme.foreground
         } else {
@@ -200,16 +219,15 @@ pub(crate) fn paint_accent_button(cx: &mut PaintCx<'_>, theme: &Theme, spec: But
     );
 }
 
-/// A bordered neutral button — the secondary half of a pair, weighted below
-/// [`paint_accent_button`] so the primary reads as the default.
+/// A flat neutral button — the secondary half of a pair, weighted below
+/// [`paint_accent_button`] so the primary reads as the default. Filled with
+/// `secondary` (no outline) so it still reads as an object on a card.
 pub(crate) fn paint_neutral_button(cx: &mut PaintCx<'_>, theme: &Theme, spec: ButtonSpec<'_>) {
     cx.backend.fill_round_rect(
         spec.rect,
         spec.radius,
-        control_fill(theme.card, spec.hovered, spec.pressed),
+        control_fill(theme.secondary, spec.hovered, spec.pressed),
     );
-    cx.backend
-        .stroke_round_rect(spec.rect, spec.radius, theme.border, 1.0);
     paint_label(cx, spec.rect, spec.label, spec.label_size, theme.foreground);
 }
 

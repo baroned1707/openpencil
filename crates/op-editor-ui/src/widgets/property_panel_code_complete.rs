@@ -222,20 +222,9 @@ fn paint_code_area(
     let lines = visible_line_spans(code, rect, scroll);
     cx.backend
         .fill_round_rect(rect, INPUT_RADIUS, code_surface(theme));
-    cx.backend
-        .stroke_round_rect(rect, INPUT_RADIUS, theme.border, 1.0);
     cx.backend.save();
     cx.backend.clip_rect(rect);
     let gutter_right = code_text_x(rect) - CODE_TEXT_GAP;
-    cx.backend.fill_rect(
-        Rect::xywh(
-            gutter_right,
-            rect.origin.y + CODE_PAD_Y,
-            1.0,
-            rect.size.y - CODE_PAD_Y * 2.0,
-        ),
-        code_gutter_rule(theme),
-    );
     if let Some(selection) = selection {
         paint_code_selection(cx, theme, &lines, selection, code.len(), rect);
     }
@@ -613,13 +602,6 @@ fn code_surface(theme: &Theme) -> Color {
     mix(theme.card, theme.muted, 0.64)
 }
 
-fn code_gutter_rule(theme: &Theme) -> Color {
-    Color {
-        a: 0.72,
-        ..theme.border
-    }
-}
-
 fn code_line_number_color(theme: &Theme) -> Color {
     Color {
         a: 0.58,
@@ -694,8 +676,6 @@ fn paint_action_chip(
     if hovered || pressed {
         paint_button_feedback_wash(cx.backend, theme, rect, INPUT_RADIUS, hovered, pressed);
     }
-    cx.backend
-        .stroke_round_rect(rect, INPUT_RADIUS, theme.border, 1.0);
     let cy = rect.origin.y + rect.size.y / 2.0;
     draw_icon(
         cx.backend,

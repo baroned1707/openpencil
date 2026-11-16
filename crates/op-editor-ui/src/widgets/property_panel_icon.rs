@@ -5,8 +5,7 @@ use crate::widgets::icon_catalog::lookup_icon;
 use crate::widgets::icons::{draw_icon, draw_icon_catalog_entry, Icon};
 use crate::widgets::property_panel::PropertyPanelAction;
 use crate::widgets::property_panel_inputs::{
-    paint_dropdown, paint_section_divider, paint_section_label, INPUT_HEIGHT, PAD_X, SECTION_GAP,
-    SECTION_HEADER_HEIGHT,
+    paint_dropdown, paint_section_label, INPUT_HEIGHT, PAD_X, SECTION_GAP, SECTION_HEADER_HEIGHT,
 };
 use crate::widgets::PaintCx;
 use crate::{Point2D, Rect, TextLayout};
@@ -66,7 +65,6 @@ pub fn paint_icon_section(
     };
     paint_dropdown(cx, theme, library, display_family(icon.family.as_str()));
     y += INPUT_HEIGHT + 12.0;
-    paint_section_divider(cx, theme, x, y, width);
     y + SECTION_GAP
 }
 

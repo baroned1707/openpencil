@@ -179,8 +179,8 @@ fn paint_select_popup(
     let Some(bg) = export_picker_popup_rect(rows.iter().map(|(_, _, rect)| *rect)) else {
         return;
     };
+    crate::widgets::panel_controls::paint_soft_shadow(cx.backend, bg, 8.0);
     cx.backend.fill_round_rect(bg, 8.0, theme.popover);
-    cx.backend.stroke_round_rect(bg, 8.0, theme.border, 1.0);
     for (i, (label, active, row)) in rows.iter().enumerate() {
         // Active selection wins over hover (stronger tint); a plain
         // hovered row gets the lighter `accent` wash.

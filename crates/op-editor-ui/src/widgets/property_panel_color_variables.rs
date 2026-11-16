@@ -211,10 +211,9 @@ pub fn paint_color_variable_picker(
     hover: Option<usize>,
     locale: op_editor_core::Locale,
 ) {
+    crate::widgets::panel_controls::paint_soft_shadow(cx.backend, layout.popup, MENU_RADIUS);
     cx.backend
         .fill_round_rect(layout.popup, MENU_RADIUS, theme.popover);
-    cx.backend
-        .stroke_round_rect(layout.popup, MENU_RADIUS, theme.border, 1.0);
 
     cx.backend.save();
     cx.backend.clip_rect(layout.viewport);
@@ -347,8 +346,6 @@ fn paint_variable_row(
         .and_then(color_from_hex)
         .unwrap_or(Color::BLACK);
     cx.backend.fill_round_rect(swatch, SWATCH_RADIUS, color);
-    cx.backend
-        .stroke_round_rect(swatch, SWATCH_RADIUS, theme.border, 1.0);
 
     let baseline = jian_widgets::centered_text_baseline_y(inner, ROW_FONT);
     // The hex column is a fixed right-aligned slot; the name gets

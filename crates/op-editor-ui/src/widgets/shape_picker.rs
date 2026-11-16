@@ -228,9 +228,8 @@ impl Widget for ShapePicker {
     }
 
     fn paint(&self, cx: &mut PaintCx<'_>, rect: Rect) {
+        crate::widgets::panel_controls::paint_soft_shadow(cx.backend, rect, 8.0);
         cx.backend.fill_round_rect(rect, 8.0, self.theme.popover);
-        cx.backend
-            .stroke_round_rect(rect, 8.0, self.theme.border, 1.0);
 
         for (idx, row) in self.rows.iter().enumerate() {
             let row_y = rect.origin.y + PANEL_PAD_Y + idx as f32 * ROW_HEIGHT;

@@ -342,13 +342,5 @@ pub(super) fn paint_framework_chips_for(
             interactive && action_hovered(state, CodegenHover::ScrollFrameworksRight),
         );
     }
-    let divider_y = y + metrics.chip_height + CHIP_DIVIDER_GAP / 2.0;
-    cx.backend.fill_rect(
-        Rect {
-            origin: Point2D::new(x + PAD_X, divider_y),
-            size: Point2D::new(usable, 1.0),
-        },
-        theme.border,
-    );
     chips_body_top_for(y, touch_controls)
 }

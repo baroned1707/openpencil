@@ -20,7 +20,7 @@ pub use crate::widgets::property_panel_fill_picker::{
 };
 use crate::widgets::property_panel_fill_picker::{popup_anchor, tokens_from_theme, FILL_TYPES};
 use crate::widgets::property_panel_inputs::{
-    paint_section_divider, paint_section_label_with_add, INPUT_HEIGHT, INPUT_RADIUS, PAD_X,
+    paint_color_swatch, paint_section_label_with_add, INPUT_HEIGHT, INPUT_RADIUS, PAD_X,
     SECTION_GAP,
 };
 use crate::widgets::property_panel_layout::fill_body_height_with_stops;
@@ -151,6 +151,8 @@ pub fn paint_fill_type_picker(
         state,
         items: &items,
     };
+    crate::widgets::panel_controls::paint_soft_shadow(cx.backend, picker_rect, 8.0);
+    cx.backend.fill_round_rect(picker_rect, 8.0, theme.popover);
     select.paint(
         cx.backend,
         popup_anchor(picker_rect),
@@ -281,7 +283,6 @@ pub fn paint_fill_section(
         );
     }
     y += 12.0;
-    paint_section_divider(cx, theme, x, y, width);
     y + SECTION_GAP
 }
 
@@ -318,7 +319,6 @@ fn paint_fill_rule_control(
         segments[0].1.size.y,
     );
     cx.backend.fill_round_rect(outer, 7.0, theme.muted);
-    cx.backend.stroke_round_rect(outer, 7.0, theme.border, 1.0);
     for (rule, rect) in segments {
         if rule == active {
             cx.backend.fill_round_rect(rect, 6.0, theme.primary);
@@ -382,9 +382,7 @@ fn paint_one_fill(
     use op_editor_core::FillType;
     match fill_type {
         FillType::Solid => {
-            cx.backend.fill_round_rect(swatch_rect, 4.0, fill_color);
-            cx.backend
-                .stroke_round_rect(swatch_rect, 4.0, theme.border, 1.0);
+            paint_color_swatch(cx, theme, swatch_rect, 4.0, fill_color);
         }
         FillType::LinearGradient => {
             // Visual stand-in for a horizontal black→white gradient
@@ -407,8 +405,6 @@ fn paint_one_fill(
                 4.0,
                 Color::WHITE,
             );
-            cx.backend
-                .stroke_round_rect(swatch_rect, 4.0, theme.border, 1.0);
         }
         FillType::RadialGradient => {
             // Outer black ring + inner white oval — reads as a
@@ -428,8 +424,6 @@ fn paint_one_fill(
                 },
                 Color::WHITE,
             );
-            cx.backend
-                .stroke_round_rect(swatch_rect, 4.0, theme.border, 1.0);
         }
         FillType::MeshGradient => {
             // Four-quadrant preview reads as a corner mesh: the resolved
@@ -444,21 +438,15 @@ fn paint_one_fill(
             cx.backend.fill_round_rect(quad(hw, 0.0), 0.0, Color::WHITE);
             cx.backend.fill_round_rect(quad(0.0, hh), 0.0, Color::BLACK);
             cx.backend.fill_round_rect(quad(hw, hh), 0.0, theme.muted);
-            cx.backend
-                .stroke_round_rect(swatch_rect, 4.0, theme.border, 1.0);
         }
         FillType::Shader => {
             // Render-only shader fill: preview as the resolved fallback
             // colour (the shader's first colour uniform / mid-gray) so the
             // head row still reads as a fill swatch.
             cx.backend.fill_round_rect(swatch_rect, 4.0, fill_color);
-            cx.backend
-                .stroke_round_rect(swatch_rect, 4.0, theme.border, 1.0);
         }
         FillType::Image => {
             cx.backend.fill_round_rect(swatch_rect, 4.0, theme.muted);
-            cx.backend
-                .stroke_round_rect(swatch_rect, 4.0, theme.border, 1.0);
             draw_icon(
                 cx.backend,
                 Icon::ImagePlus,

@@ -32,8 +32,8 @@ fn hex_color(rgb: u32, a: f32) -> Color {
 }
 
 fn paint_popup_chrome(cx: &mut PaintCx<'_>, theme: &Theme, popup: Rect) {
+    crate::widgets::panel_controls::paint_soft_shadow(cx.backend, popup, 8.0);
     cx.backend.fill_round_rect(popup, 8.0, theme.popover);
-    cx.backend.stroke_round_rect(popup, 8.0, theme.border, 1.0);
 }
 
 fn paint_spinner(cx: &mut PaintCx<'_>, theme: &Theme, centre: Point2D, size: f32, now_ms: u64) {
@@ -104,9 +104,7 @@ pub fn paint_search_popover(
     // the unified jian TextInputView (family-aware caret, no hand-rolled drift).
     // The popover owns a persistent TextInputState, so paint, hit-testing,
     // clipboard selection, keyboard editing, and IME all see one caret.
-    cx.backend.fill_round_rect(layout.input, 5.0, theme.card);
-    cx.backend
-        .stroke_round_rect(layout.input, 5.0, theme.border, 1.0);
+    cx.backend.fill_round_rect(layout.input, 5.0, theme.muted);
     let baseline = layout.input.origin.y + layout.input.size.y / 2.0 + 4.0;
     crate::widgets::property_panel_text_input::paint_text_input_view(
         cx,
@@ -124,8 +122,6 @@ pub fn paint_search_popover(
     // Submit icon-button (disabled wash while loading / empty query).
     let disabled = state.search_loading || state.search_query.text().trim().is_empty();
     cx.backend.fill_round_rect(layout.submit, 5.0, theme.card);
-    cx.backend
-        .stroke_round_rect(layout.submit, 5.0, theme.border, 1.0);
     draw_icon(
         cx.backend,
         Icon::Search,
@@ -180,17 +176,9 @@ pub fn paint_search_popover(
     } else {
         for (cell, hit) in layout.cells.iter().zip(state.search_results.iter()) {
             cx.backend.fill_round_rect(*cell, 5.0, theme.muted);
-            cx.backend.stroke_round_rect(*cell, 5.0, theme.border, 1.0);
             paint_data_url_image(cx, *cell, &hit.thumb_data_url, 5.0);
         }
         if let (Some(footer), Some(source)) = (layout.footer, state.search_source) {
-            cx.backend.fill_rect(
-                Rect {
-                    origin: Point2D::new(footer.origin.x, footer.origin.y - 4.0),
-                    size: Point2D::new(footer.size.x, 1.0),
-                },
-                theme.border,
-            );
             let label = tr(locale, "imagePanel.sourceNotice").replace(
                 "{{source}}",
                 match source {
@@ -249,8 +237,7 @@ pub fn paint_generate_popover(
                 layout.popup.origin.y + POPOVER_PAD + 32.0 + 10.0 + 12.0,
             );
             if let Some(btn) = layout.primary {
-                cx.backend.fill_round_rect(btn, 6.0, theme.card);
-                cx.backend.stroke_round_rect(btn, 6.0, theme.border, 1.0);
+                cx.backend.fill_round_rect(btn, 6.0, theme.muted);
                 paint_centered_label(
                     cx,
                     theme.foreground,
@@ -281,7 +268,6 @@ pub fn paint_generate_popover(
         GeneratePopoverView::Preview => {
             if let (Some(rect), Some(url)) = (layout.preview, state.generate_preview.as_ref()) {
                 cx.backend.fill_round_rect(rect, 6.0, theme.muted);
-                cx.backend.stroke_round_rect(rect, 6.0, theme.border, 1.0);
                 paint_data_url_image(cx, rect, url, 6.0);
             }
             let tokens = crate::widgets::button::tokens_from_theme(theme);
@@ -312,8 +298,7 @@ pub fn paint_generate_popover(
         }
         GeneratePopoverView::Idle => {
             if let Some(ta) = layout.textarea {
-                cx.backend.fill_round_rect(ta, 6.0, theme.card);
-                cx.backend.stroke_round_rect(ta, 6.0, theme.border, 1.0);
+                cx.backend.fill_round_rect(ta, 6.0, theme.muted);
                 // Prompt + placeholder + caret render through the unified jian
                 // TextInputView, top-aligned in the textarea box (family-aware
                 // caret; multi-line wrapping remains a follow-up). The persistent

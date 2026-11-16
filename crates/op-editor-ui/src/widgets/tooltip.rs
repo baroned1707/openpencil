@@ -95,10 +95,9 @@ pub fn paint_tooltip_frame(
     shortcut: Option<&str>,
     baseline_y: f32,
 ) {
+    crate::widgets::panel_controls::paint_soft_shadow(cx.backend, rect, TOOLTIP_RADIUS);
     cx.backend
         .fill_round_rect(rect, TOOLTIP_RADIUS, theme.popover);
-    cx.backend
-        .stroke_round_rect(rect, TOOLTIP_RADIUS, theme.border, 1.0);
     let text = TextLayout::single_run(
         label,
         "system-ui",

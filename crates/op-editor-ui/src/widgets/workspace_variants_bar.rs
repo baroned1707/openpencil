@@ -149,8 +149,6 @@ pub(super) fn paint_variant_bar(
     for item in &items {
         cx.backend
             .fill_round_rect(item.pill, PILL_H / 2.0, fade(palette.panel, 0.96));
-        cx.backend
-            .stroke_round_rect(item.pill, PILL_H / 2.0, palette.line, 1.0);
         text(
             cx,
             &item.label,

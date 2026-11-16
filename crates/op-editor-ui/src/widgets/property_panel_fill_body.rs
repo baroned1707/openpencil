@@ -10,8 +10,8 @@ use crate::widgets::icons::{draw_icon, Icon};
 use crate::widgets::property_panel::NodeSnapshot;
 use crate::widgets::property_panel_color_variables::paint_color_variable_button;
 use crate::widgets::property_panel_inputs::{
-    COLOR_VARIABLE_BUTTON_W, COLOR_VARIABLE_GAP, INPUT_HEIGHT, INPUT_RADIUS, PAD_X,
-    SECTION_HEADER_HEIGHT,
+    paint_color_swatch, COLOR_VARIABLE_BUTTON_W, COLOR_VARIABLE_GAP, INPUT_HEIGHT, INPUT_RADIUS,
+    PAD_X, SECTION_HEADER_HEIGHT,
 };
 use crate::widgets::property_panel_sections::EditContext;
 use crate::widgets::text_metrics;
@@ -58,7 +58,9 @@ pub(crate) fn paint_fill_solid_body(
         cx.backend
             .stroke_round_rect(hex_rect, INPUT_RADIUS, theme.primary, 1.5);
     }
-    cx.backend.fill_round_rect(
+    paint_color_swatch(
+        cx,
+        theme,
         Rect {
             // Vertically centre the 16-tall swatch in the 30-tall row.
             origin: Point2D::new(hex_rect.origin.x + 6.0, hex_rect.origin.y + 7.0),
@@ -294,6 +296,8 @@ pub(crate) fn paint_fill_gradient_body(
             swatch,
             &crate::widgets::button::tokens_from_theme(theme),
         );
+        cx.backend
+            .stroke_round_rect(swatch, 3.0, theme.foreground.with_alpha(0.14), 1.0);
         // Display only `#RRGGBB` — the swatch on the left already
         // conveys per-stop transparency. Alpha is preserved at
         // commit time, so the user never types raw alpha digits.

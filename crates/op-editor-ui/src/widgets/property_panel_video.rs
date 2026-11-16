@@ -7,8 +7,8 @@ use crate::theme::Theme;
 use crate::widgets::icons::{draw_icon, Icon};
 use crate::widgets::property_panel::{NodeSnapshot, PropertyPanelAction};
 use crate::widgets::property_panel_inputs::{
-    paint_input_with_prefix_focused_state, paint_section_divider, paint_section_label,
-    INPUT_HEIGHT, INPUT_RADIUS, PAD_X, SECTION_GAP, SECTION_HEADER_HEIGHT,
+    paint_input_with_prefix_focused_state, paint_section_label, INPUT_HEIGHT, INPUT_RADIUS, PAD_X,
+    SECTION_GAP, SECTION_HEADER_HEIGHT,
 };
 use crate::widgets::property_panel_sections::EditContext;
 use crate::widgets::{text_metrics, PaintCx};
@@ -233,7 +233,6 @@ pub fn paint_video_section(
         video.click_to_replay,
     );
     y += TOGGLE_ROW_HEIGHT + 12.0;
-    paint_section_divider(cx, theme, x, y, width);
     y + 1.0 + SECTION_GAP
 }
 

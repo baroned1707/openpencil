@@ -8,8 +8,7 @@ use crate::widgets::property_panel::{
 };
 use crate::widgets::property_panel_inputs::{
     paint_input_with_prefix_focused_state, paint_input_with_suffix_focused_state,
-    paint_section_divider, paint_section_label, INPUT_HEIGHT, INPUT_RADIUS, PAD_X, SECTION_GAP,
-    SECTION_HEADER_HEIGHT,
+    paint_section_label, INPUT_HEIGHT, INPUT_RADIUS, PAD_X, SECTION_GAP, SECTION_HEADER_HEIGHT,
 };
 use crate::widgets::property_panel_mode_popover as mode_popover;
 use crate::widgets::property_panel_sections::{EditContext, PropertyLabels};
@@ -170,7 +169,6 @@ pub fn paint_flex_section(
         );
         y = paint_padding_inputs(cx, theme, snapshot, edit, locale, padding_mode, x, y, width);
     }
-    paint_section_divider(cx, theme, x, y, width);
     y + SECTION_GAP
 }
 

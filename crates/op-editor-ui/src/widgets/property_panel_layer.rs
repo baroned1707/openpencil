@@ -3,7 +3,7 @@
 use crate::theme::Theme;
 use crate::util::format_panel_number as format_number;
 use crate::widgets::property_panel_inputs::{
-    paint_section_divider, paint_section_label, INPUT_HEIGHT, INPUT_RADIUS, PAD_X, SECTION_GAP,
+    paint_section_label, INPUT_HEIGHT, INPUT_RADIUS, PAD_X, SECTION_GAP,
 };
 use crate::widgets::property_panel_sections::{EditContext, PropertyLabels};
 use crate::widgets::property_panel_snapshot::{EllipseArcSummary, NodeSnapshot};
@@ -82,7 +82,6 @@ pub fn paint_layer_section(
     }
 
     y += 12.0;
-    paint_section_divider(cx, theme, x, y, width);
     y + SECTION_GAP
 }
 

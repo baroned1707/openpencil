@@ -291,7 +291,6 @@ fn paint_button(
     trailing_icon: Option<Icon>,
 ) {
     cx.backend.fill_round_rect(rect, 8.0, theme.muted);
-    cx.backend.stroke_round_rect(rect, 8.0, theme.border, 1.0);
     let icon_y = rect.origin.y + (rect.size.y - CREATE_COMPONENT_ICON) / 2.0;
     draw_icon(
         cx.backend,

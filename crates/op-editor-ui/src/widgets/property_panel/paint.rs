@@ -31,13 +31,6 @@ impl Widget for PropertyPanel {
     fn paint(&self, cx: &mut PaintCx<'_>, rect: Rect) {
         let rect = self.begin_density_paint(cx.backend, rect);
         cx.backend.fill_rect(rect, self.theme.card);
-        cx.backend.fill_rect(
-            Rect {
-                origin: rect.origin,
-                size: Point2D::new(1.0, rect.size.y),
-            },
-            self.theme.border,
-        );
 
         let x = rect.origin.x;
         let w = rect.size.x;

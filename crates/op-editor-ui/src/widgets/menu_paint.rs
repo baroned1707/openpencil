@@ -44,31 +44,3 @@ pub(crate) fn paint_row_tint(
         tint,
     );
 }
-
-/// Paint a horizontal separator inset by `pad_x` on both sides and
-/// return the y advanced past the divider block (`divider_gap` above
-/// and below the 1-px line).
-pub(crate) fn paint_divider(
-    cx: &mut PaintCx<'_>,
-    theme: &Theme,
-    rect: Rect,
-    y: f32,
-    menu_width: f32,
-    pad_x: f32,
-    divider_gap: f32,
-) -> f32 {
-    let line_y = y + divider_gap;
-    jian_widgets::components::separator::Separator {
-        orientation: jian_widgets::components::separator::Orientation::Horizontal,
-        thickness: 1.0,
-    }
-    .paint(
-        cx.backend,
-        Rect {
-            origin: Point2D::new(rect.origin.x + pad_x, line_y),
-            size: Point2D::new(menu_width - pad_x * 2.0, 1.0),
-        },
-        theme.border,
-    );
-    y + divider_gap * 2.0 + 1.0
-}

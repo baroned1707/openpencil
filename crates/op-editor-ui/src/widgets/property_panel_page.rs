@@ -3,8 +3,7 @@
 use crate::theme::Theme;
 use crate::widgets::property_panel::{PropertyPanel, PropertyPanelAction};
 use crate::widgets::property_panel_inputs::{
-    paint_section_divider, paint_section_label, HEADER_HEIGHT, INPUT_HEIGHT, INPUT_RADIUS, PAD_X,
-    SECTION_GAP, TAB_HEIGHT,
+    paint_section_label, HEADER_HEIGHT, INPUT_HEIGHT, INPUT_RADIUS, PAD_X, SECTION_GAP, TAB_HEIGHT,
 };
 use crate::widgets::property_panel_sections::EditContext;
 use crate::widgets::text_metrics;
@@ -67,9 +66,9 @@ pub fn paint_page_inspector(
     let x = panel_rect.origin.x;
     let width = panel_rect.size.x;
     let mut y = panel_rect.origin.y + TAB_HEIGHT;
-    paint_page_header(cx, theme, page_name, x, y, width);
+    paint_page_header(cx, theme, page_name, x, y);
     y += HEADER_HEIGHT;
-    y = paint_section_label(
+    paint_section_label(
         cx,
         theme,
         op_i18n::translate(locale, "page.background"),
@@ -100,18 +99,9 @@ pub fn paint_page_inspector(
             &crate::widgets::button::tokens_from_theme(theme),
         );
     }
-    y += INPUT_HEIGHT + 12.0;
-    paint_section_divider(cx, theme, x, y, width);
 }
 
-fn paint_page_header(
-    cx: &mut PaintCx<'_>,
-    theme: &Theme,
-    page_name: &str,
-    x: f32,
-    y: f32,
-    width: f32,
-) {
+fn paint_page_header(cx: &mut PaintCx<'_>, theme: &Theme, page_name: &str, x: f32, y: f32) {
     let text = if page_name.is_empty() {
         "Page"
     } else {
@@ -126,10 +116,6 @@ fn paint_page_header(
     );
     cx.backend
         .draw_text(&layout, Point2D::new(x + PAD_X, y + 20.0));
-    cx.backend.fill_rect(
-        Rect::xywh(x + PAD_X, y + HEADER_HEIGHT - 1.0, width - PAD_X * 2.0, 1.0),
-        theme.border,
-    );
 }
 
 fn paint_background_input(
@@ -143,17 +129,14 @@ fn paint_background_input(
     let focused = edit.focus == Some(focus);
     let value = edit.value_for(focus, fallback);
     cx.backend.fill_round_rect(rect, INPUT_RADIUS, theme.muted);
-    cx.backend.stroke_round_rect(
-        rect,
-        INPUT_RADIUS,
-        if focused { theme.primary } else { theme.border },
-        if focused { 1.5 } else { 1.0 },
-    );
+    if focused {
+        cx.backend
+            .stroke_round_rect(rect, INPUT_RADIUS, theme.primary, 1.5);
+    }
     let swatch = Rect::xywh(rect.origin.x + 7.0, rect.origin.y + 7.0, 16.0, 16.0);
     let swatch_color = crate::widgets::property_panel_snapshot::color_from_hex(value)
         .unwrap_or(Color::TRANSPARENT);
     cx.backend.fill_round_rect(swatch, 3.0, swatch_color);
-    cx.backend.stroke_round_rect(swatch, 3.0, theme.border, 1.0);
     let value_x = rect.origin.x + 31.0;
     let input_view = Rect::xywh(
         value_x,

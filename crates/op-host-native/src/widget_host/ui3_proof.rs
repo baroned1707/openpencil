@@ -46,12 +46,25 @@ pub(super) fn editor_host(theme: ThemeMode, selected: Option<&str>) -> WidgetHos
         host.editor_state_mut()
             .set_single_selection(op_editor_core::NodeId::new(id));
     }
+    // The state was replaced behind the host's back: flag the scene stale,
+    // then frame the document so the artboard is visible in the canvas.
+    host.mark_dirty();
+    host.zoom_to_fit(PROOF_W, PROOF_H);
     host
 }
 
 /// Paint `host` and write `<OP_PROOF_DIR>/<name>-<dark|light>.png`.
 /// Returns the pixel at (x, y) so a test can still assert on the render.
 pub(super) fn render_scene(host: &mut WidgetHostNative, name: &str, probe: (i32, i32)) -> [u8; 3] {
+    render_probes(host, name, &[probe])[0]
+}
+
+/// `render_scene` with several probe points (one RGB triple per probe).
+pub(super) fn render_probes(
+    host: &mut WidgetHostNative,
+    name: &str,
+    probes: &[(i32, i32)],
+) -> Vec<[u8; 3]> {
     let mut backend = crate::backend::NativeBackend::with_dpi(1.0);
     let mut surface =
         skia_safe::surfaces::raster_n32_premul((PROOF_W as i32, PROOF_H as i32)).unwrap();
@@ -76,6 +89,18 @@ pub(super) fn render_scene(host: &mut WidgetHostNative, name: &str, probe: (i32,
         )
         .unwrap();
     }
-    let c = surface.peek_pixels().unwrap().get_color(probe);
-    [c.r(), c.g(), c.b()]
+    let pixels = surface.peek_pixels().unwrap();
+    probes
+        .iter()
+        .map(|&probe| {
+            let c = pixels.get_color(probe);
+            [c.r(), c.g(), c.b()]
+        })
+        .collect()
+}
+
+/// An 8-bit RGB triple for a theme colour, for comparing against probes.
+pub(super) fn rgb8(color: op_editor_ui::Color) -> [u8; 3] {
+    let byte = |v: f32| (v * 255.0).round() as u8;
+    [byte(color.r), byte(color.g), byte(color.b)]
 }

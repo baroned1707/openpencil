@@ -272,8 +272,6 @@ impl<'a> Widget for CanvasViewport<'a> {
                     size: Point2D::new(gw * viewport.zoom, gh * viewport.zoom),
                 };
                 cx.backend.fill_rect(ghost, Color::WHITE);
-                cx.backend
-                    .stroke_rect(ghost, self.theme.border.with_alpha(0.8), 1.0);
                 let mf = self.theme.muted_foreground;
                 let label = crate::TextLayout::single_run(
                     "Frame",
