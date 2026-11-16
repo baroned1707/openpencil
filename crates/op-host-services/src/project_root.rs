@@ -53,8 +53,13 @@ pub struct ProjectRoot {
 /// in the user's home directory or the filesystem root, which are never
 /// treated as a project. Callers keep their previous behaviour on `None`.
 pub fn project_root_for(path: &Path) -> Option<ProjectRoot> {
-    let home = dirs::home_dir().and_then(|home| std::fs::canonicalize(home).ok());
-    project_root_with_home(path, home.as_deref())
+    project_root_with_home(path, canonical_home().as_deref())
+}
+
+/// The user's home directory in canonical form, or `None` when it cannot be
+/// determined. Canonical so it compares equal to a canonicalized candidate.
+pub(crate) fn canonical_home() -> Option<PathBuf> {
+    dirs::home_dir().and_then(|home| std::fs::canonicalize(home).ok())
 }
 
 /// Project root of the open document, or `None` for an unsaved (untitled)
@@ -94,10 +99,22 @@ fn project_root_with_home(path: &Path, home: Option<&Path>) -> Option<ProjectRoo
             return Some(project_root(ancestor, ProjectRootSource::Marker(marker)));
         }
     }
+    // No marker: a file inside a `designs/` folder belongs to the project that
+    // contains that folder (the layout `create_document` writes), so the agent
+    // keeps the project root it was started in rather than `<root>/designs`.
+    if start.file_name().is_some_and(|name| name == "designs") {
+        if let Some(root) = start.parent() {
+            if !is_forbidden_root(root, home) {
+                return Some(project_root(root, ProjectRootSource::FileDir));
+            }
+        }
+    }
     Some(project_root(&start, ProjectRootSource::FileDir))
 }
 
-fn is_forbidden_root(dir: &Path, home: Option<&Path>) -> bool {
+/// Whether `dir` (canonical) may never be a project: the filesystem root or
+/// the user's home directory itself. `home` must already be canonical.
+pub(crate) fn is_forbidden_root(dir: &Path, home: Option<&Path>) -> bool {
     dir.parent().is_none() || home == Some(dir)
 }
 

@@ -39,6 +39,7 @@ use op_editor_core::EditorState;
 pub mod atomic_file;
 mod canonical_save;
 mod clean_copy;
+mod create_new;
 #[cfg(test)]
 mod editor_meta_roundtrip_tests;
 mod error;
@@ -59,6 +60,7 @@ pub use canonical_save::{
 pub use clean_copy::{
     copy_clean_document_with_editor_meta_to_path, copy_document_to_current_schema_path,
 };
+pub use create_new::{save_new_to_path, SaveNewError};
 pub use error::DocIoError;
 #[cfg(test)]
 use load::looks_like_legacy_doc_payload;

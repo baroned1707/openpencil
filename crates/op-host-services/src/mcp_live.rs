@@ -105,7 +105,7 @@ struct ApplyAck {
     document_changed: bool,
 }
 
-#[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Default, Clone, PartialEq, Eq)]
 pub struct McpPumpOutcome {
     pub repaint: bool,
     pub layout_dirty: bool,
@@ -117,6 +117,11 @@ pub struct McpPumpOutcome {
     /// host's image-search scan gate) whenever this is `true`, the same way
     /// it already does after a Figma import installs a fresh `EditorState`.
     pub document_replaced: bool,
+    /// Set when this pump wrote a new file for the untitled on-screen document
+    /// (`create_document`) and marked the document saved. The caller MUST make
+    /// that file the document's own — path, tab, window title, recent files —
+    /// exactly as a user Save As would.
+    pub created_document: Option<std::path::PathBuf>,
 }
 
 enum UiRequest {
@@ -163,6 +168,15 @@ enum UiRequest {
     },
     GenerateDesignMd {
         request: PendingDesignMdRequest,
+    },
+    /// `create_document`: write the untitled on-screen document to
+    /// `<project_root>/designs/<name>.op`. Held to the same epoch check as an
+    /// apply, so a document swapped since the call's snapshot is never written.
+    CreateDocument {
+        project_root: String,
+        name: String,
+        expected_epoch: DocumentEpoch,
+        ack: SyncSender<CreateAck>,
     },
     /// `debug_screenshot` against the LIVE canvas — the connection
     /// thread blocks on `ack` while the UI pump renders the active
@@ -259,13 +273,27 @@ impl McpLiveServer {
     }
 
     /// Publish what only the host knows: its whole-document epoch (bumped on
-    /// Open / New / import) and the files open in the editor. Call it from the
-    /// UI thread before each [`Self::pump`] — and once right after start — so
-    /// a snapshot/apply pair can tell the document was swapped and a
-    /// `filePath` argument naming an open file is refused.
-    pub fn sync_host(&mut self, document_epoch: u64, open_paths: &[std::path::PathBuf]) {
+    /// Open / New / import), the files open in the editor and the on-screen
+    /// document's own file (`None` while untitled, which is what lets
+    /// `create_document` run). Call it from the UI thread before each
+    /// [`Self::pump`] — and once right after start — so a snapshot/apply pair
+    /// can tell the document was swapped and a `filePath` argument naming an
+    /// open file is refused.
+    pub fn sync_host(
+        &mut self,
+        document_epoch: u64,
+        open_paths: &[std::path::PathBuf],
+        active_path: Option<&std::path::Path>,
+    ) {
         self.host_document_epoch = document_epoch;
         self.open_paths.set(open_paths);
+        self.open_paths.set_active(active_path);
+    }
+
+    /// Whether `expected` (a call's snapshot epoch) no longer names the live
+    /// document. `None` — a call that took no snapshot — has nothing to compare.
+    fn epoch_changed(&self, expected: Option<DocumentEpoch>, state: &EditorState) -> bool {
+        expected.is_some_and(|epoch| epoch != DocumentEpoch::of(self.host_document_epoch, state))
     }
 
     pub fn pump(&mut self, state: &mut EditorState) -> McpPumpOutcome {
@@ -302,9 +330,7 @@ impl McpLiveServer {
                     // document that has since been replaced: node ids repeat
                     // across documents, so applying would silently edit the
                     // wrong one.
-                    if expected_epoch.is_some_and(|epoch| {
-                        epoch != DocumentEpoch::of(self.host_document_epoch, state)
-                    }) {
+                    if self.epoch_changed(expected_epoch, state) {
                         let _ = ack.send(ApplyAck {
                             applied: false,
                             document_changed: true,
@@ -386,6 +412,28 @@ impl McpLiveServer {
                 }
                 Ok(UiRequest::GenerateDesignMd { request }) => {
                     self.pending_design_md.push_back(request);
+                }
+                Ok(UiRequest::CreateDocument {
+                    project_root,
+                    name,
+                    expected_epoch,
+                    ack,
+                }) => {
+                    if self.epoch_changed(Some(expected_epoch), state) {
+                        let _ = ack.send(CreateAck::DocumentChanged);
+                        continue;
+                    }
+                    let result = create_document_route::create_on_ui_thread(
+                        state,
+                        &self.open_paths,
+                        &project_root,
+                        &name,
+                    );
+                    if let Ok(created) = &result {
+                        outcome.created_document = Some(created.file_path.clone());
+                    }
+                    let _ = ack.send(CreateAck::Done(result));
+                    outcome.repaint = true;
                 }
                 #[cfg(feature = "mcp-debug-tools")]
                 Ok(UiRequest::Screenshot { spec, ack }) => {
@@ -542,6 +590,7 @@ fn command_invalidates_layout(cmd: &EditorCommand) -> bool {
 
 mod admission;
 mod connection;
+mod create_document_route;
 mod design_md_output;
 pub(crate) mod design_md_route;
 mod doc_sync;
@@ -555,6 +604,7 @@ mod ui_requests;
 
 use admission::*;
 use connection::*;
+use create_document_route::CreateAck;
 use doc_sync::*;
 use document_epoch::*;
 use open_paths::*;

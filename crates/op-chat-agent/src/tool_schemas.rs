@@ -6,6 +6,7 @@ pub const TOOL_SCHEMAS: &[&str] = &[
     // --- read tools ---
     r#"{"name":"open_document","description":"Open the current Rust MCP document, or the TS-compatible filePath target for this call, and return metadata, context summary, and design prompt.","inputSchema":{"type":"object","properties":{"filePath":{"type":"string","description":"Optional target .op file path; omit to use the server document"}}}}"#,
     r#"{"name":"save_document","description":"Save the current Rust MCP document snapshot to a .op file. Used by the Rust HTTP CLI to match TS `op save`; pass sourceFilePath to copy a specific source .op file to the target filePath.","inputSchema":{"type":"object","properties":{"filePath":{"type":"string","description":"Target .op file path"},"sourceFilePath":{"type":"string","description":"Optional source .op file path for TS-compatible `op save <target> --file <source>`"}},"required":["filePath"]}}"#,
+    r#"{"name":"create_document","description":"Give the UNTITLED live document its first file, at <projectRoot>/designs/<name>.op, and bind the editor to it (tab, title, Save and recent files follow). Only for an untitled live document; pass your own current working directory as projectRoot and choose a short descriptive name. Refuses when the document is already saved (use save_document with a filePath to save a copy elsewhere), when projectRoot is not an existing absolute folder (the filesystem root and the home directory itself are refused), when the name is not a plain file name, and when the target file already exists (it is never overwritten; pick another name or open it with open_document filePath). Creates the designs folder if needed. Returns {ok, filePath, projectRoot, name}.","inputSchema":{"type":"object","properties":{"projectRoot":{"type":"string","description":"Absolute path of the project folder: your own current working directory. Not the filesystem root or the home directory itself."},"name":{"type":"string","description":"File name without a path, e.g. 'landing-page'; a trailing .op is accepted. No slashes, no '..', must not start with '.', at most 100 characters."}},"required":["projectRoot","name"]}}"#,
     r#"{"name":"get_document_info","description":"Summarize the open document (page count, active page, etc).","inputSchema":{"type":"object","properties":{},"additionalProperties":false}}"#,
     r#"{"name":"get_selection","description":"Return the current selection state (ids, count).","inputSchema":{"type":"object","properties":{"filePath":{"type":"string","description":"Optional target .op file path; omit to use the server document"},"readDepth":{"type":"number","description":"How deep to include children in selected nodes; default 2"}}}}"#,
     r#"{"name":"get_node","description":"Read a node by id with depth-limited descendants.","inputSchema":{"type":"object","properties":{"node_id":{"type":"string","description":"u64 node id"}},"required":["node_id"]}}"#,
@@ -244,6 +245,22 @@ mod tests {
         assert!(description.contains("operations is ONLY the edit/refine surface"));
         assert!(operations.contains("Do not use I() here"));
         assert!(!operations.contains("root=I("));
+    }
+
+    #[test]
+    fn create_document_schema_tells_agents_when_and_where_to_use_it() {
+        let raw = TOOL_SCHEMAS
+            .iter()
+            .find(|schema| schema.contains(r#""name":"create_document""#))
+            .expect("create_document schema");
+        let schema: serde_json::Value = serde_json::from_str(raw).expect("create_document JSON");
+        let description = schema["description"].as_str().expect("description");
+        assert!(description.contains("Only for an untitled live document"));
+        assert!(description.contains("pass your own current working directory as projectRoot"));
+        assert_eq!(
+            schema["inputSchema"]["required"],
+            serde_json::json!(["projectRoot", "name"])
+        );
     }
 
     #[test]

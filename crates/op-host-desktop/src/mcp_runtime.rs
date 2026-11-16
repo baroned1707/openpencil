@@ -186,9 +186,30 @@ impl DesktopApp {
         // registry, so a `filePath` edit of ANY open document is refused.
         self.sync_active_slot();
         let document_epoch = self.host.document_epoch();
+        let open_paths = self.documents.open_paths();
         if let Some(server) = self.mcp_server.as_mut() {
-            server.sync_host(document_epoch, &self.documents.open_paths());
+            server.sync_host(document_epoch, &open_paths, self.current_path.as_deref());
         }
+    }
+
+    /// Make the file `create_document` just wrote this document's own, the way
+    /// a user Save As does. The pump already marked the document saved and set
+    /// its file name (in the same step as the write, so no other request could
+    /// land between them); what is left is the desktop-side state that follows
+    /// a document's file: its path, recent files, Git binding and window title,
+    /// the tab row, and the live server's view of the open files.
+    fn bind_created_document(&mut self, path: std::path::PathBuf) {
+        // Same contract as a completed Save: an import still running would
+        // later replace the document that was just persisted.
+        crate::figma_import_session::cancel(&mut self.host, &mut self.current_figma_import);
+        crate::html_import_session::cancel(&mut self.host, &mut self.current_html_import);
+        self.image_search.reset();
+        self.current_path = Some(path.clone());
+        crate::settings_io::touch_recent(&mut self.host, &path);
+        self.rebind_git_session_for_current_path();
+        self.publish_document_tabs();
+        self.host.mark_editor_state_dirty();
+        self.sync_mcp_host();
     }
 
     pub(crate) fn poll_mcp_server(&mut self) -> bool {
@@ -209,6 +230,9 @@ impl DesktopApp {
         }
         if outcome.layout_dirty {
             self.host.mark_editor_state_dirty();
+        }
+        if let Some(path) = outcome.created_document.clone() {
+            self.bind_created_document(path);
         }
         if outcome.document_replaced {
             mark_external_document_replacement_dirty(self.host.editor_state_mut());
@@ -322,6 +346,10 @@ impl DesktopApp {
         reverted
     }
 }
+
+#[cfg(test)]
+#[path = "mcp_create_document_tests.rs"]
+mod create_document_tests;
 
 #[cfg(test)]
 mod dirty_tests {

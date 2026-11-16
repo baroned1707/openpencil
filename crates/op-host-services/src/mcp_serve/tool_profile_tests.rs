@@ -64,6 +64,9 @@ fn the_denied_set_is_exactly_the_reviewed_list() {
             "codegen_clean",
             "codegen_plan",
             "codegen_submit_chunk",
+            // Writes a new file under a caller-chosen folder — denied online
+            // for the same reason save_document is.
+            "create_document",
             "debug_logs_tail",
             "debug_screenshot",
             "debug_validation_report",

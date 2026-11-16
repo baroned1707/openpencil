@@ -415,6 +415,13 @@ pub const TOOL_PROFILES: &[ToolProfile] = &[
     ToolProfile::new("copy_selected", ToolAccess::Write, ToolSurface::InMemory),
     ToolProfile::new("count_nodes", ToolAccess::Read, ToolSurface::InMemory),
     ToolProfile::new("create_component", ToolAccess::Write, ToolSurface::InMemory),
+    // Writes a new file under a caller-chosen folder of the host, so a shared
+    // deployment must not offer it.
+    ToolProfile::new(
+        "create_document",
+        ToolAccess::Write,
+        ToolSurface::LocalFilesystem,
+    ),
     ToolProfile::new("create_variable", ToolAccess::Write, ToolSurface::InMemory),
     ToolProfile::new("cut_selected", ToolAccess::Write, ToolSurface::InMemory),
     ToolProfile::new(

@@ -301,6 +301,15 @@ pub(super) fn serve_connection<S: std::io::Read + std::io::Write>(
             return write_json_rpc_response(stream, &response);
         }
     }
+    // `create_document` writes a file for the untitled on-screen document and
+    // needs the host's view of it, so it has its own two-step route. Under a
+    // profile that refuses it (the lean catalog) the generic dispatch below
+    // reports the refusal.
+    if let Some(response) =
+        create_document_route::serve(&req.body, profile, open_paths, req_tx, wake_ui)?
+    {
+        return write_json_rpc_response(stream, &response);
+    }
     let (mut state, epoch) = request_snapshot(req_tx, wake_ui)?;
     let mut document_changed = false;
     let mut response = crate::mcp_serve::process_message_with_applier_profiled(

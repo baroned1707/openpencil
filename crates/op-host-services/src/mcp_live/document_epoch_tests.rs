@@ -86,7 +86,7 @@ fn apply_rejected_after_document_epoch_change() {
     // the host's own epoch has to be part of the identity too.
     let mut fresh = EditorState::new();
     let epoch = take_snapshot(&mut server, &req_tx, &mut fresh);
-    server.sync_host(1, &[]);
+    server.sync_host(1, &[], None);
     let ack = apply_insert(&mut server, &req_tx, &mut fresh, Some(epoch));
     assert!(!ack.applied && ack.document_changed);
     assert_eq!(node_count(&fresh), 0);
@@ -114,7 +114,7 @@ fn apply_accepted_when_epoch_unchanged_by_ordinary_edit() {
 fn apply_without_a_snapshot_is_never_epoch_checked() {
     let (mut server, req_tx) = server_with_queue();
     let mut state = EditorState::new();
-    server.sync_host(7, &[]);
+    server.sync_host(7, &[], None);
     state.replace_document(EditorState::new().doc);
 
     let ack = apply_insert(&mut server, &req_tx, &mut state, None);

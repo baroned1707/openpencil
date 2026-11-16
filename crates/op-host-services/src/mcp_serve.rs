@@ -67,6 +67,8 @@ use op_mcp::{
 };
 
 pub(crate) mod auto_finalize;
+pub mod create_document;
+pub mod create_document_error;
 pub mod error;
 pub mod file_path;
 pub mod file_path_error;
@@ -194,6 +196,11 @@ fn process_message_with_auto_finalize(
     mut auto_finalize: Option<&mut auto_finalize::AutoFinalize>,
     profile: tool_profile::McpAccessProfile,
 ) -> Result<Option<String>, McpServeError> {
+    // A headless document always has its backing file, so it can never be
+    // given a first one.
+    if let Some(response) = create_document::refuse_in_headless(line, path, profile) {
+        return Ok(Some(response));
+    }
     // The headless transport owns its backing file outright (no editor holds
     // it in memory), so there are no "open elsewhere" paths to refuse.
     if let Some(response) =

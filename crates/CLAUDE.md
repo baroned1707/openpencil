@@ -580,6 +580,17 @@ By category:
   / `create_variable` / `delete_variable` / `rename_variable` /
   `set_active_axis_value` / `cycle_active_axis_value`
   (`op-mcp/src/scalar_vars.rs` + `op-mcp/src/component_tools.rs`).
+- **Document file** — `create_document { projectRoot, name }` gives the
+  UNTITLED live document its first file at
+  `<projectRoot>/designs/<name>.op` and binds the editor to it (path, tab,
+  title, recent files, saved state), as a user Save As would. It is not an
+  `EditorCommand`: `mcp_live/create_document_route.rs` takes a snapshot for the
+  epoch, then a `UiRequest::CreateDocument` is epoch-checked and written on the
+  UI thread (`mcp_serve/create_document.rs`: never overwrites, `designs/` must
+  stay inside the project, no temp file left), and the desktop binds it from
+  `McpPumpOutcome::created_document` (`op-host-desktop/src/mcp_runtime.rs`).
+  Headless `--mcp` / `--mcp-http` always have a file, so they refuse with
+  "already saved at"; the lean profile does not list it.
 - **Batch design** — `batch_design` / `design_skeleton` /
   `design_content` / `design_refine` (`op-mcp/src/batch_design.rs`).
   `batch_design` accepts exactly one of `nodes_json` (a flat

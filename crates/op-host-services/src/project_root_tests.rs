@@ -110,12 +110,36 @@ fn never_returns_home_or_filesystem_root() {
 fn falls_back_to_file_dir_without_markers() {
     let tree = Tree::new();
     let home = tree.dir("home");
-    let docs = tree.dir("home/loose/designs");
+    let docs = tree.dir("home/loose/drafts");
 
     let found = project_root_with_home(&docs.join("a.op"), Some(&home)).unwrap();
     assert_eq!(found.root, docs);
-    assert_eq!(found.name, "designs");
+    assert_eq!(found.name, "drafts");
     assert_eq!(found.source, ProjectRootSource::FileDir);
+}
+
+#[test]
+fn designs_folder_without_markers_resolves_to_its_parent() {
+    // `create_document` writes `<root>/designs/<name>.op`; the agent that made
+    // it must keep `<root>` as its working directory, not `<root>/designs`.
+    let tree = Tree::new();
+    let home = tree.dir("home");
+    let root = tree.dir("home/plain-project");
+    let designs = tree.dir("home/plain-project/designs");
+
+    let found = project_root_with_home(&designs.join("a.op"), Some(&home)).unwrap();
+    assert_eq!(found.root, root);
+    assert_eq!(found.name, "plain-project");
+}
+
+#[test]
+fn designs_directly_under_home_is_not_lifted_to_home() {
+    let tree = Tree::new();
+    let home = tree.dir("home");
+    let designs = tree.dir("home/designs");
+
+    let found = project_root_with_home(&designs.join("a.op"), Some(&home)).unwrap();
+    assert_eq!(found.root, designs, "home itself is never a project");
 }
 
 #[test]
