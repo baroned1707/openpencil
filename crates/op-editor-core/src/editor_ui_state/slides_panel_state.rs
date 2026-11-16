@@ -1,8 +1,9 @@
 //! Left-rail tab selection + the slides tab's pointer bookkeeping.
 //!
-//! The left rail is a three-tab surface: the Agent conversation
-//! (`Chat`), the ordinary Pages + Layers tree, and a page navigator
-//! that lists one thumbnail per top-level board. Which tab is showing,
+//! The left rail is a four-tab surface: the Agent conversation
+//! (`Chat`), the ordinary Pages + Layers tree, a page navigator
+//! that lists one thumbnail per top-level board, and the Projects tree
+//! (project -> design files) on a host that holds several documents. Which tab is showing,
 //! which row the cursor is on, and the reorder gesture in flight are
 //! all transient UI state and live here. The Chat tab is desktop-only
 //! (touch chrome hosts the conversation as its own bottom sheet), and
@@ -38,6 +39,8 @@ pub enum LeftPanelTab {
     /// The Agent conversation, pinned into the rail's body.
     Chat,
     Slides,
+    /// The Projects tree: every project and the design files in it.
+    Projects,
 }
 
 /// A slides-list reorder gesture in flight.
@@ -68,6 +71,8 @@ pub enum SlidesPanelTarget {
     LayersTab,
     /// The "Slides" / "Cards" tab in the tab row.
     SlidesTab,
+    /// The "Projects" tab in the tab row.
+    ProjectsTab,
     /// A slide row, by index in page order.
     Slide(usize),
     /// The action bar's present button.

@@ -131,3 +131,30 @@ fn a_fresh_scope_is_pristine_until_it_is_edited() {
     state.mark_document_changed();
     assert!(!DocumentScope::from_state(state).is_pristine());
 }
+
+#[test]
+fn the_projects_tab_stays_on_show_across_a_document_switch() {
+    use crate::editor_ui_state::LeftPanelTab;
+    let mut live = EditorState::starter();
+    live.editor_ui.slides_panel.tab = LeftPanelTab::Projects;
+    live.editor_ui.projects_panel.scroll.offset = 90.0;
+
+    // Picking a file in the Projects tab switches documents; the rail must
+    // still be on that tab (and keep its scroll) afterwards.
+    let mut parked = park_live_document(&mut live, EditorState::starter());
+    assert_eq!(live.editor_ui.slides_panel.tab, LeftPanelTab::Projects);
+    assert_eq!(live.editor_ui.projects_panel.scroll.offset, 90.0);
+
+    // And back: the parked document never strands the rail on it either way.
+    live.exchange_document_scope(&mut parked);
+    assert_eq!(live.editor_ui.slides_panel.tab, LeftPanelTab::Projects);
+}
+
+#[test]
+fn another_documents_tab_still_travels_with_it() {
+    use crate::editor_ui_state::LeftPanelTab;
+    let mut live = EditorState::starter();
+    live.editor_ui.slides_panel.tab = LeftPanelTab::Slides;
+    let _parked = park_live_document(&mut live, EditorState::starter());
+    assert_eq!(live.editor_ui.slides_panel.tab, LeftPanelTab::Layers);
+}

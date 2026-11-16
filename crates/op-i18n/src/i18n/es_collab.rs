@@ -537,6 +537,11 @@ pub fn lookup(key: &str) -> Option<&'static str> {
         "ai.referenceImagesUnsupported" => "El modelo seleccionado no admite imágenes de referencia. Elige un modelo compatible con imágenes o elimina los archivos adjuntos.",
         "ai.hostedTransportUnavailable" => "OpenPencil Hosted no está disponible en esta sesión. Vuelve a iniciar sesión o elige otro modelo.",
         "documents.switchBlocked" => "Termina o detén la tarea en curso antes de cambiar de documento.",
+        "leftPanel.tab.projects" => "Proyectos",
+        "projects.empty" => "Aún no hay proyectos",
+        "projects.newDesign" => "Nuevo diseño",
+        "projects.needsReview" => "{{count}} por revisar",
+        "projects.running" => "{{count}} en curso",
         _ => return None,
     })
 }

@@ -109,6 +109,20 @@ pub fn slides_tab_available(state: &EditorState) -> bool {
     !state.editor_ui.preview.mode && !board_chips(state).is_empty()
 }
 
+/// Whether this document's rail offers the Projects tab: the host holds
+/// several documents, has reported projects, and is not presenting.
+pub fn projects_tab_available(state: &EditorState) -> bool {
+    !state.editor_ui.preview.mode && state.editor_ui.projects_tab_available()
+}
+
+/// Whether the Projects tab is the one on show. False whenever the tab is
+/// not on offer, so a stale selection (the last project went away, the
+/// document went to touch chrome) falls back to the Layers tree instead
+/// of stranding the rail on an empty page.
+pub fn projects_tab_active(state: &EditorState) -> bool {
+    projects_tab_available(state) && state.editor_ui.slides_panel.tab == LeftPanelTab::Projects
+}
+
 /// Whether the Chat tab owns the rail's BODY — the pinned chat panel
 /// paints there instead of the layer tree (see
 /// `host_canvas_geometry::pinned_chat`). Never on touch chrome: touch
@@ -129,6 +143,8 @@ pub fn tab_row_desc(state: &EditorState) -> SlidesTabRow<'static> {
         slides_label: translate(ui, slides_tab_label_key(state)),
         chat_available: ui.chat_tab_available(),
         slides_available: slides_tab_available(state),
+        projects_label: translate(ui, "leftPanel.tab.projects"),
+        projects_available: projects_tab_available(state),
     }
 }
 
@@ -153,6 +169,7 @@ fn tabs_for_state(state: &EditorState, panel: Rect) -> SlidesPanelTabs {
     let desc = tab_row_desc(state);
     let active = match state.editor_ui.slides_panel.tab {
         LeftPanelTab::Chat if !desc.chat_available => LeftPanelTab::Layers,
+        LeftPanelTab::Projects if !desc.projects_available => LeftPanelTab::Layers,
         tab => tab,
     };
     if state.editor_ui.touch_chrome() {
@@ -427,6 +444,7 @@ pub fn release(state: &mut EditorState, layout: &SlidesPanelLayout) -> SlidesRel
         SlidesPanelTarget::ChatTab => SlidesRelease::SelectTab(LeftPanelTab::Chat),
         SlidesPanelTarget::LayersTab => SlidesRelease::SelectTab(LeftPanelTab::Layers),
         SlidesPanelTarget::SlidesTab => SlidesRelease::SelectTab(LeftPanelTab::Slides),
+        SlidesPanelTarget::ProjectsTab => SlidesRelease::SelectTab(LeftPanelTab::Projects),
         SlidesPanelTarget::Slide(index) => SlidesRelease::Activate(index),
         SlidesPanelTarget::Present => SlidesRelease::Present,
         SlidesPanelTarget::ExportMenu => {
@@ -496,6 +514,7 @@ pub fn tab_release(state: &mut EditorState) -> SlidesRelease {
         SlidesPanelTarget::ChatTab => SlidesRelease::SelectTab(LeftPanelTab::Chat),
         SlidesPanelTarget::LayersTab => SlidesRelease::SelectTab(LeftPanelTab::Layers),
         SlidesPanelTarget::SlidesTab => SlidesRelease::SelectTab(LeftPanelTab::Slides),
+        SlidesPanelTarget::ProjectsTab => SlidesRelease::SelectTab(LeftPanelTab::Projects),
         // Nothing else on the panel exists while the Layers tab owns the
         // rail — the action bar is the slides tab's, and so is its menu.
         _ => SlidesRelease::Cancelled,
@@ -513,12 +532,16 @@ pub fn select_tab(state: &mut EditorState, tab: LeftPanelTab) -> bool {
     if tab == LeftPanelTab::Chat {
         return state.editor_ui.enter_chat_tab();
     }
+    if tab == LeftPanelTab::Projects && !projects_tab_available(state) {
+        return false;
+    }
     let panel = &mut state.editor_ui.slides_panel;
     if panel.tab == tab {
         return false;
     }
     panel.tab = tab;
     panel.clear_pointer();
+    state.editor_ui.projects_panel.hover = None;
     true
 }
 

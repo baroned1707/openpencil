@@ -404,6 +404,8 @@ fn test_row() -> SlidesTabRow<'static> {
         slides_label: slides,
         chat_available: true,
         slides_available: true,
+        projects_label: "Projects",
+        projects_available: false,
     }
 }
 

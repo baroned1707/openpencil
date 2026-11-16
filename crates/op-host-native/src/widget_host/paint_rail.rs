@@ -56,7 +56,19 @@ impl WidgetHostNative {
                 self.paint_slides_tab_row(frame, &tabs);
             }
         }
-        if rail_open && slides_panel.is_none() && !chat_owns_rail {
+        // The Projects tab owns the body the same way; the tab row heads it.
+        let projects = if rail_open && slides_panel.is_none() {
+            self.projects_panel_layout(viewport_width, viewport_height)
+        } else {
+            None
+        };
+        if let Some(layout) = &projects {
+            self.paint_projects_panel(frame, layout);
+            if let Some(tabs) = self.slides_tab_row(viewport_width, viewport_height) {
+                self.paint_slides_tab_row(frame, &tabs);
+            }
+        }
+        if rail_open && slides_panel.is_none() && !chat_owns_rail && projects.is_none() {
             // Compute the active drop target so the panel can paint
             // the drop-indicator line during a drag-to-reorder.
             // The rail is the tab row's leftovers when a tab row shows,

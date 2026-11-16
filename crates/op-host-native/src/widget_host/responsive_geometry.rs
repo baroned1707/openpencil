@@ -56,7 +56,9 @@ impl WidgetHostNative {
         if !self.left_rail_visible() || self.works_reader_visible() {
             return false;
         }
-        if op_editor_ui::widgets::slides_panel_flow::chat_tab_active(&self.editor_state) {
+        if op_editor_ui::widgets::slides_panel_flow::chat_tab_active(&self.editor_state)
+            || op_editor_ui::widgets::slides_panel_flow::projects_tab_active(&self.editor_state)
+        {
             return false;
         }
         if !ui.touch_chrome() {

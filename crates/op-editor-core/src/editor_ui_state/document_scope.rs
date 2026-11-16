@@ -108,6 +108,7 @@ impl EditorUiDocumentScope {
             document_tabs: _,
             pending_document_request: _,
             document_tabs_supported: _,
+            projects_panel: _,
             session_documents: _,
             locale: _,
             pending_locale: _,
@@ -402,6 +403,7 @@ impl EditorUiDocumentScope {
             document_tabs: _,
             pending_document_request: _,
             document_tabs_supported: _,
+            projects_panel: _,
             session_documents: _,
             locale: _,
             pending_locale: _,
@@ -733,6 +735,16 @@ impl EditorUiDocumentScope {
         std::mem::swap(canvas_drop_indicator, scope_canvas_drop_indicator);
         std::mem::swap(starter_ghost, scope_starter_ghost);
         std::mem::swap(slides_panel, scope_slides_panel);
+        // The Projects tab is a choice about the whole rail, not about one
+        // document: picking a file there switches documents, and the tab
+        // must still be showing afterwards. Every other tab stays
+        // per-document, so a stale Projects selection left behind in a
+        // parked document yields to the Layers tree.
+        if scope_slides_panel.tab == LeftPanelTab::Projects {
+            slides_panel.tab = LeftPanelTab::Projects;
+        } else if slides_panel.tab == LeftPanelTab::Projects {
+            slides_panel.tab = LeftPanelTab::Layers;
+        }
         std::mem::swap(missing_fonts_prompt, scope_missing_fonts_prompt);
         std::mem::swap(
             missing_fonts_notice_dismissed,

@@ -537,6 +537,11 @@ pub fn lookup(key: &str) -> Option<&'static str> {
         "ai.referenceImagesUnsupported" => "Seçilen model referans görsellerini desteklemiyor. Görsel destekleyen bir model seçin veya ekleri kaldırın.",
         "ai.hostedTransportUnavailable" => "OpenPencil Hosted bu oturumda kullanılamıyor. Yeniden oturum açın veya başka bir model seçin.",
         "documents.switchBlocked" => "Belge değiştirmeden önce çalışan görevi bitirin veya durdurun.",
+        "leftPanel.tab.projects" => "Projeler",
+        "projects.empty" => "Henüz proje yok",
+        "projects.newDesign" => "Yeni tasarım",
+        "projects.needsReview" => "{{count}} incelenecek",
+        "projects.running" => "{{count}} çalışıyor",
         _ => return None,
     })
 }

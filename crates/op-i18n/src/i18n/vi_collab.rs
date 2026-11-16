@@ -549,6 +549,11 @@ pub fn lookup(key: &str) -> Option<&'static str> {
         "ai.referenceImagesUnsupported" => "Mô hình đã chọn không hỗ trợ ảnh tham chiếu. Hãy chọn mô hình hỗ trợ hình ảnh hoặc xóa tệp đính kèm.",
         "ai.hostedTransportUnavailable" => "OpenPencil Hosted không khả dụng trong phiên này. Hãy đăng nhập lại hoặc chọn mô hình khác.",
         "documents.switchBlocked" => "Hãy hoàn tất hoặc dừng tác vụ đang chạy trước khi chuyển tài liệu.",
+        "leftPanel.tab.projects" => "Dự án",
+        "projects.empty" => "Chưa có dự án nào",
+        "projects.newDesign" => "Thiết kế mới",
+        "projects.needsReview" => "{{count}} cần duyệt",
+        "projects.running" => "{{count}} đang chạy",
         _ => return None,
     })
 }

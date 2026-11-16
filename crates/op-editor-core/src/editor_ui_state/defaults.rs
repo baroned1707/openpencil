@@ -83,6 +83,7 @@ impl Default for EditorUiState {
             scenario: None,
             preview: PreviewState::default(),
             slides_panel: super::SlidesPanelState::default(),
+            projects_panel: super::ProjectsPanelState::default(),
             agent_settings_open: false,
             agent_settings: crate::agent_settings::AgentSettings::default(),
             agent_settings_drag: None,

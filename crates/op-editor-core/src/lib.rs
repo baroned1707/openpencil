@@ -141,6 +141,7 @@ pub mod path_edit;
 pub mod pen;
 pub mod pen_node_ext;
 pub mod preview_slideshow;
+pub mod project_tree;
 pub mod prompt_center_catalog;
 pub mod prompt_center_keyboard;
 pub mod property_edit_mutators;
@@ -163,6 +164,7 @@ pub mod share_routes;
 pub mod square_chrome;
 pub use document_scope::{DocumentScope, SessionDocument};
 pub use document_tabs::{DocumentId, DocumentTabRequest, DocumentTabStatus, DocumentTabView};
+pub use project_tree::{ProjectFileView, ProjectRequest, ProjectRowTarget, ProjectView};
 pub mod state;
 pub mod statusbar_state;
 pub mod svg_import;
@@ -405,10 +407,10 @@ pub use editor_ui_state::{
     HomeDevice, HomeFamily, HomeHit, HomeState, ImageAdjustmentField, ImageFillMode, InfoKind,
     LayerContextMenuState, LeftPanelTab, Locale, MergeConflictRow, MergeResolveFile,
     MergeResolveState, MissingFontSurface, PaddingEditMode, PageRenameState, PencilCursorStyle,
-    PreviewDeviceKind, PromptCenterFocus, PromptCenterState, PromptFilter, PropertyTab, RecentFile,
-    SceneFilter, SceneTemplateCenterState, SceneTemplateFocus, SizeToggleState, SlideRatio,
-    SlidesDrag, SlidesPanelState, SlidesPanelTarget, StyleImportState, TaskDraft, ThemeMode,
-    UpdateStatus, VariableRowFocus, WindowControlRequest, CHAT_TAB_MIN_WIDTH,
+    PreviewDeviceKind, ProjectsPanelState, PromptCenterFocus, PromptCenterState, PromptFilter,
+    PropertyTab, RecentFile, SceneFilter, SceneTemplateCenterState, SceneTemplateFocus,
+    SizeToggleState, SlideRatio, SlidesDrag, SlidesPanelState, SlidesPanelTarget, StyleImportState,
+    TaskDraft, ThemeMode, UpdateStatus, VariableRowFocus, WindowControlRequest, CHAT_TAB_MIN_WIDTH,
     LAYER_PANEL_MAX_WIDTH, LAYER_PANEL_MIN_WIDTH,
 };
 pub use export_dialog_state::ExportDialogButton;

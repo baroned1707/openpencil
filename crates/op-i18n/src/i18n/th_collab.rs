@@ -539,6 +539,11 @@ pub fn lookup(key: &str) -> Option<&'static str> {
         "ai.referenceImagesUnsupported" => "โมเดลที่เลือกไม่รองรับภาพอ้างอิง โปรดเลือกโมเดลที่รองรับภาพหรือนำไฟล์แนบออก",
         "ai.hostedTransportUnavailable" => "เซสชันนี้ไม่สามารถใช้ OpenPencil Hosted ได้ โปรดลงชื่อเข้าใช้อีกครั้งหรือเลือกรุ่นอื่น",
         "documents.switchBlocked" => "โปรดทำงานที่กำลังทำอยู่ให้เสร็จหรือหยุดก่อนสลับเอกสาร",
+        "leftPanel.tab.projects" => "โปรเจกต์",
+        "projects.empty" => "ยังไม่มีโปรเจกต์",
+        "projects.newDesign" => "ดีไซน์ใหม่",
+        "projects.needsReview" => "{{count}} รอตรวจ",
+        "projects.running" => "{{count}} กำลังทำงาน",
         _ => return None,
     })
 }

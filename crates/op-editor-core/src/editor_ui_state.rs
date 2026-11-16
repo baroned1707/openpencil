@@ -22,6 +22,7 @@ pub mod home;
 pub mod home_example_draft;
 mod methods;
 pub mod pickers;
+pub mod projects_panel_state;
 pub mod slides_panel_state;
 mod state;
 #[cfg(test)]

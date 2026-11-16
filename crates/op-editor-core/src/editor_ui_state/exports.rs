@@ -27,6 +27,7 @@ pub use super::pickers::{
     EffectParamFocus, FontPickerPurpose, LayerContextMenuState, MissingFontSurface,
     PageRenameState, PreviewDeviceKind, VariableRowFocus,
 };
+pub use super::projects_panel_state::ProjectsPanelState;
 pub use super::slides_panel_state::{
     LeftPanelTab, SlidesDrag, SlidesPanelState, SlidesPanelTarget, CHAT_TAB_MIN_WIDTH,
     LAYER_PANEL_MAX_WIDTH, LAYER_PANEL_MIN_WIDTH,

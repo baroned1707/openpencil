@@ -537,6 +537,11 @@ pub fn lookup(key: &str) -> Option<&'static str> {
         "ai.referenceImagesUnsupported" => "所選模型不支援參考圖。請選擇支援圖片的模型，或移除附件。",
         "ai.hostedTransportUnavailable" => "目前工作階段無法使用 OpenPencil Hosted。請重新登入或選擇其他模型。",
         "documents.switchBlocked" => "請先完成或停止執行中的任務，再切換文件。",
+        "leftPanel.tab.projects" => "專案",
+        "projects.empty" => "尚無專案",
+        "projects.newDesign" => "新增設計",
+        "projects.needsReview" => "{{count}} 個待審閱",
+        "projects.running" => "{{count}} 個執行中",
         _ => return None,
     })
 }

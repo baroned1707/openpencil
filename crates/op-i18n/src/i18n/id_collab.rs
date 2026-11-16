@@ -537,6 +537,11 @@ pub fn lookup(key: &str) -> Option<&'static str> {
         "ai.referenceImagesUnsupported" => "Model yang dipilih tidak mendukung gambar referensi. Pilih model yang mendukung gambar atau hapus lampiran.",
         "ai.hostedTransportUnavailable" => "OpenPencil Hosted tidak tersedia dalam sesi ini. Masuk kembali atau pilih model lain.",
         "documents.switchBlocked" => "Selesaikan atau hentikan tugas yang sedang berjalan sebelum berpindah dokumen.",
+        "leftPanel.tab.projects" => "Proyek",
+        "projects.empty" => "Belum ada proyek",
+        "projects.newDesign" => "Desain baru",
+        "projects.needsReview" => "{{count}} perlu ditinjau",
+        "projects.running" => "{{count}} berjalan",
         _ => return None,
     })
 }

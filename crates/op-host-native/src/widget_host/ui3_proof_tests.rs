@@ -10,6 +10,8 @@ mod home;
 mod menus;
 #[path = "ui3_proof_panels_tests.rs"]
 mod panels;
+#[path = "ui3_proof_projects_tests.rs"]
+mod projects;
 #[path = "ui3_proof_settings_tests.rs"]
 mod settings;
 #[path = "document_swap_render_tests.rs"]
