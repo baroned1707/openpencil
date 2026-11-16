@@ -54,6 +54,18 @@ impl CollabUiState {
     pub fn holds_a_guests_shared_document(&self) -> bool {
         self.binds_session() && !self.is_session_owner()
     }
+
+    /// Whether the session can no longer carry on by itself and the user has
+    /// to look: it ended (the owner left, the epoch changed), or the link is
+    /// down and the last attempt reported a failure. A tab that is not on
+    /// screen cannot show the panel notice, so hosts mark it from this.
+    pub fn session_lost(&self) -> bool {
+        match self.phase {
+            CollabConnectionPhase::Ended => true,
+            CollabConnectionPhase::Reconnecting => self.notice.is_some(),
+            _ => false,
+        }
+    }
 }
 
 #[cfg(test)]
@@ -130,6 +142,22 @@ mod tests {
                 );
             }
         }
+    }
+
+    #[test]
+    fn a_session_is_lost_when_it_ended_or_its_link_failed() {
+        let notice = super::super::CollabNoticeKind::DisconnectedReadOnly;
+        let mut state = session(CollabConnectionPhase::Active, CollabUiRole::Editor);
+        assert!(!state.session_lost());
+        state.set_phase(CollabConnectionPhase::Reconnecting);
+        assert!(!state.session_lost(), "reconnecting without a failure");
+        state.set_notice(notice, 1);
+        assert!(state.session_lost(), "reconnecting after a failure");
+        state.set_phase(CollabConnectionPhase::Ended);
+        assert!(state.session_lost());
+        state.set_phase(CollabConnectionPhase::Active);
+        assert!(!state.session_lost(), "reconnected");
+        assert!(!CollabUiState::default().session_lost());
     }
 
     #[test]

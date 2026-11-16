@@ -43,6 +43,10 @@ pub(crate) struct SlotLocalState {
     /// own, whose runtime is the shared one that follows the screen. Boxed: a
     /// runtime is large and most slots hold none.
     pub collab_runtime: Option<Box<crate::collab_runtime::DesktopCollabRuntime>>,
+    /// The user was already told (toast) that this parked document's session
+    /// ended or failed, so a later poll of the same loss stays quiet. Cleared
+    /// when the session is healthy again.
+    pub collab_loss_announced: bool,
 }
 
 /// One open document.
@@ -354,6 +358,12 @@ impl DocumentRegistry {
         self.active
     }
 
+    /// Append `slot` behind the other tabs without showing it; the document on
+    /// screen stays on screen.
+    pub fn push_background(&mut self, slot: DocumentSlot) {
+        self.slots.push(slot);
+    }
+
     /// Remove a slot that is not on screen and return it. Positions after it
     /// shift down; the active index follows its slot.
     pub fn remove(&mut self, index: usize) -> Option<DocumentSlot> {
@@ -411,10 +421,27 @@ impl DocumentRegistry {
                 label: slot.label(untitled_label),
                 project: slot.project_name(),
                 dirty: self.is_dirty(index, live_dirty),
-                status: slot.local.runs.status,
+                status: self.tab_status(index, slot),
                 active: index == self.active,
             })
             .collect()
+    }
+
+    /// What the tab shows: the run's status, except that a parked document
+    /// whose collaboration session ended or keeps failing shows `Error` (it has
+    /// no panel on screen to say so). A running agent keeps its own status.
+    fn tab_status(&self, index: usize, slot: &DocumentSlot) -> DocumentTabStatus {
+        let status = slot.local.runs.status;
+        let session_lost = index != self.active
+            && slot
+                .parked
+                .as_ref()
+                .is_some_and(|parked| parked.scope().collab().session_lost());
+        if session_lost && status != DocumentTabStatus::Running {
+            DocumentTabStatus::Error
+        } else {
+            status
+        }
     }
 
     /// The file bound to each tab, in tab order (`None` for untitled).

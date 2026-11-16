@@ -204,10 +204,18 @@ struct SlotView {
     path: Option<PathBuf>,
     /// Untouched since it was created (nothing worth keeping).
     pristine: bool,
-    /// A parked document that is another person's shared document, held as a
-    /// guest. A guest must not persist someone else's document, so it is never
-    /// written to the recovery directory.
+    /// Another person's shared document, held as a guest (see
+    /// [`holds_someone_elses_document`]). Never written to the recovery
+    /// directory, on screen or parked.
     guest_shared: bool,
+}
+
+/// The one rule for what recovery must never persist: a guest does not keep
+/// another person's document on this disk. It holds in every state, so the
+/// document on screen and a parked one both ask this question, and a
+/// document whose join has just started (not yet admitted) already counts.
+fn holds_someone_elses_document(collab: &op_editor_core::CollabUiState) -> bool {
+    collab.holds_a_guests_shared_document()
 }
 
 impl DesktopApp {
@@ -223,6 +231,7 @@ impl DesktopApp {
                     && !state.is_dirty()
                     && !state.history.can_undo()
                     && state.chat.is_untouched(),
+                holds_someone_elses_document(&state.editor_ui.collab),
             )
         };
         (0..self.documents.len())
@@ -231,7 +240,7 @@ impl DesktopApp {
                 let path = slot.local.path.clone();
                 let id = slot.id;
                 let (dirty, revision, pristine, guest_shared) = if index == active {
-                    (live.0, live.1, live.2, false)
+                    (live.0, live.1, live.2, live.3)
                 } else {
                     let parked = slot.parked.as_ref()?;
                     let scope = parked.scope();
@@ -239,7 +248,7 @@ impl DesktopApp {
                         scope.is_dirty(),
                         (scope.document_generation(), scope.document_revision()),
                         scope.is_pristine(),
-                        parked.holds_a_guests_shared_document(),
+                        holds_someone_elses_document(parked.scope().collab()),
                     )
                 };
                 Some(SlotView {

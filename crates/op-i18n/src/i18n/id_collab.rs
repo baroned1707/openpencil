@@ -562,6 +562,8 @@ pub fn lookup(key: &str) -> Option<&'static str> {
         "dialog.collabEndTitle" => "Sesi kolaborasi",
         "dialog.collabOwnerEndBody" => "“{{name}}” dibagikan dalam sesi yang sedang berjalan.\n\nIni mengakhiri sesi untuk {{count}} peserta.\n\nYa = Akhiri sesi dan lanjutkan · Tidak atau Batal = biarkan tetap terbuka.",
         "dialog.collabGuestLeaveBody" => "Anda berada dalam sesi yang sedang berjalan di “{{name}}”.\n\nKeluar dari sesi?\n\nYa = Keluar dan lanjutkan · Tidak atau Batal = tetap di sini.",
+        "documents.saveAsAlreadyOpen" => "“{{name}}” sudah terbuka di tab lain — beralihlah ke tab itu atau pilih nama lain.",
+        "documents.collabSessionLostParked" => "Sesi kolaborasi di “{{name}}” berakhir atau kehilangan koneksi. Beralihlah ke tab itu untuk melihat alasannya.",
         _ => return None,
     })
 }

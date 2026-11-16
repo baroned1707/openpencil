@@ -137,23 +137,29 @@ struct ApplyAck {
     unresolved: Option<ResolveError>,
 }
 
+/// What one pump did, for the host to follow up on.
+///
+/// A pump answers up to [`UI_PUMP_REQUEST_BUDGET`] requests that may be about
+/// different documents, so every follow-up names the document it belongs to
+/// instead of leaving the host to guess from the last request.
 #[derive(Debug, Default, Clone, PartialEq, Eq)]
 pub struct McpPumpOutcome {
     pub repaint: bool,
     pub layout_dirty: bool,
-    /// Set when this pump swapped in a whole new document
+    /// The documents this pump swapped a whole new document into
     /// (`UiRequest::ReplaceDocument` → `EditorState::replace_document`).
     /// `replace_document` resets `document_revision()` back to 0, which can
     /// alias a previously-scanned revision on an unrelated document — the
     /// caller MUST invalidate any revision-keyed cache (e.g. the desktop
-    /// host's image-search scan gate) whenever this is `true`, the same way
-    /// it already does after a Figma import installs a fresh `EditorState`.
-    pub document_replaced: bool,
-    /// Set when this pump wrote a new file for the untitled on-screen document
-    /// (`create_document`) and marked the document saved. The caller MUST make
-    /// that file the document's own — path, tab, window title, recent files —
-    /// exactly as a user Save As would.
-    pub created_document: Option<std::path::PathBuf>,
+    /// host's image-search scan gate) whenever this is non-empty, the same way
+    /// it already does after a Figma import installs a fresh `EditorState`,
+    /// and must mark each named document as changed behind the user's back.
+    pub replaced: Vec<DocumentId>,
+    /// The documents this pump wrote a new file for (`create_document`) and
+    /// marked saved, with that file. The caller MUST make each file its
+    /// document's own — path, tab, window title, recent files — exactly as a
+    /// user Save As would.
+    pub created: Vec<(DocumentId, std::path::PathBuf)>,
 }
 
 enum UiRequest {
@@ -640,6 +646,9 @@ mod document_nonce_tests;
 #[cfg(test)]
 #[path = "mcp_live/file_confinement_tests.rs"]
 mod file_confinement_tests;
+#[cfg(test)]
+#[path = "mcp_live/pump_outcome_tests.rs"]
+mod pump_outcome_tests;
 #[cfg(test)]
 #[path = "mcp_live/request_deadline_tests.rs"]
 mod request_deadline_tests;

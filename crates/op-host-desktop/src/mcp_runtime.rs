@@ -3,7 +3,7 @@
 use super::{mcp_integrations, DesktopApp};
 use crate::mcp_document_resolver::DesktopDocumentResolver;
 use crate::mcp_integrations::auth::LiveEndpoint;
-use op_host_services::mcp_live::DocumentListing;
+use op_host_services::mcp_live::{DocumentListing, McpPumpOutcome};
 
 fn mark_external_document_replacement_dirty(state: &mut op_editor_core::EditorState) {
     // `replace_document` intentionally resets to a clean revision for Open.
@@ -337,40 +337,48 @@ impl DesktopApp {
             return false;
         }
         let listings = self.mcp_document_listings();
-        let (outcome, pending_design_md, target) = {
+        let (outcome, pending_design_md) = {
             let Some(server) = self.mcp_server.as_mut() else {
                 return false;
             };
             let mut resolver =
                 DesktopDocumentResolver::new(&mut self.host, &mut self.documents, listings);
             let outcome = server.pump(&mut resolver);
-            let target = resolver.last_target();
             let pending_design_md = server.take_pending_design_md_request();
-            (outcome, pending_design_md, target)
+            (outcome, pending_design_md)
         };
-        // A pump that addressed a document other than the one on screen did its
-        // work in the parked slot; the follow-ups below must land there too.
-        let parked_target = target.filter(|id| *id != self.documents.active_id());
         // Provider execution is deliberately outside the UI/server borrow and
         // on its own worker. This request contains bounded extension evidence,
         // not a snapshot of (or mutation to) the live document.
         if let Some(request) = pending_design_md {
             self.start_mcp_design_md_request(request);
         }
+        self.apply_mcp_pump_outcome(&outcome)
+    }
+
+    /// Apply what one pump did, each follow-up to the document it names: a pump
+    /// may have answered requests about several tabs, so none of them can be
+    /// assumed to belong to the one on screen or to the last one answered.
+    /// Returns whether the screen needs a repaint.
+    pub(crate) fn apply_mcp_pump_outcome(&mut self, outcome: &McpPumpOutcome) -> bool {
         if outcome.layout_dirty {
             self.host.mark_editor_state_dirty();
         }
-        if let Some(path) = outcome.created_document.clone() {
-            match parked_target {
-                Some(id) => self.bind_created_parked_document(id, path),
-                None => self.bind_created_document(path),
+        for (id, path) in &outcome.created {
+            if *id == self.documents.active_id() {
+                self.bind_created_document(path.clone());
+            } else {
+                self.bind_created_parked_document(*id, path.clone());
             }
         }
-        if outcome.document_replaced {
-            match parked_target {
-                Some(id) => self.mark_parked_document_replaced(id),
-                None => mark_external_document_replacement_dirty(self.host.editor_state_mut()),
+        for id in &outcome.replaced {
+            if *id == self.documents.active_id() {
+                mark_external_document_replacement_dirty(self.host.editor_state_mut());
+            } else {
+                self.mark_parked_document_replaced(*id);
             }
+        }
+        if !outcome.replaced.is_empty() {
             // `ReplaceDocument` (whole-document MCP sync, e.g. TS
             // `setSyncDocument` parity) installs a fresh `EditorState` whose
             // revision restarts at 0 AND whose node ids can collide with ids
@@ -662,6 +670,10 @@ mod multi_document_e2e_tests;
 #[cfg(test)]
 #[path = "mcp_multi_document_e2e_lifecycle_tests.rs"]
 mod multi_document_e2e_lifecycle_tests;
+
+#[cfg(test)]
+#[path = "mcp_pump_follow_up_tests.rs"]
+mod pump_follow_up_tests;
 
 #[cfg(test)]
 #[path = "recovery_mcp_stop_tests.rs"]

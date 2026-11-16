@@ -562,6 +562,8 @@ pub fn lookup(key: &str) -> Option<&'static str> {
         "dialog.collabEndTitle" => "協作工作階段",
         "dialog.collabOwnerEndBody" => "「{{name}}」正在進行中的工作階段中共用。\n\n這會為 {{count}} 位參與者結束該工作階段。\n\n是 = 結束工作階段並繼續 · 否或取消 = 保持不變。",
         "dialog.collabGuestLeaveBody" => "你正在「{{name}}」的工作階段中。\n\n要離開該工作階段嗎？\n\n是 = 離開並繼續 · 否或取消 = 留下。",
+        "documents.saveAsAlreadyOpen" => "「{{name}}」已在另一個分頁中開啟——請切換到該分頁，或選擇其他名稱。",
+        "documents.collabSessionLostParked" => "「{{name}}」中的協作工作階段已結束或連線中斷。請切換到該分頁查看原因。",
         _ => return None,
     })
 }

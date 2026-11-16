@@ -33,6 +33,9 @@ pub(crate) const ALREADY_ACTIVE_KEY: &str = "documents.collabAlreadyActive";
 const END_TITLE_KEY: &str = "dialog.collabEndTitle";
 const OWNER_END_BODY_KEY: &str = "dialog.collabOwnerEndBody";
 const GUEST_LEAVE_BODY_KEY: &str = "dialog.collabGuestLeaveBody";
+/// Toast for a session that ended or failed in a tab that is not on screen;
+/// `{{name}}` is the tab.
+pub(crate) const SESSION_LOST_PARKED_KEY: &str = "documents.collabSessionLostParked";
 
 /// What closing a document costs the person who closes it.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -106,6 +109,8 @@ impl DesktopApp {
         arriving: &mut SlotLocalState,
     ) {
         let leaving_has_session = leaving_doc.collab_session_is_bound();
+        // A loss the user is looking at as the tab parks has been seen.
+        leaving.collab_loss_announced = leaving_doc.scope().collab().session_lost();
         match (leaving_has_session, arriving.collab_runtime.take()) {
             (true, Some(own)) => {
                 leaving.collab_runtime =
@@ -181,8 +186,40 @@ impl DesktopApp {
         for status in runtime.drain_status_events() {
             eprintln!("[collab] {status:?}");
         }
+        let collab = parked.scope().collab();
+        let (lost, healthy) = (
+            collab.session_lost(),
+            collab.phase == CollabConnectionPhase::Active,
+        );
         self.documents.return_collab_session(index, parked, runtime);
-        phase_changed.unwrap_or(false)
+        let announced = self.announce_parked_session_loss(index, lost, healthy);
+        phase_changed.unwrap_or(false) || announced
+    }
+
+    /// Tell the user ONCE that the session of the parked document at `index`
+    /// ended or failed: the tab is not on screen, so its panel notice is not
+    /// either. A session that is healthy again may be announced anew.
+    fn announce_parked_session_loss(&mut self, index: usize, lost: bool, healthy: bool) -> bool {
+        let Some(slot) = self.documents.slot_mut(index) else {
+            return false;
+        };
+        if healthy {
+            slot.local.collab_loss_announced = false;
+        }
+        if !lost || slot.local.collab_loss_announced {
+            return false;
+        }
+        slot.local.collab_loss_announced = true;
+        let name = self.slot_display_name(index);
+        let now_ms = self.host.now_ms();
+        self.host.editor_state_mut().editor_ui.show_toast(
+            SESSION_LOST_PARKED_KEY,
+            vec![("name".to_string(), name)],
+            EditorToastLevel::Warn,
+            now_ms,
+        );
+        self.host.mark_editor_state_dirty();
+        true
     }
 
     // ---- one session per process ----------------------------------------
@@ -392,3 +429,7 @@ mod session_tests;
 #[cfg(test)]
 #[path = "collab_slots_lens_tests.rs"]
 mod lens_tests;
+
+#[cfg(test)]
+#[path = "collab_slots_loss_tests.rs"]
+mod loss_tests;

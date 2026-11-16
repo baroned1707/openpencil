@@ -77,6 +77,12 @@ pub enum CreateDocumentError {
     FileExists {
         path: PathBuf,
     },
+    /// Another open document is bound to the target path (its file may have
+    /// been deleted, so "exists already" does not catch it). Binding a second
+    /// document to one file would let the later save overwrite the earlier.
+    OpenInAnotherDocument {
+        path: PathBuf,
+    },
     /// A filesystem step failed. `action` names it ("create", "write").
     Io {
         action: &'static str,
@@ -150,6 +156,11 @@ impl fmt::Display for CreateDocumentError {
             Self::FileExists { path } => write!(
                 f,
                 "{} already exists and is never overwritten; pick another name, or open it with open_document filePath",
+                path.display()
+            ),
+            Self::OpenInAnotherDocument { path } => write!(
+                f,
+                "{} is open in another document tab; pick another name, or switch to that tab",
                 path.display()
             ),
             Self::Io {

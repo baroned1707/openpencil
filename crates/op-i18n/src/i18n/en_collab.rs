@@ -602,6 +602,8 @@ pub fn lookup(key: &str) -> Option<&'static str> {
         "dialog.collabEndTitle" => "Collaboration session",
         "dialog.collabOwnerEndBody" => "“{{name}}” is shared in a live session.\n\nThis ends the session for {{count}} participant(s).\n\nYes = End the session and continue · No or Cancel = keep it.",
         "dialog.collabGuestLeaveBody" => "You are in a live session in “{{name}}”.\n\nLeave the session?\n\nYes = Leave and continue · No or Cancel = stay.",
+        "documents.saveAsAlreadyOpen" => "“{{name}}” is already open in another tab — switch to it or choose another name.",
+        "documents.collabSessionLostParked" => "The collaboration session in “{{name}}” ended or lost its connection. Switch to that tab to see why.",
         _ => return None,
     })
 }

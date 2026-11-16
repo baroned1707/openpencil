@@ -562,6 +562,8 @@ pub fn lookup(key: &str) -> Option<&'static str> {
         "dialog.collabEndTitle" => "İş birliği oturumu",
         "dialog.collabOwnerEndBody" => "“{{name}}” etkin bir oturumda paylaşılıyor.\n\nBu işlem oturumu {{count}} katılımcı için sonlandırır.\n\nEvet = Oturumu sonlandır ve devam et · Hayır veya İptal = olduğu gibi bırak.",
         "dialog.collabGuestLeaveBody" => "“{{name}}” içinde etkin bir oturumdasınız.\n\nOturumdan ayrılınsın mı?\n\nEvet = Ayrıl ve devam et · Hayır veya İptal = kal.",
+        "documents.saveAsAlreadyOpen" => "“{{name}}” zaten başka bir sekmede açık — o sekmeye geçin veya başka bir ad seçin.",
+        "documents.collabSessionLostParked" => "“{{name}}” içindeki iş birliği oturumu sona erdi veya bağlantısını kaybetti. Nedenini görmek için o sekmeye geçin.",
         _ => return None,
     })
 }

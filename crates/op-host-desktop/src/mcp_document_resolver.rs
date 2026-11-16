@@ -19,10 +19,6 @@ pub(crate) struct DesktopDocumentResolver<'a> {
     host: &'a mut WidgetHostNative,
     documents: &'a mut DocumentRegistry,
     listings: Vec<DocumentListing>,
-    /// The document the last `with_document` call addressed, so the caller can
-    /// apply the pump's follow-ups (a created file, a replaced document) to the
-    /// right document instead of assuming the one on screen.
-    last_target: Option<DocumentId>,
 }
 
 impl<'a> DesktopDocumentResolver<'a> {
@@ -35,12 +31,7 @@ impl<'a> DesktopDocumentResolver<'a> {
             host,
             documents,
             listings,
-            last_target: None,
         }
-    }
-
-    pub(crate) fn last_target(&self) -> Option<DocumentId> {
-        self.last_target
     }
 }
 
@@ -65,7 +56,6 @@ impl DocumentResolver for DesktopDocumentResolver<'_> {
         f: &mut dyn FnMut(&mut EditorState, u64),
     ) -> Result<(), ResolveError> {
         let active = lookup(&self.listings, id)?;
-        self.last_target = Some(id);
         // Indicator calls made by the tool belong to THIS document's scope.
         let _scope = agent_indicators::enter_scope(id.0);
         if active {

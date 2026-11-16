@@ -202,6 +202,7 @@ impl DesktopApp {
             // Which runtime stays with the leaving document is decided by
             // `rotate_collab_runtimes`, once both sides are known.
             collab_runtime: None,
+            collab_loss_announced: false,
         }
     }
 

@@ -303,6 +303,41 @@ fn startup_offers_recovery_and_reopens_dirty_tabs_bound_to_original_path() {
 }
 
 #[test]
+fn recovery_binds_no_path_that_another_tab_already_has_open() {
+    let work = temp_dir("open-elsewhere-work");
+    let recovery = temp_dir("open-elsewhere-store");
+    let original = crashed_previous_run(&work, &recovery);
+    let mut app = app_with_recovery(&recovery, "Lnew", std::process::id());
+    app.host.editor_state_mut().editor_ui.locale = op_editor_core::Locale::EnUs;
+    // The user opened a.op themselves before answering the offer.
+    assert!(app.open_document_tab(original.clone()));
+
+    let recovered = app.offer_recovery_with(|_, _| Some(Choice::Yes));
+
+    assert_eq!(recovered, 2);
+    app.sync_active_slot();
+    let bound = app
+        .documents
+        .slot_paths()
+        .into_iter()
+        .flatten()
+        .filter(|path| path == &original)
+        .count();
+    assert_eq!(bound, 1, "a second tab must not be bound to the same file");
+    // The recovered edits are not lost: they sit in an untitled tab.
+    let recovered_copy = (0..app.documents.len())
+        .find(|&index| {
+            app.documents.slot_paths()[index].is_none()
+                && app.activate_document_slot(index)
+                && app.host.editor_state().doc.name.as_deref() == Some("recovered-a")
+        })
+        .is_some();
+    assert!(recovered_copy, "the recovered a.op edits open untitled");
+    let _ = std::fs::remove_dir_all(work);
+    let _ = std::fs::remove_dir_all(recovery);
+}
+
+#[test]
 fn recovery_binds_no_path_when_the_original_is_newer() {
     let work = temp_dir("newer-work");
     let recovery = temp_dir("newer-store");

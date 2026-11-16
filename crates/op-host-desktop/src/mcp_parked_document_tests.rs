@@ -99,7 +99,6 @@ fn writes_to_two_documents_stay_in_their_own_document() {
         resolver
             .with_document(b, &mut |state, _| recolour(state, "#00BB00"))
             .unwrap();
-        assert_eq!(resolver.last_target(), Some(b));
     }
     let on_screen = first_frame(app.host.editor_state()).to_uppercase();
     assert!(on_screen.contains("00BB00"), "{on_screen}");

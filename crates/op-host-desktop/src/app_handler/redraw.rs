@@ -298,7 +298,7 @@ impl DesktopApp {
             self.redraw_dirty = true;
         }
         // Drain the document a Studio Home brief replaced: the new design
-        // starts untitled and unsaved work is kept as a rescue copy.
+        // starts untitled and unsaved work stays open as a background tab.
         if self.drain_replaced_home_document() {
             self.redraw_dirty = true;
         }

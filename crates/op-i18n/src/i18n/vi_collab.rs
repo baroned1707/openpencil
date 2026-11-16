@@ -574,6 +574,8 @@ pub fn lookup(key: &str) -> Option<&'static str> {
         "dialog.collabEndTitle" => "Phiên cộng tác",
         "dialog.collabOwnerEndBody" => "“{{name}}” đang được chia sẻ trong một phiên đang chạy.\n\nThao tác này kết thúc phiên đối với {{count}} người tham gia.\n\nCó = Kết thúc phiên và tiếp tục · Không hoặc Hủy = giữ nguyên.",
         "dialog.collabGuestLeaveBody" => "Bạn đang ở trong một phiên đang chạy tại “{{name}}”.\n\nRời khỏi phiên?\n\nCó = Rời và tiếp tục · Không hoặc Hủy = ở lại.",
+        "documents.saveAsAlreadyOpen" => "“{{name}}” đã được mở ở tab khác — hãy chuyển sang tab đó hoặc chọn tên khác.",
+        "documents.collabSessionLostParked" => "Phiên cộng tác trong “{{name}}” đã kết thúc hoặc mất kết nối. Hãy chuyển sang tab đó để xem lý do.",
         _ => return None,
     })
 }

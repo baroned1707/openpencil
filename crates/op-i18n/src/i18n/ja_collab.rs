@@ -578,6 +578,8 @@ pub fn lookup(key: &str) -> Option<&'static str> {
         "dialog.collabEndTitle" => "共同作業セッション",
         "dialog.collabOwnerEndBody" => "「{{name}}」はアクティブなセッションで共有されています。\n\nこの操作で、{{count}} 人の参加者のセッションが終了します。\n\nはい = セッションを終了して続ける · いいえ / キャンセル = そのままにする。",
         "dialog.collabGuestLeaveBody" => "「{{name}}」のアクティブなセッションに参加しています。\n\nセッションを退出しますか？\n\nはい = 退出して続ける · いいえ / キャンセル = 留まる。",
+        "documents.saveAsAlreadyOpen" => "「{{name}}」はすでに別のタブで開かれています。そのタブに切り替えるか、別の名前を選んでください。",
+        "documents.collabSessionLostParked" => "「{{name}}」の共同作業セッションが終了したか、接続が切れました。そのタブに切り替えて理由を確認してください。",
         _ => return None,
     })
 }

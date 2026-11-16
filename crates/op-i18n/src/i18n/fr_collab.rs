@@ -562,6 +562,8 @@ pub fn lookup(key: &str) -> Option<&'static str> {
         "dialog.collabEndTitle" => "Session de collaboration",
         "dialog.collabOwnerEndBody" => "« {{name}} » est partagé dans une session en cours.\n\nCela met fin à la session pour {{count}} participant(s).\n\nOui = Terminer la session et continuer · Non ou Annuler = la conserver.",
         "dialog.collabGuestLeaveBody" => "Vous êtes dans une session en cours dans « {{name}} ».\n\nQuitter la session ?\n\nOui = Quitter et continuer · Non ou Annuler = rester.",
+        "documents.saveAsAlreadyOpen" => "« {{name}} » est déjà ouvert dans un autre onglet — passez à cet onglet ou choisissez un autre nom.",
+        "documents.collabSessionLostParked" => "La session de collaboration de « {{name}} » s’est terminée ou a perdu sa connexion. Passez à cet onglet pour en voir la raison.",
         _ => return None,
     })
 }

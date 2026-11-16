@@ -562,6 +562,8 @@ pub fn lookup(key: &str) -> Option<&'static str> {
         "dialog.collabEndTitle" => "协作会话",
         "dialog.collabOwnerEndBody" => "“{{name}}”正在进行中的会话里共享。\n\n这会为 {{count}} 位参与者结束该会话。\n\n是 = 结束会话并继续 · 否或取消 = 保持不变。",
         "dialog.collabGuestLeaveBody" => "你正在“{{name}}”的会话中。\n\n要退出该会话吗？\n\n是 = 退出并继续 · 否或取消 = 留下。",
+        "documents.saveAsAlreadyOpen" => "“{{name}}”已在另一个标签页中打开——请切换到该标签页，或选择其他名称。",
+        "documents.collabSessionLostParked" => "“{{name}}”中的协作会话已结束或连接中断。请切换到该标签页查看原因。",
         _ => return None,
     })
 }

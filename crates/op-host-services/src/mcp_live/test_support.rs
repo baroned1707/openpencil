@@ -117,14 +117,14 @@ impl TestResolver {
     }
 
     /// What the desktop does after a pump that created a file: bind the path
-    /// to the document on screen.
-    pub(super) fn bind_created(&mut self, path: PathBuf) {
-        if let Some(active) = self.documents.iter_mut().find(|document| document.active) {
-            active.label = path
+    /// to the document the file was created for.
+    pub(super) fn bind_created(&mut self, document: DocumentId, path: PathBuf) {
+        if let Some(created) = self.documents.iter_mut().find(|d| d.id == document) {
+            created.label = path
                 .file_name()
                 .map(|name| name.to_string_lossy().into_owned())
                 .unwrap_or_default();
-            active.path = Some(path);
+            created.path = Some(path);
         }
     }
 }
@@ -233,9 +233,9 @@ pub(super) fn spawn_ui(
             seen.push(name);
             server_tx.send(request).expect("forward to the pump");
             let outcome = server.pump(&mut resolver);
-            if let Some(path) = outcome.created_document {
+            for (document, path) in outcome.created {
                 created.push(path.clone());
-                resolver.bind_created(path);
+                resolver.bind_created(document, path);
             }
             if name == "snapshot" {
                 if let Some(hook) = hook.take() {

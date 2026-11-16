@@ -165,3 +165,51 @@ fn create_document_refuses_an_existing_name_and_binds_nothing() {
     assert!(app.current_path.is_none(), "a refusal binds nothing");
     let _ = std::fs::remove_dir_all(project);
 }
+
+#[test]
+fn create_document_bind_refuses_a_path_open_in_another_tab() {
+    let project = temp_project("open-elsewhere");
+    let designs = project.join("designs");
+    std::fs::create_dir_all(&designs).unwrap();
+    let taken = designs.join("taken.op");
+    op_host_services::doc_io::save_to_path(&op_editor_core::EditorState::starter(), &taken)
+        .unwrap();
+    let (mut app, port) = app_with_live_server();
+    assert!(app.open_document_tab(taken.clone()));
+    // The file is deleted behind the editor: the tab still holds the path, and
+    // "never overwrites" no longer protects it because nothing is on disk.
+    std::fs::remove_file(&taken).unwrap();
+    assert!(app.open_untitled_tab());
+    app.host.editor_state_mut().mark_document_changed();
+    let untitled = app.documents.active_id();
+    let mut arguments = project_arguments(&project, "taken.op");
+    arguments["documentId"] = serde_json::json!(
+        op_host_services::mcp_serve::document_address::format_spoken_id(
+            untitled,
+            Some(op_host_services::mcp_serve::document_nonce::launch_nonce()),
+        )
+    );
+
+    let response = call_tool(&mut app, port, "create_document", arguments);
+
+    assert!(response.contains(r#""isError":true"#), "{response}");
+    assert!(response.contains("open in another"), "{response}");
+    assert!(
+        !taken.exists(),
+        "nothing is written over a file another tab holds"
+    );
+    assert!(
+        app.current_path.is_none(),
+        "the untitled tab stays untitled"
+    );
+    app.sync_active_slot();
+    let bound = app
+        .documents
+        .slot_paths()
+        .into_iter()
+        .flatten()
+        .filter(|path| path == &taken)
+        .count();
+    assert_eq!(bound, 1, "only the original tab is bound to the file");
+    let _ = std::fs::remove_dir_all(project);
+}

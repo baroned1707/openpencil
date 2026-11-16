@@ -333,7 +333,7 @@ fn pump_marks_layout_dirty_only_for_layout_affecting_commands() {
         "document-mutating MCP commands must rebuild layout"
     );
     assert!(
-        !insert.document_replaced,
+        insert.replaced.is_empty(),
         "a plain Apply command is not a whole-document replace"
     );
 }
@@ -392,9 +392,10 @@ fn pump_flags_document_replaced_only_for_replace_document_requests() {
     assert!(outcome.layout_dirty);
     assert_eq!(state.ui.active_page_index, 1);
     assert!(state.editor_ui.preserve_authored_geometry);
-    assert!(
-        outcome.document_replaced,
-        "ReplaceDocument must flag document_replaced"
+    assert_eq!(
+        outcome.replaced,
+        vec![DocumentId(1)],
+        "ReplaceDocument must name the document it replaced"
     );
 
     let (ack_tx, ack_rx) = mpsc::sync_channel(1);
@@ -420,7 +421,7 @@ fn pump_flags_document_replaced_only_for_replace_document_requests() {
     );
     assert!(metadata.repaint);
     assert!(metadata.layout_dirty);
-    assert!(!metadata.document_replaced);
+    assert!(metadata.replaced.is_empty());
     assert_eq!(state.ui.active_page_index, 0);
     assert!(!state.editor_ui.preserve_authored_geometry);
 }
@@ -508,7 +509,7 @@ fn pump_rejects_whole_document_sync_during_active_collaboration() {
     let outcome = server.pump(&mut SingleDocumentResolver::new(&mut state));
     assert_eq!(ack_rx.try_recv().expect("replace ack"), Ok(false));
     assert_eq!(state.doc, before);
-    assert!(!outcome.document_replaced);
+    assert!(outcome.replaced.is_empty());
     assert!(!outcome.layout_dirty);
     assert!(matches!(
         state.editor_ui.collab.notice.map(|notice| notice.kind),

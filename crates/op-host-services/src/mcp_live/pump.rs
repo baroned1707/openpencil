@@ -130,10 +130,12 @@ impl McpLiveServer {
                             accepted = true;
                             outcome.repaint = true;
                             outcome.layout_dirty = true;
-                            outcome.document_replaced = true;
                         }
                     });
-                    let _ = ack.send(resolved.map(|()| accepted));
+                    if let (Ok(target), true) = (&resolved, accepted) {
+                        outcome.replaced.push(*target);
+                    }
+                    let _ = ack.send(resolved.map(|_| accepted));
                 }
                 UiRequest::UpdateEditorMeta {
                     editor_meta, ack, ..
@@ -163,7 +165,7 @@ impl McpLiveServer {
                         outcome.repaint = true;
                         outcome.layout_dirty = true;
                     });
-                    let _ = ack.send(resolved.map(|()| accepted));
+                    let _ = ack.send(resolved.map(|_| accepted));
                 }
                 UiRequest::GenerateDesignMd { request } => {
                     self.pending_design_md.push_back(request);
@@ -176,12 +178,18 @@ impl McpLiveServer {
                     ack,
                     ..
                 } => {
-                    let bound_path = resolver
-                        .documents()
-                        .into_iter()
+                    let listings = resolver.documents();
+                    let bound_path = listings
+                        .iter()
                         .find(|listing| listing.id == document)
-                        .and_then(|listing| listing.path);
+                        .and_then(|listing| listing.path.clone());
+                    let paths_open_elsewhere: Vec<_> = listings
+                        .iter()
+                        .filter(|listing| listing.id != document)
+                        .filter_map(|listing| listing.path.clone())
+                        .collect();
                     let mut answer = None;
+                    let mut created_here = false;
                     let resolved = resolver.with_document(document, &mut |state, host_epoch| {
                         if expected_epoch != DocumentEpoch::of(host_epoch, state) {
                             answer = Some(CreateAck::DocumentChanged);
@@ -190,11 +198,13 @@ impl McpLiveServer {
                         let result = create_document_route::create_on_ui_thread(
                             state,
                             bound_path.as_deref(),
+                            &paths_open_elsewhere,
                             &project_root,
                             &name,
                         );
                         if let Ok(created) = &result {
-                            outcome.created_document = Some(created.file_path.clone());
+                            outcome.created.push((document, created.file_path.clone()));
+                            created_here = true;
                         }
                         answer = Some(CreateAck::Done(result));
                         outcome.repaint = true;
@@ -204,7 +214,7 @@ impl McpLiveServer {
                         (Ok(()), Some(answer)) => answer,
                         (Ok(()), None) => CreateAck::DocumentChanged,
                     });
-                    if outcome.created_document.is_some() {
+                    if created_here {
                         // The host binds the new file to its document right
                         // after this pump returns. A request queued behind
                         // this one must see the bound path, so stop here.
@@ -253,14 +263,16 @@ impl McpLiveServer {
         false
     }
 
-    /// Run `f` on the document on screen.
+    /// Run `f` on the document on screen and return which document that was,
+    /// so a follow-up can be recorded against it.
     fn with_active(
         &self,
         resolver: &mut dyn DocumentResolver,
         f: &mut dyn FnMut(&mut EditorState, u64),
-    ) -> Result<(), ResolveError> {
+    ) -> Result<DocumentId, ResolveError> {
         let active = resolver.active_document().ok_or(ResolveError::Unknown)?;
-        resolver.with_document(active, f)
+        resolver.with_document(active, f)?;
+        Ok(active)
     }
 
     /// Apply one command to the lent document, unless the document it was

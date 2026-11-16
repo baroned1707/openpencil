@@ -462,6 +462,20 @@ impl crate::DesktopApp {
         let Some(path) = crate::persistence::pick_save_as_path(self.host.editor_state()) else {
             return false;
         };
+        self.save_as_to_picked_path(path, collaboration_bound)
+    }
+
+    /// Everything Save As does once the user has chosen `path`: refuse a file
+    /// another tab holds, refuse an unsafe collaboration fork target, then
+    /// queue the write. Split from the picker so it can run without a dialog.
+    pub(crate) fn save_as_to_picked_path(
+        &mut self,
+        path: PathBuf,
+        collaboration_bound: bool,
+    ) -> bool {
+        if self.refuse_save_as_onto_file_open_in_another_tab(&path) {
+            return false;
+        }
         if collaboration_bound
             && !collaboration_fork_target_is_safe(self.current_path.as_deref(), &path)
         {

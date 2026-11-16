@@ -578,6 +578,8 @@ pub fn lookup(key: &str) -> Option<&'static str> {
         "dialog.collabEndTitle" => "협업 세션",
         "dialog.collabOwnerEndBody" => "“{{name}}”은(는) 진행 중인 세션에서 공유되고 있습니다.\n\n계속하면 참가자 {{count}}명의 세션이 종료됩니다.\n\n예 = 세션 종료 후 계속 · 아니요 / 취소 = 그대로 유지.",
         "dialog.collabGuestLeaveBody" => "“{{name}}”의 진행 중인 세션에 참여하고 있습니다.\n\n세션을 나가시겠습니까?\n\n예 = 나가고 계속 · 아니요 / 취소 = 머무르기.",
+        "documents.saveAsAlreadyOpen" => "“{{name}}”은(는) 이미 다른 탭에서 열려 있습니다. 해당 탭으로 전환하거나 다른 이름을 선택하세요.",
+        "documents.collabSessionLostParked" => "“{{name}}”의 협업 세션이 종료되었거나 연결이 끊겼습니다. 해당 탭으로 전환해 이유를 확인하세요.",
         _ => return None,
     })
 }

@@ -185,8 +185,16 @@ impl DesktopApp {
                 return false;
             }
         };
+        // A file belongs to one tab: when the user already opened it, the
+        // recovered edits come back as an untitled copy instead of a second
+        // tab whose later save would overwrite the first one's.
+        self.sync_active_slot();
+        let bind_to = plan
+            .bind_to
+            .clone()
+            .filter(|path| self.documents.index_of_path(path).is_none());
         state.editor_ui.home.hide();
-        doc_io::set_file_name_display(&mut state, plan.bind_to.as_deref());
+        doc_io::set_file_name_display(&mut state, bind_to.as_deref());
         state.clear_selection();
         // Whatever it was bound to, it carries edits the file does not have.
         state.mark_document_changed();
@@ -194,7 +202,7 @@ impl DesktopApp {
         let blank_index = self.documents.active_index();
         let open_in_normal_mode = self.host.home_visible() || self.host.workspace_visible();
         let incoming = ParkedDocument::from_state(state, thumbs);
-        if !self.install_new_document_tab(incoming, plan.bind_to.clone()) {
+        if !self.install_new_document_tab(incoming, bind_to) {
             return false;
         }
         self.host.editor_state_mut().editor_ui.home.hide();

@@ -562,6 +562,8 @@ pub fn lookup(key: &str) -> Option<&'static str> {
         "dialog.collabEndTitle" => "Zusammenarbeitssitzung",
         "dialog.collabOwnerEndBody" => "„{{name}}“ wird in einer laufenden Sitzung geteilt.\n\nDadurch endet die Sitzung für {{count}} Teilnehmende.\n\nJa = Sitzung beenden und fortfahren · Nein oder Abbrechen = geöffnet lassen.",
         "dialog.collabGuestLeaveBody" => "Du bist in „{{name}}“ in einer laufenden Sitzung.\n\nSitzung verlassen?\n\nJa = Verlassen und fortfahren · Nein oder Abbrechen = bleiben.",
+        "documents.saveAsAlreadyOpen" => "„{{name}}“ ist bereits in einem anderen Tab geöffnet – wechsle zu diesem Tab oder wähle einen anderen Namen.",
+        "documents.collabSessionLostParked" => "Die Zusammenarbeitssitzung in „{{name}}“ wurde beendet oder hat die Verbindung verloren. Wechsle zu diesem Tab, um den Grund zu sehen.",
         _ => return None,
     })
 }

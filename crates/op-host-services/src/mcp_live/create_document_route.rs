@@ -8,7 +8,7 @@
 //! editor, writes the file and marks the document saved, all in one step so no
 //! other request can land between the write and the "saved" mark. The desktop
 //! host finishes the binding (path, tab, title, recent files) from the
-//! `created_document` it finds in the pump outcome.
+//! `created` entry (document id and file) it finds in the pump outcome.
 
 use std::path::{Path, PathBuf};
 
@@ -136,6 +136,7 @@ pub(super) fn request_create(
 pub(super) fn create_on_ui_thread(
     state: &mut EditorState,
     bound_path: Option<&Path>,
+    paths_open_elsewhere: &[PathBuf],
     project_root: &str,
     name: &str,
 ) -> Result<CreatedDocument, CreateDocumentError> {
@@ -158,6 +159,11 @@ pub(super) fn create_on_ui_thread(
         name,
         crate::project_root::canonical_home().as_deref(),
     )?;
+    if is_bound_elsewhere(&target.file_path, paths_open_elsewhere) {
+        return Err(CreateDocumentError::OpenInAnotherDocument {
+            path: target.file_path,
+        });
+    }
     create_document::write_new_document(state, &target)?;
     state.mark_saved_revision();
     crate::doc_io::set_file_name_display(state, Some(&target.file_path));
@@ -166,6 +172,23 @@ pub(super) fn create_on_ui_thread(
         project_root: target.project_root,
         name: target.name,
     })
+}
+
+/// Whether `target`, a file that may not exist yet, is the file of one of
+/// `open_paths`. Compared on resolved paths so a symlink or a `..` hop does not
+/// hide it.
+fn is_bound_elsewhere(target: &Path, open_paths: &[PathBuf]) -> bool {
+    let resolve_new = |path: &Path| {
+        let parent = path.parent().and_then(|p| std::fs::canonicalize(p).ok());
+        match (parent, path.file_name()) {
+            (Some(parent), Some(name)) => parent.join(name),
+            _ => path.to_path_buf(),
+        }
+    };
+    let wanted = resolve_new(target);
+    open_paths
+        .iter()
+        .any(|open| resolve_new(open) == wanted || open == target)
 }
 
 #[cfg(test)]

@@ -109,9 +109,9 @@ impl Rig {
     fn deliver(&mut self, request: UiRequest) {
         self.server_tx.send(request).expect("queue for the pump");
         let outcome = self.server.pump(&mut self.resolver);
-        if let Some(path) = outcome.created_document {
+        for (document, path) in outcome.created {
             self.created.push(path.clone());
-            self.resolver.bind_created(path);
+            self.resolver.bind_created(document, path);
         }
     }
 
@@ -620,7 +620,7 @@ fn expired_whole_document_sync_is_dropped_by_the_pump_and_never_replaces_the_doc
 
     let outcome = server.pump(&mut resolver);
 
-    assert!(!outcome.document_replaced);
+    assert!(outcome.replaced.is_empty());
     assert_eq!(
         op_mcp::list_pages_snapshot(&resolver.document_mut(1).state).page_count,
         1

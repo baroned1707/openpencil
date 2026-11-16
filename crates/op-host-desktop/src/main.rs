@@ -114,6 +114,7 @@ mod remote_image_host;
 mod render_cli;
 mod render_cli_error;
 mod run_checkpoint;
+mod save_as_target_guard;
 mod save_session;
 mod scene_template_generate;
 mod scene_template_open;

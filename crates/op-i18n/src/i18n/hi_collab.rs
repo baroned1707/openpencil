@@ -566,6 +566,8 @@ pub fn lookup(key: &str) -> Option<&'static str> {
         "dialog.collabEndTitle" => "सहयोग सत्र",
         "dialog.collabOwnerEndBody" => "“{{name}}” एक चालू सत्र में साझा है।\n\nइससे {{count}} प्रतिभागियों के लिए सत्र समाप्त हो जाएगा।\n\nहाँ = सत्र समाप्त करें और जारी रखें · नहीं या रद्द करें = बनाए रखें।",
         "dialog.collabGuestLeaveBody" => "आप “{{name}}” में एक चालू सत्र में हैं।\n\nसत्र छोड़ें?\n\nहाँ = छोड़ें और जारी रखें · नहीं या रद्द करें = रुकें।",
+        "documents.saveAsAlreadyOpen" => "“{{name}}” पहले से किसी दूसरे टैब में खुला है — उस टैब पर जाएँ या कोई दूसरा नाम चुनें।",
+        "documents.collabSessionLostParked" => "“{{name}}” में सहयोग सत्र समाप्त हो गया या उसका कनेक्शन टूट गया। कारण देखने के लिए उस टैब पर जाएँ।",
         _ => return None,
     })
 }
