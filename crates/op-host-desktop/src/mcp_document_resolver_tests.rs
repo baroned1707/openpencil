@@ -10,6 +10,7 @@ fn listing(id: u64, active: bool) -> DocumentListing {
         dirty: false,
         active,
         status: DocumentTabStatus::Idle,
+        nonce: None,
     }
 }
 

@@ -5,22 +5,6 @@
 use super::test_support::*;
 use super::*;
 
-fn json_body(response: &str) -> serde_json::Value {
-    let body = response.split_once("\r\n\r\n").expect("http body").1;
-    serde_json::from_str(body).expect("json body")
-}
-
-fn is_error(response: &str) -> bool {
-    json_body(response)["result"]["isError"] == serde_json::json!(true)
-}
-
-fn error_text(response: &str) -> String {
-    json_body(response)["result"]["content"][0]["text"]
-        .as_str()
-        .unwrap_or_default()
-        .to_string()
-}
-
 fn page_count(resolver: &mut TestResolver, document: u64) -> usize {
     op_mcp::list_pages_snapshot(&resolver.document_mut(document).state).page_count
 }
@@ -60,8 +44,14 @@ fn several_documents_without_id_is_refused_with_a_listing() {
 
     assert!(is_error(&posted.response), "{}", posted.response);
     let text = error_text(&posted.response);
-    assert!(text.contains("d3 proj/doc3.op (active)"), "{text}");
-    assert!(text.contains("d4 proj/doc4.op"), "{text}");
+    assert!(
+        text.contains(&format!("{} proj/doc3.op (active)", full(3))),
+        "{text}"
+    );
+    assert!(
+        text.contains(&format!("{} proj/doc4.op", full(4))),
+        "{text}"
+    );
     assert!(text.contains("documentId"), "{text}");
     assert!(text.contains("list_documents"), "{text}");
     assert_eq!(
@@ -73,7 +63,7 @@ fn several_documents_without_id_is_refused_with_a_listing() {
 
 #[test]
 fn unknown_document_id_lists_the_open_ones() {
-    for named in ["d9", "banana"] {
+    for named in [full(9), "banana".to_string()] {
         let posted = call(
             "/mcp",
             "",
@@ -90,8 +80,14 @@ fn unknown_document_id_lists_the_open_ones() {
             text.contains(&format!("unknown documentId '{named}'")),
             "{text}"
         );
-        assert!(text.contains("d3 proj/doc3.op (active)"), "{text}");
-        assert!(text.contains("d4 proj/doc4.op"), "{text}");
+        assert!(
+            text.contains(&format!("{} proj/doc3.op (active)", full(3))),
+            "{text}"
+        );
+        assert!(
+            text.contains(&format!("{} proj/doc4.op", full(4))),
+            "{text}"
+        );
     }
 }
 
@@ -101,7 +97,7 @@ fn unknown_ids_do_not_leave_gates_behind() {
     let _ = post(
         "/mcp",
         "",
-        &tool_call(3, "get_document_info", r#""documentId":"d9""#),
+        &tool_call(3, "get_document_info", &document_arg(9)),
         &documents,
         TestResolver::with_ids(&[(3, true)]),
         None,
@@ -112,26 +108,29 @@ fn unknown_ids_do_not_leave_gates_behind() {
 #[test]
 fn route_bound_id_conflicting_with_argument_is_refused() {
     let posted = call(
-        "/mcp/d/3",
+        &format!("/mcp/d/{}", full(3)),
         "",
-        &tool_call(4, "get_document_info", r#""documentId":"d4""#),
+        &tool_call(4, "get_document_info", &document_arg(4)),
         TestResolver::with_ids(&[(3, true), (4, false)]),
     );
 
     assert!(is_error(&posted.response), "{}", posted.response);
     let text = error_text(&posted.response);
     assert!(
-        text.contains("conflicts with the document this endpoint is bound to (d3)"),
+        text.contains(&format!(
+            "conflicts with the document this endpoint is bound to ({})",
+            full(3)
+        )),
         "{text}"
     );
     assert!(posted.ui.seen.is_empty(), "refused before the UI thread");
 
     // The same id, or none, is fine: the route names the document.
-    for arguments in [r#""documentId":"d3""#, ""] {
+    for arguments in [document_arg(3), String::new()] {
         let posted = call(
-            "/mcp/d/3",
+            &format!("/mcp/d/{}", full(3)),
             "",
-            &tool_call(5, "get_document_info", arguments),
+            &tool_call(5, "get_document_info", &arguments),
             TestResolver::with_ids(&[(3, true), (4, false)]),
         );
         assert!(!is_error(&posted.response), "{}", posted.response);
@@ -151,7 +150,11 @@ fn document_id_argument_selects_that_document() {
     let mut posted = call(
         "/mcp",
         "",
-        &tool_call(6, "add_page", r#""documentId":"d4","name":"Extra""#),
+        &tool_call(
+            6,
+            "add_page",
+            &format!(r#"{},"name":"Extra""#, document_arg(4)),
+        ),
         resolver,
     );
 
@@ -172,12 +175,12 @@ fn list_documents_reports_status_and_active() {
     assert!(!is_error(&posted.response), "{}", posted.response);
     let listed: serde_json::Value =
         serde_json::from_str(&crate::mcp_serve::tool_text(&posted.response)).expect("array");
-    assert_eq!(listed[0]["documentId"], "d3");
+    assert_eq!(listed[0]["documentId"], full(3));
     assert_eq!(listed[0]["active"], true);
     assert_eq!(listed[0]["status"], "idle");
     assert_eq!(listed[0]["path"], "/work/proj/doc3.op");
     assert_eq!(listed[0]["project"], "proj");
-    assert_eq!(listed[1]["documentId"], "d4");
+    assert_eq!(listed[1]["documentId"], full(4));
     assert_eq!(listed[1]["active"], false);
     assert_eq!(listed[1]["status"], "running");
     assert_eq!(listed[1]["dirty"], true);
@@ -193,14 +196,16 @@ fn parked_document_is_reported_not_reachable() {
     let posted = call(
         "/mcp",
         "",
-        &tool_call(8, "get_document_info", r#""documentId":"d4""#),
+        &tool_call(8, "get_document_info", &document_arg(4)),
         TestResolver::with_ids(&[(3, true), (4, false)]),
     );
 
     assert!(is_error(&posted.response), "{}", posted.response);
     assert!(
-        error_text(&posted.response)
-            .contains("document d4 is open but not on screen yet; switch to it"),
+        error_text(&posted.response).contains(&format!(
+            "document {} is open but not on screen yet; switch to it",
+            full(4)
+        )),
         "{}",
         posted.response
     );
@@ -258,9 +263,9 @@ fn a_bound_endpoint_still_lists_tools_while_its_document_is_parked() {
     // The user switched tabs: d4 is no longer on screen, but the agent bound to
     // it must still be able to read the catalog (and is told why a call fails).
     let list = r#"{"jsonrpc":"2.0","id":1,"method":"tools/list"}"#;
-    for path in ["/mcp/d/4", "/mcp/d/9"] {
+    for path in [format!("/mcp/d/{}", full(4)), format!("/mcp/d/{}", full(9))] {
         let posted = call(
-            path,
+            &path,
             "",
             list,
             TestResolver::with_ids(&[(3, true), (4, false)]),
@@ -273,7 +278,7 @@ fn a_bound_endpoint_still_lists_tools_while_its_document_is_parked() {
         );
     }
     let blocked = call(
-        "/mcp/d/4",
+        &format!("/mcp/d/{}", full(4)),
         "",
         &tool_call(2, "get_document_info", ""),
         TestResolver::with_ids(&[(3, true), (4, false)]),
@@ -353,8 +358,8 @@ fn calls_to_different_documents_run_concurrently() {
     // is queued behind it only if the two calls share a gate. Both being open
     // at once (peak 2) proves they do not.
     let peak = concurrent_calls(
-        r#""documentId":"d3""#,
-        r#""documentId":"d4""#,
+        &document_arg(3),
+        &document_arg(4),
         Duration::from_millis(300),
     );
     assert_eq!(peak, 2, "calls to different documents must overlap");
@@ -363,8 +368,8 @@ fn calls_to_different_documents_run_concurrently() {
 #[test]
 fn calls_to_one_document_stay_serial() {
     let peak = concurrent_calls(
-        r#""documentId":"d3""#,
-        r#""documentId":"d3""#,
+        &document_arg(3),
+        &document_arg(3),
         Duration::from_millis(300),
     );
     assert_eq!(peak, 1, "calls to one document must queue");
@@ -376,7 +381,10 @@ fn add_page_call(id: i64, operation: &str, name: &str) -> String {
     tool_call(
         id,
         "add_page",
-        &format!(r#""documentId":"d1","operationId":"{operation}","name":"{name}""#),
+        &format!(
+            r#"{},"operationId":"{operation}","name":"{name}""#,
+            document_arg(1)
+        ),
     )
 }
 
@@ -464,7 +472,7 @@ fn a_failed_write_is_not_remembered_and_reads_ignore_the_operation_id() {
         &tool_call(
             1,
             "add_page",
-            r#""documentId":"d1","operationId":"op-2","name":"  ""#,
+            &format!(r#"{},"operationId":"op-2","name":"  ""#, document_arg(1)),
         ),
         &documents,
         TestResolver::single(EditorState::new()),
@@ -487,7 +495,7 @@ fn a_failed_write_is_not_remembered_and_reads_ignore_the_operation_id() {
     let read = tool_call(
         3,
         "get_document_info",
-        r#""documentId":"d1","operationId":"op-3""#,
+        &format!(r#"{},"operationId":"op-3""#, document_arg(1)),
     );
     let first = post("/mcp", "", &read, &documents, retried.ui.resolver, None);
     let second = post("/mcp", "", &read, &documents, first.ui.resolver, None);
@@ -522,14 +530,14 @@ fn headless_mode_single_document_works_without_id() {
     let named = serve_one(
         "/mcp",
         "",
-        &tool_call(2, "get_document_info", r#""documentId":"d1""#),
+        &tool_call(2, "get_document_info", &document_arg(1)),
         &documents,
         &conn_tx,
     );
     let other = serve_one(
         "/mcp",
         "",
-        &tool_call(3, "get_document_info", r#""documentId":"d2""#),
+        &tool_call(3, "get_document_info", &document_arg(2)),
         &documents,
         &conn_tx,
     );
@@ -539,17 +547,22 @@ fn headless_mode_single_document_works_without_id() {
     assert!(!is_error(&plain), "{plain}");
     assert!(!is_error(&named), "{named}");
     assert!(is_error(&other), "{other}");
-    assert!(error_text(&other).contains("d1"), "{other}");
+    assert!(error_text(&other).contains(&full(1)), "{other}");
 }
 
 // ── Mcp-Param-DocumentId ────────────────────────────────────────────────
 
 #[test]
 fn header_mismatch_is_refused_when_header_present() {
-    let body = tool_call(9, "get_document_info", r#""documentId":"d3""#);
+    let body = tool_call(9, "get_document_info", &document_arg(3));
     let resolver = || TestResolver::with_ids(&[(3, true), (4, false)]);
 
-    let mismatch = call("/mcp", "Mcp-Param-DocumentId: d4\r\n", &body, resolver());
+    let mismatch = call(
+        "/mcp",
+        &format!("Mcp-Param-DocumentId: {}\r\n", full(4)),
+        &body,
+        resolver(),
+    );
     assert!(
         mismatch.response.starts_with("HTTP/1.1 400"),
         "{}",
@@ -561,12 +574,13 @@ fn header_mismatch_is_refused_when_header_present() {
     assert!(mismatch.ui.seen.is_empty(), "refused before the UI thread");
 
     // Matching (plain and base64-encoded), and absent headers are served.
+    let encoded = base64::Engine::encode(&base64::engine::general_purpose::STANDARD, full(3));
     for header in [
-        "Mcp-Param-DocumentId: d3\r\n",
-        "mcp-param-documentid: =?base64?ZDM=?=\r\n",
-        "",
+        format!("Mcp-Param-DocumentId: {}\r\n", full(3)),
+        format!("mcp-param-documentid: =?base64?{encoded}?=\r\n"),
+        String::new(),
     ] {
-        let posted = call("/mcp", header, &body, resolver());
+        let posted = call("/mcp", &header, &body, resolver());
         assert!(
             posted.response.starts_with("HTTP/1.1 200"),
             "{header}: {}",
@@ -577,7 +591,7 @@ fn header_mismatch_is_refused_when_header_present() {
     // A header with no body value to match is a mismatch too.
     let no_body_value = call(
         "/mcp",
-        "Mcp-Param-DocumentId: d3\r\n",
+        &format!("Mcp-Param-DocumentId: {}\r\n", full(3)),
         &tool_call(9, "get_document_info", ""),
         resolver(),
     );

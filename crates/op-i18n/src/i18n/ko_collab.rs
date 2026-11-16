@@ -566,6 +566,12 @@ pub fn lookup(key: &str) -> Option<&'static str> {
         "recovery.more" => "외 {{count}}개",
         "recovery.noteNewer" => "디스크의 파일이 더 최신이므로 제목 없는 사본으로 열립니다",
         "recovery.noteGone" => "원본 파일이 없으므로 제목 없는 사본으로 열립니다",
+        "menu.revertAgentRun" => "마지막 에이전트 실행 되돌리기",
+        "dialog.revertAgentRunTitle" => "마지막 에이전트 실행을 되돌릴까요?",
+        "dialog.revertAgentRunBody" => "이 문서를 마지막 에이전트 실행 이전 상태로 되돌릴까요?\n\n에이전트가 변경한 내용과 실행이 시작된 이후 직접 수정한 내용이 모두 삭제됩니다.\n\nCmd+Z로 이 작업을 취소할 수 있습니다.",
+        "menu.revertAgentRun.nothing" => "이 문서에는 되돌릴 에이전트 실행이 없습니다.",
+        "menu.revertAgentRun.runLive" => "이 문서에서 에이전트가 아직 작업 중입니다. 먼저 중지한 다음 되돌리세요.",
+        "menu.revertAgentRun.replaced" => "에이전트 실행 후 이 문서가 교체되어 되돌릴 내용이 없습니다.",
         _ => return None,
     })
 }

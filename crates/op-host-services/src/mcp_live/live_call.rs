@@ -8,8 +8,9 @@
 //!    header against the body;
 //! 2. refuse a tool the endpoint's profile does not offer (before anything
 //!    reaches the UI thread);
-//! 3. answer `list_documents` and `filePath` calls, which belong to no open
-//!    document;
+//! 3. confine every path-bearing argument to the folders the agent may use
+//!    (`path_policy`), then answer `list_documents` and `filePath` calls, which
+//!    belong to no open document;
 //! 4. resolve the document (`document_target`), take ITS gate, replay a
 //!    retried `operationId`, then run the call against that document;
 //! 5. remember the response of a successful write under its `operationId`, or
@@ -34,6 +35,7 @@ struct CallContext<'a> {
     req_tx: &'a UiSender,
     wake_ui: &'a UiWake,
     documents: &'a LiveDocuments,
+    admission: &'a LiveAdmission,
     profile: McpAccessProfile,
     route: LiveRoute,
     /// The body with `documentId` / `operationId` already removed.
@@ -55,6 +57,7 @@ pub(super) fn serve_call<S: std::io::Write>(
     req_tx: &UiSender,
     wake_ui: &UiWake,
     documents: &LiveDocuments,
+    admission: &LiveAdmission,
 ) -> Result<(), McpLiveError> {
     let (address, body) = split_address(&req.body);
     if let Err(mismatch) = check_document_header(
@@ -84,6 +87,7 @@ pub(super) fn serve_call<S: std::io::Write>(
         req_tx,
         wake_ui,
         documents,
+        admission,
         profile,
         route,
         body,
@@ -115,23 +119,29 @@ fn run_call(context: &CallContext) -> Result<String, McpLiveError> {
                 image: None,
             }));
         }
-        if names_a_file(call) {
+        if has_path_argument(call) {
             // A file on disk is read, edited and written back: serialize those
-            // calls (they belong to no open document) and refuse a file the
-            // editor has open.
+            // calls (they belong to no open document), keep every path inside
+            // the folders the agent may use, and refuse a file the editor has
+            // open.
             let _files = context.documents.lock_files();
-            let open_paths: Vec<std::path::PathBuf> =
-                request_documents(context.req_tx, context.wake_ui)?
+            let open = request_documents(context.req_tx, context.wake_ui)?;
+            path_policy::vet_call(call, &open, &context.admission.extra_roots())?;
+            if names_a_file(call) {
+                let open_paths: Vec<std::path::PathBuf> = open
                     .into_iter()
                     .filter_map(|listing| listing.path)
                     .collect();
-            if let Some(response) = crate::mcp_serve::file_path::process_message_for_file_path_arg(
-                None,
-                &open_paths,
-                context.body,
-                context.profile,
-            )? {
-                return Ok(response);
+                if let Some(response) =
+                    crate::mcp_serve::file_path::process_message_for_file_path_arg(
+                        None,
+                        &open_paths,
+                        context.body,
+                        context.profile,
+                    )?
+                {
+                    return Ok(response);
+                }
             }
         }
     }
@@ -308,6 +318,11 @@ fn dispatch(context: &CallContext, document: DocumentId) -> Result<String, McpLi
         Some(error) => Ok(tool_error_response(body, error.to_string()).unwrap_or(response)),
         None => Ok(response),
     }
+}
+
+/// Whether the call names any file or folder on disk.
+fn has_path_argument(call: &ToolCall) -> bool {
+    !path_policy::path_arguments(call).is_empty()
 }
 
 /// Whether the call targets a `.op` file on disk (`filePath`, or

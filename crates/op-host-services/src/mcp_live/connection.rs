@@ -125,9 +125,13 @@ pub(super) fn serve_connection<S: std::io::Read + std::io::Write>(
 ) -> Result<(), McpLiveError> {
     // A refused body FRAMING (over a route's declared cap, or missing the
     // `Content-Length` a route requires) is a client fault detected before a
-    // single body byte was read — answer it with its own status instead of
-    // letting it bubble out as a 500. See `mcp_serve::read_http_request`.
-    let req = match crate::mcp_serve::read_http_request(stream) {
+    // single body byte was read — answer it with its own status (413 for an
+    // oversized JSON-RPC call or document) instead of letting it bubble out as
+    // a 500. See `mcp_serve::body_limits`.
+    let req = match crate::mcp_serve::read_http_request_limited(
+        stream,
+        crate::mcp_serve::body_limits::BodyLimits::LIVE,
+    ) {
         Ok(req) => req,
         Err(crate::mcp_serve::McpServeError::Framing { status, message }) => {
             return write_http_with_origin(
@@ -148,6 +152,15 @@ pub(super) fn serve_connection<S: std::io::Read + std::io::Write>(
     // cannot even fingerprint this endpoint. `Host`/`Origin` are not
     // page-forgeable, which is what closes DNS rebinding.
     if let Err(denial) = admission::check_boundary(&req, admission) {
+        return write_http_with_origin(
+            stream,
+            denial.http_status(),
+            &admission::denial_json_rpc(&req.body, denial),
+            cors_origin,
+        );
+    }
+    // Gate 2: the opt-in bearer token. A no-op while `mcp_require_token` is off.
+    if let Err(denial) = admission::check_bearer(&req, admission) {
         return write_http_with_origin(
             stream,
             denial.http_status(),
@@ -242,18 +255,25 @@ pub(super) fn serve_connection<S: std::io::Read + std::io::Write>(
             return write_json_rpc_response(stream, "");
         }
         crate::mcp_serve::Stateless::Ping(id) => {
-            return write_json_rpc_response(stream, &live_ping_response(&id, token));
+            // An unauthenticated ping (the flag is on and no bearer came with
+            // it) must not hand out the instance token: it authenticates
+            // `openpencil/shutdown`.
+            let revealed = admission::is_authenticated(&req, admission).then_some(token);
+            return write_json_rpc_response(stream, &live_ping_response(&id, revealed));
         }
         crate::mcp_serve::Stateless::NeedsState => {}
     }
-    // Gate 2 (see `admission.rs`): everything from here down reads or writes
-    // a live document — every `tools/call`, not just the write ones. The
-    // `Host`/`Origin` boundary above is the only gate the local desktop and a
-    // self-hosted serve-web daemon apply; `CollabGatePolicy` (which still runs
-    // on the UI thread for each apply) decides what a session permits. The
-    // online multi-tenant daemon authenticates per account in its own request
-    // loop, not here.
-    live_call::serve_call(stream, &req, route, profile, req_tx, wake_ui, documents)
+    // Everything from here down reads or writes a live document — every
+    // `tools/call`, not just the write ones. The `Host`/`Origin` boundary and
+    // the opt-in bearer token (both above, see `admission.rs`) are the gates
+    // the local desktop applies; `CollabGatePolicy` (which still runs on the UI
+    // thread for each apply) decides what a session permits, and file-touching
+    // tools are confined to the open documents' project folders
+    // (`path_policy`). The online multi-tenant daemon authenticates per account
+    // in its own request loop, not here.
+    live_call::serve_call(
+        stream, &req, route, profile, req_tx, wake_ui, documents, admission,
+    )
 }
 
 /// Dispatch live tools whose registry snapshot is independent of the full

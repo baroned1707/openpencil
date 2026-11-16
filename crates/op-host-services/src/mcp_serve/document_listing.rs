@@ -10,7 +10,8 @@ use std::path::{Path, PathBuf};
 
 use op_editor_core::{DocumentId, DocumentTabStatus};
 
-use super::document_address::format_document_id;
+use super::document_address::format_spoken_id;
+use super::document_nonce::LaunchNonce;
 
 /// One open document.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -27,6 +28,17 @@ pub struct DocumentListing {
     /// today; the others are parked.
     pub active: bool,
     pub status: DocumentTabStatus,
+    /// The launch nonce the live server stamps on every listing it hands out,
+    /// so the id an agent copies is the full `d<N>.<nonce>`. `None` (what a
+    /// resolver reports, and every headless mode) keeps the bare `d<N>`.
+    pub nonce: Option<LaunchNonce>,
+}
+
+impl DocumentListing {
+    /// The id an agent must use to address this document.
+    pub fn spoken_id(&self) -> String {
+        format_spoken_id(self.id, self.nonce)
+    }
 }
 
 /// The project folder name used to group a document stored at `path`
@@ -39,8 +51,8 @@ pub fn project_name_for(path: Option<&Path>) -> String {
 }
 
 impl DocumentListing {
-    /// `d3 storefront/checkout.op (active)` — the form an agent can copy the
-    /// id out of.
+    /// `d3.a1b2c3 storefront/checkout.op (active)` — the form an agent can copy
+    /// the id out of.
     pub fn describe(&self) -> String {
         let name = if self.project.is_empty() {
             self.label.clone()
@@ -48,12 +60,12 @@ impl DocumentListing {
             format!("{}/{}", self.project, self.label)
         };
         let marker = if self.active { " (active)" } else { "" };
-        format!("{} {name}{marker}", format_document_id(self.id))
+        format!("{} {name}{marker}", self.spoken_id())
     }
 
     fn to_json(&self) -> serde_json::Value {
         serde_json::json!({
-            "documentId": format_document_id(self.id),
+            "documentId": self.spoken_id(),
             "label": self.label,
             "path": self.path.as_ref().map(|path| path.to_string_lossy()),
             "project": self.project,
@@ -105,6 +117,7 @@ mod tests {
             dirty: false,
             active,
             status: DocumentTabStatus::Idle,
+            nonce: None,
         }
     }
 
@@ -115,6 +128,16 @@ mod tests {
             "d3 storefront/checkout.op (active)"
         );
         assert_eq!(listing(4, "Untitled", "", false).describe(), "d4 Untitled");
+    }
+
+    #[test]
+    fn a_live_listing_names_itself_with_the_launch_nonce() {
+        let mut live = listing(3, "checkout.op", "storefront", true);
+        live.nonce = LaunchNonce::parse("a1b2c3");
+        assert_eq!(live.describe(), "d3.a1b2c3 storefront/checkout.op (active)");
+        let json = listings_json(&[live]);
+        let value: serde_json::Value = serde_json::from_str(&json).expect("json");
+        assert_eq!(value[0]["documentId"], "d3.a1b2c3");
     }
 
     #[test]

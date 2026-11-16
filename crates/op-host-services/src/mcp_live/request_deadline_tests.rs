@@ -39,11 +39,14 @@ fn error_text(response: &str) -> String {
     text.strip_prefix("Error: ").unwrap_or(&text).to_string()
 }
 
-fn add_page_call(id: i64, document: &str, operation: &str, name: &str) -> String {
+fn add_page_call(id: i64, document: u64, operation: &str, name: &str) -> String {
     tool_call(
         id,
         "add_page",
-        &format!(r#""documentId":"{document}","operationId":"{operation}","name":"{name}""#),
+        &format!(
+            r#""documentId":"{}","operationId":"{operation}","name":"{name}""#,
+            full(document)
+        ),
     )
 }
 
@@ -280,7 +283,7 @@ fn stale_requests_do_not_use_up_the_pump_budget_of_live_ones() {
 #[test]
 fn caller_reports_host_busy_only_when_the_request_was_cancelled_before_start() {
     let mut rig = Rig::single();
-    let call = rig.call(&add_page_call(1, "d1", "op-a", "Landing"));
+    let call = rig.call(&add_page_call(1, 1, "op-a", "Landing"));
     let stale = rig.serve_until("apply");
     let ticket = stale.ticket().cloned().expect("apply has a ticket");
 
@@ -308,7 +311,7 @@ fn caller_reports_host_busy_only_when_the_request_was_cancelled_before_start() {
 #[test]
 fn started_request_gets_a_grace_period_and_reports_its_real_ack() {
     let mut rig = Rig::single();
-    let call = rig.call(&add_page_call(1, "d1", "op-a", "Landing"));
+    let call = rig.call(&add_page_call(1, 1, "op-a", "Landing"));
     let UiRequest::Apply {
         cmd, ticket, ack, ..
     } = rig.serve_until("apply")
@@ -343,7 +346,7 @@ fn started_request_gets_a_grace_period_and_reports_its_real_ack() {
 /// has reported `OutcomeUnknown`, and the started change has since landed.
 fn outcome_unknown_rig() -> (Rig, String) {
     let mut rig = Rig::single();
-    let call = rig.call(&add_page_call(1, "d1", "op-a", "Landing"));
+    let call = rig.call(&add_page_call(1, 1, "op-a", "Landing"));
     let UiRequest::Apply {
         cmd, ticket, ack, ..
     } = rig.serve_until("apply")
@@ -385,7 +388,7 @@ fn retry_after_outcome_unknown_returns_outcome_unknown_not_a_second_apply() {
     assert_eq!(rig.page_count(1), 2, "the started write did land");
 
     // The agent retries with the same operationId and arguments.
-    let retry = rig.call(&add_page_call(2, "d1", "op-a", "Landing"));
+    let retry = rig.call(&add_page_call(2, 1, "op-a", "Landing"));
     let response = rig.serve_to_the_end(retry);
 
     assert!(is_error(&response), "{response}");
@@ -397,12 +400,12 @@ fn retry_after_outcome_unknown_returns_outcome_unknown_not_a_second_apply() {
     assert_eq!(rig.page_count(1), 2, "not applied twice");
 
     // Same id, different arguments is still a client bug, not a retry.
-    let conflicting = rig.call(&add_page_call(3, "d1", "op-a", "Pricing"));
+    let conflicting = rig.call(&add_page_call(3, 1, "op-a", "Pricing"));
     let response = rig.serve_to_the_end(conflicting);
     assert!(error_text(&response).contains("already used for a different call"));
 
     // After re-reading, a new operationId is an ordinary new call.
-    let fresh = rig.call(&add_page_call(4, "d1", "op-b", "Pricing"));
+    let fresh = rig.call(&add_page_call(4, 1, "op-b", "Pricing"));
     let response = rig.serve_to_the_end(fresh);
     assert!(!is_error(&response), "{response}");
     assert_eq!(rig.page_count(1), 3);
@@ -413,13 +416,13 @@ fn retry_after_outcome_unknown_returns_outcome_unknown_not_a_second_apply() {
 #[test]
 fn retry_after_host_busy_with_same_operation_id_applies_exactly_once() {
     let mut rig = Rig::single();
-    let first = rig.call(&add_page_call(1, "d1", "op-a", "Landing"));
+    let first = rig.call(&add_page_call(1, 1, "op-a", "Landing"));
     let stale = rig.serve_until("apply");
     rig.clock.advance(BUDGET_OVER);
     assert_eq!(error_text(&first.join().expect("call")), HOST_BUSY);
 
     // The agent retries; the editor is responsive now.
-    let retry = rig.call(&add_page_call(2, "d1", "op-a", "Landing"));
+    let retry = rig.call(&add_page_call(2, 1, "op-a", "Landing"));
     let response = rig.serve_to_the_end(retry);
     assert!(!is_error(&response), "{response}");
     assert_eq!(rig.page_count(1), 2);
@@ -438,7 +441,7 @@ fn retry_after_host_busy_with_same_operation_id_applies_exactly_once() {
 #[test]
 fn cancelled_call_does_not_poison_its_operation_id() {
     let mut rig = Rig::single();
-    let first = rig.call(&add_page_call(1, "d1", "op-a", "Landing"));
+    let first = rig.call(&add_page_call(1, 1, "op-a", "Landing"));
     let stale = rig.serve_until("apply");
     rig.clock.advance(BUDGET_OVER);
     first.join().expect("call");
@@ -446,13 +449,13 @@ fn cancelled_call_does_not_poison_its_operation_id() {
     rig.deliver(stale);
 
     // Same operationId, same arguments: allowed to run normally.
-    let retry = rig.call(&add_page_call(2, "d1", "op-a", "Landing"));
+    let retry = rig.call(&add_page_call(2, 1, "op-a", "Landing"));
     let response = rig.serve_to_the_end(retry);
     assert!(!is_error(&response), "{response}");
     assert_eq!(rig.log_len(1), 1, "now the applied call is remembered");
 
     // ...and a third attempt is a replay of that applied call.
-    let again = rig.call(&add_page_call(3, "d1", "op-a", "Landing"));
+    let again = rig.call(&add_page_call(3, 1, "op-a", "Landing"));
     let replayed = json_body(&rig.serve_to_the_end(again));
     assert_eq!(replayed["result"]["_meta"]["replayed"], true);
     assert_eq!(rig.page_count(1), 2);
@@ -466,7 +469,7 @@ fn document_lock_is_released_after_a_timeout() {
     let gate = rig.documents.gate(DocumentId(1));
 
     // Timed out waiting for the snapshot.
-    let call = rig.call(&add_page_call(1, "d1", "op-a", "Landing"));
+    let call = rig.call(&add_page_call(1, 1, "op-a", "Landing"));
     let stale_snapshot = rig.serve_until("snapshot");
     rig.clock.advance(BUDGET_OVER);
     assert_eq!(error_text(&call.join().expect("call")), HOST_BUSY);
@@ -477,7 +480,7 @@ fn document_lock_is_released_after_a_timeout() {
     rig.deliver(stale_snapshot);
 
     // Timed out waiting for the apply.
-    let call = rig.call(&add_page_call(2, "d1", "op-b", "Landing"));
+    let call = rig.call(&add_page_call(2, 1, "op-b", "Landing"));
     let stale_apply = rig.serve_until("apply");
     rig.clock.advance(BUDGET_OVER);
     assert_eq!(error_text(&call.join().expect("call")), HOST_BUSY);
@@ -505,14 +508,14 @@ fn document_lock_is_released_when_a_call_panics() {
 #[test]
 fn next_call_to_the_same_document_succeeds_after_a_dropped_request() {
     let mut rig = Rig::single();
-    let call = rig.call(&tool_call(1, "get_document_info", r#""documentId":"d1""#));
+    let call = rig.call(&tool_call(1, "get_document_info", &document_arg(1)));
     let stale = rig.serve_until("snapshot");
     rig.clock.advance(BUDGET_OVER);
     assert_eq!(error_text(&call.join().expect("call")), HOST_BUSY);
     rig.deliver(stale);
     assert_eq!(rig.server.expired_requests_dropped(), 1);
 
-    let next = rig.call(&tool_call(2, "get_document_info", r#""documentId":"d1""#));
+    let next = rig.call(&tool_call(2, "get_document_info", &document_arg(1)));
     let response = rig.serve_to_the_end(next);
 
     assert!(!is_error(&response), "{response}");
@@ -525,10 +528,10 @@ fn calls_to_other_documents_are_unaffected_by_one_documents_stuck_ui() {
     let mut rig = Rig::new(resolver);
     // d3's call goes first and its snapshot is held: d3's gate is provably
     // taken before d4's call starts.
-    let stuck = rig.call(&add_page_call(1, "d3", "op-a", "Landing"));
+    let stuck = rig.call(&add_page_call(1, 3, "op-a", "Landing"));
     let mut held = vec![rig.serve_until("snapshot")];
     assert_eq!(document_of(&held[0]), Some(DocumentId(3)));
-    let other = rig.call(&add_page_call(2, "d4", "op-b", "Pricing"));
+    let other = rig.call(&add_page_call(2, 4, "op-b", "Pricing"));
 
     // The UI answers everything except d3's snapshot and apply.
     let patience = std::time::Instant::now() + Duration::from_secs(10);

@@ -16,6 +16,8 @@ use std::borrow::Cow;
 use base64::Engine as _;
 use op_editor_core::DocumentId;
 
+use super::document_nonce::launch_nonce;
+pub use super::document_nonce::LaunchNonce;
 use super::tool_catalog::McpToolCatalog;
 
 /// Tool argument naming the target document. Optional on every call.
@@ -32,9 +34,18 @@ pub const HEADER_MISMATCH_CODE: i64 = -32020;
 /// The one document every headless mode serves.
 pub const HEADLESS_DOCUMENT: DocumentId = DocumentId(1);
 
-/// `d<N>` for a document id.
+/// `d<N>` for a document id: the headless form, which has no earlier launch to
+/// be confused with.
 pub fn format_document_id(id: DocumentId) -> String {
     format!("d{}", id.0)
+}
+
+/// `d<N>` for a headless document, `d<N>.<nonce>` for a live one.
+pub fn format_spoken_id(id: DocumentId, nonce: Option<LaunchNonce>) -> String {
+    match nonce {
+        Some(nonce) => format!("d{}.{nonce}", id.0),
+        None => format_document_id(id),
+    }
 }
 
 /// The id named by `raw`, or `None` when `raw` is not the canonical `d<N>`
@@ -43,6 +54,44 @@ pub fn parse_document_id(raw: &str) -> Option<DocumentId> {
     let digits = raw.strip_prefix('d')?;
     let number: u64 = digits.parse().ok()?;
     (number.to_string() == digits).then_some(DocumentId(number))
+}
+
+/// A document as an agent wrote it: the bare `d<N>` of the old spelling, or
+/// the live `d<N>.<nonce>`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct DocumentRef {
+    pub id: DocumentId,
+    pub nonce: Option<LaunchNonce>,
+}
+
+impl DocumentRef {
+    /// Whether two spellings can name the same document: same number, and the
+    /// same nonce whenever both carry one.
+    pub fn agrees_with(&self, other: &DocumentRef) -> bool {
+        self.id == other.id
+            && match (self.nonce, other.nonce) {
+                (Some(left), Some(right)) => left == right,
+                _ => true,
+            }
+    }
+}
+
+/// The reference spelled by `d<N>` or `d<N>.<nonce>` (canonical digits, six
+/// lowercase hex nonce), or `None` for anything else.
+pub fn parse_document_ref(raw: &str) -> Option<DocumentRef> {
+    parse_ref_body(raw.strip_prefix('d')?)
+}
+
+fn parse_ref_body(body: &str) -> Option<DocumentRef> {
+    let (digits, nonce) = match body.split_once('.') {
+        Some((digits, nonce)) => (digits, Some(LaunchNonce::parse(nonce)?)),
+        None => (body, None),
+    };
+    let number: u64 = digits.parse().ok()?;
+    (number.to_string() == digits).then_some(DocumentRef {
+        id: DocumentId(number),
+        nonce,
+    })
 }
 
 /// The addressing arguments of one call, taken off the request body.
@@ -107,14 +156,15 @@ fn argument_text(value: serde_json::Value) -> Option<String> {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct LiveRoute {
     pub catalog: McpToolCatalog,
-    /// The document the route itself names (`/mcp/d/<N>`), if any.
-    pub document: Option<DocumentId>,
+    /// The document the route itself names (`/mcp/d/<id>`), if any.
+    pub document: Option<DocumentRef>,
 }
 
 /// Decode a request path: `/mcp` and `/` (full), `/mcp/lean`, and the
-/// document-bound `/mcp/d/<N>` and `/mcp/d/<N>/lean`. `<N>` is the number in
-/// `d<N>`; the `d` is tolerated for a client that builds the path from the id
-/// text. Anything else is `None` (404).
+/// document-bound `/mcp/d/<id>` and `/mcp/d/<id>/lean`, where `<id>` is
+/// `d<N>.<nonce>` (or the bare `d<N>`; the `d` is tolerated for a client that
+/// builds the path from the number). Whether the nonce is this launch's is the
+/// resolver's call, not the parser's. Anything else is `None` (404).
 pub fn parse_route(path: &str) -> Option<LiveRoute> {
     if let Some(catalog) = McpToolCatalog::for_http_path(path) {
         return Some(LiveRoute {
@@ -128,8 +178,7 @@ pub fn parse_route(path: &str) -> Option<LiveRoute> {
         Some((segment, "lean")) => (segment, McpToolCatalog::Lean),
         Some(_) => return None,
     };
-    let digits = segment.strip_prefix('d').unwrap_or(segment);
-    let document = parse_document_id(&format!("d{digits}"))?;
+    let document = parse_ref_body(segment.strip_prefix('d').unwrap_or(segment))?;
     Some(LiveRoute {
         catalog,
         document: Some(document),
@@ -137,10 +186,13 @@ pub fn parse_route(path: &str) -> Option<LiveRoute> {
 }
 
 /// The URL an agent spawned for `document` should use: bound to that document
-/// so the agent never has to name it (`/mcp/d/3`, or `/mcp/d/3/lean`).
+/// so the agent never has to name it (`/mcp/d/d3.a1b2c3`, or with `/lean`). It
+/// carries this launch's nonce, so it stops working when the editor restarts
+/// instead of silently reaching another document.
 pub fn mcp_url_for_document(port: u16, document: DocumentId, lean: bool) -> String {
     let suffix = if lean { "/lean" } else { "" };
-    format!("http://127.0.0.1:{port}/mcp/d/{}{suffix}", document.0)
+    let id = format_spoken_id(document, Some(launch_nonce()));
+    format!("http://127.0.0.1:{port}/mcp/d/{id}{suffix}")
 }
 
 /// Why a `Mcp-Param-DocumentId` header was refused.

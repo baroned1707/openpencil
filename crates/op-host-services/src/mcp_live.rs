@@ -7,6 +7,7 @@
 
 use std::collections::{HashSet, VecDeque};
 use std::net::TcpListener;
+use std::path::PathBuf;
 use std::sync::atomic::{AtomicBool, AtomicU64, AtomicUsize, Ordering};
 use std::sync::mpsc::{self, Receiver, RecvTimeoutError, Sender, SyncSender, TryRecvError};
 use std::sync::{Arc, Mutex};
@@ -28,6 +29,7 @@ pub use crate::mcp_serve::document_address::mcp_url_for_document;
 pub use design_md_route::{DesignMdResponder, DesignMdResponseError, PendingDesignMdRequest};
 pub use error::McpLiveError;
 pub use live_timing::{Clock, SystemClock};
+pub use path_policy::PathRefusal;
 pub use resolver::{DocumentListing, DocumentResolver, ResolveError, SingleDocumentResolver};
 
 /// Per-request budget for a UI-thread snapshot/apply ack. Sized to cover a
@@ -58,8 +60,32 @@ const MCP_CLIENT_FALLBACK_NAME: &str = "MCP Client";
 /// external MCP client isn't one of the app's own named agents.
 const MCP_CLIENT_COLOR: &str = "#8A8F98";
 
+/// What a live server starts with beyond its port and wake callback. The
+/// default is the production setting: this launch's nonce, no bearer token, no
+/// extra folders.
+#[derive(Clone, Default)]
+pub struct LiveOptions {
+    /// Names the documents with this nonce instead of the launch's (a test's
+    /// "restart": ids minted before it stop matching).
+    pub nonce: Option<crate::mcp_serve::document_nonce::LaunchNonce>,
+    /// The clock request deadlines are measured on.
+    pub clock: Option<Arc<dyn Clock>>,
+    /// Demand `Authorization: Bearer <token>` of every request (see
+    /// `admission::check_bearer`). `None` keeps the open access.
+    pub bearer_token: Option<String>,
+    /// Folders file-touching tools may use besides the open documents'
+    /// project roots.
+    pub extra_roots: Vec<PathBuf>,
+}
+
 pub struct McpLiveServer {
     port: u16,
+    /// The per-instance admission material the connection threads share; the
+    /// server keeps a handle so the bearer requirement and the extra folders
+    /// can change while it runs.
+    admission: Arc<LiveAdmission>,
+    /// The launch nonce its document ids carry.
+    nonce: crate::mcp_serve::document_nonce::LaunchNonce,
     /// Per-instance identity token, reported in the live `ping` reply and
     /// written into `~/.openpencil/.op-mcp-port`. Lets the `op` CLI confirm
     /// the server it pings is the exact instance that wrote the discovery
@@ -261,7 +287,24 @@ impl McpLiveServer {
     where
         F: Fn() + Send + Sync + 'static,
     {
-        Self::start_with_timing(port, wake_ui, LiveTiming::system())
+        Self::start_with_options(port, wake_ui, LiveOptions::default())
+    }
+
+    /// [`Self::start_with_wake`] with the bearer token, extra folders, nonce
+    /// and clock of `options`.
+    pub fn start_with_options<F>(
+        port: u16,
+        wake_ui: F,
+        options: LiveOptions,
+    ) -> Result<Self, McpLiveError>
+    where
+        F: Fn() + Send + Sync + 'static,
+    {
+        let timing = match options.clock.clone() {
+            Some(clock) => LiveTiming::with_clock(clock),
+            None => LiveTiming::system(),
+        };
+        Self::start_with_timing(port, wake_ui, timing, options)
     }
 
     /// [`Self::start_with_wake`] on a caller-supplied clock: request deadlines
@@ -275,13 +318,28 @@ impl McpLiveServer {
     where
         F: Fn() + Send + Sync + 'static,
     {
-        Self::start_with_timing(port, wake_ui, LiveTiming::with_clock(clock))
+        Self::start_with_options(
+            port,
+            wake_ui,
+            LiveOptions {
+                clock: Some(clock),
+                ..LiveOptions::default()
+            },
+        )
     }
 
-    fn start_with_timing<F>(port: u16, wake_ui: F, timing: LiveTiming) -> Result<Self, McpLiveError>
+    fn start_with_timing<F>(
+        port: u16,
+        wake_ui: F,
+        timing: LiveTiming,
+        options: LiveOptions,
+    ) -> Result<Self, McpLiveError>
     where
         F: Fn() + Send + Sync + 'static,
     {
+        let nonce = options
+            .nonce
+            .unwrap_or_else(crate::mcp_serve::document_nonce::launch_nonce);
         let listener = TcpListener::bind(("127.0.0.1", port))
             .map_err(|e| McpLiveError::Startup(format!("bind 127.0.0.1:{port}: {e}")))?;
         let bound_port = listener
@@ -292,7 +350,7 @@ impl McpLiveServer {
             .set_nonblocking(true)
             .map_err(|e| McpLiveError::Startup(format!("set nonblocking: {e}")))?;
         let (req_tx, req_rx) = mpsc::channel();
-        let req_tx = UiSender::new(req_tx, timing.clone());
+        let req_tx = UiSender::new(req_tx, timing.clone()).with_nonce(nonce);
         let (stop_tx, stop_rx) = mpsc::channel();
         let token = make_live_token();
         // The connection threads need both halves of the admission material:
@@ -301,6 +359,9 @@ impl McpLiveServer {
         // DNS-rebinding check). Bundled so `server_loop`'s argument list
         // stays the same width.
         let admission = Arc::new(LiveAdmission::new(token.clone(), bound_port));
+        admission.set_bearer(options.bearer_token);
+        admission.set_extra_roots(options.extra_roots);
+        let server_admission = Arc::clone(&admission);
         let quit_flag = Arc::new(AtomicBool::new(false));
         let server_quit = Arc::clone(&quit_flag);
         let wake_ui: UiWake = Arc::new(wake_ui);
@@ -325,6 +386,8 @@ impl McpLiveServer {
         eprintln!("openpencil-desktop mcp: listening on 127.0.0.1:{bound_port}/mcp");
         Ok(Self {
             port: bound_port,
+            admission: server_admission,
+            nonce,
             token,
             quit_flag,
             req_rx,
@@ -339,6 +402,27 @@ impl McpLiveServer {
 
     pub fn port(&self) -> u16 {
         self.port
+    }
+
+    /// The launch nonce this server's document ids carry (`d<N>.<nonce>`).
+    pub fn nonce(&self) -> crate::mcp_serve::document_nonce::LaunchNonce {
+        self.nonce
+    }
+
+    /// Demand `Authorization: Bearer <token>` of every request from now on, or
+    /// (`None`) go back to open access. Takes effect on the next request.
+    pub fn set_bearer_token(&self, token: Option<String>) {
+        self.admission.set_bearer(token);
+    }
+
+    /// Whether every request currently needs the bearer token.
+    pub fn bearer_required(&self) -> bool {
+        self.admission.bearer_required()
+    }
+
+    /// Replace the user's extra folders file-touching tools may use.
+    pub fn set_extra_roots(&self, roots: Vec<PathBuf>) {
+        self.admission.set_extra_roots(roots);
     }
 
     /// Identity token to publish in the discovery file.
@@ -519,6 +603,7 @@ mod document_target;
 mod live_call;
 mod live_timing;
 mod operation_log;
+mod path_policy;
 mod pump;
 mod request_ticket;
 mod resolver;
@@ -542,8 +627,17 @@ use request_ticket::Ticket;
 use ui_requests::*;
 
 #[cfg(test)]
+#[path = "mcp_live/bearer_tests.rs"]
+mod bearer_tests;
+#[cfg(test)]
 #[path = "mcp_live/document_addressing_tests.rs"]
 mod document_addressing_tests;
+#[cfg(test)]
+#[path = "mcp_live/document_nonce_tests.rs"]
+mod document_nonce_tests;
+#[cfg(test)]
+#[path = "mcp_live/file_confinement_tests.rs"]
+mod file_confinement_tests;
 #[cfg(test)]
 #[path = "mcp_live/request_deadline_tests.rs"]
 mod request_deadline_tests;

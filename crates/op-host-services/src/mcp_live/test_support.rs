@@ -7,6 +7,20 @@ use std::path::PathBuf;
 
 pub(super) const TEST_PORT: u16 = 51240;
 
+/// Document `number` as this launch spells it, `d<number>.<nonce>`: the only
+/// form a live server accepts while several documents are open.
+pub(super) fn full(number: u64) -> String {
+    crate::mcp_serve::document_address::format_spoken_id(
+        DocumentId(number),
+        Some(crate::mcp_serve::document_nonce::launch_nonce()),
+    )
+}
+
+/// `"documentId":"d<number>.<nonce>"`, the argument fragment of a tool call.
+pub(super) fn document_arg(number: u64) -> String {
+    format!(r#""documentId":"{}""#, full(number))
+}
+
 pub(super) struct MockStream {
     input: std::io::Cursor<Vec<u8>>,
     pub(super) output: Vec<u8>,
@@ -127,6 +141,7 @@ impl DocumentResolver for TestResolver {
                 dirty: document.state.is_dirty(),
                 active: document.active,
                 status: document.status,
+                nonce: None,
             })
             .collect()
     }
@@ -160,6 +175,8 @@ pub(super) fn server_with_timing(timing: LiveTiming) -> (McpLiveServer, Sender<U
     let (stop_tx, _stop_rx) = mpsc::channel();
     let server = McpLiveServer {
         port: 0,
+        admission: Arc::new(LiveAdmission::new("test-token".to_string(), 0)),
+        nonce: crate::mcp_serve::document_nonce::launch_nonce(),
         token: "test-token".to_string(),
         quit_flag: Arc::new(AtomicBool::new(false)),
         req_rx,
@@ -340,6 +357,23 @@ impl Clock for TestClock {
     fn now(&self) -> std::time::Instant {
         self.base + Duration::from_millis(self.offset_millis.load(Ordering::SeqCst))
     }
+}
+
+/// The JSON body of a raw HTTP response.
+pub(super) fn json_body(response: &str) -> serde_json::Value {
+    let body = response.split_once("\r\n\r\n").expect("http body").1;
+    serde_json::from_str(body).expect("json body")
+}
+
+pub(super) fn is_error(response: &str) -> bool {
+    json_body(response)["result"]["isError"] == serde_json::json!(true)
+}
+
+pub(super) fn error_text(response: &str) -> String {
+    json_body(response)["result"]["content"][0]["text"]
+        .as_str()
+        .unwrap_or_default()
+        .to_string()
 }
 
 /// A `tools/call` body.

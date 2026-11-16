@@ -590,6 +590,12 @@ pub fn lookup(key: &str) -> Option<&'static str> {
         "recovery.more" => "and {{count}} more",
         "recovery.noteNewer" => "the file on disk is newer, so it opens as an untitled copy",
         "recovery.noteGone" => "the original file is gone, so it opens as an untitled copy",
+        "menu.revertAgentRun" => "Revert Last Agent Run",
+        "dialog.revertAgentRunTitle" => "Revert last agent run?",
+        "dialog.revertAgentRunBody" => "Revert this document to before the last agent run?\n\nChanges the agent made — and any edits you made since the run started — will be discarded.\n\nYou can undo this with Cmd+Z.",
+        "menu.revertAgentRun.nothing" => "There is no agent run to revert in this document.",
+        "menu.revertAgentRun.runLive" => "An agent is still working in this document. Stop it first, then revert.",
+        "menu.revertAgentRun.replaced" => "This document was replaced after the agent ran, so there is nothing to revert.",
         _ => return None,
     })
 }

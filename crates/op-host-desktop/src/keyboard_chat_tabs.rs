@@ -20,9 +20,7 @@ impl DesktopApp {
         let retired = self.drain_new_chat();
         // An agent is about to edit this document: keep what is unsaved safe
         // first (only when a send is actually waiting; this runs every frame).
-        if self.host.editor_state().chat.pending_send.is_some() {
-            self.snapshot_before_run();
-        }
+        let run_start = self.prepare_run_start(|chat| chat.pending_send.is_some());
         // Agents start in the project root of the document on screen at launch
         // time (not wherever the app was started); an untitled document keeps
         // the old behaviour.
@@ -36,6 +34,7 @@ impl DesktopApp {
         if launched && (self.runs.current_chat.is_some() || self.runs.current_design.is_some()) {
             self.runs.chat_running_tab = Some(self.host.editor_state().chat.active_index());
         }
+        self.settle_run_checkpoint(run_start, launched);
         retired || launched
     }
 
@@ -46,15 +45,7 @@ impl DesktopApp {
     /// on the tab being viewed), so it binds the SAME way a fresh chat send
     /// does.
     pub(crate) fn launch_subtask_retry_if_pending(&mut self) -> bool {
-        if self
-            .host
-            .editor_state()
-            .chat
-            .pending_subtask_retry
-            .is_some()
-        {
-            self.snapshot_before_run();
-        }
+        let run_start = self.prepare_run_start(|chat| chat.pending_subtask_retry.is_some());
         let launched = design_session::launch_subtask_retry_if_pending(
             &mut self.host,
             &mut self.runs.current_design,
@@ -62,6 +53,7 @@ impl DesktopApp {
         if launched && self.runs.current_design.is_some() {
             self.runs.chat_running_tab = Some(self.host.editor_state().chat.active_index());
         }
+        self.settle_run_checkpoint(run_start, launched);
         launched
     }
 

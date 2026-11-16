@@ -223,7 +223,7 @@ fn create_document_binds_the_addressed_untitled_document() {
     resolver.documents[0].id = DocumentId(3);
     let body = create_call(&tree.0, "named").replacen(
         r#""arguments":{"#,
-        r#""arguments":{"documentId":"d3","#,
+        &format!(r#""arguments":{{{},"#, document_arg(3)),
         1,
     );
 

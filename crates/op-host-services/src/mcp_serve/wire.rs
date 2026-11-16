@@ -124,7 +124,7 @@ pub fn shutdown_request_id(line: &str, token: &str) -> Option<String> {
         .get("params")
         .and_then(|params| params.get("token"))
         .and_then(serde_json::Value::as_str)?;
-    if req_token == token {
+    if super::constant_time::secrets_equal(req_token.as_bytes(), token.as_bytes()) {
         Some(
             value
                 .get("id")

@@ -18,6 +18,7 @@ pub(super) fn validate_payload_fields(raw: &serde_json::Value) -> Result<()> {
             "mcp_port",
             "mcp_cli_enabled",
             "mcp_lean_profile",
+            "mcp_require_token",
             "images_advanced_open",
             "openverse_oauth",
             "openverse_credential_owner",

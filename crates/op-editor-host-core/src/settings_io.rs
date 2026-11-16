@@ -121,6 +121,8 @@ struct SettingsPayload {
     #[serde(default)]
     mcp_lean_profile: Option<bool>,
     #[serde(default)]
+    mcp_require_token: Option<bool>,
+    #[serde(default)]
     images_advanced_open: Option<bool>,
     #[serde(default)]
     openverse_oauth: Option<OpenverseOAuthPayload>,
@@ -222,6 +224,7 @@ fn to_payload(state: &EditorState) -> SettingsPayload {
         mcp_port: Some(eui.agent_settings.mcp_server.port),
         mcp_cli_enabled: Some(eui.agent_settings.mcp_cli_enabled.to_vec()),
         mcp_lean_profile: Some(eui.agent_settings.mcp_lean_profile),
+        mcp_require_token: Some(eui.agent_settings.mcp_require_token),
         images_advanced_open: Some(eui.agent_settings.images_advanced_open),
         openverse_oauth: openverse_oauth_to_payload(&eui.agent_settings),
         openverse_credential_owner: eui.agent_settings.openverse_credential_owner.clone(),
@@ -301,6 +304,9 @@ fn apply_payload_with_options(
     }
     if let Some(lean) = payload.mcp_lean_profile {
         eui.agent_settings.mcp_lean_profile = lean;
+    }
+    if let Some(require_token) = payload.mcp_require_token {
+        eui.agent_settings.mcp_require_token = require_token;
     }
     if let Some(b) = payload.images_advanced_open {
         eui.agent_settings.images_advanced_open = b;

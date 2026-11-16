@@ -16,25 +16,42 @@ use crate::mcp_config_io::{
 };
 use crate::mcp_integrations_dsh::{dsh_config_has_openpencil, update_dsh_patch_config};
 
+#[path = "mcp_integrations_auth.rs"]
+pub(crate) mod auth;
+use auth::LiveEndpoint;
+
 const SERVER_NAME: &str = "openpencil";
 const ANTIGRAVITY_MCP_PERMISSION: &str = "mcp(openpencil/*)";
 
 /// Point `cli` at (or remove it from) the live server on `port`. `lean`
 /// installs the six-tool lean profile endpoint (`/mcp/lean`) instead of the
 /// full catalog (`/mcp`).
+///
+/// `endpoint.bearer` writes the `Authorization` header for the CLIs whose
+/// config can carry one (see [`auth`]); the others are left without it.
 pub(crate) fn set_cli_enabled(
     cli: McpCli,
     enabled: bool,
-    port: u16,
-    lean: bool,
+    endpoint: LiveEndpoint<'_>,
 ) -> Result<PathBuf, McpConfigError> {
     let home = dirs::home_dir().ok_or(McpConfigError::HomeDirUnavailable)?;
-    let url = endpoint_url(port, lean);
+    set_cli_with_endpoint(cli, enabled, endpoint, &home, true)
+}
+
+fn set_cli_with_endpoint(
+    cli: McpCli,
+    enabled: bool,
+    endpoint: LiveEndpoint<'_>,
+    home: &Path,
+    use_env: bool,
+) -> Result<PathBuf, McpConfigError> {
+    let url = endpoint_url(endpoint.port, endpoint.lean);
+    let token = auth::token_for(cli, endpoint.bearer);
     if cli == McpCli::Antigravity {
-        return set_antigravity_enabled_at_home(enabled, &url, &home);
+        return set_antigravity_enabled_at_home(enabled, &url, token, home);
     }
-    let path = config_path(cli, &home, true);
-    set_cli_enabled_at_path(cli, enabled, &url, path)
+    let path = config_path(cli, home, use_env);
+    set_cli_enabled_at_path(cli, enabled, &url, token, path)
 }
 
 pub(crate) fn detect_enabled_clis() -> [bool; 13] {
@@ -59,6 +76,7 @@ pub(crate) fn set_cli_enabled_at_home(
 
 /// [`set_cli_enabled_at_home`] with the lean-profile choice (see
 /// [`set_cli_enabled`]).
+#[cfg(test)]
 pub(crate) fn set_cli_profile_at_home(
     cli: McpCli,
     enabled: bool,
@@ -66,12 +84,17 @@ pub(crate) fn set_cli_profile_at_home(
     lean: bool,
     home: &Path,
 ) -> Result<PathBuf, McpConfigError> {
-    let url = endpoint_url(port, lean);
-    if cli == McpCli::Antigravity {
-        return set_antigravity_enabled_at_home(enabled, &url, home);
-    }
-    let path = config_path(cli, home, false);
-    set_cli_enabled_at_path(cli, enabled, &url, path)
+    set_cli_endpoint_at_home(cli, enabled, LiveEndpoint::open(port, lean), home)
+}
+
+/// [`set_cli_profile_at_home`] with a bearer token to write (see [`auth`]).
+pub(crate) fn set_cli_endpoint_at_home(
+    cli: McpCli,
+    enabled: bool,
+    endpoint: LiveEndpoint<'_>,
+    home: &Path,
+) -> Result<PathBuf, McpConfigError> {
+    set_cli_with_endpoint(cli, enabled, endpoint, home, false)
 }
 
 /// Like [`detect_enabled_clis`] but against an explicit home dir (no env).
@@ -93,25 +116,42 @@ fn detect_enabled_clis_for_home(home: &Path, use_env: bool) -> [bool; 13] {
     flags
 }
 
+/// `token` is already filtered by [`auth::token_for`]: `Some` only for a CLI
+/// whose config can carry the header.
 fn set_cli_enabled_at_path(
     cli: McpCli,
     enabled: bool,
     url: &str,
+    token: Option<&str>,
     path: PathBuf,
 ) -> Result<PathBuf, McpConfigError> {
+    let existed = path.exists();
     match cli {
-        McpCli::Codex => update_codex_config(&path, enabled, url)?,
+        McpCli::Codex => update_codex_config(&path, enabled, url, token)?,
         McpCli::GrokBuild => update_grok_config(&path, enabled, url)?,
         McpCli::Antigravity => return Err(McpConfigError::AntigravityNeedsHome),
-        McpCli::OpenCode => update_opencode_config(&path, enabled, url)?,
-        McpCli::QwenCode => update_mcp_servers_json(&path, enabled, qwen_server(url))?,
-        McpCli::Kiro => update_mcp_servers_json(&path, enabled, kiro_server(url))?,
-        McpCli::Kimi => update_mcp_servers_json(&path, enabled, kimi_server(url))?,
+        McpCli::OpenCode => update_opencode_config(&path, enabled, url, token)?,
+        McpCli::QwenCode => {
+            update_mcp_servers_json(&path, enabled, auth::with_headers(qwen_server(url), token))?
+        }
+        McpCli::Kiro => {
+            update_mcp_servers_json(&path, enabled, auth::with_headers(kiro_server(url), token))?
+        }
+        McpCli::Kimi => {
+            update_mcp_servers_json(&path, enabled, auth::with_headers(kimi_server(url), token))?
+        }
         McpCli::ZCode => update_zcode_config(&path, enabled, url)?,
         McpCli::Dsh => update_dsh_patch_config(&path, enabled, url)?,
         McpCli::ClaudeCode | McpCli::GithubCopilot | McpCli::GeminiCli | McpCli::Cursor => {
-            update_json_config(&path, enabled, url)?
+            update_mcp_servers_json(
+                &path,
+                enabled,
+                auth::with_headers(streamable_http_server(url), token),
+            )?
         }
+    }
+    if token.is_some() && enabled {
+        auth::restrict_new_file(&path, existed);
     }
     Ok(path)
 }
@@ -213,14 +253,16 @@ fn config_path(cli: McpCli, home: &Path, use_env: bool) -> PathBuf {
 fn set_antigravity_enabled_at_home(
     enabled: bool,
     url: &str,
+    token: Option<&str>,
     home: &Path,
 ) -> Result<PathBuf, McpConfigError> {
     let config = config_path(McpCli::Antigravity, home, false);
+    let config_existed = config.exists();
     let permissions = antigravity_permissions_path(home);
     let config_snapshot = FileSnapshot::capture(&config)?;
     let permissions_snapshot = FileSnapshot::capture(&permissions)?;
 
-    update_antigravity_config(&config, enabled, url)?;
+    update_antigravity_config(&config, enabled, url, token)?;
     if let Err(error) = update_antigravity_permissions(&permissions, enabled) {
         let mut rollback_errors = Vec::new();
         if let Err(rollback_error) = config_snapshot.restore(&config) {
@@ -237,6 +279,9 @@ fn set_antigravity_enabled_at_home(
                 failures: rollback_errors,
             })
         };
+    }
+    if token.is_some() && enabled {
+        auth::restrict_new_file(&config, config_existed);
     }
     Ok(config)
 }
@@ -377,14 +422,15 @@ fn streamable_http_server(url: &str) -> Value {
     })
 }
 
-fn update_json_config(path: &Path, enabled: bool, url: &str) -> Result<(), McpConfigError> {
-    update_mcp_servers_json(path, enabled, streamable_http_server(url))
-}
-
 /// OpenCode stores remote servers directly under `mcp` and uses `remote` as
 /// the transport discriminator. This is deliberately separate from the
 /// `mcpServers` layout used by most other clients.
-fn update_opencode_config(path: &Path, enabled: bool, url: &str) -> Result<(), McpConfigError> {
+fn update_opencode_config(
+    path: &Path,
+    enabled: bool,
+    url: &str,
+    token: Option<&str>,
+) -> Result<(), McpConfigError> {
     let mut root = read_json_object(path)?;
     if enabled {
         let mcp = root
@@ -398,11 +444,14 @@ fn update_opencode_config(path: &Path, enabled: bool, url: &str) -> Result<(), M
             .ok_or(McpConfigError::McpServersNotAnObject)?;
         mcp.insert(
             SERVER_NAME.into(),
-            serde_json::json!({
-                "type": "remote",
-                "url": url,
-                "enabled": true,
-            }),
+            auth::with_headers(
+                serde_json::json!({
+                    "type": "remote",
+                    "url": url,
+                    "enabled": true,
+                }),
+                token,
+            ),
         );
     } else if let Some(mcp) = root.get_mut("mcp").and_then(Value::as_object_mut) {
         mcp.remove(SERVER_NAME);
@@ -525,7 +574,12 @@ fn update_mcp_servers_json(
     write_json_object(path, &root)
 }
 
-fn update_antigravity_config(path: &Path, enabled: bool, url: &str) -> Result<(), McpConfigError> {
+fn update_antigravity_config(
+    path: &Path,
+    enabled: bool,
+    url: &str,
+    token: Option<&str>,
+) -> Result<(), McpConfigError> {
     if !enabled && !path.exists() {
         return Ok(());
     }
@@ -542,6 +596,9 @@ fn update_antigravity_config(path: &Path, enabled: bool, url: &str) -> Result<()
             .ok_or(McpConfigError::McpServersNotAnObject)?;
         let mut server = Map::new();
         server.insert("serverUrl".into(), Value::String(url.to_string()));
+        if let Some(token) = token {
+            server.insert("headers".into(), auth::authorization_headers(token));
+        }
         servers.insert(SERVER_NAME.into(), Value::Object(server));
     } else if let Some(servers) = root.get_mut("mcpServers").and_then(Value::as_object_mut) {
         servers.remove(SERVER_NAME);
@@ -588,7 +645,12 @@ fn write_json_object(path: &Path, root: &Map<String, Value>) -> Result<(), McpCo
     atomic_write(path, format!("{text}\n").as_bytes())
 }
 
-fn update_codex_config(path: &Path, enabled: bool, url: &str) -> Result<(), McpConfigError> {
+fn update_codex_config(
+    path: &Path,
+    enabled: bool,
+    url: &str,
+    token: Option<&str>,
+) -> Result<(), McpConfigError> {
     let existing = match fs::read_to_string(path) {
         Ok(text) => text,
         Err(e) if e.kind() == std::io::ErrorKind::NotFound => String::new(),
@@ -608,6 +670,9 @@ fn update_codex_config(path: &Path, enabled: bool, url: &str) -> Result<(), McpC
         }
         text.push_str("[mcp_servers.openpencil]\n");
         text.push_str(&format!("url = \"{}\"\n", toml_basic_string_escape(url)));
+        if let Some(token) = token {
+            text.push_str(&auth::codex_headers_line(token, toml_basic_string_escape));
+        }
     }
     atomic_write(path, text.as_bytes())
 }
@@ -673,3 +738,7 @@ mod dsh_tests;
 #[cfg(test)]
 #[path = "mcp_integrations_lean_tests.rs"]
 mod lean_tests;
+
+#[cfg(test)]
+#[path = "mcp_integrations_auth_tests.rs"]
+mod auth_tests;

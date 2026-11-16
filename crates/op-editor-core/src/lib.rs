@@ -102,6 +102,7 @@ pub mod geometry;
 pub mod git_button_state;
 pub mod grouping;
 pub mod history;
+mod history_checkpoint;
 pub mod history_snapshot;
 pub mod hoist_app_state;
 pub mod host_drag_state;
@@ -264,6 +265,8 @@ mod edit_transaction_tests;
 mod fills_tests;
 #[cfg(test)]
 mod history_bench_tests;
+#[cfg(test)]
+mod history_checkpoint_tests;
 #[cfg(test)]
 mod history_snapshot_tests;
 #[cfg(test)]

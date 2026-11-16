@@ -566,6 +566,12 @@ pub fn lookup(key: &str) -> Option<&'static str> {
         "recovery.more" => "ほか {{count}} 件",
         "recovery.noteNewer" => "ディスク上のファイルの方が新しいため、無題のコピーとして開きます",
         "recovery.noteGone" => "元のファイルが見つからないため、無題のコピーとして開きます",
+        "menu.revertAgentRun" => "直前のエージェント実行を元に戻す",
+        "dialog.revertAgentRunTitle" => "直前のエージェント実行を元に戻しますか？",
+        "dialog.revertAgentRunBody" => "このドキュメントを直前のエージェント実行の前の状態に戻しますか？\n\nエージェントが行った変更と、実行開始後にあなたが行った編集はすべて破棄されます。\n\nこの操作は Cmd+Z で取り消せます。",
+        "menu.revertAgentRun.nothing" => "このドキュメントには元に戻せるエージェント実行がありません。",
+        "menu.revertAgentRun.runLive" => "このドキュメントではエージェントがまだ作業中です。先に停止してから元に戻してください。",
+        "menu.revertAgentRun.replaced" => "エージェントの実行後にこのドキュメントが置き換えられたため、元に戻すものがありません。",
         _ => return None,
     })
 }

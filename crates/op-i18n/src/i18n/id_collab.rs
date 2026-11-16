@@ -550,6 +550,12 @@ pub fn lookup(key: &str) -> Option<&'static str> {
         "recovery.more" => "dan {{count}} lainnya",
         "recovery.noteNewer" => "file di disk lebih baru, jadi dibuka sebagai salinan tanpa judul",
         "recovery.noteGone" => "file asli sudah tidak ada, jadi dibuka sebagai salinan tanpa judul",
+        "menu.revertAgentRun" => "Urungkan Eksekusi Agen Terakhir",
+        "dialog.revertAgentRunTitle" => "Urungkan eksekusi agen terakhir?",
+        "dialog.revertAgentRunBody" => "Kembalikan dokumen ini ke kondisi sebelum eksekusi agen terakhir?\n\nPerubahan yang dibuat agen, dan semua suntingan Anda sejak eksekusi dimulai, akan dibuang.\n\nAnda dapat membatalkannya dengan Cmd+Z.",
+        "menu.revertAgentRun.nothing" => "Tidak ada eksekusi agen yang dapat diurungkan di dokumen ini.",
+        "menu.revertAgentRun.runLive" => "Agen masih bekerja di dokumen ini. Hentikan dulu, lalu urungkan.",
+        "menu.revertAgentRun.replaced" => "Dokumen ini diganti setelah agen berjalan, jadi tidak ada yang dapat diurungkan.",
         _ => return None,
     })
 }

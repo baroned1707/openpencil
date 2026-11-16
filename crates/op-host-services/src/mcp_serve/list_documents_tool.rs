@@ -33,6 +33,7 @@ pub fn list_documents_snapshot(state: &EditorState) -> ListDocuments {
             dirty: state.is_dirty(),
             active: true,
             status: DocumentTabStatus::Idle,
+            nonce: None,
         },
     }
 }
@@ -57,6 +58,7 @@ fn backed_listing(path: &Path) -> DocumentListing {
         dirty: false,
         active: true,
         status: DocumentTabStatus::Idle,
+        nonce: None,
     }
 }
 

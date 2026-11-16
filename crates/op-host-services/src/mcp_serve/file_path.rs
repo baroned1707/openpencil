@@ -10,7 +10,9 @@ use std::path::{Path, PathBuf};
 use super::file_path_error::FilePathError;
 use super::McpServeError;
 
-const LIVE_CANVAS_SENTINELS: &[&str] = &["live://canvas", "live://canvas/current"];
+/// The `filePath` spellings that mean "the live canvas", not a file. The live
+/// server's path policy exempts exactly these (and only for `filePath`).
+pub(crate) const LIVE_CANVAS_SENTINELS: &[&str] = &["live://canvas", "live://canvas/current"];
 
 struct TargetFileCall {
     id: op_mcp::RequestId,

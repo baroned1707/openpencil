@@ -550,6 +550,12 @@ pub fn lookup(key: &str) -> Option<&'static str> {
         "recovery.more" => "另外还有 {{count}} 个",
         "recovery.noteNewer" => "磁盘上的文件更新，因此将作为未命名副本打开",
         "recovery.noteGone" => "原文件已不存在，因此将作为未命名副本打开",
+        "menu.revertAgentRun" => "撤销上一次智能体运行",
+        "dialog.revertAgentRunTitle" => "撤销上一次智能体运行？",
+        "dialog.revertAgentRunBody" => "要将此文档恢复到上一次智能体运行之前吗？\n\n智能体所做的更改，以及运行开始后你所做的任何编辑，都将被丢弃。\n\n你可以用 Cmd+Z 撤销此操作。",
+        "menu.revertAgentRun.nothing" => "此文档中没有可撤销的智能体运行。",
+        "menu.revertAgentRun.runLive" => "智能体仍在此文档中工作。请先停止它，然后再撤销。",
+        "menu.revertAgentRun.replaced" => "此文档在智能体运行之后已被替换，因此没有可撤销的内容。",
         _ => return None,
     })
 }

@@ -562,6 +562,12 @@ pub fn lookup(key: &str) -> Option<&'static str> {
         "recovery.more" => "và {{count}} tài liệu khác",
         "recovery.noteNewer" => "tệp trên đĩa mới hơn nên sẽ mở dưới dạng bản sao chưa đặt tên",
         "recovery.noteGone" => "tệp gốc không còn nữa nên sẽ mở dưới dạng bản sao chưa đặt tên",
+        "menu.revertAgentRun" => "Hoàn tác lần chạy agent gần nhất",
+        "dialog.revertAgentRunTitle" => "Hoàn tác lần chạy agent gần nhất?",
+        "dialog.revertAgentRunBody" => "Đưa tài liệu này về trạng thái trước lần chạy agent gần nhất?\n\nCác thay đổi của agent và mọi chỉnh sửa của bạn kể từ khi lần chạy bắt đầu sẽ bị loại bỏ.\n\nBạn có thể hoàn tác thao tác này bằng Cmd+Z.",
+        "menu.revertAgentRun.nothing" => "Tài liệu này không có lần chạy agent nào để hoàn tác.",
+        "menu.revertAgentRun.runLive" => "Agent vẫn đang làm việc trong tài liệu này. Hãy dừng nó trước, rồi hoàn tác.",
+        "menu.revertAgentRun.replaced" => "Tài liệu này đã bị thay thế sau khi agent chạy nên không có gì để hoàn tác.",
         _ => return None,
     })
 }

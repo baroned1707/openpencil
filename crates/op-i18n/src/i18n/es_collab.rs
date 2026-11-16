@@ -550,6 +550,12 @@ pub fn lookup(key: &str) -> Option<&'static str> {
         "recovery.more" => "y {{count}} más",
         "recovery.noteNewer" => "el archivo en disco es más reciente, así que se abre como una copia sin título",
         "recovery.noteGone" => "el archivo original ya no existe, así que se abre como una copia sin título",
+        "menu.revertAgentRun" => "Revertir la última ejecución del agente",
+        "dialog.revertAgentRunTitle" => "¿Revertir la última ejecución del agente?",
+        "dialog.revertAgentRunBody" => "¿Volver a dejar este documento como estaba antes de la última ejecución del agente?\n\nSe descartarán los cambios del agente y cualquier edición que hayas hecho desde que empezó la ejecución.\n\nPuedes deshacerlo con Cmd+Z.",
+        "menu.revertAgentRun.nothing" => "No hay ninguna ejecución del agente que revertir en este documento.",
+        "menu.revertAgentRun.runLive" => "Un agente sigue trabajando en este documento. Deténlo primero y luego revierte.",
+        "menu.revertAgentRun.replaced" => "Este documento se reemplazó después de que el agente se ejecutara, así que no hay nada que revertir.",
         _ => return None,
     })
 }

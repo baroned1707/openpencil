@@ -6,7 +6,7 @@ use super::*;
 
 #[test]
 fn live_ping_response_carries_identity_mode_and_token() {
-    let resp = live_ping_response("3", "abc-123");
+    let resp = live_ping_response("3", Some("abc-123"));
     assert!(resp.contains(r#""server":"openpencil-mcp""#), "{resp}");
     assert!(resp.contains(r#""mode":"live""#), "{resp}");
     assert!(resp.contains(r#""token":"abc-123""#), "{resp}");
@@ -20,7 +20,7 @@ fn live_ping_result_is_spec_empty_apart_from_meta() {
     // NOTHING but `_meta` or strict validators (Gemini CLI's
     // `EmptyResultSchema.strict()`) mark the server disconnected. The
     // identity trio rides inside `_meta`.
-    let resp = live_ping_response("3", "abc-123");
+    let resp = live_ping_response("3", Some("abc-123"));
     let value: serde_json::Value = serde_json::from_str(&resp).expect("valid JSON");
     let result = value
         .get("result")
@@ -167,6 +167,8 @@ fn pump_yields_after_ui_request_budget() {
     let (stop_tx, _stop_rx) = mpsc::channel();
     let mut server = McpLiveServer {
         port: 0,
+        admission: Arc::new(LiveAdmission::new("test-token".to_string(), 0)),
+        nonce: crate::mcp_serve::document_nonce::launch_nonce(),
         token: "test-token".to_string(),
         quit_flag: Arc::new(AtomicBool::new(false)),
         req_rx,
@@ -216,6 +218,8 @@ fn pump_fulfills_screenshot_requests_off_the_live_state() {
     let (stop_tx, _stop_rx) = mpsc::channel();
     let mut server = McpLiveServer {
         port: 0,
+        admission: Arc::new(LiveAdmission::new("test-token".to_string(), 0)),
+        nonce: crate::mcp_serve::document_nonce::launch_nonce(),
         token: "test-token".to_string(),
         quit_flag: Arc::new(AtomicBool::new(false)),
         req_rx,
@@ -267,6 +271,8 @@ fn pump_marks_layout_dirty_only_for_layout_affecting_commands() {
     let (stop_tx, _stop_rx) = mpsc::channel();
     let mut server = McpLiveServer {
         port: 0,
+        admission: Arc::new(LiveAdmission::new("test-token".to_string(), 0)),
+        nonce: crate::mcp_serve::document_nonce::launch_nonce(),
         token: "test-token".to_string(),
         quit_flag: Arc::new(AtomicBool::new(false)),
         req_rx,
@@ -344,6 +350,8 @@ fn pump_flags_document_replaced_only_for_replace_document_requests() {
     let (stop_tx, _stop_rx) = mpsc::channel();
     let mut server = McpLiveServer {
         port: 0,
+        admission: Arc::new(LiveAdmission::new("test-token".to_string(), 0)),
+        nonce: crate::mcp_serve::document_nonce::launch_nonce(),
         token: "test-token".to_string(),
         quit_flag: Arc::new(AtomicBool::new(false)),
         req_rx,
@@ -519,6 +527,8 @@ fn pump_rejects_whole_document_sync_during_active_collaboration() {
 fn fresh_mcp_server(req_rx: Receiver<UiRequest>, stop_tx: Sender<()>) -> McpLiveServer {
     McpLiveServer {
         port: 0,
+        admission: Arc::new(LiveAdmission::new("test-token".to_string(), 0)),
+        nonce: crate::mcp_serve::document_nonce::launch_nonce(),
         token: "test-token".to_string(),
         quit_flag: Arc::new(AtomicBool::new(false)),
         req_rx,

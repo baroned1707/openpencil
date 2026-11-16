@@ -225,9 +225,13 @@ fn live_mcp_http_server_routes_file_path_requests_to_target_file() {
         let _ = tx.send(post_json(port, &token, &body));
     });
 
+    // The editor's document lives in `dir`, so `dir` is the project the agent
+    // may read files from: an untitled-only editor would allow no folder.
+    let mut resolver = op_host_services::mcp_live::SingleDocumentResolver::new(&mut state);
+    resolver.path = Some(dir.join("main.op"));
     let started = Instant::now();
     let response = loop {
-        server.pump(&mut op_host_services::mcp_live::SingleDocumentResolver::new(&mut state));
+        server.pump(&mut resolver);
         if let Ok(response) = rx.try_recv() {
             break response;
         }

@@ -45,38 +45,43 @@ use op_mcp::{
     redo_snapshot, remove_node_effect_snapshot, remove_page_snapshot, rename_component_snapshot,
     rename_page_snapshot, rename_variable_snapshot, reorder_page_snapshot,
     reorder_selected_snapshot, replace_all_matching_properties_snapshot, replace_node_snapshot,
-    run_stdio_with_applier, save_document_snapshot, save_theme_preset_snapshot,
-    search_all_unique_properties_snapshot, selection_snapshot, set_active_axis_value_snapshot,
-    set_active_page_snapshot, set_active_tool_snapshot, set_design_md_snapshot,
-    set_ellipse_arc_snapshot, set_node_collapsed_snapshot, set_node_corner_radius_snapshot,
-    set_node_fill_hex_snapshot, set_node_flip_snapshot, set_node_font_size_snapshot,
-    set_node_font_weight_snapshot, set_node_hidden_snapshot, set_node_locked_snapshot,
-    set_node_name_snapshot, set_node_rotation_snapshot, set_node_stroke_hex_snapshot,
-    set_node_stroke_side_width_snapshot, set_node_stroke_width_snapshot, set_node_text_snapshot,
-    set_selection_set_snapshot, set_selection_snapshot, set_themes_snapshot,
-    set_variable_boolean_snapshot, set_variable_color_snapshot, set_variable_number_snapshot,
-    set_variable_string_snapshot, set_variables_snapshot, set_viewport_snapshot,
-    snapshot_layout_snapshot, spawn_agents_snapshot, toggle_node_selection_snapshot,
-    tool_search_snapshot, undo_snapshot, ungroup_selected_snapshot, update_node_snapshot,
-    upsert_component_snapshot, upsert_screen_snapshot, upsert_variables_snapshot, McpTool,
-    ToolRegistry,
+    run_stdio_with_applier, save_theme_preset_snapshot, search_all_unique_properties_snapshot,
+    selection_snapshot, set_active_axis_value_snapshot, set_active_page_snapshot,
+    set_active_tool_snapshot, set_design_md_snapshot, set_ellipse_arc_snapshot,
+    set_node_collapsed_snapshot, set_node_corner_radius_snapshot, set_node_fill_hex_snapshot,
+    set_node_flip_snapshot, set_node_font_size_snapshot, set_node_font_weight_snapshot,
+    set_node_hidden_snapshot, set_node_locked_snapshot, set_node_name_snapshot,
+    set_node_rotation_snapshot, set_node_stroke_hex_snapshot, set_node_stroke_side_width_snapshot,
+    set_node_stroke_width_snapshot, set_node_text_snapshot, set_selection_set_snapshot,
+    set_selection_snapshot, set_themes_snapshot, set_variable_boolean_snapshot,
+    set_variable_color_snapshot, set_variable_number_snapshot, set_variable_string_snapshot,
+    set_variables_snapshot, set_viewport_snapshot, snapshot_layout_snapshot, spawn_agents_snapshot,
+    toggle_node_selection_snapshot, tool_search_snapshot, undo_snapshot, ungroup_selected_snapshot,
+    update_node_snapshot, upsert_component_snapshot, upsert_screen_snapshot,
+    upsert_variables_snapshot, McpTool, ToolRegistry,
 };
 #[cfg(feature = "mcp-debug-tools")]
 use op_mcp::{
     debug_logs_tail_snapshot, debug_screenshot_snapshot, debug_validation_report_snapshot,
 };
 
+mod atomic_bytes;
 pub(crate) mod auto_finalize;
+pub mod body_limits;
+pub mod constant_time;
 pub mod create_document;
 pub mod create_document_error;
 pub mod document_address;
 pub mod document_listing;
+pub mod document_nonce;
 pub mod error;
 pub mod file_path;
 pub mod file_path_error;
+mod http_request;
 mod sniff;
 
 pub use error::McpServeError;
+pub use http_request::HttpRequest;
 use sniff::{sniff_id_raw, sniff_method};
 
 /// Unwrap an MCP `tools/call` reply to the inner tool-result JSON text,
@@ -416,48 +421,20 @@ fn serve_http_connection<S: std::io::Read + std::io::Write>(
     )
 }
 
-#[derive(Debug)]
-pub struct HttpRequest {
-    pub method: String,
-    pub path: String,
-    pub body: String,
-    pub host: Option<String>,
-    pub origin: Option<String>,
-    /// Legacy `X-OpenPencil-Token` header value, when present. The local and
-    /// managed web-canvas daemons deliberately ignore it; managed lifecycle
-    /// authentication, when used, stays in the `openpencil/shutdown` body.
-    pub token: Option<String>,
-    /// `Content-Type` header value, when present. Browser-facing JSON routes
-    /// require `application/json` so cross-origin "simple requests" (which
-    /// skip the CORS preflight) cannot reach them.
-    pub content_type: Option<String>,
-    /// `Authorization` header value, verbatim (scheme included), when
-    /// present. The multi-account online daemon reads a `Bearer <token>`
-    /// out of it; every other mode ignores it.
-    pub authorization: Option<String>,
-    /// `Cookie` header value, verbatim, when present. The online daemon
-    /// extracts its session cookie from it; every other mode ignores it.
-    pub cookie: Option<String>,
-    /// The raw query string (no leading `?`), when the target had one.
-    ///
-    /// `path` keeps its query stripped so exact-path routing is unaffected;
-    /// this is captured alongside so the online daemon can read the tenant
-    /// parameter. `EventSource` cannot set headers, which is why the tenant
-    /// travels in the query at all — see `share_routes::TENANT_QUERY`.
-    pub query: Option<String>,
-    /// `Mcp-Param-DocumentId` header value, verbatim, when present — the
-    /// spec's mirror of the `documentId` argument (`x-mcp-header`).
-    pub mcp_param_document_id: Option<String>,
+/// Parse a capped HTTP header and then read exactly its declared body length
+/// (one 64 MiB ceiling: whole-document sync carries embedded images). Query
+/// strings are stripped from the path before routing.
+pub fn read_http_request<S: std::io::Read>(stream: &mut S) -> Result<HttpRequest, McpServeError> {
+    read_http_request_limited(stream, body_limits::BodyLimits::STANDARD)
 }
 
-/// Parse a capped HTTP header and then read exactly its declared body length.
-/// Query strings are stripped from the path before routing.
-pub fn read_http_request<S: std::io::Read>(stream: &mut S) -> Result<HttpRequest, McpServeError> {
+/// [`read_http_request`] under per-route body `limits`. The body grows from
+/// bytes actually received, never from the declared length alone.
+pub fn read_http_request_limited<S: std::io::Read>(
+    stream: &mut S,
+    limits: body_limits::BodyLimits,
+) -> Result<HttpRequest, McpServeError> {
     const MAX_HEADER: usize = 64 * 1024;
-    // Whole-document sync can carry embedded images, so retain the 64 MiB
-    // ceiling while reading incrementally to avoid allocating from a claimed
-    // Content-Length alone.
-    const MAX_BODY: usize = 64 * 1024 * 1024;
     let mut head: Vec<u8> = Vec::new();
     let mut byte = [0u8; 1];
     loop {
@@ -520,7 +497,7 @@ pub fn read_http_request<S: std::io::Read>(stream: &mut S) -> Result<HttpRequest
         .find_map(|value| value.parse::<usize>().ok());
     let content_length = declared_length.unwrap_or(0);
     // Browser-extension snapshot ingress is the large body-carrying scoped
-    // route, so it caps its body far below the endpoint-wide `MAX_BODY` — and
+    // route, so it caps its body far below the endpoint-wide 64 MiB — and
     // does it here, before a single body byte is read, so an untokened caller
     // cannot make this process buffer 64 MiB. The separate design-evidence
     // route receives its own smaller cap below. See
@@ -628,11 +605,8 @@ pub fn read_http_request<S: std::io::Read>(stream: &mut S) -> Result<HttpRequest
     let authorization = header_value("authorization");
     let cookie = header_value("cookie");
     let mcp_param_document_id = header_value(document_address::DOCUMENT_ID_HEADER);
-    if content_length > MAX_BODY {
-        return Err(McpServeError::Protocol(format!(
-            "request body exceeds {} MiB",
-            MAX_BODY / (1024 * 1024)
-        )));
+    if let Some(refusal) = limits.refusal(&method, &path, content_length) {
+        return Err(refusal);
     }
     // Grow the body from bytes actually received, not the declared length;
     // socket timeouts bound a stalled peer.

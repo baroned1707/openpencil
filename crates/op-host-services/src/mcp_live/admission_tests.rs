@@ -11,7 +11,15 @@ const PORT: u16 = 51234;
 const TOKEN: &str = "d34db33f-cafe";
 /// A read-only tool call. Reads were entirely unauthenticated before this
 /// gate existed, so the read path is exactly what these tests must pin.
-const LIST_PAGES_CALL: &str = r#"{"jsonrpc":"2.0","id":11,"method":"tools/call","params":{"name":"list_pages","arguments":{"documentId":"d1"}}}"#;
+fn list_pages_call() -> String {
+    format!(
+        r#"{{"jsonrpc":"2.0","id":11,"method":"tools/call","params":{{"name":"list_pages","arguments":{{"documentId":"{}"}}}}}}"#,
+        crate::mcp_serve::document_address::format_spoken_id(
+            DocumentId(1),
+            Some(crate::mcp_serve::document_nonce::launch_nonce())
+        )
+    )
+}
 
 struct MockStream {
     input: std::io::Cursor<Vec<u8>>,
@@ -93,7 +101,7 @@ fn a_tokenless_tool_call_is_served() {
         _ => false,
     });
     let headers = format!("Host: 127.0.0.1:{PORT}\r\n");
-    let response = drive(&request("/mcp", &headers, LIST_PAGES_CALL), &req_tx);
+    let response = drive(&request("/mcp", &headers, &list_pages_call()), &req_tx);
 
     assert!(
         responder.join().expect("responder thread"),
@@ -117,7 +125,7 @@ fn authenticated_tool_call_is_served() {
         _ => false,
     });
     let response = drive(
-        &request("/mcp", &authed_headers(), LIST_PAGES_CALL),
+        &request("/mcp", &authed_headers(), &list_pages_call()),
         &req_tx,
     );
 
@@ -148,7 +156,7 @@ fn cli_request_without_origin_or_host_port_is_served() {
         _ => false,
     });
     let headers = format!("Host: 127.0.0.1\r\nX-OpenPencil-Token: {TOKEN}\r\n");
-    let response = drive(&request("/mcp", &headers, LIST_PAGES_CALL), &req_tx);
+    let response = drive(&request("/mcp", &headers, &list_pages_call()), &req_tx);
 
     assert!(
         responder.join().expect("responder thread"),
@@ -165,7 +173,7 @@ fn foreign_origin_tool_call_is_refused() {
     let headers = format!(
         "Host: 127.0.0.1:{PORT}\r\nOrigin: http://evil.example\r\nX-OpenPencil-Token: {TOKEN}\r\n"
     );
-    let response = drive(&request("/mcp", &headers, LIST_PAGES_CALL), &req_tx);
+    let response = drive(&request("/mcp", &headers, &list_pages_call()), &req_tx);
 
     assert!(response.starts_with("HTTP/1.1 403 Forbidden"), "{response}");
     assert!(req_rx.try_recv().is_err(), "refused before the UI thread");
@@ -193,7 +201,7 @@ fn non_loopback_or_wrong_port_host_is_refused() {
     // 127.0.0.1 but still writes the NAME into `Host`.
     let headers =
         format!("Host: evil.example:{PORT}\r\nX-OpenPencil-Token: {TOKEN}\r\nOrigin: http://evil.example\r\n");
-    let response = drive(&request("/mcp", &headers, LIST_PAGES_CALL), &req_tx);
+    let response = drive(&request("/mcp", &headers, &list_pages_call()), &req_tx);
     assert!(response.starts_with("HTTP/1.1 403 Forbidden"), "{response}");
     assert!(req_rx.try_recv().is_err(), "refused before the UI thread");
 
@@ -202,7 +210,7 @@ fn non_loopback_or_wrong_port_host_is_refused() {
         "Host: 127.0.0.1:{}\r\nX-OpenPencil-Token: {TOKEN}\r\n",
         PORT + 1
     );
-    let response = drive(&request("/mcp", &headers, LIST_PAGES_CALL), &req_tx);
+    let response = drive(&request("/mcp", &headers, &list_pages_call()), &req_tx);
     assert!(response.starts_with("HTTP/1.1 403 Forbidden"), "{response}");
     assert!(req_rx.try_recv().is_err(), "refused before the UI thread");
 
@@ -262,7 +270,7 @@ fn extension_origin_is_refused_outside_the_snapshot_ingress() {
     let headers = format!(
         "Host: 127.0.0.1:{PORT}\r\nOrigin: {EXTENSION_ORIGIN}\r\nX-OpenPencil-Token: {TOKEN}\r\n"
     );
-    let response = drive(&request("/mcp", &headers, LIST_PAGES_CALL), &req_tx);
+    let response = drive(&request("/mcp", &headers, &list_pages_call()), &req_tx);
 
     assert!(response.starts_with("HTTP/1.1 403 Forbidden"), "{response}");
     assert!(

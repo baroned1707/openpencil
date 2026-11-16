@@ -1,15 +1,21 @@
 //! Document save tool used by the Rust HTTP CLI transport.
 
 use std::collections::BTreeMap;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 use op_editor_core::EditorState;
 use serde::Serialize;
 
 use super::{McpTool, ToolErrorCode, ToolOutcome};
 
+/// How the serialized document reaches disk. A host that wants a crash-safe
+/// save (a temp file renamed over the target) supplies its own; the default is
+/// a plain `std::fs::write`.
+pub type SaveWriter = fn(&Path, &[u8]) -> std::io::Result<()>;
+
 pub struct SaveDocument {
     document_payload: Vec<u8>,
+    writer: SaveWriter,
 }
 
 #[derive(Serialize)]
@@ -32,7 +38,7 @@ impl McpTool for SaveDocument {
             );
         };
         let path = resolve_path(path);
-        if let Err(e) = std::fs::write(&path, &self.document_payload) {
+        if let Err(e) = (self.writer)(&path, &self.document_payload) {
             return ToolOutcome::Err(
                 ToolErrorCode::ToolFailed,
                 format!("save document failed: {e}"),
@@ -46,6 +52,11 @@ impl McpTool for SaveDocument {
 }
 
 pub fn save_document_snapshot(state: &EditorState) -> SaveDocument {
+    save_document_snapshot_with_writer(state, |path, bytes| std::fs::write(path, bytes))
+}
+
+/// [`save_document_snapshot`] writing through `writer`.
+pub fn save_document_snapshot_with_writer(state: &EditorState, writer: SaveWriter) -> SaveDocument {
     // Stream once into the immutable MCP snapshot. The schema writer
     // externalizes shared images while serializing, avoiding both a
     // document-sized `Value` and a second final `String` allocation.
@@ -66,7 +77,10 @@ pub fn save_document_snapshot(state: &EditorState) -> SaveDocument {
         document_payload.clear();
         document_payload.extend_from_slice(b"{}");
     }
-    SaveDocument { document_payload }
+    SaveDocument {
+        document_payload,
+        writer,
+    }
 }
 
 fn resolve_path(raw: &str) -> PathBuf {

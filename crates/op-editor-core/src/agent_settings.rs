@@ -312,6 +312,11 @@ pub struct AgentSettings {
     /// Install the lean six-tool MCP profile (`/mcp/lean`) into terminal
     /// integrations instead of the full catalog. Persisted.
     pub mcp_lean_profile: bool,
+    /// Demand `Authorization: Bearer <token>` on the live MCP server (the token
+    /// is generated once and kept in a 0600 file beside the settings). Off by
+    /// default so existing integrations keep working; turning it on stops the
+    /// CLIs and agents whose configuration cannot carry a header. Persisted.
+    pub mcp_require_token: bool,
     pub mcp_client_config_copied_at_ms: Option<u64>,
     pub hover_agent_settings_close: bool,
     pub hover_mcp_server_button: bool,
@@ -406,6 +411,7 @@ impl Default for AgentSettings {
             mcp_server: McpServer::default(),
             mcp_cli_enabled: [false; 13],
             mcp_lean_profile: false,
+            mcp_require_token: false,
             mcp_client_config_copied_at_ms: None,
             hover_agent_settings_close: false,
             hover_mcp_server_button: false,

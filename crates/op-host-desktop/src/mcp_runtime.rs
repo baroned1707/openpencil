@@ -2,6 +2,7 @@
 
 use super::{mcp_integrations, DesktopApp};
 use crate::mcp_document_resolver::DesktopDocumentResolver;
+use crate::mcp_integrations::auth::LiveEndpoint;
 use op_host_services::mcp_live::DocumentListing;
 
 fn mark_external_document_replacement_dirty(state: &mut op_editor_core::EditorState) {
@@ -60,6 +61,79 @@ impl DesktopApp {
     /// the user's settings — the runtime force port is updated to the bound
     /// port instead, so a one-off `op start` never rewrites saved prefs.
     pub(crate) fn reconcile_mcp_server_from_settings(&mut self) -> bool {
+        let changed = self.reconcile_mcp_server_state();
+        self.sync_mcp_bearer_requirement();
+        changed
+    }
+
+    /// Keep the running server's bearer requirement equal to the
+    /// `mcp_require_token` setting. Cheap when nothing changed (no file access),
+    /// so it runs on every reconcile.
+    fn sync_mcp_bearer_requirement(&mut self) {
+        let require = self
+            .host
+            .editor_state()
+            .editor_ui
+            .agent_settings
+            .mcp_require_token;
+        let Some(server) = self.mcp_server.as_ref() else {
+            return;
+        };
+        if require != server.bearer_required() {
+            server.set_bearer_token(self.required_bearer());
+        }
+    }
+
+    /// The token the live server must demand, or `None` while the setting is
+    /// off.
+    ///
+    /// If the token cannot be read or created the server is locked with a
+    /// token nobody holds rather than left open: the user asked for the
+    /// requirement, so failing open would silently drop it.
+    fn required_bearer(&self) -> Option<String> {
+        let require = self
+            .host
+            .editor_state()
+            .editor_ui
+            .agent_settings
+            .mcp_require_token;
+        if !require {
+            return None;
+        }
+        Some(self.mcp_bearer_token().unwrap_or_else(|error| {
+            eprintln!(
+                "openpencil-desktop mcp: cannot read the MCP token ({error}); refusing all MCP \
+                 requests until it can"
+            );
+            crate::mcp_port_file::new_bearer_token().unwrap_or_else(|_| "locked".to_string())
+        }))
+    }
+
+    /// What a new live server starts with: the bearer requirement is in force
+    /// from its first request, not from the next reconcile.
+    fn live_options(&self) -> op_host_services::mcp_live::LiveOptions {
+        op_host_services::mcp_live::LiveOptions {
+            bearer_token: self.required_bearer(),
+            ..Default::default()
+        }
+    }
+
+    /// The bearer token, from the settings directory (or the injected test
+    /// directory).
+    fn mcp_bearer_token(&self) -> std::io::Result<String> {
+        match &self.mcp_integrations_home {
+            Some(home) => {
+                crate::mcp_port_file::load_or_create_bearer_token(&home.join(".openpencil"))
+            }
+            None => crate::mcp_port_file::bearer_token().unwrap_or_else(|| {
+                Err(std::io::Error::other(
+                    "no settings directory on this machine",
+                ))
+            }),
+        }
+    }
+
+    fn reconcile_mcp_server_state(&mut self) -> bool {
         let setting_running = self
             .host
             .editor_state()
@@ -96,9 +170,10 @@ impl DesktopApp {
         if let Some(mut server) = self.mcp_server.take() {
             server.stop();
         }
-        match op_host_services::mcp_live::McpLiveServer::start_with_wake(
+        match op_host_services::mcp_live::McpLiveServer::start_with_options(
             port,
             self.mcp_wake_callback(),
+            self.live_options(),
         ) {
             Ok(server) => {
                 let bound_port = server.port();
@@ -109,9 +184,10 @@ impl DesktopApp {
             Err(err) => {
                 eprintln!("openpencil-desktop mcp: failed to start on {port}: {err}");
                 if port != 0 {
-                    match op_host_services::mcp_live::McpLiveServer::start_with_wake(
+                    match op_host_services::mcp_live::McpLiveServer::start_with_options(
                         0,
                         self.mcp_wake_callback(),
+                        self.live_options(),
                     ) {
                         Ok(server) => {
                             let bound_port = server.port();
@@ -199,6 +275,7 @@ impl DesktopApp {
                 dirty: tab.dirty,
                 active: tab.active,
                 status: tab.status,
+                nonce: None,
             })
             .collect()
     }
@@ -345,7 +422,15 @@ impl DesktopApp {
 
     /// `before` is `(enabled flags, port, lean profile)` as they were before
     /// the event. A flipped flag writes or removes that CLI; a changed port or
-    /// lean choice rewrites the endpoint of every enabled CLI.
+    /// lean choice rewrites the endpoint of every enabled CLI; a flip of
+    /// `mcp_require_token` rewrites every enabled CLI that can carry the
+    /// `Authorization` header (adding it, or removing it again).
+    ///
+    /// With the token required, Grok Build, ZCode and DeepSeek Harness stop
+    /// working: their configs are left without a header (see
+    /// `mcp_integrations::auth`). So do editor-spawned ACP agents
+    /// (`op_acp::McpHttpServer` has no header field) and the `op` CLI's own
+    /// tool calls.
     pub(crate) fn reconcile_mcp_cli_integrations(
         &mut self,
         before: Option<([bool; 13], u16, bool)>,
@@ -357,10 +442,29 @@ impl DesktopApp {
         let after_flags = settings.mcp_cli_enabled;
         let port = settings.mcp_server.port;
         let lean = settings.mcp_lean_profile;
+        let require_token = settings.mcp_require_token;
+        let token_mode_changed = note_token_mode(require_token);
         let endpoint_changed = before_port != port || before_lean != lean;
-        if before_flags == after_flags && !endpoint_changed {
+        if before_flags == after_flags && !endpoint_changed && !token_mode_changed {
             return false;
         }
+        // Only read (or create) the token when a config is about to be written.
+        let bearer = if require_token {
+            match self.mcp_bearer_token() {
+                Ok(token) => Some(token),
+                Err(error) => {
+                    eprintln!("openpencil-desktop mcp: cannot read the MCP token ({error})");
+                    None
+                }
+            }
+        } else {
+            None
+        };
+        let endpoint = LiveEndpoint {
+            port,
+            lean,
+            bearer: bearer.as_deref(),
+        };
 
         let home_override = self.mcp_integrations_home.clone();
         let mut reverted = false;
@@ -370,21 +474,22 @@ impl DesktopApp {
             .enumerate()
         {
             let flag_changed = before_flags[idx] != after_flags[idx];
-            let enabled_endpoint_changed = endpoint_changed && after_flags[idx];
-            if !flag_changed && !enabled_endpoint_changed {
+            let rewrite_enabled = after_flags[idx]
+                && (endpoint_changed
+                    || (token_mode_changed && mcp_integrations::auth::supports_bearer_header(cli)));
+            if !flag_changed && !rewrite_enabled {
                 continue;
             }
             // Test override targets a temp home (env-free); production reads
             // the real home (+ `CODEX_HOME`).
             let result = match &home_override {
-                Some(home) => mcp_integrations::set_cli_profile_at_home(
+                Some(home) => mcp_integrations::set_cli_endpoint_at_home(
                     cli,
                     after_flags[idx],
-                    port,
-                    lean,
+                    endpoint,
                     home,
                 ),
-                None => mcp_integrations::set_cli_enabled(cli, after_flags[idx], port, lean),
+                None => mcp_integrations::set_cli_enabled(cli, after_flags[idx], endpoint),
             };
             if let Err(err) = result {
                 eprintln!(
@@ -404,6 +509,21 @@ impl DesktopApp {
         }
         reverted
     }
+}
+
+thread_local! {
+    /// The `mcp_require_token` value the integrations were last reconciled
+    /// for, per thread (the UI thread in production; one test, one thread).
+    static LAST_TOKEN_MODE: std::cell::Cell<Option<bool>> = const { std::cell::Cell::new(None) };
+}
+
+/// Record the current `mcp_require_token` and report whether it differs from
+/// the one last recorded. The first call only records: nothing was written
+/// under another mode before it.
+fn note_token_mode(require_token: bool) -> bool {
+    LAST_TOKEN_MODE
+        .with(|last| last.replace(Some(require_token)))
+        .is_some_and(|previous| previous != require_token)
 }
 
 #[cfg(test)]
@@ -522,6 +642,10 @@ mod tests {
         let _ = std::fs::remove_dir_all(home);
     }
 }
+
+#[cfg(test)]
+#[path = "mcp_runtime_token_tests.rs"]
+mod runtime_token_tests;
 
 #[cfg(test)]
 #[path = "mcp_parked_document_tests.rs"]

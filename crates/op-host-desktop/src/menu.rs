@@ -43,6 +43,8 @@ pub enum MenuAction {
     Duplicate,
     Group,
     Ungroup,
+    /// Put the document on screen back to before its last agent run.
+    RevertLastAgentRun,
     ToggleFullscreen,
     ToggleGitPanel,
     ToggleDesignMdPanel,
@@ -97,6 +99,7 @@ mod backend {
     const ID_DUPLICATE: &str = "duplicate";
     const ID_GROUP: &str = "group";
     const ID_UNGROUP: &str = "ungroup";
+    const ID_REVERT_AGENT_RUN: &str = "revert-agent-run";
     const ID_FULLSCREEN: &str = "fullscreen";
     const ID_GIT_PANEL: &str = "git-panel";
     const ID_DESIGN_MD: &str = "design-md";
@@ -132,6 +135,7 @@ mod backend {
             ID_DUPLICATE => MenuAction::Duplicate,
             ID_GROUP => MenuAction::Group,
             ID_UNGROUP => MenuAction::Ungroup,
+            ID_REVERT_AGENT_RUN => MenuAction::RevertLastAgentRun,
             ID_FULLSCREEN => MenuAction::ToggleFullscreen,
             ID_GIT_PANEL => MenuAction::ToggleGitPanel,
             ID_DESIGN_MD => MenuAction::ToggleDesignMdPanel,
@@ -151,6 +155,12 @@ mod backend {
         _menu: Menu,
         _canvas_edits: Option<super::native_edit::CanvasEdits>,
         recent_submenu: Submenu,
+        /// Edit ▸ Revert Last Agent Run. Created disabled; the host enables it
+        /// while the document on screen has a revertable run.
+        revert_item: MenuItem,
+        /// What `revert_item` currently shows, so the per-loop refresh only
+        /// talks to AppKit when the answer changes.
+        revert_enabled: std::cell::Cell<bool>,
         /// Locale resolved at build time — reused when the recent-file
         /// submenu is rebuilt so its empty-state row stays translated.
         locale: Locale,
@@ -241,6 +251,14 @@ mod backend {
             // Standard editing selectors let native panels own their shortcuts.
             // A responder bridge below routes canvas edits to the host.
             let edit = Submenu::new(tr(locale, "menu.edit"), true);
+            // No accelerator: it discards work, so it takes a deliberate click
+            // (and then a confirmation), never a keystroke.
+            let revert_item = MenuItem::with_id(
+                ID_REVERT_AGENT_RUN,
+                tr(locale, "menu.revertAgentRun"),
+                false,
+                None,
+            );
             let _ = edit.append_items(&[
                 &PredefinedMenuItem::undo(Some(tr(locale, "toolbar.undo"))),
                 &PredefinedMenuItem::redo(Some(tr(locale, "toolbar.redo"))),
@@ -261,6 +279,8 @@ mod backend {
                     tr(locale, "menu.ungroup"),
                     Some(accel_shift(Code::KeyG)),
                 ),
+                &PredefinedMenuItem::separator(),
+                &revert_item,
             ]);
             let _ = menu.append(&edit);
             let canvas_edits = super::native_edit::bind(window);
@@ -300,6 +320,8 @@ mod backend {
                 _menu: menu,
                 _canvas_edits: canvas_edits,
                 recent_submenu,
+                revert_item,
+                revert_enabled: std::cell::Cell::new(false),
                 locale,
             };
             this.set_recent_files(&[]); // seed the disabled placeholder
@@ -309,6 +331,14 @@ mod backend {
         /// Locale the menu labels were built with.
         pub fn locale(&self) -> Locale {
             self.locale
+        }
+
+        /// Enable or disable Edit ▸ Revert Last Agent Run. Cheap to call every
+        /// loop iteration: AppKit is only touched when the state changes.
+        pub fn set_revert_enabled(&self, enabled: bool) {
+            if self.revert_enabled.replace(enabled) != enabled {
+                self.revert_item.set_enabled(enabled);
+            }
         }
 
         /// Rebuild the File ▸ Open Recent submenu from `labels` (newest
@@ -371,6 +401,7 @@ mod backend {
                 ID_DUPLICATE,
                 ID_GROUP,
                 ID_UNGROUP,
+                ID_REVERT_AGENT_RUN,
                 ID_FULLSCREEN,
                 ID_GIT_PANEL,
                 ID_DESIGN_MD,
@@ -432,6 +463,9 @@ mod backend {
 
         /// No native menu off macOS — the in-canvas File menu shows recents.
         pub fn set_recent_files(&self, _labels: &[String]) {}
+
+        /// No native menu off macOS, so there is no item to enable.
+        pub fn set_revert_enabled(&self, _enabled: bool) {}
     }
 
     pub fn poll() -> Option<MenuAction> {

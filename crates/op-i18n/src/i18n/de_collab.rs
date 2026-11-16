@@ -550,6 +550,12 @@ pub fn lookup(key: &str) -> Option<&'static str> {
         "recovery.more" => "und {{count}} weitere",
         "recovery.noteNewer" => "die Datei auf dem Datenträger ist neuer, daher wird sie als unbenannte Kopie geöffnet",
         "recovery.noteGone" => "die Originaldatei existiert nicht mehr, daher wird sie als unbenannte Kopie geöffnet",
+        "menu.revertAgentRun" => "Letzten Agentenlauf rückgängig machen",
+        "dialog.revertAgentRunTitle" => "Letzten Agentenlauf rückgängig machen?",
+        "dialog.revertAgentRunBody" => "Dieses Dokument auf den Stand vor dem letzten Agentenlauf zurücksetzen?\n\nÄnderungen des Agenten und alle Änderungen, die Sie seit dem Start des Laufs vorgenommen haben, werden verworfen.\n\nSie können dies mit Cmd+Z rückgängig machen.",
+        "menu.revertAgentRun.nothing" => "In diesem Dokument gibt es keinen Agentenlauf zum Rückgängigmachen.",
+        "menu.revertAgentRun.runLive" => "In diesem Dokument arbeitet noch ein Agent. Beenden Sie ihn zuerst und machen Sie den Lauf dann rückgängig.",
+        "menu.revertAgentRun.replaced" => "Dieses Dokument wurde nach dem Agentenlauf ersetzt, daher gibt es nichts rückgängig zu machen.",
         _ => return None,
     })
 }

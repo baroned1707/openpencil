@@ -174,9 +174,9 @@ impl Fixture {
         }
     }
 
-    /// `/mcp/d/<N>` for a document.
+    /// `/mcp/d/d<N>.<nonce>` for a document.
     pub(super) fn route(id: DocumentId) -> String {
-        format!("/mcp/d/{}", id.0)
+        format!("/mcp/d/{}", Self::name(id))
     }
 
     /// Run client jobs on their own threads while this thread pumps the app,
@@ -290,9 +290,13 @@ impl Fixture {
         self.app.documents.is_dirty(index, live)
     }
 
-    /// `d<N>` for a document.
+    /// `d<N>.<nonce>` for a document: the form the live server lists and
+    /// accepts while several documents are open.
     pub(super) fn name(id: DocumentId) -> String {
-        format!("d{}", id.0)
+        op_host_services::mcp_serve::document_address::format_spoken_id(
+            id,
+            Some(op_host_services::mcp_serve::document_nonce::launch_nonce()),
+        )
     }
 }
 

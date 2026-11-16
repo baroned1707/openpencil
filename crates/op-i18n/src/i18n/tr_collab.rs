@@ -550,6 +550,12 @@ pub fn lookup(key: &str) -> Option<&'static str> {
         "recovery.more" => "ve {{count}} tane daha",
         "recovery.noteNewer" => "diskteki dosya daha yeni olduğundan adsız bir kopya olarak açılır",
         "recovery.noteGone" => "özgün dosya artık yok, bu yüzden adsız bir kopya olarak açılır",
+        "menu.revertAgentRun" => "Son ajan çalıştırmasını geri al",
+        "dialog.revertAgentRunTitle" => "Son ajan çalıştırması geri alınsın mı?",
+        "dialog.revertAgentRunBody" => "Bu belge, son ajan çalıştırmasından önceki hâline döndürülsün mü?\n\nAjanın yaptığı değişiklikler ve çalıştırma başladıktan sonra yaptığınız tüm düzenlemeler silinecek.\n\nBunu Cmd+Z ile geri alabilirsiniz.",
+        "menu.revertAgentRun.nothing" => "Bu belgede geri alınacak bir ajan çalıştırması yok.",
+        "menu.revertAgentRun.runLive" => "Bu belgede bir ajan hâlâ çalışıyor. Önce durdurun, sonra geri alın.",
+        "menu.revertAgentRun.replaced" => "Bu belge, ajan çalıştıktan sonra değiştirildi; geri alınacak bir şey yok.",
         _ => return None,
     })
 }

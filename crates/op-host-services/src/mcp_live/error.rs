@@ -24,9 +24,12 @@ use std::fmt;
 use op_editor_core::DocumentId;
 
 use crate::export::ExportError;
-use crate::mcp_serve::document_address::format_document_id;
+use crate::mcp_serve::document_address::format_spoken_id;
 use crate::mcp_serve::document_listing::{describe_open, DocumentListing};
+use crate::mcp_serve::document_nonce::LaunchNonce;
 use crate::mcp_serve::McpServeError;
+
+use super::path_policy::PathRefusal;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum McpLiveError {
@@ -64,14 +67,36 @@ pub enum McpLiveError {
         requested: String,
         open: Vec<DocumentListing>,
     },
+    /// The id is the bare `d<N>` of the old spelling while several documents
+    /// are open (or it is not the only open document's), or it carries another
+    /// launch's nonce. Ids restart at 1 on every launch, so honouring it could
+    /// silently edit a different document than the agent saw.
+    StaleDocumentId {
+        requested: String,
+        open: Vec<DocumentListing>,
+    },
     /// The document is open but the host cannot lend its state right now: it
     /// is parked behind the document on screen.
-    DocumentNotOnScreen { document: DocumentId },
+    DocumentNotOnScreen {
+        document: DocumentId,
+        nonce: Option<LaunchNonce>,
+    },
     /// The call arrived on an endpoint bound to one document
-    /// (`/mcp/d/<N>`) yet named a different one in `documentId`.
+    /// (`/mcp/d/<id>`) yet named a different one in `documentId`.
     DocumentIdConflict {
         bound: DocumentId,
+        nonce: Option<LaunchNonce>,
         requested: String,
+    },
+    /// A path argument leaves the folders an agent may use (see
+    /// `path_policy`). Nothing was read, written or created.
+    PathNotAllowed {
+        tool: String,
+        argument: String,
+        path: String,
+        reason: PathRefusal,
+        /// What the agent may use instead.
+        roots: Vec<std::path::PathBuf>,
     },
     /// An `operationId` was reused for a different call.
     OperationIdConflict { operation_id: String },
@@ -96,6 +121,8 @@ impl McpLiveError {
             McpLiveError::DocumentChanged
                 | McpLiveError::DocumentRequired { .. }
                 | McpLiveError::UnknownDocument { .. }
+                | McpLiveError::StaleDocumentId { .. }
+                | McpLiveError::PathNotAllowed { .. }
                 | McpLiveError::DocumentNotOnScreen { .. }
                 | McpLiveError::DocumentIdConflict { .. }
                 | McpLiveError::OperationIdConflict { .. }
@@ -126,16 +153,49 @@ impl fmt::Display for McpLiveError {
                  or call list_documents",
                 describe_open(open)
             ),
-            McpLiveError::DocumentNotOnScreen { document } => write!(
+            McpLiveError::StaleDocumentId { requested, open } => write!(
+                f,
+                "documentId '{requested}' is not a current document id: it belongs to a \
+                 previous session or is incomplete (the full form is d<N>.<nonce>, and the \
+                 bare d<N> is accepted only while it is the single open document). Open \
+                 documents: {}. Pass one of these ids or call list_documents",
+                describe_open(open)
+            ),
+            McpLiveError::PathNotAllowed {
+                tool,
+                argument,
+                path,
+                reason,
+                roots,
+            } => {
+                write!(f, "{tool}: {argument} '{path}' was refused: {reason}.")?;
+                if roots.is_empty() {
+                    return Ok(());
+                }
+                let roots: Vec<String> = roots
+                    .iter()
+                    .map(|root| root.display().to_string())
+                    .collect();
+                write!(
+                    f,
+                    " Use an absolute path inside one of: {}",
+                    roots.join(", ")
+                )
+            }
+            McpLiveError::DocumentNotOnScreen { document, nonce } => write!(
                 f,
                 "document {} is open but not on screen yet; switch to it",
-                format_document_id(*document)
+                format_spoken_id(*document, *nonce)
             ),
-            McpLiveError::DocumentIdConflict { bound, requested } => write!(
+            McpLiveError::DocumentIdConflict {
+                bound,
+                nonce,
+                requested,
+            } => write!(
                 f,
                 "documentId '{requested}' conflicts with the document this endpoint is bound \
                  to ({}); omit documentId or use the /mcp endpoint",
-                format_document_id(*bound)
+                format_spoken_id(*bound, *nonce)
             ),
             McpLiveError::OperationIdConflict { operation_id } => write!(
                 f,

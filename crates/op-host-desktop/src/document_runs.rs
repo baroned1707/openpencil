@@ -47,6 +47,10 @@ pub(crate) struct DocumentRuns {
     /// the on-screen document the registry holds a mirror (see
     /// `DesktopApp::sync_active_slot`).
     pub status: DocumentTabStatus,
+    /// How the document looked right before its most recent run launched, for
+    /// Edit > Revert Last Agent Run. Survives the run (and a Stop); see
+    /// `run_checkpoint`.
+    pub checkpoint: Option<crate::run_checkpoint::RunCheckpoint>,
 }
 
 impl DocumentRuns {
@@ -142,6 +146,7 @@ pub(crate) fn pump_runs(
 ) -> bool {
     let was_live = runs.is_live();
     let mut changed = false;
+    runs.drop_stale_checkpoint(host);
     // Deltas land in the tab the turn was bound to, not the active tab.
     changed |= chat_session::pump(
         host,

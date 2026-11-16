@@ -325,7 +325,7 @@ fn variable_name(value: &str) -> Option<&str> {
     value.strip_prefix('$').filter(|name| !name.is_empty())
 }
 
-fn reconcile_active_theme(
+pub(crate) fn reconcile_active_theme(
     doc: &PenDocument,
     current: &BTreeMap<String, String>,
 ) -> BTreeMap<String, String> {

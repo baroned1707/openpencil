@@ -39,6 +39,7 @@ impl DesktopApp {
                 self.recent_menu_labels.clear();
             }
         }
+        self.refresh_revert_menu();
         let Some(menu) = self.app_menu.as_ref() else {
             return;
         };
@@ -60,6 +61,17 @@ impl DesktopApp {
         if labels != self.recent_menu_labels {
             menu.set_recent_files(&labels);
             self.recent_menu_labels = labels;
+        }
+    }
+
+    /// Enable Edit ▸ Revert Last Agent Run exactly while the document on
+    /// screen has a run that can be reverted. Runs every loop iteration (and
+    /// right after a run launches or a revert finishes); it covers a tab
+    /// switch, a run ending and a document replacement alike because it asks
+    /// the live state each time.
+    pub(crate) fn refresh_revert_menu(&self) {
+        if let Some(menu) = self.app_menu.as_ref() {
+            menu.set_revert_enabled(self.has_revertable_run());
         }
     }
 
@@ -134,6 +146,11 @@ impl DesktopApp {
             A::Duplicate => self.host.apply_duplicate(),
             A::Group => self.host.apply_group(),
             A::Ungroup => self.host.apply_ungroup(),
+            A::RevertLastAgentRun => {
+                // A refusal or a No is reported by the revert itself.
+                let _ = self.revert_last_agent_run();
+                true
+            }
             A::ToggleFullscreen => {
                 if let Some(window) = self.window.as_ref() {
                     let next = match window.fullscreen() {

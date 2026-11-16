@@ -389,7 +389,13 @@ done
 #[test]
 fn a_document_bound_run_gets_that_documents_mcp_endpoint() {
     let bound = session_options_for_port(4123, Some(DocumentId(7)));
-    assert_eq!(bound.mcp_servers[0].url, "http://127.0.0.1:4123/mcp/d/7");
+    // The URL carries this launch's nonce, so it stops working after a restart
+    // instead of reaching whatever document is `d7` then.
+    let nonce = op_host_services::mcp_serve::document_nonce::launch_nonce();
+    assert_eq!(
+        bound.mcp_servers[0].url,
+        format!("http://127.0.0.1:4123/mcp/d/d7.{nonce}")
+    );
     let unbound = session_options_for_port(4123, None);
     assert_eq!(unbound.mcp_servers[0].url, "http://127.0.0.1:4123/mcp");
     // A remote agent never receives a desktop loopback endpoint, bound or not.

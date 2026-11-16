@@ -14,21 +14,25 @@
 //! non-browser clients (the `op` CLI, the VS Code MCP proxy, a local agent
 //! runner) and pass.
 //!
-//! No per-instance `X-OpenPencil-Token` is demanded: the local desktop and
-//! a self-hosted serve-web daemon trust every local process that clears the
-//! boundary — the token it published in `~/.openpencil/.op-mcp-port` and the
-//! `ping` reply was readable by any such process anyway, so it only added
-//! friction for a caller that had only the URL (a bare MCP client). The
-//! online multi-tenant daemon is a SEPARATE request loop that authenticates
-//! per account (`web_canvas_server::RequestAuth`, a `Bearer` token the hub
-//! introspects), so relaxing this endpoint does not touch online auth.
-//! `CollabGatePolicy` still runs on the UI thread for each apply and decides
-//! what a session permits. `openpencil/shutdown` keeps its own body-carried
-//! token check (`mcp_serve::shutdown_request_id`), unchanged.
+//! By default no per-instance token is demanded: the local desktop and a
+//! self-hosted serve-web daemon trust every local process that clears the
+//! boundary, because the instance token published in
+//! `~/.openpencil/.op-mcp-port` and the `ping` reply was readable by any such
+//! process anyway. The user can turn on a stricter mode (`mcp_require_token`,
+//! [`check_bearer`]): every request but a few probes then needs
+//! `Authorization: Bearer <token>` with a 32-byte random token kept in a 0600
+//! file beside the settings, and an unauthenticated `ping` no longer reveals
+//! the instance token. The online multi-tenant daemon is a SEPARATE request
+//! loop that authenticates per account (`web_canvas_server::RequestAuth`), so
+//! none of this touches online auth. `CollabGatePolicy` still runs on the UI
+//! thread for each apply and decides what a session permits.
+//! `openpencil/shutdown` keeps its own body-carried token check
+//! (`mcp_serve::shutdown_request_id`, compared in constant time).
 //!
-//! Deliberately still tokenless too: `OPTIONS` preflight, and the stateless
-//! `initialize` / `notifications/initialized` / `ping` probes, which carry
-//! no document data and are how a client discovers this instance.
+//! Deliberately still tokenless in the default mode: `OPTIONS` preflight, and
+//! the stateless `initialize` / `notifications/initialized` / `ping` probes,
+//! which carry no document data and are how a client discovers this instance.
+//! With the token required only `OPTIONS`, `ping` and `shutdown` stay exempt.
 //!
 //! # Browser-extension pinning (`OPENPENCIL_EXTENSION_ALLOWED_IDS`)
 //!
@@ -59,7 +63,8 @@
 //! caller's id matches it; snapshot ingress's open mode is never reused.
 
 use std::fmt;
-use std::sync::OnceLock;
+use std::path::PathBuf;
+use std::sync::{Arc, OnceLock, RwLock};
 
 /// Env var pinning which browser-extension ids may reach the snapshot
 /// ingress. Unset (or empty) means "any well-formed extension origin" —
@@ -77,11 +82,51 @@ const DENIED_CODE: i32 = -32001;
 pub(super) struct LiveAdmission {
     token: String,
     port: u16,
+    /// The opt-in bearer token (`mcp_require_token`). `None` keeps today's
+    /// open access; `Some` is demanded of every request but the probes listed
+    /// in [`check_bearer`]. Behind a lock because the desktop flips it while
+    /// the server keeps running.
+    bearer: RwLock<Option<Arc<str>>>,
+    /// Folders beyond the open documents' project roots that file-touching
+    /// tools may use (the user's own setting).
+    extra_roots: RwLock<Vec<PathBuf>>,
 }
 
 impl LiveAdmission {
     pub(super) fn new(token: String, port: u16) -> Self {
-        Self { token, port }
+        Self {
+            token,
+            port,
+            bearer: RwLock::new(None),
+            extra_roots: RwLock::new(Vec::new()),
+        }
+    }
+
+    pub(super) fn set_bearer(&self, token: Option<String>) {
+        let token = token.filter(|token| !token.is_empty()).map(Arc::from);
+        *self.bearer.write().unwrap_or_else(|e| e.into_inner()) = token;
+    }
+
+    pub(super) fn bearer_required(&self) -> bool {
+        self.bearer().is_some()
+    }
+
+    fn bearer(&self) -> Option<Arc<str>> {
+        self.bearer
+            .read()
+            .unwrap_or_else(|e| e.into_inner())
+            .clone()
+    }
+
+    pub(super) fn set_extra_roots(&self, roots: Vec<PathBuf>) {
+        *self.extra_roots.write().unwrap_or_else(|e| e.into_inner()) = roots;
+    }
+
+    pub(super) fn extra_roots(&self) -> Vec<PathBuf> {
+        self.extra_roots
+            .read()
+            .unwrap_or_else(|e| e.into_inner())
+            .clone()
     }
 
     /// The per-instance identity token — also what the `ping` reply and
@@ -108,6 +153,9 @@ pub(super) enum AdmissionDenial {
     ForeignHost,
     /// An `Origin` header that is not this instance's own loopback origin.
     ForeignOrigin,
+    /// The endpoint requires `Authorization: Bearer <token>` and the request
+    /// carried none, or a wrong one.
+    BadBearer,
 }
 
 impl AdmissionDenial {
@@ -117,6 +165,7 @@ impl AdmissionDenial {
     pub(super) fn http_status(self) -> &'static str {
         match self {
             AdmissionDenial::ForeignHost | AdmissionDenial::ForeignOrigin => "403 Forbidden",
+            AdmissionDenial::BadBearer => "401 Unauthorized",
         }
     }
 
@@ -129,6 +178,10 @@ impl AdmissionDenial {
             }
             AdmissionDenial::ForeignOrigin => {
                 "live MCP endpoint refuses cross-origin requests (bad Origin header)"
+            }
+            AdmissionDenial::BadBearer => {
+                "live MCP endpoint requires 'Authorization: Bearer <token>' (the editor's \
+                 'require token' setting is on); configure your MCP client with the token"
             }
         }
     }
@@ -170,6 +223,85 @@ pub(super) fn check_boundary(
         return Err(AdmissionDenial::ForeignOrigin);
     }
     Ok(())
+}
+
+/// Gate 2 — the opt-in bearer token (`mcp_require_token`). Off (the default)
+/// it admits everything, exactly as before.
+///
+/// On, every request needs `Authorization: Bearer <token>`, compared in
+/// constant time, EXCEPT:
+///
+/// * `OPTIONS` preflights, which a browser sends without credentials (the
+///   `Host`/`Origin` gate above already decides whether the page may proceed);
+/// * the unauthenticated JSON-RPC `ping` on an MCP route, which is how `op`
+///   finds out whether an editor is alive. It answers without the instance
+///   token (see `live_ping_response`);
+/// * `openpencil/shutdown` on an MCP route, whose body carries its own
+///   credential (the instance token, checked in constant time by
+///   `shutdown_request_id`), which is what `op stop` presents.
+///
+/// The REST routes the Chrome extension uses (`/api/import/web-snapshot`,
+/// the design.md route) get no exception: a browser extension cannot present
+/// the token, so they stop working while the flag is on.
+pub(super) fn check_bearer(
+    req: &crate::mcp_serve::HttpRequest,
+    admission: &LiveAdmission,
+) -> Result<(), AdmissionDenial> {
+    let Some(required) = admission.bearer() else {
+        return Ok(());
+    };
+    if req.method == "OPTIONS" || is_credential_free_probe(req, admission.token()) {
+        return Ok(());
+    }
+    if presents_bearer(req, &required) {
+        return Ok(());
+    }
+    Err(AdmissionDenial::BadBearer)
+}
+
+/// Whether the request carries `Authorization: Bearer <required>`.
+pub(super) fn presents_bearer(req: &crate::mcp_serve::HttpRequest, required: &str) -> bool {
+    req.authorization
+        .as_deref()
+        .and_then(bearer_credential)
+        .is_some_and(|given| {
+            crate::mcp_serve::constant_time::secrets_equal(given.as_bytes(), required.as_bytes())
+        })
+}
+
+/// Whether the caller proved the bearer token (always `true` while the flag is
+/// off, when there is nothing to prove). The `ping` reply uses it to decide
+/// whether it may carry the instance token.
+pub(super) fn is_authenticated(
+    req: &crate::mcp_serve::HttpRequest,
+    admission: &LiveAdmission,
+) -> bool {
+    admission
+        .bearer()
+        .is_none_or(|required| presents_bearer(req, &required))
+}
+
+/// The credential in an `Authorization` header value with the `Bearer`
+/// scheme (case-insensitive, as RFC 9110 makes scheme names).
+fn bearer_credential(header: &str) -> Option<&str> {
+    let (scheme, credential) = header.trim().split_once(char::is_whitespace)?;
+    let credential = credential.trim();
+    (scheme.eq_ignore_ascii_case("bearer") && !credential.is_empty()).then_some(credential)
+}
+
+/// A `ping` or a token-carrying `openpencil/shutdown`, POSTed to an MCP route.
+/// Only the MCP routes: the REST routes parse their own bodies, and a body
+/// that merely says `"method":"ping"` must not unlock them.
+fn is_credential_free_probe(req: &crate::mcp_serve::HttpRequest, instance_token: &str) -> bool {
+    if req.method != "POST" || crate::mcp_serve::document_address::parse_route(&req.path).is_none()
+    {
+        return false;
+    }
+    crate::mcp_serve::shutdown_request_id(&req.body, instance_token).is_some()
+        || matches!(
+            crate::mcp_serve::classify_stateless(&req.body),
+            crate::mcp_serve::Stateless::Ping(_)
+        )
 }
 
 /// JSON-RPC error body for a refused `/mcp` request, echoing the caller's

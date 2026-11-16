@@ -69,23 +69,31 @@ fn routes_decode_the_bound_document_and_catalog() {
     assert_eq!((full.catalog, full.document), (McpToolCatalog::Full, None));
     let lean = parse_route("/mcp/lean").expect("lean");
     assert_eq!(lean.catalog, McpToolCatalog::Lean);
+    let bare = |id| {
+        Some(DocumentRef {
+            id: DocumentId(id),
+            nonce: None,
+        })
+    };
     let bound = parse_route("/mcp/d/3").expect("bound");
     assert_eq!(
         (bound.catalog, bound.document),
-        (McpToolCatalog::Full, Some(DocumentId(3)))
+        (McpToolCatalog::Full, bare(3))
     );
     let bound_lean = parse_route("/mcp/d/3/lean").expect("bound lean");
     assert_eq!(
         (bound_lean.catalog, bound_lean.document),
-        (McpToolCatalog::Lean, Some(DocumentId(3)))
+        (McpToolCatalog::Lean, bare(3))
     );
-    assert_eq!(
-        parse_route("/mcp/d/d3").and_then(|r| r.document),
-        Some(DocumentId(3))
-    );
+    assert_eq!(parse_route("/mcp/d/d3").and_then(|r| r.document), bare(3));
     for bad in [
         "/mcp/d/",
         "/mcp/d/03",
+        "/mcp/d/d3.A1B2C3",
+        "/mcp/d/d3.a1b2c",
+        "/mcp/d/d3.a1b2c3d",
+        "/mcp/d/d3.",
+        "/mcp/d/.a1b2c3",
         "/mcp/d/x",
         "/mcp/d/3/tiny",
         "/mcp/d/3/lean/x",
@@ -97,17 +105,57 @@ fn routes_decode_the_bound_document_and_catalog() {
 
 #[test]
 fn mcp_url_for_document_formats_routes() {
+    let nonce = launch_nonce();
     assert_eq!(
         mcp_url_for_document(3100, DocumentId(3), false),
-        "http://127.0.0.1:3100/mcp/d/3"
+        format!("http://127.0.0.1:3100/mcp/d/d3.{nonce}")
     );
     assert_eq!(
         mcp_url_for_document(3100, DocumentId(12), true),
-        "http://127.0.0.1:3100/mcp/d/12/lean"
+        format!("http://127.0.0.1:3100/mcp/d/d12.{nonce}/lean")
     );
-    // The URL parses back to the route it names.
-    let route = parse_route("/mcp/d/12/lean").expect("route");
-    assert_eq!(route.document, Some(DocumentId(12)));
+    // The URL parses back to the route it names, nonce included.
+    let url = mcp_url_for_document(3100, DocumentId(12), true);
+    let path = url.strip_prefix("http://127.0.0.1:3100").expect("path");
+    let route = parse_route(path).expect("route");
+    assert_eq!(
+        route.document,
+        Some(DocumentRef {
+            id: DocumentId(12),
+            nonce: Some(nonce)
+        })
+    );
+    assert_eq!(route.catalog, McpToolCatalog::Lean);
+}
+
+#[test]
+fn route_with_full_id_works() {
+    let route = parse_route("/mcp/d/d3.a1b2c3").expect("full id route");
+    assert_eq!(
+        route.document,
+        Some(DocumentRef {
+            id: DocumentId(3),
+            nonce: LaunchNonce::parse("a1b2c3")
+        })
+    );
+    // The number alone, with a nonce, is also a route (the `d` is optional).
+    assert_eq!(
+        parse_route("/mcp/d/3.a1b2c3").and_then(|route| route.document),
+        route.document
+    );
+}
+
+#[test]
+fn a_bare_and_a_full_spelling_agree_only_when_they_can_name_one_document() {
+    let bare = parse_document_ref("d3").expect("bare");
+    let full = parse_document_ref("d3.a1b2c3").expect("full");
+    let other_launch = parse_document_ref("d3.ffffff").expect("full");
+    assert!(bare.agrees_with(&full) && full.agrees_with(&bare));
+    assert!(!full.agrees_with(&other_launch));
+    assert!(!bare.agrees_with(&parse_document_ref("d4").expect("bare")));
+    // The headless parser stays bare-only.
+    assert_eq!(parse_document_id("d3"), Some(DocumentId(3)));
+    assert_eq!(parse_document_id("d3.a1b2c3"), None);
 }
 
 #[test]

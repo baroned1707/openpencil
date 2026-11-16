@@ -20,10 +20,16 @@ pub(super) fn request_documents(
             McpLiveError::UiThread("UI thread is not accepting MCP document requests".to_string())
         })?;
     wake_ui();
-    recv_with_timeout(
+    let mut open: Vec<DocumentListing> = recv_with_timeout(
         ack_rx.recv_timeout(req_tx.timing().ack_budget),
         "document-list",
-    )
+    )?;
+    // The host does not know the launch nonce; every id leaves this server in
+    // its full form.
+    for listing in &mut open {
+        listing.nonce = Some(req_tx.nonce());
+    }
+    Ok(open)
 }
 
 /// Turn a resolver refusal into the error the agent should read. An unknown
@@ -36,10 +42,16 @@ pub(super) fn resolve_failure(
     reason: ResolveError,
 ) -> McpLiveError {
     match reason {
-        ResolveError::NotReachable => McpLiveError::DocumentNotOnScreen { document },
+        ResolveError::NotReachable => McpLiveError::DocumentNotOnScreen {
+            document,
+            nonce: Some(req_tx.nonce()),
+        },
         ResolveError::Unknown => match request_documents(req_tx, wake_ui) {
             Ok(open) => McpLiveError::UnknownDocument {
-                requested: crate::mcp_serve::document_address::format_document_id(document),
+                requested: crate::mcp_serve::document_address::format_spoken_id(
+                    document,
+                    Some(req_tx.nonce()),
+                ),
                 open,
             },
             Err(error) => error,
@@ -325,18 +337,24 @@ pub(super) fn recv_with_timeout<T>(
     }
 }
 
-/// Build a per-instance identity token. Not security-sensitive — it only
-/// needs to be distinct across editor instances so the CLI can tell a
-/// live server apart from a stale discovery file or a recycled port. pid
-/// + start nanos is unique enough (two instances never start at the same
-///   nanosecond under the same pid).
+/// Build a per-instance identity token: the pid (so a human reading the
+/// discovery file can tell instances apart) and 16 random bytes. It tells the
+/// CLI a live server from a stale discovery file or a recycled port AND it is
+/// the credential `openpencil/shutdown` checks, so it must not be guessable
+/// from the pid and a start time.
 pub(super) fn make_live_token() -> String {
     let pid = std::process::id();
-    let nanos = SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .map(|d| d.as_nanos())
-        .unwrap_or(0);
-    format!("{pid:x}-{nanos:x}")
+    let mut random = [0u8; 16];
+    if getrandom::fill(&mut random).is_err() {
+        // No OS randomness: fall back to the clock rather than refuse to start.
+        let nanos = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .map(|d| d.as_nanos())
+            .unwrap_or(0);
+        random = nanos.to_le_bytes();
+    }
+    let hex: String = random.iter().map(|byte| format!("{byte:02x}")).collect();
+    format!("{pid:x}-{hex}")
 }
 
 /// Live `ping` reply: OpenPencil identity + `mode:"live"` + the instance
@@ -346,11 +364,17 @@ pub(super) fn make_live_token() -> String {
 /// strict clients validate a ping result as exactly `{ _meta? }` and
 /// reject top-level extras (Gemini CLI, issue #199); see
 /// `mcp_serve::ping_response`.
-pub(super) fn live_ping_response(id_raw: &str, token: &str) -> String {
+///
+/// `token` is `None` for an unauthenticated ping while the bearer requirement
+/// is on: the reply then says `authRequired` and keeps the token to itself.
+pub(super) fn live_ping_response(id_raw: &str, token: Option<&str>) -> String {
+    let identity = match token {
+        Some(token) => format!(r#""token":"{}""#, crate::mcp_serve::json_escape(token)),
+        None => r#""authRequired":true"#.to_string(),
+    };
     format!(
-        r#"{{"jsonrpc":"2.0","id":{id_raw},"result":{{"_meta":{{"server":"{}","mode":"live","token":"{}"}}}}}}"#,
+        r#"{{"jsonrpc":"2.0","id":{id_raw},"result":{{"_meta":{{"server":"{}","mode":"live",{identity}}}}}}}"#,
         crate::mcp_serve::MCP_SERVER_NAME,
-        crate::mcp_serve::json_escape(token)
     )
 }
 

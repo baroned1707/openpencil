@@ -37,7 +37,10 @@ pub(super) fn rebuild_registry(
         }
     }
     register_tool!("open_document", open_document_snapshot(doc));
-    register_tool!("save_document", save_document_snapshot(doc));
+    register_tool!(
+        "save_document",
+        op_mcp::save_document_snapshot_with_writer(doc, super::atomic_bytes::write_atomically)
+    );
     register_tool!(
         "create_document",
         create_document::create_document_snapshot()

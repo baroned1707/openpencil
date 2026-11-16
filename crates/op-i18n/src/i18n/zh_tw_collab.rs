@@ -550,6 +550,12 @@ pub fn lookup(key: &str) -> Option<&'static str> {
         "recovery.more" => "另外還有 {{count}} 個",
         "recovery.noteNewer" => "磁碟上的檔案較新，因此將以未命名副本開啟",
         "recovery.noteGone" => "原檔案已不存在，因此將以未命名副本開啟",
+        "menu.revertAgentRun" => "還原上一次智慧代理執行",
+        "dialog.revertAgentRunTitle" => "還原上一次智慧代理執行？",
+        "dialog.revertAgentRunBody" => "要將此文件還原到上一次智慧代理執行之前嗎？\n\n智慧代理所做的變更，以及執行開始後你所做的任何編輯，都將被捨棄。\n\n你可以用 Cmd+Z 復原此操作。",
+        "menu.revertAgentRun.nothing" => "此文件中沒有可還原的智慧代理執行。",
+        "menu.revertAgentRun.runLive" => "智慧代理仍在此文件中工作。請先停止它，然後再還原。",
+        "menu.revertAgentRun.replaced" => "此文件在智慧代理執行之後已被取代，因此沒有可還原的內容。",
         _ => return None,
     })
 }

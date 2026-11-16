@@ -11,6 +11,7 @@ use std::sync::Arc;
 use std::time::{Duration, Instant};
 
 use super::UiRequest;
+use crate::mcp_serve::document_nonce::LaunchNonce;
 
 /// How long a caller keeps waiting for the answer of a request the UI thread
 /// has already started, after its own budget ran out. Bounded so a UI thread
@@ -86,11 +87,28 @@ impl LiveTiming {
 pub(super) struct UiSender {
     tx: Sender<UiRequest>,
     timing: LiveTiming,
+    /// This launch's document-id nonce: stamped on every listing the
+    /// connection threads read, and demanded of every full id they accept.
+    nonce: LaunchNonce,
 }
 
 impl UiSender {
     pub(super) fn new(tx: Sender<UiRequest>, timing: LiveTiming) -> Self {
-        Self { tx, timing }
+        Self {
+            tx,
+            timing,
+            nonce: crate::mcp_serve::document_nonce::launch_nonce(),
+        }
+    }
+
+    /// The same queue naming its documents with `nonce` (a restart in a test).
+    pub(super) fn with_nonce(mut self, nonce: LaunchNonce) -> Self {
+        self.nonce = nonce;
+        self
+    }
+
+    pub(super) fn nonce(&self) -> LaunchNonce {
+        self.nonce
     }
 
     /// `Err(())` when the pump is gone (the editor is shutting down).

@@ -7,6 +7,29 @@ mod checked_tests;
 mod save_tests;
 
 #[test]
+fn the_require_token_flag_defaults_off_persists_and_is_watched_for_changes() {
+    let mut state = EditorState::new();
+    assert!(!state.editor_ui.agent_settings.mcp_require_token);
+    assert_eq!(to_payload(&state).mcp_require_token, Some(false));
+
+    let before = fingerprint(&state);
+    state.editor_ui.agent_settings.mcp_require_token = true;
+    assert!(before != fingerprint(&state), "a flip must trigger a save");
+    let payload = to_payload(&state);
+    assert_eq!(payload.mcp_require_token, Some(true));
+
+    let mut restored = EditorState::new();
+    apply_payload(&mut restored, payload);
+    assert!(restored.editor_ui.agent_settings.mcp_require_token);
+    // A settings file written before the flag existed leaves it off.
+    let mut legacy = EditorState::new();
+    let mut payload = to_payload(&legacy);
+    payload.mcp_require_token = None;
+    apply_payload(&mut legacy, payload);
+    assert!(!legacy.editor_ui.agent_settings.mcp_require_token);
+}
+
+#[test]
 fn persisted_locale_overrides_system_locale_seed() {
     assert_eq!(
         resolve_persisted_locale(Locale::Ru, Some("en-US")),

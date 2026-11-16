@@ -6,7 +6,7 @@
 //! neither argument means anything), the live connection adds the two
 //! properties to the finished `tools/list` response. That one post-processing
 //! step covers the static catalog, the per-document kit insert tools and the
-//! lean catalog alike. An endpoint bound to one document (`/mcp/d/<N>`) needs
+//! lean catalog alike. An endpoint bound to one document (`/mcp/d/<id>`) needs
 //! no `documentId`, so its list is left as it is.
 
 use serde_json::{json, Value};
@@ -22,7 +22,7 @@ const LIST_DOCUMENTS: &str = "list_documents";
 fn document_id_property() -> Value {
     json!({
         "type": "string",
-        "description": "Which open document this call is about, as returned by list_documents (d<N>). Optional when exactly one document is open or the endpoint is bound to one document; required otherwise.",
+        "description": "Which open document this call is about, as returned by list_documents (the full d<N>.<nonce>; ids from an earlier session are refused). Optional when exactly one document is open or the endpoint is bound to one document; required otherwise.",
         // MCP 2026-07-28 streamable HTTP: a client mirrors this value into the
         // `Mcp-Param-DocumentId` header; the server checks it only when sent.
         "x-mcp-header": DOCUMENT_ID_HEADER_PARAM,

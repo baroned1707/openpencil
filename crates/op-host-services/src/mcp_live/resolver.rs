@@ -80,6 +80,7 @@ impl DocumentResolver for SingleDocumentResolver<'_> {
             dirty: self.state.is_dirty(),
             active: true,
             status: DocumentTabStatus::Idle,
+            nonce: None,
         }]
     }
 
