@@ -33,7 +33,7 @@ pub(super) fn paint_builtin_agent_form(
     let touch = ui.touch_chrome();
     Card {
         fill: Some(theme.muted),
-        border: Some(theme.border),
+        border: None,
         radius: if touch { 14.0 } else { 10.0 },
     }
     .paint(cx.backend, card, &tokens_from_theme(theme));
@@ -100,7 +100,7 @@ pub(super) fn paint_builtin_agent_form(
     // the form's main action.
     if index.is_some() {
         let save = crate::widgets::agent_settings_builtin_layout::editing_save_rect(card, touch);
-        cx.backend.fill_round_rect(save, 10.0, theme.accent);
+        cx.backend.fill_round_rect(save, 6.0, theme.primary);
         let label = t_settings(ui, "common.save");
         let font = if touch { 15.0 } else { 12.0 };
         let text_w = crate::widgets::text_metrics::measure_chrome(cx.backend, label, font);
@@ -108,14 +108,14 @@ pub(super) fn paint_builtin_agent_form(
             cx,
             label,
             font,
-            theme.accent_foreground,
+            theme.primary_foreground,
             save.origin.x + (save.size.x - text_w) / 2.0,
             jian_widgets::centered_text_baseline_y(save, font),
         );
         let rect = crate::widgets::agent_settings_builtin_layout::editing_delete_rect(card, touch);
         let danger = theme.destructive;
         cx.backend
-            .stroke_round_rect(rect, 10.0, danger.with_alpha(0.55), 1.0);
+            .fill_round_rect(rect, 6.0, danger.with_alpha(0.16));
         let icon_size = if touch { 20.0 } else { 14.0 };
         draw_icon(
             cx.backend,

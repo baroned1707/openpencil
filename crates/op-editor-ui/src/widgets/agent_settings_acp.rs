@@ -15,12 +15,12 @@ use crate::widgets::agent_settings_header_action::{
 use crate::widgets::agent_settings_i18n::t as t_settings;
 use crate::widgets::agent_settings_metrics::{self as metrics, ROW_AVATAR, ROW_PAD_X, ROW_TEXT_X};
 use crate::widgets::agent_settings_rows::{
-    fit_text, paint_row_hairline, paint_row_label_above_status_at, paint_row_status_line_at_fitted,
+    fit_text, paint_row_label_above_status_at, paint_row_status_line_at_fitted,
     paint_section_title, row_text_budget, ROW_LABEL_BASELINE, ROW_LABEL_FONT,
 };
 use crate::widgets::button::{paint_ghost_button_feedback, tokens_from_theme};
 use crate::widgets::icons::{draw_icon, Icon};
-use crate::widgets::settings_form::{self, draw_text, ellipsize, paint_action};
+use crate::widgets::settings_form::{self, draw_text, ellipsize, paint_action, paint_list_card};
 use crate::widgets::text_metrics;
 use crate::widgets::PaintCx;
 use crate::{Point2D, Rect, TextLayout};
@@ -318,13 +318,7 @@ fn paint_compact_acp_card(
     card: Rect,
 ) {
     let hovered = settings.hover_acp_agent == index;
-    if hovered {
-        cx.backend.fill_round_rect(card, 8.0, theme.button_hover);
-    }
-    let last = index + 1 == settings.acp_agents.len() && settings.acp_agent_draft.is_none();
-    if !last {
-        paint_row_hairline(cx, theme, card);
-    }
+    paint_list_card(cx, theme, card, hovered);
     paint_avatar(cx, theme, agent, card);
 
     let text_x = card.origin.x + ROW_TEXT_X;
@@ -411,7 +405,7 @@ fn paint_acp_form(
 ) {
     Card {
         fill: Some(theme.muted),
-        border: Some(theme.border),
+        border: None,
         radius: 10.0,
     }
     .paint(cx.backend, card, &tokens_from_theme(theme));
@@ -481,7 +475,6 @@ fn paint_connection_button(
     let enabled = !probing && (agent.ready() || connected);
     if connected {
         cx.backend.fill_round_rect(btn, 6.0, theme.muted);
-        cx.backend.stroke_round_rect(btn, 6.0, theme.border, 1.0);
     } else {
         Button {
             label: "",
@@ -489,7 +482,7 @@ fn paint_connection_button(
             variant: if enabled {
                 ButtonVariant::Primary
             } else {
-                ButtonVariant::Outline
+                ButtonVariant::Secondary
             },
             enabled: true,
             hovered: !enabled,
@@ -611,7 +604,6 @@ fn paint_connection_type_badge(
 ) {
     let r = connection_type_rect(card);
     cx.backend.fill_round_rect(r, 6.0, theme.card);
-    cx.backend.stroke_round_rect(r, 6.0, theme.border, 1.0);
     let kind = agent.connection_type;
     let label = connection_type_label(ui, kind);
     let icon = match kind {

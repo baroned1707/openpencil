@@ -16,13 +16,14 @@ use crate::widgets::agent_settings_panel_geometry::{
     connect_btn_rect_at, disconnect_btn_rect_at, status_pill_slot_rect_at,
 };
 use crate::widgets::agent_settings_rows::{
-    fit_text, measure_settings_text, paint_row_hairline, ROW_LABEL_BASELINE,
-    ROW_SECOND_LINE_BASELINE, SETTINGS_FONT_FAMILY,
+    fit_text, measure_settings_text, ROW_LABEL_BASELINE, ROW_SECOND_LINE_BASELINE,
+    SETTINGS_FONT_FAMILY,
 };
 use crate::widgets::brand_icons::{
     paint_brand_logo, paint_deepseek_harness_logo, paint_kimi_logo, paint_opencode_logo, BrandLogo,
 };
 use crate::widgets::button::tokens_from_theme;
+use crate::widgets::settings_form::paint_list_card;
 use crate::widgets::PaintCx;
 use crate::{Color, Point2D, Rect, TextLayout};
 use jian_widgets::components::button::{Button, ButtonVariant};
@@ -39,20 +40,8 @@ pub(super) fn paint_agent_card(
     card: Rect,
     index: usize,
 ) {
-    // The provider list paints in `AgentProvider::DISPLAY` order, so
-    // the row knows whether it is the last one by identity, not by
-    // its `AgentProvider::ALL` storage index (`index` is the ALL
-    // index — connect state lives there).
-    let last = Some(provider) == AgentProvider::DISPLAY.last().copied();
-    // A hairline-separated list row, matching MCP and System — the modal
-    // had been speaking two visual languages, cards here and rows there.
-    // Hover still washes the whole row so the target reads the same.
-    if settings.hover_provider == index {
-        cx.backend.fill_round_rect(card, 8.0, theme.button_hover);
-    }
-    if !last {
-        paint_row_hairline(cx, theme, card);
-    }
+    // Filled `muted` card, `accent` while hovered — no outline.
+    paint_list_card(cx, theme, card, settings.hover_provider == index);
     let avatar = Rect {
         origin: Point2D::new(
             card.origin.x + 16.0,
@@ -199,7 +188,7 @@ pub(super) fn paint_agent_card(
             Button {
                 label: t_settings(ui, "settings.agents.disconnect"),
                 icon_paths: None,
-                variant: ButtonVariant::DestructiveOutline,
+                variant: ButtonVariant::Destructive,
                 enabled: true,
                 hovered: false,
                 pressed: false,

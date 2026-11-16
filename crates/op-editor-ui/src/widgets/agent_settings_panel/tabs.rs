@@ -1,7 +1,7 @@
 //! The centred horizontal tab strip across the top of the settings
 //! modal — the wide-workspace replacement for the old 200 px sidebar
 //! nav. Each tab is an equal-width pill carrying a lucide glyph and its
-//! localized label; the active pill is filled, hover washes the rest.
+//! localized label; the active pill is filled (`row_selected`, radius 6), hover washes the rest.
 
 use super::*;
 use crate::widgets::agent_settings_rows::{fit_text, measure_settings_text, SETTINGS_FONT_FAMILY};
@@ -37,25 +37,9 @@ pub(super) fn paint_tab_strip(
         let selected = *tab == active_tab;
         let hovered = !selected && settings.hover_nav == Some(*tab);
         if selected {
-            cx.backend.fill_round_rect(
-                pill,
-                if layout.vertical_navigation {
-                    12.0
-                } else {
-                    pill.size.y / 2.0
-                },
-                theme.muted,
-            );
+            cx.backend.fill_round_rect(pill, 6.0, theme.row_selected);
         } else if hovered {
-            cx.backend.fill_round_rect(
-                pill,
-                if layout.vertical_navigation {
-                    12.0
-                } else {
-                    pill.size.y / 2.0
-                },
-                theme.accent,
-            );
+            cx.backend.fill_round_rect(pill, 6.0, theme.accent);
         }
         let color = if selected {
             theme.foreground

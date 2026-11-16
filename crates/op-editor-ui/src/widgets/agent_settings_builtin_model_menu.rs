@@ -13,6 +13,7 @@
 use crate::theme::Theme;
 use crate::widgets::agent_settings_builtin_layout::field_input_rect_for_ui;
 use crate::widgets::agent_settings_i18n::t as t_settings;
+use crate::widgets::file_menu::popup;
 use crate::widgets::icons::{draw_icon, Icon};
 use crate::widgets::settings_form::{draw_text, ellipsize};
 use crate::widgets::PaintCx;
@@ -285,10 +286,8 @@ pub fn paint_model_menu(
         return;
     }
     let menu = model_menu_rect(settings, card, index, touch);
-    let radius = if touch { 10.0 } else { 6.0 };
-    cx.backend.fill_round_rect(menu, radius, theme.card);
-    cx.backend
-        .stroke_round_rect(menu, radius, theme.border, 1.0);
+    let radius = if touch { 10.0 } else { 8.0 };
+    popup::paint_popup_surface(cx.backend, theme, menu, radius);
     cx.backend.save();
     cx.backend.clip_rect(menu);
     let scroll_offset = effective_model_scroll(settings, index, touch);
@@ -302,11 +301,15 @@ pub fn paint_model_menu(
         let selected = effective_model_selected(settings, ui, agent, index);
         for (row, option) in options.iter().enumerate() {
             let item = row_rect(menu, row, touch);
+            let row_radius = if touch { 8.0 } else { 6.0 };
+            let is_selected = selected(&option.id);
             if settings.builtin_model_menu_hover == Some(row) {
+                cx.backend.fill_round_rect(item, row_radius, theme.accent);
+            } else if is_selected {
                 cx.backend
-                    .fill_round_rect(item, if touch { 8.0 } else { 5.0 }, theme.button_hover);
+                    .fill_round_rect(item, row_radius, theme.row_selected_primary);
             }
-            if selected(&option.id) {
+            if is_selected {
                 let icon_size = if touch { 18.0 } else { 12.0 };
                 draw_icon(
                     cx.backend,

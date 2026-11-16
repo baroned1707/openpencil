@@ -655,12 +655,12 @@ fn expanded_image_gen_profile_starts_below_add_button_with_clear_gap() {
     panel.paint(&mut cx, rect);
 
     let card = backend
-        .round_strokes
+        .round_fills
         .iter()
-        .find_map(|(stroke, color)| {
-            (stroke.size.y > 120.0 && color_eq(*color, panel.theme.primary)).then_some(*stroke)
+        .find_map(|(fill, color)| {
+            (fill.size.y > 120.0 && color_eq(*color, panel.theme.muted)).then_some(*fill)
         })
-        .expect("expanded active image generation profile should paint a card stroke");
+        .expect("expanded active image generation profile should paint a filled card");
     assert!(
         card.origin.y >= add_button_bottom + 12.0,
         "expanded image generation profile should leave a clear gap below the add button"
@@ -692,12 +692,12 @@ fn expanded_image_gen_profile_card_is_inset_from_content_clip_edges() {
     panel.paint(&mut cx, rect);
 
     let card = backend
-        .round_strokes
+        .round_fills
         .iter()
-        .find_map(|(stroke, color)| {
-            (stroke.size.y > 120.0 && color_eq(*color, panel.theme.primary)).then_some(*stroke)
+        .find_map(|(fill, color)| {
+            (fill.size.y > 120.0 && color_eq(*color, panel.theme.muted)).then_some(*fill)
         })
-        .expect("expanded active image generation profile should paint a card stroke");
+        .expect("expanded active image generation profile should paint a filled card");
     assert!(
         card.origin.x >= content_x + 8.0
             && card.origin.x + card.size.x <= content_x + content_w - 8.0,

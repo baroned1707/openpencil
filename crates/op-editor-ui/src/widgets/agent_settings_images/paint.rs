@@ -284,7 +284,6 @@ fn paint_search_test(
             AgentSettingsButton::ImageSearchTest,
         )),
     );
-    cx.backend.stroke_round_rect(btn, radius, theme.border, 1.0);
     let font = if density.touch { 15.0 } else { 13.0 };
     let text = t_settings(ui, "settings.images.test");
     let text_w = text_metrics::measure_chrome(cx.backend, text, font);
@@ -412,7 +411,6 @@ fn paint_add_button(
             AgentSettingsButton::ImageGenAdd,
         )),
     );
-    cx.backend.stroke_round_rect(btn, radius, theme.border, 1.0);
     let font = if density.touch { 15.0 } else { 13.0 };
     let text = ellipsize(
         cx,
@@ -526,15 +524,8 @@ fn paint_profile_row(
     let active = settings.active_image_gen_profile_id.as_deref() == Some(profile.id.as_str());
     let editing = is_editing_profile(settings, index);
     let radius = if touch { 12.0 } else { 6.0 };
-    if active || editing {
-        cx.backend.fill_round_rect(row, radius, theme.muted);
-    }
-    cx.backend.stroke_round_rect(
-        row,
-        radius,
-        if active { theme.primary } else { theme.border },
-        1.0,
-    );
+    // Filled card, no outline; the header's active dot marks the active one.
+    cx.backend.fill_round_rect(row, radius, theme.muted);
     paint_profile_header(
         cx, theme, settings, ui, profile, index, row, touch, active, editing,
     );

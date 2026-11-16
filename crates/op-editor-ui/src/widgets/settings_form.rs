@@ -11,7 +11,7 @@ use crate::widgets::button::paint_ghost_button_feedback;
 use crate::widgets::icons::{draw_icon, Icon};
 use crate::widgets::text_metrics;
 use crate::widgets::PaintCx;
-use crate::{Color, Point2D, Rect, TextLayout};
+use crate::{Color, Point2D, Rect, RenderBackend, TextLayout};
 use op_editor_core::editor_ui_state::EditorUiState;
 
 /// Section subtitle / empty-hint row advances. Both come from the
@@ -214,21 +214,49 @@ pub(crate) fn paint_field_chrome_for_ui(
         label_x,
         label_baseline,
     );
-    cx.backend.fill_round_rect(
-        input,
-        radius,
-        if focused {
-            theme.background
-        } else {
-            theme.card
-        },
-    );
-    cx.backend.stroke_round_rect(
-        input,
-        radius,
-        if focused { theme.primary } else { theme.border },
-        1.0,
-    );
+    // Fields sit on `muted` cards, so the fill is the inset panel tone
+    // (white on light, #2C2C2C on dark); only focus draws a ring.
+    cx.backend.fill_round_rect(input, radius, theme.card);
+    paint_focus_ring(cx, theme, input, radius, focused);
+}
+
+/// Two low-alpha offset layers under a floating surface (popover menu or
+/// the modal itself) — the codebase's shadow idiom, no outline needed.
+pub(crate) fn paint_soft_shadow(backend: &mut dyn RenderBackend, rect: Rect, radius: f32) {
+    for (dy, grow, alpha) in [(8.0, 4.0, 0.05), (3.0, 1.0, 0.07)] {
+        let layer = Rect {
+            origin: Point2D::new(rect.origin.x - grow, rect.origin.y + dy - grow),
+            size: Point2D::new(rect.size.x + grow * 2.0, rect.size.y + grow * 2.0),
+        };
+        backend.fill_round_rect(layer, radius + grow, Color::BLACK.with_alpha(alpha));
+    }
+}
+
+/// Filled list-row card: `muted` at rest, `accent` while hovered, inset one
+/// pixel top and bottom so stacked zero-gap rows keep a thin seam of panel
+/// between them. Hit-testing still uses the full `card` rect.
+pub(crate) fn paint_list_card(cx: &mut PaintCx<'_>, theme: &Theme, card: Rect, hovered: bool) {
+    let visual = Rect {
+        origin: Point2D::new(card.origin.x, card.origin.y + 1.0),
+        size: Point2D::new(card.size.x, (card.size.y - 2.0).max(0.0)),
+    };
+    let fill = if hovered { theme.accent } else { theme.muted };
+    cx.backend.fill_round_rect(visual, 8.0, fill);
+}
+
+/// 1px primary outline drawn only while a field is focused — the one
+/// functional stroke a borderless field keeps.
+pub(crate) fn paint_focus_ring(
+    cx: &mut PaintCx<'_>,
+    theme: &Theme,
+    rect: Rect,
+    radius: f32,
+    focused: bool,
+) {
+    if focused {
+        cx.backend
+            .stroke_round_rect(rect, radius, theme.primary, 1.0);
+    }
 }
 
 /// Walk a vertical card stack (`heights`, separated by `gap`) starting

@@ -9,9 +9,9 @@ use crate::theme::Theme;
 use crate::widgets::agent_settings_i18n::t as t_settings;
 use crate::widgets::agent_settings_metrics::CONTENT_TAIL_PAD;
 use crate::widgets::agent_settings_rows::{
-    fit_text, measure_settings_text, paint_footnote, paint_row_hairline, paint_row_label,
-    paint_row_label_above_status, paint_row_status_line, paint_tab_intro, row_control_rect,
-    row_rect_in, rows_block_height, tab_intro_height, RowLines, FOOTNOTE_H, SETTINGS_FONT_FAMILY,
+    fit_text, measure_settings_text, paint_footnote, paint_row_label, paint_row_label_above_status,
+    paint_row_status_line, paint_tab_intro, row_control_rect, row_rect_in, rows_block_height,
+    tab_intro_height, RowLines, FOOTNOTE_H, SETTINGS_FONT_FAMILY,
 };
 use crate::widgets::agent_settings_switch::{
     paint_settings_switch, SETTINGS_SWITCH_H, SETTINGS_SWITCH_W,
@@ -201,7 +201,6 @@ pub(super) fn paint_system_tab(
 
     let rows = visible_rows();
     let kinds = row_kinds();
-    let last = rows.len() - 1;
     for (index, row) in rows.iter().enumerate() {
         let rect = row_rect_in(content, body_top(content), &kinds, index);
         match row {
@@ -226,9 +225,6 @@ pub(super) fn paint_system_tab(
                 );
             }
             SystemRow::PencilCursor => paint_cursor_row(cx, theme, ui, content, rect),
-        }
-        if index != last {
-            paint_row_hairline(cx, theme, rect);
         }
     }
 
@@ -265,12 +261,13 @@ fn paint_appearance_row(
         SEGMENT_W * 2.0 + 16.0,
     );
     let group = row_control_rect(row, SEGMENT_W * 2.0, SEGMENT_H);
-    cx.backend.stroke_round_rect(group, 8.0, theme.border, 1.0);
+    // Segmented control: filled track, selected segment a step lighter.
+    cx.backend.fill_round_rect(group, 8.0, theme.input);
     for (i, mode) in SEGMENT_MODES.iter().enumerate() {
         let seg = segment_rect(content, i);
         let active = ui.effective_theme_mode() == *mode;
         if active {
-            cx.backend.fill_round_rect(seg, 7.0, theme.muted);
+            cx.backend.fill_round_rect(seg, 7.0, theme.row_selected);
         }
         let color = if active {
             theme.foreground

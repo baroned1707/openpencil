@@ -110,26 +110,16 @@ fn paint_panel(cx: &mut PaintCx<'_>, panel: Rect, args: PanelPaintArgs<'_>) {
     } = args;
     match layout.kind {
         AgentSettingsSurfaceKind::Compact => cx.backend.fill_rect(panel, theme.card),
-        AgentSettingsSurfaceKind::Medium | AgentSettingsSurfaceKind::Expanded => {
-            cx.backend.fill_round_rect(panel, 20.0, theme.card);
-            cx.backend.stroke_round_rect(panel, 20.0, theme.border, 1.0);
-        }
-        AgentSettingsSurfaceKind::Desktop => {
-            cx.backend.fill_round_rect(panel, 18.0, theme.card);
-            cx.backend.stroke_round_rect(panel, 18.0, theme.border, 1.0);
+        // Figma UI3 modal: 12px surface lifted by a soft shadow, no outline.
+        AgentSettingsSurfaceKind::Medium
+        | AgentSettingsSurfaceKind::Expanded
+        | AgentSettingsSurfaceKind::Desktop => {
+            crate::widgets::settings_form::paint_soft_shadow(cx.backend, panel, 12.0);
+            cx.backend.fill_round_rect(panel, 12.0, theme.card);
         }
     }
     if layout.kind != AgentSettingsSurfaceKind::Desktop {
         paint_touch_title(cx, theme, ui, layout);
-    }
-    if layout.kind == AgentSettingsSurfaceKind::Expanded {
-        let x = panel.origin.x + layout.header.size.x;
-        cx.backend.stroke_line(
-            Point2D::new(x, panel.origin.y),
-            Point2D::new(x, panel.origin.y + panel.size.y),
-            theme.border,
-            1.0,
-        );
     }
     super::tabs::paint_tab_strip(cx, theme, settings, ui, layout, mode);
     let content_rect = layout.content;

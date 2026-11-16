@@ -18,7 +18,6 @@ pub(super) fn paint(
 ) -> f32 {
     let card = touch_empty_card_rect(content, y);
     cx.backend.fill_round_rect(card, 14.0, theme.muted);
-    cx.backend.stroke_round_rect(card, 14.0, theme.border, 1.0);
     let cta = touch_empty_cta_rect(content, y);
     let pressed = ui.button_pressed(ButtonPressTarget::AgentSettings(
         AgentSettingsButton::AddProvider,

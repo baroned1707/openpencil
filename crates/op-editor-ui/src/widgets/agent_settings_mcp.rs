@@ -14,10 +14,10 @@ use crate::widgets::agent_settings_caret::paint_settings_input_view;
 use crate::widgets::agent_settings_i18n::t as t_settings;
 use crate::widgets::agent_settings_metrics::CONTENT_TAIL_PAD;
 use crate::widgets::agent_settings_rows::{
-    fit_text, measure_settings_text, paint_footnote, paint_row_hairline, paint_row_label,
-    paint_row_label_above_status, paint_row_status_line, paint_section_title, paint_tab_intro,
-    row_control_rect, row_height, row_rect, tab_intro_height, RowLines, FOOTNOTE_H, ROW_HEIGHT,
-    SECTION_GAP, SECTION_HEADER_H, SETTINGS_FONT_FAMILY,
+    fit_text, measure_settings_text, paint_footnote, paint_row_label, paint_row_label_above_status,
+    paint_row_status_line, paint_section_title, paint_tab_intro, row_control_rect, row_height,
+    row_rect, tab_intro_height, RowLines, FOOTNOTE_H, ROW_HEIGHT, SECTION_GAP, SECTION_HEADER_H,
+    SETTINGS_FONT_FAMILY,
 };
 use crate::widgets::agent_settings_switch::{
     paint_settings_switch, SETTINGS_SWITCH_H, SETTINGS_SWITCH_W,
@@ -272,8 +272,6 @@ pub(super) fn paint_mcp_tab(
                 // `McpCli::ALL` order; the displayed row is `DISPLAY` order.
                 settings.mcp_cli_enabled[cli.index()],
             );
-            // Every CLI row gets its hairline: the lean-profile row follows.
-            paint_row_hairline(cx, theme, row);
         }
         let lean_row = lean_profile_row_rect(content);
         paint_row_label(
@@ -374,7 +372,6 @@ fn paint_server_row(
             theme.muted_foreground
         },
     );
-    paint_row_hairline(cx, theme, row);
 
     let btn = server_button_rect(content);
     let port_label_text = t_settings(ui, "settings.mcp.port");
@@ -405,13 +402,8 @@ fn paint_server_row(
     } else {
         format!("{}", settings.mcp_server.port)
     };
-    let (border_color, border_w) = if focused {
-        (theme.primary, 1.5)
-    } else {
-        (theme.border, 1.0)
-    };
-    cx.backend
-        .stroke_round_rect(port_field, 6.0, border_color, border_w);
+    cx.backend.fill_round_rect(port_field, 6.0, theme.input);
+    crate::widgets::settings_form::paint_focus_ring(cx, theme, port_field, 6.0, focused);
     let port_w = measure_settings_text(cx, &port_str, 12.0);
     let port_layout = TextLayout::single_run(
         &port_str,
@@ -465,9 +457,6 @@ fn paint_server_row(
             AgentSettingsButton::McpServer,
         )),
     );
-    if running {
-        cx.backend.stroke_round_rect(btn, 6.0, theme.border, 1.0);
-    }
     let btn_label = if running {
         t_settings(ui, "settings.mcp.stop")
     } else {
@@ -517,7 +506,6 @@ fn paint_custom_config(
     let copy = client_config_copy_button_rect(content, external_cli_available);
     let copied = mcp_client_config_copy_feedback_active(settings, now_ms);
     cx.backend.fill_round_rect(copy, 6.0, theme.muted);
-    cx.backend.stroke_round_rect(copy, 6.0, theme.border, 1.0);
     crate::widgets::button::paint_ghost_button_feedback(
         cx.backend,
         theme,

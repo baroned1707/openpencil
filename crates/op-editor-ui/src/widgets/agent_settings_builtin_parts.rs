@@ -59,7 +59,6 @@ pub fn paint_kind_toggle(
     if touch && options.len() == 1 {
         let rect = kind_rect(card, true);
         cx.backend.fill_round_rect(rect, 10.0, theme.card);
-        cx.backend.stroke_round_rect(rect, 10.0, theme.border, 1.0);
         draw_text(
             cx,
             options[0].label,
@@ -180,10 +179,9 @@ pub fn paint_preset_menu(
         return;
     }
     let menu = preset_menu_rect(card, touch);
-    cx.backend
-        .fill_round_rect(menu, if touch { 10.0 } else { 6.0 }, theme.card);
-    cx.backend
-        .stroke_round_rect(menu, if touch { 10.0 } else { 6.0 }, theme.border, 1.0);
+    let menu_radius = if touch { 10.0 } else { 6.0 };
+    crate::widgets::settings_form::paint_soft_shadow(cx.backend, menu, menu_radius);
+    cx.backend.fill_round_rect(menu, menu_radius, theme.card);
     cx.backend.save();
     cx.backend.clip_rect(menu);
     cx.backend.translate(Point2D::new(

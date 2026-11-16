@@ -10,7 +10,7 @@
 use crate::theme::Theme;
 use crate::widgets::agent_settings_i18n::t as t_settings;
 use crate::widgets::button::paint_ghost_button_feedback;
-use crate::widgets::settings_form::{draw_text, ellipsize};
+use crate::widgets::settings_form::{draw_text, ellipsize, paint_list_card};
 use crate::widgets::text_metrics;
 use crate::widgets::PaintCx;
 use crate::{Point2D, Rect, TextLayout};
@@ -20,7 +20,7 @@ use op_editor_core::editor_ui_state::EditorUiState;
 use op_editor_core::{AgentSettingsButton, ButtonPressTarget};
 
 use crate::widgets::agent_settings_metrics::{ROW_AVATAR, ROW_H_TWO_LINE, ROW_PAD_X, ROW_TEXT_X};
-use crate::widgets::agent_settings_rows::{paint_row_hairline, paint_row_label_at};
+use crate::widgets::agent_settings_rows::paint_row_label_at;
 
 const LABEL_H: f32 = 22.0;
 /// Quick-add rows are the modal's two-line list row, like every other
@@ -117,13 +117,7 @@ fn paint_row(
 ) {
     let hovered = settings.hover_acp_preset == Some(index);
     let missing = settings.acp_preset_availability(preset.id) == AcpPresetAvailability::Missing;
-    if hovered {
-        cx.backend.fill_round_rect(row, 8.0, theme.button_hover);
-    }
-    let last = index + 1 == settings.visible_acp_presets().len();
-    if !last {
-        paint_row_hairline(cx, theme, row);
-    }
+    paint_list_card(cx, theme, row, hovered);
 
     // A missing binary mutes the row's identity but never removes the
     // action. PATH was read once, on this host, at some earlier moment —

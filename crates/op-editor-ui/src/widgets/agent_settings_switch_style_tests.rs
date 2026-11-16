@@ -256,7 +256,7 @@ fn pressed_mcp_server_button_uses_shared_button_feedback() {
 }
 
 #[test]
-fn enabled_mcp_cli_row_is_borderless_with_a_hairline_separator() {
+fn enabled_mcp_cli_row_is_flat_with_no_outline_or_hairline() {
     let mut state = EditorState::default();
     state.editor_ui.theme_mode = ThemeMode::Light;
     state.editor_ui.agent_settings.tab = AgentSettingsTab::Mcp;
@@ -280,28 +280,23 @@ fn enabled_mcp_cli_row_is_borderless_with_a_hairline_separator() {
             .round_strokes
             .iter()
             .any(|(r, _, _)| rect_eq(*r, row)),
-        "CLI integrations list rows carry no card outline — the hairline is the separator"
+        "CLI integrations list rows carry no card outline"
     );
     assert!(
         !backend.round_fills.iter().any(|(r, _)| rect_eq(*r, row)),
-        "an enabled CLI row must not tint its background; the green switch carries the state"
+        "an enabled CLI row must not tint its background; the switch carries the state"
     );
     let hairline_y = row.origin.y + row.size.y;
     assert!(
-        backend.lines.iter().any(|(from, to, color, width)| {
-            (from.y - hairline_y).abs() < 0.01
-                && (to.y - hairline_y).abs() < 0.01
-                && (from.x - row.origin.x).abs() < 0.01
-                && (to.x - (row.origin.x + row.size.x)).abs() < 0.01
-                && color_eq(*color, panel.theme.border)
-                && (*width - 1.0).abs() < 0.01
+        !backend.lines.iter().any(|(from, to, _, _)| {
+            (from.y - hairline_y).abs() < 0.01 && (to.y - hairline_y).abs() < 0.01
         }),
-        "each CLI row should be separated by a full-width hairline"
+        "CLI rows separate by spacing, not by a hairline"
     );
 }
 
 #[test]
-fn settings_content_clip_preserves_full_width_row_hairlines() {
+fn settings_content_clip_matches_viewport_and_paints_no_row_hairlines() {
     let mut state = EditorState::default();
     state.editor_ui.theme_mode = ThemeMode::Light;
     state.editor_ui.agent_settings.tab = AgentSettingsTab::Mcp;
@@ -334,13 +329,9 @@ fn settings_content_clip_preserves_full_width_row_hairlines() {
         })
         .collect();
     assert!(
-        edge_hairlines.len() >= 4,
-        "the server row and the CLI list should separate with content-wide hairlines"
+        edge_hairlines.is_empty(),
+        "borderless shell: rows separate by tone and spacing, not content-wide hairlines"
     );
-    for (from, to, _, _) in edge_hairlines {
-        assert!(clip.origin.x <= from.x);
-        assert!(clip.origin.x + clip.size.x >= to.x);
-    }
 }
 
 #[test]
@@ -474,8 +465,8 @@ fn builtin_agent_switch_uses_same_geometry_as_mcp_and_system_switches() {
         backend
             .round_fills
             .iter()
-            .any(|(r, color)| rect_eq(*r, track) && color_eq(*color, panel.theme.status_success)),
-        "builtin Agent switch should use the same 36x20 green ON track as MCP and System switches"
+            .any(|(r, color)| rect_eq(*r, track) && color_eq(*color, panel.theme.primary)),
+        "builtin Agent switch should use the same 36x20 primary ON track as MCP and System switches"
     );
     assert!(
         backend

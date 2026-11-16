@@ -62,15 +62,11 @@ pub(super) fn paint_search_input_row(
         ),
     );
     let radius = if touch { 10.0 } else { 6.0 };
-    cx.backend.fill_round_rect(field, radius, theme.background);
+    // On the panel (not a card): the input tone is the visible fill.
+    cx.backend.fill_round_rect(field, radius, theme.input);
     let focus = SettingsFocus::ImageSearch(field_kind);
     let focused = settings.focus == Some(focus);
-    cx.backend.stroke_round_rect(
-        field,
-        radius,
-        if focused { theme.primary } else { theme.border },
-        1.0,
-    );
+    crate::widgets::settings_form::paint_focus_ring(cx, theme, field, radius, focused);
     let stored = match field_kind {
         ImageSearchField::ClientId => settings.openverse_client_id.as_str(),
         ImageSearchField::ClientSecret => settings.openverse_client_secret.as_str(),
@@ -213,21 +209,9 @@ pub(super) fn paint_profile_field(
         ),
     );
     let radius = if touch { 10.0 } else { 6.0 };
-    cx.backend.fill_round_rect(
-        input,
-        radius,
-        if focused {
-            theme.background
-        } else {
-            theme.card
-        },
-    );
-    cx.backend.stroke_round_rect(
-        input,
-        radius,
-        if focused { theme.primary } else { theme.border },
-        1.0,
-    );
+    // Profile fields sit on a `muted` card: inset panel tone.
+    cx.backend.fill_round_rect(input, radius, theme.card);
+    crate::widgets::settings_form::paint_focus_ring(cx, theme, input, radius, focused);
     let text_x = input.origin.x + if touch { 12.0 } else { 6.0 };
     if focused {
         paint_settings_input_view(
@@ -281,9 +265,9 @@ pub(super) fn paint_profile_test_button(
     paint_profile_test_status(cx, theme, profile, btn, touch);
     let radius = if touch { 10.0 } else { 6.0 };
     let font_size = if touch { 15.0 } else { 11.0 };
-    cx.backend.fill_round_rect(btn, radius, theme.muted);
+    // Sits on a `muted` profile card: inset panel tone keeps it visible.
+    cx.backend.fill_round_rect(btn, radius, theme.card);
     crate::widgets::button::paint_ghost_button_feedback(cx.backend, theme, btn, hovered, pressed);
-    cx.backend.stroke_round_rect(btn, radius, theme.border, 1.0);
     let label = crate::widgets::agent_settings_i18n::t(ui, "settings.images.test");
     let label_w = text_metrics::measure_chrome(cx.backend, label, font_size);
     let layout = TextLayout::single_run(
@@ -428,8 +412,8 @@ pub(super) fn paint_provider_menu(
         origin: Point2D::new(input.origin.x, input.origin.y + input.size.y),
         size: Point2D::new(input.size.x, option_h * ImageGenProvider::ALL.len() as f32),
     };
+    crate::widgets::settings_form::paint_soft_shadow(cx.backend, menu, 6.0);
     cx.backend.fill_round_rect(menu, 6.0, theme.card);
-    cx.backend.stroke_round_rect(menu, 6.0, theme.border, 1.0);
     for (index, provider) in ImageGenProvider::ALL.iter().enumerate() {
         let option_y = menu.origin.y + index as f32 * option_h;
         let option_rect = Rect {

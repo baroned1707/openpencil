@@ -22,13 +22,12 @@ use crate::widgets::agent_settings_i18n::t as t_settings;
 use crate::widgets::agent_settings_metrics::{ROW_AVATAR, ROW_PAD_X, ROW_TEXT_X};
 use crate::widgets::agent_settings_panel_geometry::agents_body_top;
 use crate::widgets::agent_settings_rows::{
-    paint_row_hairline, paint_row_label_above_status_at, paint_row_status_line_at_fitted,
-    paint_section_title,
+    paint_row_label_above_status_at, paint_row_status_line_at_fitted, paint_section_title,
 };
-use crate::widgets::agent_settings_switch::paint_settings_switch;
+use crate::widgets::agent_settings_switch::paint_settings_switch_on_card;
 use crate::widgets::button::paint_ghost_button_feedback;
 use crate::widgets::icons::Icon;
-use crate::widgets::settings_form::{self, paint_action};
+use crate::widgets::settings_form::{self, paint_action, paint_list_card};
 use crate::widgets::PaintCx;
 use crate::{Point2D, Rect, TextLayout};
 use op_editor_core::agent_settings::{
@@ -694,13 +693,7 @@ fn paint_compact_builtin_agent_card(
     card: Rect,
 ) {
     let hovered = settings.hover_builtin_agent == index;
-    if hovered {
-        cx.backend.fill_round_rect(card, 8.0, theme.button_hover);
-    }
-    let last = index + 1 == settings.builtin_agents.len() && settings.builtin_agent_draft.is_none();
-    if !last {
-        paint_row_hairline(cx, theme, card);
-    }
+    paint_list_card(cx, theme, card, hovered);
     let avatar = Rect {
         origin: Point2D::new(
             card.origin.x + ROW_PAD_X,
@@ -746,7 +739,7 @@ fn paint_compact_builtin_agent_card(
         reserved,
     );
 
-    paint_settings_switch(cx, theme, switch_rect, agent.enabled);
+    paint_settings_switch_on_card(cx, theme, switch_rect, agent.enabled);
     if hovered || ui.touch_chrome() {
         let edit_rect = if ui.touch_chrome() {
             compact_touch_edit_rect(card)

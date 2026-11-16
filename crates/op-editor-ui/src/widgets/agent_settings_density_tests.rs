@@ -151,8 +151,8 @@ fn the_provider_row_ladder_agrees_with_what_paint_walks() {
     // pixels below the row you could see — invisible in isolation, and
     // exactly the kind of thing only a paint-vs-geometry comparison finds.
     //
-    // Each provider row but the last strokes a hairline along its own
-    // bottom edge, so those strokes are where paint thinks the rows are.
+    // Each provider row paints a filled card inset one pixel top and
+    // bottom, so those fills are where paint thinks the rows are.
     let mut state = EditorState::default();
     state.editor_ui.agent_settings.tab = AgentSettingsTab::Agents;
     let panel = AgentSettingsPanel::for_editor(&state);
@@ -171,30 +171,31 @@ fn the_provider_row_ladder_agrees_with_what_paint_walks() {
     assert_eq!(
         second.origin.y - first.origin.y,
         ROW_H_TWO_LINE,
-        "provider rows must tile flush — the hairline between them is the gap"
+        "provider rows must tile flush — the card inset is the only gap"
     );
 
     for i in 0..AgentProvider::ALL.len() - 1 {
         let row = agent_card_rect_in(rect, i, &settings);
-        let bottom = row.origin.y + row.size.y;
         assert!(
             backend
-                .lines
+                .fills
                 .iter()
-                .any(|(from, to)| (from.y - bottom).abs() < 0.01
-                    && (from.x - row.origin.x).abs() < 0.01
-                    && (to.x - (row.origin.x + row.size.x)).abs() < 0.01),
-            "no separator painted at provider row {i}'s bottom edge ({bottom}) — \
-             paint and the row ladder disagree about where the rows are"
+                .any(|r| (r.origin.y - (row.origin.y + 1.0)).abs() < 0.01
+                    && (r.size.y - (row.size.y - 2.0)).abs() < 0.01
+                    && (r.origin.x - row.origin.x).abs() < 0.01
+                    && (r.size.x - row.size.x).abs() < 0.01),
+            "no card painted for provider row {i} (top {}) — \
+             paint and the row ladder disagree about where the rows are",
+            row.origin.y
         );
     }
 }
 
-/// Records the hairlines the modal strokes, so a test can ask where paint
+/// Records the round fills the modal paints, so a test can ask where paint
 /// actually put a row instead of trusting the same ladder twice.
 #[derive(Default)]
 struct LineCapture {
-    lines: Vec<(crate::Point2D, crate::Point2D)>,
+    fills: Vec<crate::Rect>,
 }
 
 impl crate::RenderBackend for LineCapture {
@@ -204,10 +205,10 @@ impl crate::RenderBackend for LineCapture {
     fn stroke_rect(&mut self, _: crate::Rect, _: crate::Color, _: f32) {}
     fn draw_text(&mut self, _: &crate::TextLayout, _: crate::Point2D) {}
     fn clip_rect(&mut self, _: crate::Rect) {}
-    fn stroke_line(&mut self, from: crate::Point2D, to: crate::Point2D, _: crate::Color, _: f32) {
-        self.lines.push((from, to));
+    fn stroke_line(&mut self, _: crate::Point2D, _: crate::Point2D, _: crate::Color, _: f32) {}
+    fn fill_round_rect(&mut self, rect: crate::Rect, _: f32, _: crate::Color) {
+        self.fills.push(rect);
     }
-    fn fill_round_rect(&mut self, _: crate::Rect, _: f32, _: crate::Color) {}
     fn stroke_round_rect(&mut self, _: crate::Rect, _: f32, _: crate::Color, _: f32) {}
     fn stroke_svg_path(&mut self, _: &str, _: crate::Point2D, _: f32, _: crate::Color, _: f32) {}
     fn save(&mut self) {}

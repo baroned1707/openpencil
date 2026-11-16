@@ -327,18 +327,6 @@ pub(super) fn row_control_rect(row: Rect, w: f32, h: f32) -> Rect {
     }
 }
 
-/// Hairline along a row's bottom edge — the separator that replaces the
-/// old per-setting card fill. Callers skip it on the last row of a list.
-pub(super) fn paint_row_hairline(cx: &mut PaintCx<'_>, theme: &Theme, row: Rect) {
-    let y = row.origin.y + row.size.y;
-    cx.backend.stroke_line(
-        Point2D::new(row.origin.x, y),
-        Point2D::new(row.origin.x + row.size.x, y),
-        theme.border,
-        1.0,
-    );
-}
-
 /// Row label, optionally with a muted description under it. `reserved` is
 /// the width the row's control occupies on the right, so the text
 /// ellipsizes before it collides.

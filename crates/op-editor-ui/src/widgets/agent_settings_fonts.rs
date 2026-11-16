@@ -383,12 +383,6 @@ pub(super) fn paint_fonts_tab(
     for (row, family) in ui.imported_font_families.iter().enumerate() {
         let row_rect = imported_row_rect(content, ui, row);
         let remove = imported_remove_rect(content, ui, row);
-        if row > 0 {
-            cx.backend.fill_rect(
-                Rect::xywh(row_rect.origin.x, row_rect.origin.y, row_rect.size.x, 1.0),
-                theme.border,
-            );
-        }
         let family_font = if touch { 15.0 } else { 13.0 };
         let family_w = (remove.origin.x - row_rect.origin.x - 16.0).max(1.0);
         let family = crate::util::ellipsize_to_width(family, family_w, |text| {
@@ -417,7 +411,7 @@ pub(super) fn paint_fonts_tab(
         let remove_hovered = ui.missing_fonts_hover
             == Some(op_editor_core::missing_fonts::MissingFontsHover::RemoveImported(row));
         let remove_bg = if remove_hovered {
-            theme.border
+            theme.accent
         } else {
             theme.muted
         };
@@ -448,12 +442,6 @@ fn paint_settings_missing_row(
     if !ui.touch_chrome() {
         paint_missing_font_row(cx, theme, ui, entry, row_index, row, divider);
         return;
-    }
-    if divider {
-        cx.backend.fill_rect(
-            Rect::xywh(row.origin.x, row.origin.y, row.size.x, 1.0),
-            theme.border,
-        );
     }
     let action = settings_row_button_rect(row, ui);
     let text_w = (action.origin.x - row.origin.x - 16.0).max(1.0);
@@ -507,7 +495,7 @@ fn paint_settings_missing_row(
     cx.backend.fill_round_rect(
         action,
         8.0,
-        if hovered { theme.border } else { theme.muted },
+        if hovered { theme.accent } else { theme.muted },
     );
     let label = if entry.resolved {
         translate(ui, "missingFonts.resolved")

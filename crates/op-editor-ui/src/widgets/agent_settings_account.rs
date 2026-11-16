@@ -12,7 +12,7 @@ use crate::widgets::icons::{draw_icon, Icon};
 use crate::widgets::settings_form::ellipsize;
 use crate::widgets::text_metrics;
 use crate::widgets::PaintCx;
-use crate::{Color, Point2D, Rect, TextLayout};
+use crate::{Point2D, Rect, TextLayout};
 use jian_widgets::components::button::{Button, ButtonVariant};
 use jian_widgets::components::card::Card;
 use op_editor_core::editor_ui_state::{EditorUiState, Locale};
@@ -96,9 +96,7 @@ pub(super) fn paint_account_tab(
         size: Point2D::new(32.0, 32.0),
     };
     cx.backend
-        .fill_oval(title_icon, theme.primary.with_alpha(0.10));
-    cx.backend
-        .stroke_oval(title_icon, theme.primary.with_alpha(0.22), 1.0);
+        .fill_oval(title_icon, theme.primary.with_alpha(0.12));
     draw_icon(
         cx.backend,
         Icon::User,
@@ -199,8 +197,6 @@ fn paint_signed_in(
         &ui.account,
         avatar_rect,
     );
-    cx.backend
-        .stroke_oval(avatar_rect, theme.border.with_alpha(0.72), 1.0);
 
     let text_x = avatar_rect.origin.x + AVATAR + 12.0;
     let text_w = (action_btn_rect(card).origin.x - text_x - 12.0).max(0.0);
@@ -250,9 +246,7 @@ fn avatar_rect(card: Rect) -> Rect {
 }
 
 fn paint_avatar_tile(cx: &mut PaintCx<'_>, theme: &Theme, rect: Rect) {
-    cx.backend.fill_oval(rect, theme.primary.with_alpha(0.09));
-    cx.backend
-        .stroke_oval(rect, theme.primary.with_alpha(0.20), 1.0);
+    cx.backend.fill_oval(rect, theme.primary.with_alpha(0.12));
     draw_icon(
         cx.backend,
         Icon::User,
@@ -270,39 +264,13 @@ fn signed_out_hint(locale: Locale) -> &'static str {
 fn account_card_style(theme: &Theme) -> Card {
     Card {
         fill: Some(theme.muted),
-        border: Some(theme.border),
+        border: None,
         radius: 10.0,
     }
 }
 
-fn mix(a: Color, b: Color, amount: f32) -> Color {
-    let t = amount.clamp(0.0, 1.0);
-    Color {
-        r: a.r + (b.r - a.r) * t,
-        g: a.g + (b.g - a.g) * t,
-        b: a.b + (b.b - a.b) * t,
-        a: a.a + (b.a - a.a) * t,
-    }
-}
-
 fn paint_primary_action(cx: &mut PaintCx<'_>, theme: &Theme, rect: Rect, label: &str) {
-    let first = mix(theme.primary, Color::WHITE, 0.06);
-    let second = mix(theme.primary, Color::rgb_u8(79, 70, 229), 0.32);
-    let shadow = Rect {
-        origin: Point2D::new(rect.origin.x, rect.origin.y + 3.0),
-        size: rect.size,
-    };
-    cx.backend
-        .fill_drop_shadow(shadow, 11.0, 9.0, theme.primary.with_alpha(0.20));
-    cx.backend.fill_round_rect_linear_gradient(
-        rect,
-        11.0,
-        &[(0.0, first), (1.0, second)],
-        0.0,
-        1.0,
-    );
-    cx.backend
-        .stroke_round_rect(rect, 11.0, theme.primary_foreground.with_alpha(0.16), 1.0);
+    cx.backend.fill_round_rect(rect, 6.0, theme.primary);
 
     let font_size = 12.5;
     let weight = 600;
@@ -340,7 +308,7 @@ fn paint_action_button(cx: &mut PaintCx<'_>, theme: &Theme, rect: Rect, label: &
     Button {
         label,
         icon_paths: None,
-        variant: ButtonVariant::DestructiveOutline,
+        variant: ButtonVariant::Destructive,
         enabled: true,
         hovered: false,
         pressed: false,
@@ -375,7 +343,7 @@ mod tests {
         for theme in [Theme::light(), Theme::dark()] {
             let style = account_card_style(&theme);
             assert_eq!(style.fill, Some(theme.muted));
-            assert_eq!(style.border, Some(theme.border));
+            assert_eq!(style.border, None);
             assert_eq!(style.radius, 10.0);
         }
     }
