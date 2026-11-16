@@ -5,6 +5,7 @@
 //! platform can stretch the phone menu across an iPad again.
 
 use super::editor_state_ext::translate;
+use super::file_menu::popup;
 use super::host_canvas_geometry;
 use super::mobile_chrome::{paint_touch_icon, sheet_close_rect};
 use super::panel_control_metrics::mix;
@@ -455,16 +456,11 @@ struct PhoneEntryStyle {
 fn paint_phone_horizontal_entry(
     cx: &mut PaintCx<'_>,
     state: &EditorState,
-    theme: &Theme,
     entry: MobileMoreEntry,
     rect: Rect,
     style: PhoneEntryStyle,
 ) {
     cx.backend.fill_round_rect(rect, 14.0, style.fill);
-    if !style.prominent {
-        cx.backend
-            .stroke_round_rect(rect, 14.0, theme.border.with_alpha(0.72), 1.0);
-    }
     let icon_target = Rect::xywh(
         rect.origin.x + 6.0,
         rect.origin.y + 7.0,
@@ -536,8 +532,6 @@ fn paint_phone_portrait_entries(
     );
     cx.backend
         .fill_round_rect(file_group, 16.0, mix(theme.card, theme.foreground, 0.055));
-    cx.backend
-        .stroke_round_rect(file_group, 16.0, theme.border.with_alpha(0.78), 1.0);
     for (file_index, entry) in file_entries.into_iter().enumerate() {
         let index = visible
             .iter()
@@ -547,7 +541,7 @@ fn paint_phone_portrait_entries(
         if file_index > 0 {
             cx.backend.fill_rect(
                 Rect::xywh(slot.origin.x, slot.origin.y + 16.0, 1.0, slot.size.y - 32.0),
-                theme.border.with_alpha(0.72),
+                theme.foreground.with_alpha(0.10),
             );
         }
         let icon_target = Rect::xywh(slot.origin.x, slot.origin.y + 5.0, slot.size.x, 30.0);
@@ -583,7 +577,6 @@ fn paint_phone_portrait_entries(
             MobileMoreEntry::Ai => paint_phone_horizontal_entry(
                 cx,
                 state,
-                theme,
                 entry,
                 rect,
                 PhoneEntryStyle {
@@ -596,7 +589,6 @@ fn paint_phone_portrait_entries(
             MobileMoreEntry::Templates | MobileMoreEntry::Assets => paint_phone_horizontal_entry(
                 cx,
                 state,
-                theme,
                 entry,
                 rect,
                 PhoneEntryStyle {
@@ -609,7 +601,6 @@ fn paint_phone_portrait_entries(
             _ => paint_phone_horizontal_entry(
                 cx,
                 state,
-                theme,
                 entry,
                 rect,
                 PhoneEntryStyle {
@@ -629,8 +620,7 @@ pub fn paint_more_panel(cx: &mut PaintCx<'_>, state: &EditorState, theme: &Theme
         cx.backend
             .fill_round_rect_per_corner(panel, [24.0, 24.0, 0.0, 0.0], theme.card);
     } else {
-        cx.backend.fill_round_rect(panel, 18.0, theme.popover);
-        cx.backend.stroke_round_rect(panel, 18.0, theme.border, 1.0);
+        popup::paint_popup_surface(cx.backend, theme, panel, popup::DIALOG_RADIUS);
     }
 
     let title = translate(&state.editor_ui, "git.header.overflowMoreActions");
@@ -683,9 +673,7 @@ pub fn paint_more_panel(cx: &mut PaintCx<'_>, state: &EditorState, theme: &Theme
             } else {
                 theme.muted_foreground.with_alpha(0.4)
             };
-            cx.backend
-                .fill_round_rect(tile, 14.0, if compact { theme.muted } else { theme.card });
-            cx.backend.stroke_round_rect(tile, 14.0, theme.border, 1.0);
+            cx.backend.fill_round_rect(tile, 10.0, theme.muted);
 
             let icon_target = Rect {
                 origin: Point2D::new(tile.origin.x, tile.origin.y + 8.0),

@@ -70,14 +70,5 @@ impl WorkspaceSurface<'_> {
             fade(Color::rgb_u8(0x0B, 0x10, 0x18), 0.22 * progress),
         );
         cx.backend.fill_rect(sheet, palette.panel);
-        cx.backend.fill_rect(
-            Rect::xywh(
-                sheet.origin.x + sheet.size.x - 1.0,
-                sheet.origin.y,
-                1.0,
-                sheet.size.y,
-            ),
-            palette.line,
-        );
     }
 }

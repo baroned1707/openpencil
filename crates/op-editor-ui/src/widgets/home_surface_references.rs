@@ -169,8 +169,6 @@ pub(crate) fn paint(
     cx.backend.clip_rect(bounds);
     for chip in chips {
         cx.backend.fill_round_rect(chip.rect, 6.0, palette.chip_bg);
-        cx.backend
-            .stroke_round_rect(chip.rect, 6.0, palette.chip_line, 1.0);
         let label_x = if chip.image {
             draw_icon(
                 cx.backend,

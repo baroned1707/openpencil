@@ -87,19 +87,6 @@ pub(super) fn paint_recent(
 ) {
     let locale = surface.ui.locale;
     let palette = fade_all(palette, alpha);
-    let row = Rect::xywh(
-        layout.recent.origin.x,
-        layout.recent.origin.y + dy,
-        layout.recent.size.x,
-        layout.recent.size.y,
-    );
-    // Top hairline 13 px above the row's content.
-    cx.backend.stroke_line(
-        Point2D::new(row.origin.x, row.origin.y - 13.0),
-        Point2D::new(row.origin.x + row.size.x, row.origin.y - 13.0),
-        palette.line,
-        1.0,
-    );
     let (mut title_rect, mut content_rect) = super::super::recent_names::row_rects(layout, locale);
     title_rect.origin.y += dy;
     content_rect.origin.y += dy;
@@ -152,8 +139,6 @@ pub(super) fn paint_recent(
                     palette.raised
                 },
             );
-            cx.backend
-                .stroke_round_rect(chip, 6.0, palette.raised_line, 1.0);
             let label =
                 super::super::recent_names::fit_label(name, (chip.size.x - 22.0).max(0.0), |s| {
                     cx.backend.measure_text_family(s, 12.0, SANS)
@@ -170,7 +155,7 @@ pub(super) fn paint_recent(
             );
         }
     }
-    // ＋ 新建空白画布, right-aligned 32 px outline button.
+    // ＋ 新建空白画布, right-aligned 32 px filled button.
     let button = Rect::xywh(
         layout.new_canvas.origin.x,
         layout.new_canvas.origin.y + dy,
@@ -186,16 +171,6 @@ pub(super) fn paint_recent(
         } else {
             palette.raised
         },
-    );
-    cx.backend.stroke_round_rect(
-        button,
-        8.0,
-        if hovered {
-            palette.button_hover_line
-        } else {
-            palette.raised_line
-        },
-        1.0,
     );
     let label = copy::home_str(locale, "home.recent.newCanvas");
     let label_w = cx.backend.measure_text_family(label, 12.0, SANS);

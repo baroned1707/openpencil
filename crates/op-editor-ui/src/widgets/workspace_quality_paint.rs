@@ -76,16 +76,6 @@ pub(super) fn paint_quality_chip(
             palette.chip_bg
         },
     );
-    cx.backend.stroke_round_rect(
-        chip,
-        chip.size.y / 2.0,
-        if open || hovered {
-            palette.button_hover_line
-        } else {
-            palette.chip_line
-        },
-        1.0,
-    );
     let dot = Rect::xywh(
         chip.origin.x + QUALITY_CHIP_PAD_X,
         chip.origin.y + (chip.size.y - QUALITY_CHIP_DOT) / 2.0,
@@ -139,8 +129,6 @@ pub(super) fn paint_quality_panel(
         .fill_round_rect(shadow, 12.0, Color::rgba_u8(0, 0, 0, 0.10));
     cx.backend
         .fill_round_rect(panel.panel, 12.0, palette.raised);
-    cx.backend
-        .stroke_round_rect(panel.panel, 12.0, palette.raised_line, 1.0);
 
     text_weighted(
         cx,
@@ -188,12 +176,6 @@ fn paint_row(
             let Some(entry) = report.topics.get(topic) else {
                 return;
             };
-            cx.backend.stroke_line(
-                Point2D::new(rect.origin.x, rect.origin.y + 2.0),
-                Point2D::new(rect.origin.x + rect.size.x, rect.origin.y + 2.0),
-                palette.line,
-                1.0,
-            );
             text_weighted(
                 cx,
                 tr(locale, entry.topic.label_key()),
@@ -322,12 +304,6 @@ fn paint_row(
             );
         }
         QualityRowKind::BoardsHeader => {
-            cx.backend.stroke_line(
-                Point2D::new(rect.origin.x, rect.origin.y + 2.0),
-                Point2D::new(rect.origin.x + rect.size.x, rect.origin.y + 2.0),
-                palette.line,
-                1.0,
-            );
             text_weighted(
                 cx,
                 tr(locale, "workspace.quality.boards"),

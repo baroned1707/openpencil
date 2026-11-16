@@ -112,12 +112,6 @@ fn paint_header(
     let locale = reader.ui.locale;
     let header = layout.header;
     cx.backend.fill_rect(header, palette.topbar);
-    cx.backend.stroke_line(
-        Point2D::new(0.0, header.size.y),
-        Point2D::new(header.size.x, header.size.y),
-        palette.topbar_line,
-        1.0,
-    );
     let pressed = reader.state.reader_pressed;
     if pressed == Some(ReaderHit::Back) {
         cx.backend
@@ -164,10 +158,8 @@ fn paint_header(
     // with 普通 selected: the reader IS the normal view.
     let switch = layout.mode_switch;
     cx.backend.fill_round_rect(switch, 10.0, palette.segment_bg);
-    cx.backend
-        .stroke_round_rect(switch, 10.0, palette.segment_line, 1.0);
     let normal = inset(layout.mode_normal, 3.0);
-    cx.backend.fill_round_rect(normal, 7.0, palette.panel);
+    cx.backend.fill_round_rect(normal, 7.0, palette.blue_soft);
     let normal_label = fit_text(
         cx,
         op_i18n::translate(locale, "home.mode.normal"),
@@ -296,7 +288,6 @@ fn paint_empty_stage(
         44.0,
     );
     cx.backend.fill_round_rect(band, 14.0, palette.panel);
-    cx.backend.stroke_round_rect(band, 14.0, palette.line, 1.0);
     let fitted = fit_text(cx, note, 13.0, band.size.x - 24.0, 500);
     centered_label(cx, &fitted, band, 13.0, palette.muted, 500);
 }
@@ -441,8 +432,6 @@ pub(super) fn paint_status_line(
                 palette.raised
             },
         );
-        cx.backend
-            .stroke_round_rect(pill, 16.0, palette.raised_line, 1.0);
         centered_label(cx, label, pill, 13.0, palette.ink, 600);
     }
 }
@@ -450,12 +439,6 @@ pub(super) fn paint_status_line(
 /// The bottom bar's surface and top hairline (phone, tablet portrait).
 pub(super) fn paint_bar_background(cx: &mut PaintCx<'_>, bar: Rect, palette: StudioPalette) {
     cx.backend.fill_rect(bar, palette.topbar);
-    cx.backend.stroke_line(
-        Point2D::new(bar.origin.x, bar.origin.y),
-        Point2D::new(bar.origin.x + bar.size.x, bar.origin.y),
-        palette.topbar_line,
-        1.0,
-    );
 }
 
 /// 继续对话 and 改这一页 at their layout rects (whatever surface they
@@ -480,8 +463,6 @@ pub(super) fn paint_actions(
             palette.raised
         },
     );
-    cx.backend
-        .stroke_round_rect(chat, 14.0, palette.raised_line, 1.0);
     let chat_label = op_i18n::translate(locale, "reader.continueChat");
     let label_w = cx.backend.measure_text_family(chat_label, 14.0, SANS);
     let icon_x = chat.origin.x + (chat.size.x - label_w - 18.0 - 6.0).max(0.0) / 2.0;

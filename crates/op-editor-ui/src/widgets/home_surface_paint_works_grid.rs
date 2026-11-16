@@ -43,12 +43,6 @@ pub(in super::super) fn paint_works_grid(
     let locale = surface.ui.locale;
     let palette = palette.faded(alpha);
     let heading = shifted(grid.heading, dy);
-    cx.backend.stroke_line(
-        Point2D::new(heading.origin.x, heading.origin.y - 13.0),
-        Point2D::new(heading.origin.x + heading.size.x, heading.origin.y - 13.0),
-        palette.line,
-        1.0,
-    );
     text_weighted(
         cx,
         copy::home_str(locale, "home.nav.projects"),
@@ -103,12 +97,6 @@ fn paint_card(
         } else {
             palette.panel
         },
-    );
-    cx.backend.stroke_round_rect(
-        card,
-        16.0,
-        if current { palette.blue } else { palette.line },
-        if current { 1.5 } else { 1.0 },
     );
     let tile = Rect::xywh(card.origin.x + 14.0, card.origin.y + 14.0, 68.0, 68.0);
     cx.backend.fill_round_rect(tile, 12.0, palette.preview);
@@ -199,8 +187,6 @@ fn paint_new_canvas(
             palette.raised
         },
     );
-    cx.backend
-        .stroke_round_rect(button, 12.0, palette.raised_line, 1.0);
     let label = copy::home_str(surface.ui.locale, "home.recent.newCanvas");
     let label_w = cx.backend.measure_text_family(label, 13.0, SANS);
     let x = button.origin.x + (button.size.x - label_w - 14.0 - 6.0).max(0.0) / 2.0;

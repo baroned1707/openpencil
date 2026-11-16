@@ -156,12 +156,6 @@ pub(super) fn paint_workspace(surface: &WorkspaceSurface<'_>, cx: &mut PaintCx<'
     // Dock background under the pinned chat panel + its drag handle.
     if let Some(dock) = layout.dock {
         cx.backend.fill_rect(dock, palette.panel);
-        cx.backend.stroke_line(
-            Point2D::new(dock.origin.x + dock.size.x, dock.origin.y),
-            Point2D::new(dock.origin.x + dock.size.x, dock.origin.y + dock.size.y),
-            palette.line,
-            1.0,
-        );
     }
     if let Some(handle) = layout.dock_handle {
         let hovered = surface.state.hover == Some(WorkspaceHit::DockResize);
@@ -199,12 +193,6 @@ fn paint_header(
 ) {
     let locale = surface.ui.locale;
     cx.backend.fill_rect(layout.header, palette.topbar);
-    cx.backend.stroke_line(
-        Point2D::new(0.0, layout.header.size.y),
-        Point2D::new(layout.header.size.x, layout.header.size.y),
-        palette.topbar_line,
-        1.0,
-    );
 
     // ← back circle.
     let back_hovered = surface.state.hover == Some(WorkspaceHit::Back);
@@ -216,16 +204,6 @@ fn paint_header(
         } else {
             palette.raised
         },
-    );
-    cx.backend.stroke_round_rect(
-        layout.back,
-        layout.back.size.y / 2.0,
-        if back_hovered {
-            palette.button_hover_line
-        } else {
-            palette.raised_line
-        },
-        1.0,
     );
     draw_icon(
         cx.backend,
@@ -242,8 +220,6 @@ fn paint_header(
     // Doc tile.
     cx.backend
         .fill_round_rect(layout.doc_tile, 8.0, palette.chip_bg);
-    cx.backend
-        .stroke_round_rect(layout.doc_tile, 8.0, palette.chip_line, 1.0);
     draw_icon(
         cx.backend,
         Icon::Frame,
@@ -342,16 +318,6 @@ fn paint_header(
                 palette.raised
             },
         );
-        cx.backend.stroke_round_rect(
-            button,
-            8.0,
-            if hovered {
-                palette.button_hover_line
-            } else {
-                palette.raised_line
-            },
-            1.0,
-        );
         let label_w = cx.backend.measure_text_family(label, 13.0, SANS);
         let icon_x = button.origin.x + (button.size.x - label_w - 15.0 - 8.0) / 2.0;
         draw_icon(
@@ -383,18 +349,6 @@ fn paint_toolbar(
 ) {
     let locale = surface.ui.locale;
     cx.backend.fill_rect(layout.toolbar, palette.panel);
-    cx.backend.stroke_line(
-        Point2D::new(
-            layout.toolbar.origin.x,
-            layout.toolbar.origin.y + WORKSPACE_TOOLBAR_H,
-        ),
-        Point2D::new(
-            layout.toolbar.origin.x + layout.toolbar.size.x,
-            layout.toolbar.origin.y + WORKSPACE_TOOLBAR_H,
-        ),
-        palette.line,
-        1.0,
-    );
 
     // Chat toggle (the only remaining control when the dock collapses).
     let toggle = Rect::xywh(
@@ -608,12 +562,6 @@ fn paint_strip(
     };
     let locale = surface.ui.locale;
     cx.backend.fill_rect(strip, palette.topbar);
-    cx.backend.stroke_line(
-        Point2D::new(strip.origin.x, strip.origin.y),
-        Point2D::new(strip.origin.x + strip.size.x, strip.origin.y),
-        palette.line,
-        1.0,
-    );
 
     // 总览 / 放映 read as two more cells of the thumbnail row: a plate
     // the same height as a thumbnail with a centred caption underneath.
@@ -658,16 +606,6 @@ fn paint_strip(
             thumb.size.y - 16.0,
         );
         cx.backend.fill_round_rect(plate, 4.0, palette.panel);
-        cx.backend.stroke_round_rect(
-            plate,
-            4.0,
-            if selected {
-                palette.blue
-            } else {
-                palette.segment_line
-            },
-            if selected { 2.0 } else { 1.0 },
-        );
         let label = (index + 1).to_string();
         let label_w = cx.backend.measure_text_family(&label, 10.0, SANS);
         text(
@@ -732,16 +670,6 @@ fn paint_strip_tile(
         } else {
             palette.panel
         },
-    );
-    cx.backend.stroke_round_rect(
-        plate,
-        6.0,
-        if state.selected {
-            palette.blue
-        } else {
-            palette.segment_line
-        },
-        if state.selected { 2.0 } else { 1.0 },
     );
     draw_icon(
         cx.backend,

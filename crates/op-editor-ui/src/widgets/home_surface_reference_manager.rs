@@ -98,8 +98,6 @@ pub(super) fn paint(surface: &HomeSurface<'_>, cx: &mut PaintCx<'_>, home: &Home
     cx.backend.fill_rect(home.viewport, fade(Color::BLACK, 0.3));
     cx.backend
         .fill_round_rect(layout.card, 14.0, palette.raised);
-    cx.backend
-        .stroke_round_rect(layout.card, 14.0, palette.raised_line, 1.0);
     let title_rect = Rect::xywh(
         layout.card.origin.x + 20.0,
         layout.card.origin.y + 8.0,

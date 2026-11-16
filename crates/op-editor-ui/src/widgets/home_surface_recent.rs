@@ -219,8 +219,6 @@ pub(super) fn paint_hover_name(
         .min(layout.recent.origin.x + layout.recent.size.x - width);
     let rect = Rect::xywh(x, chip.origin.y + dy - height - 8.0, width, height);
     cx.backend.fill_round_rect(rect, 8.0, palette.raised);
-    cx.backend
-        .stroke_round_rect(rect, 8.0, palette.raised_line, 1.0);
     for (line, content) in lines.iter().enumerate() {
         super::paint::cards::text(
             cx,

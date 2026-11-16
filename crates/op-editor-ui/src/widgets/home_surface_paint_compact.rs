@@ -225,8 +225,6 @@ fn paint_tile(
     if selected {
         cx.backend
             .fill_round_rect(rect, 12.0, palette.tab_selected_fill);
-        cx.backend
-            .stroke_round_rect(rect, 12.0, palette.tab_selected_line, 1.0);
     } else if hovered {
         cx.backend
             .fill_round_rect(rect, 12.0, palette.tab_hover_fill);
@@ -312,8 +310,6 @@ fn paint_composer(
         fade(palette.ink, 0.07),
     );
     cx.backend.fill_round_rect(composer, 17.0, palette.panel);
-    cx.backend
-        .stroke_round_rect(composer, 17.0, palette.line, 1.0);
 
     // Label + segmented options on one 44 px row.
     let task_copy = copy::task_copy(locale, surface.state.task, surface.state.task_draft());
@@ -386,16 +382,10 @@ fn paint_composer(
         !surface.state.draft.is_empty() || matches!(surface.state.hover, Some(HomeHit::Sheet));
     cx.backend
         .fill_round_rect(input_box, 10.0, palette.surface_input);
-    cx.backend.stroke_round_rect(
-        input_box,
-        10.0,
-        if engaged {
-            Color::rgb_u8(0x74, 0xA7, 0xFF)
-        } else {
-            palette.input_line
-        },
-        1.0,
-    );
+    if engaged {
+        cx.backend
+            .stroke_round_rect(input_box, 10.0, palette.blue, 1.0);
+    }
     let text_rect = surface.input_text_rect(input_box);
     let text_area = surface.input_text_area(task_copy.placeholder, input_box);
     let mut backend = crate::widgets::text_input_backend::BaselineAdjustingBackend {
@@ -412,8 +402,6 @@ fn paint_composer(
     if surface.state.replace_pending {
         let strip = shift(layout.replace_strip, rise);
         cx.backend.fill_round_rect(strip, 8.0, palette.raised);
-        cx.backend
-            .stroke_round_rect(strip, 8.0, fade(palette.blue, 0.4), 1.0);
         text(
             cx,
             copy::home_str(locale, "home.replace.title"),
@@ -449,10 +437,6 @@ fn paint_composer(
                     palette.raised
                 },
             );
-            if !primary {
-                cx.backend
-                    .stroke_round_rect(button, 7.0, palette.raised_line, 1.0);
-            }
             let label_w = cx.backend.measure_text_family(label, 11.0, SANS);
             text(
                 cx,
@@ -585,13 +569,15 @@ fn paint_example(
     // the prototype's #EEF4FF example tint.
     let hovered = surface.state.hover == Some(HomeHit::UseExample)
         || surface.state.hover == Some(HomeHit::BackToWorkspace);
-    cx.backend.fill_round_rect(card, 14.0, palette.preview);
-    cx.backend
-        .stroke_round_rect(card, 14.0, palette.preview_line, 1.0);
-    if hovered {
-        cx.backend
-            .stroke_round_rect(card, 14.0, fade(palette.blue, 0.35), 1.0);
-    }
+    cx.backend.fill_round_rect(
+        card,
+        14.0,
+        if hovered {
+            palette.raised
+        } else {
+            palette.preview
+        },
+    );
 
     // Left text column: sticker, title, desc, 用这个开始.
     let column = shift(layout.preview_heading, dy);

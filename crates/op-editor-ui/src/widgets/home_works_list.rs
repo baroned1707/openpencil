@@ -218,8 +218,6 @@ pub(super) fn paint_works_page(
             palette.panel
         },
     );
-    cx.backend
-        .stroke_round_rect(button, 12.0, palette.line, 1.0);
     draw_icon(
         cx.backend,
         Icon::FolderOpen,
@@ -256,7 +254,6 @@ pub(super) fn paint_works_page(
                 palette.panel
             },
         );
-        cx.backend.stroke_round_rect(rect, 16.0, palette.line, 1.0);
         let tile = Rect::xywh(rect.origin.x + 14.0, rect.origin.y + 14.0, 68.0, 68.0);
         cx.backend.fill_round_rect(tile, 12.0, palette.preview);
         draw_icon(
@@ -340,7 +337,6 @@ pub(super) fn paint_works_page(
                 palette.panel
             },
         );
-        cx.backend.stroke_round_rect(*rect, 12.0, palette.line, 1.0);
         draw_icon(
             cx.backend,
             Icon::FileText,

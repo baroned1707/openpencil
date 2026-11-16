@@ -133,8 +133,6 @@ pub(super) fn paint_connect_card(
         fade(palette.ink, 0.18),
     );
     cx.backend.fill_round_rect(*card, 14.0, palette.raised);
-    cx.backend
-        .stroke_round_rect(*card, 14.0, palette.raised_line, 1.0);
     let title_layout = TextLayout::single_run(
         title,
         "system-ui",
@@ -173,13 +171,8 @@ pub(super) fn paint_connect_card(
         }
         let hovered = surface.state.hover == Some(hit);
         let pressed = surface.state.pressed == Some(hit);
-        let (fill, title_color, note_color, border) = if primary {
-            (
-                palette.blue,
-                Color::WHITE,
-                fade(Color::WHITE, 0.88),
-                palette.blue,
-            )
+        let (fill, title_color, note_color) = if primary {
+            (palette.blue, Color::WHITE, fade(Color::WHITE, 0.88))
         } else {
             (
                 if pressed {
@@ -187,17 +180,13 @@ pub(super) fn paint_connect_card(
                 } else if hovered {
                     palette.button_hover
                 } else {
-                    palette.panel
+                    palette.raised
                 },
                 palette.ink,
                 palette.muted,
-                palette.line,
             )
         };
         cx.backend.fill_round_rect(row, 10.0, fill);
-        if !primary {
-            cx.backend.stroke_round_rect(row, 10.0, border, 1.0);
-        }
         let title = crate::util::ellipsize_to_width(
             op_i18n::translate(surface.ui.locale, title_key),
             row.size.x - 32.0,

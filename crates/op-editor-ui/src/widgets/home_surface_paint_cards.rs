@@ -279,7 +279,6 @@ fn paint_paper_card(
         fade(palette.ink, 0.14),
     );
     cx.backend.fill_round_rect(paper, 4.0, palette.panel);
-    cx.backend.stroke_round_rect(paper, 4.0, palette.line, 1.0);
     // The tape strip overlaps the paper's top edge, slightly rotated.
     let tape = Rect::xywh(
         paper.origin.x + paper.size.x * 0.38,
@@ -323,7 +322,7 @@ fn paint_paper_card(
             0.0,
         );
     } else {
-        cx.backend.fill_rect(image, palette.preview);
+        cx.backend.fill_rect(image, palette.surface_input);
     }
     cx.backend.restore();
 }
@@ -517,8 +516,6 @@ pub(super) fn paint_explore_card(
     );
     cx.backend
         .fill_round_rect(pill, 7.0, palette.card_link_fill);
-    cx.backend
-        .stroke_round_rect(pill, 7.0, palette.card_link_line, 1.0);
     text(
         cx,
         view,

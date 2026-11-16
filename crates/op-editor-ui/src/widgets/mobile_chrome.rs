@@ -202,15 +202,8 @@ impl MobileAppBar {
     }
 
     pub fn paint(&self, cx: &mut PaintCx<'_>, rect: Rect) {
-        // Elevated surface + bottom hairline.
+        // Flat surface; the bar separates from the canvas by tone alone.
         cx.backend.fill_rect(rect, app_bar_surface(self.theme));
-        cx.backend.fill_rect(
-            Rect {
-                origin: Point2D::new(rect.origin.x, rect.origin.y + rect.size.y - 1.0),
-                size: Point2D::new(rect.size.x, 1.0),
-            },
-            self.theme.border,
-        );
 
         // Left: layers button.
         self.paint_icon(
@@ -388,18 +381,9 @@ impl MobileDock {
     pub fn paint(&self, cx: &mut PaintCx<'_>, rect: Rect) {
         if self.compact {
             cx.backend.fill_rect(rect, dock_surface(self.theme));
-            cx.backend.fill_rect(
-                Rect {
-                    origin: rect.origin,
-                    size: Point2D::new(rect.size.x, 1.0),
-                },
-                self.theme.border,
-            );
         } else {
             cx.backend
                 .fill_round_rect(rect, 20.0, mix(self.theme.popover, Color::BLACK, 0.08));
-            cx.backend
-                .stroke_round_rect(rect, 20.0, self.theme.border, 1.0);
         }
 
         let slot_count = self.slot_count();
@@ -564,8 +548,11 @@ pub fn paint_sheet_header(
     show_handle: bool,
 ) {
     if show_handle {
-        cx.backend
-            .fill_round_rect(sheet_handle_rect(sheet), 2.0, theme.border);
+        cx.backend.fill_round_rect(
+            sheet_handle_rect(sheet),
+            2.0,
+            theme.muted_foreground.with_alpha(0.5),
+        );
     }
     let label = crate::TextLayout::single_run(
         title,
@@ -637,18 +624,10 @@ pub fn selection_action_hit(rect: Rect, point: Point2D) -> Option<SelectionActio
 pub fn paint_selection_actions(cx: &mut PaintCx<'_>, theme: &Theme, rect: Rect, label: &str) {
     cx.backend
         .fill_round_rect(rect, rect.size.y / 2.0, mix(theme.card, Color::BLACK, 0.25));
-    cx.backend
-        .stroke_round_rect(rect, rect.size.y / 2.0, theme.border, 1.0);
     let delete = Rect {
         origin: Point2D::new(rect.origin.x + rect.size.x - TOUCH_TARGET, rect.origin.y),
         size: Point2D::new(TOUCH_TARGET, rect.size.y),
     };
-    cx.backend.stroke_line(
-        Point2D::new(delete.origin.x, rect.origin.y + 10.0),
-        Point2D::new(delete.origin.x, rect.origin.y + rect.size.y - 10.0),
-        theme.border,
-        1.0,
-    );
     let property_target = Rect {
         origin: rect.origin,
         size: Point2D::new((rect.size.x - TOUCH_TARGET).max(0.0), rect.size.y),

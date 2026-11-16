@@ -76,8 +76,6 @@ pub(super) fn paint(
         palette.sub,
     );
     cx.backend.fill_round_rect(group, 8.0, palette.segment_bg);
-    cx.backend
-        .stroke_round_rect(group, 8.0, palette.segment_line, 1.0);
     let selected = usize::from(surface.state.task_draft().app_pages == AppPages::Multiple);
     for (index, (rect, label)) in rects.into_iter().zip(labels(locale)).enumerate() {
         let on = index == selected;

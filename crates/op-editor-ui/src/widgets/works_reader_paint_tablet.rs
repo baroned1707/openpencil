@@ -45,12 +45,6 @@ fn paint_strip(
         return;
     };
     cx.backend.fill_rect(row, palette.page);
-    cx.backend.stroke_line(
-        Point2D::new(row.origin.x, row.origin.y),
-        Point2D::new(row.origin.x + row.size.x, row.origin.y),
-        palette.line,
-        1.0,
-    );
     paint_arrows(reader, cx, layout, palette);
     let current = reader.current_index();
     for &(index, tile) in &layout.thumbs {
@@ -66,7 +60,6 @@ fn paint_strip(
         }
         // Placeholder plate — the host blits the board raster over it.
         cx.backend.fill_rect(plate, palette.preview);
-        cx.backend.stroke_rect(plate, palette.line, 1.0);
         // Clear of the selection ring, which sits 3.5 px outside the plate.
         let label_rect = Rect::xywh(
             tile.origin.x,
@@ -101,12 +94,6 @@ fn paint_side_panel(
     };
     let locale = reader.ui.locale;
     cx.backend.fill_rect(panel, palette.topbar);
-    cx.backend.stroke_line(
-        Point2D::new(panel.origin.x, panel.origin.y),
-        Point2D::new(panel.origin.x, panel.origin.y + panel.size.y),
-        palette.topbar_line,
-        1.0,
-    );
     // The chat opened into the panel: it paints over this surface, and
     // nothing of the panel's own content may show through it.
     if super::super::reader_chat_open(reader.ui) {
@@ -115,8 +102,6 @@ fn paint_side_panel(
     // The status as a card: phase icon + line, Stop / Retry inside it.
     cx.backend
         .fill_round_rect(layout.status, 14.0, palette.page);
-    cx.backend
-        .stroke_round_rect(layout.status, 14.0, palette.line, 1.0);
     paint_status_line(reader, cx, layout, layout.status.origin.x + 14.0, palette);
 
     if let Some(info) = layout.page_info {
@@ -187,7 +172,6 @@ fn paint_reply_card(
         hug_h.min(card.size.y),
     );
     cx.backend.fill_round_rect(card, 14.0, palette.page);
-    cx.backend.stroke_round_rect(card, 14.0, palette.line, 1.0);
     text_weighted(
         cx,
         eyebrow,

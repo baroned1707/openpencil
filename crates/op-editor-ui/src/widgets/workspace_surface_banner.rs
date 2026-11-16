@@ -51,10 +51,6 @@ fn paint_banner_strip(
         bottom - top,
     );
     cx.backend.fill_rect(banner, palette.chip_bg);
-    cx.backend.fill_rect(
-        Rect::xywh(banner.origin.x, bottom - 1.0, banner.size.x, 1.0),
-        palette.line,
-    );
     let note_band = Rect::xywh(
         banner.origin.x,
         top,
@@ -100,9 +96,7 @@ fn paint_banner_button(
             palette.panel
         },
     );
-    if !filled {
-        cx.backend.stroke_round_rect(button, 8.0, palette.line, 1.0);
-    }
+    if !filled {}
     let label_w = cx.backend.measure_text_family(label, 13.0, SANS);
     text(
         cx,

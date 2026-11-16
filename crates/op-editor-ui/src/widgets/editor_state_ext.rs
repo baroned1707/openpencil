@@ -36,7 +36,7 @@ pub fn theme_for(ui: &EditorUiState) -> Theme {
         background: studio.panel,
         card: studio.panel,
         popover: studio.raised,
-        border: studio.line,
+        border: studio.panel,
         input: studio.surface_input,
         foreground: studio.ink,
         card_foreground: studio.ink,

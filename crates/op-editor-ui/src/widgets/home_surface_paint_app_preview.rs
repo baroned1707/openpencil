@@ -60,9 +60,7 @@ fn paint_phone(
     cx.backend
         .fill_drop_shadow(frame, radius, 10.0, fade(palette.ink, 0.13 * opacity));
     cx.backend
-        .fill_round_rect(frame, radius, fade(palette.panel, opacity));
-    cx.backend
-        .stroke_round_rect(frame, radius, fade(palette.line, opacity), 1.0);
+        .fill_round_rect(frame, radius, fade(palette.page, opacity));
     let image = Rect::xywh(
         frame.origin.x + pad,
         frame.origin.y + pad,
@@ -72,7 +70,7 @@ fn paint_phone(
     let Some(bytes) = asset.bytes else {
         op_editor_core::web_assets::request(asset.route);
         cx.backend
-            .fill_round_rect(image, 3.0, fade(palette.preview, opacity));
+            .fill_round_rect(image, 3.0, fade(palette.raised, opacity));
         return;
     };
     if !has_cached_image_bytes(asset.image_id) {
@@ -98,7 +96,7 @@ fn paint_phone(
         cx.backend.restore();
     } else {
         cx.backend
-            .fill_round_rect(image, 3.0, fade(palette.preview, opacity));
+            .fill_round_rect(image, 3.0, fade(palette.raised, opacity));
     }
 }
 

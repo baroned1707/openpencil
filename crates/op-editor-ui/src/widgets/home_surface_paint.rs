@@ -192,12 +192,6 @@ fn paint_top_bar(
     // sized to the column they stopped short under the right-hand actions.
     cx.backend
         .fill_rect(Rect::xywh(0.0, 0.0, width, HOME_TOPBAR_H), palette.topbar);
-    cx.backend.stroke_line(
-        Point2D::new(0.0, HOME_TOPBAR_H),
-        Point2D::new(width, HOME_TOPBAR_H),
-        palette.topbar_line,
-        1.0,
-    );
     // Official mark, 34×34 (the PNG carries internal padding, so its
     // layout box overshoots the visible glyph). 80 px in from the left:
     // the macOS traffic lights own the first ~70 px of a borderless
@@ -277,16 +271,6 @@ fn paint_top_bar(
             } else {
                 palette.raised
             },
-        );
-        cx.backend.stroke_round_rect(
-            button,
-            9.0,
-            if hovered {
-                palette.button_hover_line
-            } else {
-                palette.raised_line
-            },
-            1.0,
         );
         let label_w = cx.backend.measure_text_family(label, 15.0, SANS);
         let icon_x = button.origin.x + (button.size.x - label_w - 17.0 - 9.0) / 2.0;
@@ -499,22 +483,10 @@ fn paint_tabs(
             1.6,
         );
     }
-    // The row's bottom hairline (12 px under the tabs, wide variant).
-    let hairline_y = layout.tabs_row.origin.y + dy + layout.tabs_row.size.y;
-    cx.backend.stroke_line(
-        Point2D::new(layout.tabs_row.origin.x, hairline_y),
-        Point2D::new(
-            layout.tabs_row.origin.x + layout.tabs_row.size.x,
-            hairline_y,
-        ),
-        palette.tabs_hairline,
-        1.0,
-    );
 }
 
-/// One tab's 60 px rounded shell: white at 49 % at rest with a
-/// transparent border, `#F0F5FD` + `#E1EAF7` on hover, `#EAF2FF` +
-/// `#C8DBFF` when selected (wide `.task-tab` overrides).
+/// One tab's 60 px rounded shell: transparent at rest, the hover tone on
+/// hover and the panel tone when selected — filled chips, no outline.
 fn paint_tab_shell(
     cx: &mut PaintCx<'_>,
     rect: Rect,
@@ -533,13 +505,6 @@ fn paint_tab_shell(
             palette.tab_fill
         },
     );
-    if selected {
-        cx.backend
-            .stroke_round_rect(rect, 10.0, palette.tab_selected_line, 1.0);
-    } else if hovered {
-        cx.backend
-            .stroke_round_rect(rect, 10.0, palette.tab_hover_line, 1.0);
-    }
 }
 
 fn paint_more_popover(
@@ -566,8 +531,6 @@ fn paint_more_popover(
         fade(palette.ink, 0.12),
     );
     cx.backend.fill_round_rect(popover, 12.0, palette.raised);
-    cx.backend
-        .stroke_round_rect(popover, 12.0, palette.raised_line, 1.0);
     let caption = crate::util::ellipsize_to_width(
         copy::home_str(locale, "home.tabs.moreCaption"),
         popover.size.x - 24.0,

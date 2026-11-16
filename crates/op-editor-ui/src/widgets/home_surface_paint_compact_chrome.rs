@@ -25,12 +25,6 @@ pub(super) fn paint_bottom_nav(
         return;
     }
     cx.backend.fill_rect(nav, palette.topbar);
-    cx.backend.stroke_line(
-        Point2D::new(nav.origin.x, nav.origin.y),
-        Point2D::new(nav.origin.x + nav.size.x, nav.origin.y),
-        palette.topbar_line,
-        1.0,
-    );
     for (index, (rect, (label, icon))) in layout
         .nav_items
         .iter()
@@ -102,12 +96,6 @@ pub(super) fn paint_top_bar(
     let locale = surface.ui.locale;
     cx.backend
         .fill_rect(Rect::xywh(0.0, 0.0, width, HOME_TOPBAR_H), palette.topbar);
-    cx.backend.stroke_line(
-        Point2D::new(0.0, HOME_TOPBAR_H),
-        Point2D::new(width, HOME_TOPBAR_H),
-        palette.topbar_line,
-        1.0,
-    );
     // Brand mark, 26 px, 16 in from the left (no desktop traffic
     // lights own a phone's first column).
     let mark = Rect::xywh(16.0, (HOME_TOPBAR_H - 26.0) / 2.0, 26.0, 26.0);
@@ -142,10 +130,17 @@ pub(super) fn paint_top_bar(
     let normal_pressed = surface.state.pressed == Some(HomeHit::ModeNormal);
     let professional_pressed = surface.state.pressed == Some(HomeHit::Professional);
     cx.backend.fill_round_rect(switch, 10.0, palette.segment_bg);
-    cx.backend
-        .stroke_round_rect(switch, 10.0, palette.segment_line, 1.0);
     // Home IS the normal mode, so 普通 always paints selected here.
-    cx.backend.fill_round_rect(normal, 7.0, palette.panel);
+    cx.backend.fill_round_rect(
+        Rect::xywh(
+            normal.origin.x + 3.0,
+            normal.origin.y + 3.0,
+            normal.size.x - 6.0,
+            normal.size.y - 6.0,
+        ),
+        7.0,
+        palette.blue_soft,
+    );
     for (rect, label, on, pressed) in [
         (
             normal,

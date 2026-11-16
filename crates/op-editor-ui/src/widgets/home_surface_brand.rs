@@ -113,15 +113,11 @@ pub(crate) fn paint_brand_chip(
         return;
     };
     cx.backend.fill_round_rect(chip, 7.0, palette.chip_bg);
-    cx.backend
-        .stroke_round_rect(chip, 7.0, palette.chip_line, 1.0);
     let mut x = chip.origin.x + PAD;
     let dots = swatches(surface);
     for dot in &dots {
         let r = Rect::xywh(x, chip.origin.y + (CHIP_H - DOT) / 2.0, DOT, DOT);
         cx.backend.fill_round_rect(r, DOT / 2.0, *dot);
-        cx.backend
-            .stroke_round_rect(r, DOT / 2.0, fade(palette.ink, 0.18), 1.0);
         x += DOT + DOT_GAP;
     }
     if !dots.is_empty() {

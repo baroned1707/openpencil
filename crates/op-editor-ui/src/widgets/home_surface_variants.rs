@@ -29,15 +29,14 @@ pub(crate) fn paint_variants_toggle(
     let on = surface.state.variants_on;
     let hovered = surface.state.hover == Some(HomeHit::Variants);
     let radius = rect.size.y / 2.0;
-    let (fill, line, ink) = if on {
-        (palette.blue_soft, palette.blue, palette.blue)
+    let (fill, ink) = if on {
+        (palette.blue_soft, palette.blue)
     } else if hovered {
-        (palette.button_hover, palette.button_hover_line, palette.ink)
+        (palette.button_hover, palette.ink)
     } else {
-        (palette.chip_bg, palette.chip_line, palette.sub)
+        (palette.chip_bg, palette.sub)
     };
     cx.backend.fill_round_rect(rect, radius, fill);
-    cx.backend.stroke_round_rect(rect, radius, line, 1.0);
     // The rect is sized from an estimate; centre the measured content in it.
     let label = copy::home_str(surface.ui.locale, "home.tools.variants");
     let label_w = cx.backend.measure_text_family(label, FONT, SANS);

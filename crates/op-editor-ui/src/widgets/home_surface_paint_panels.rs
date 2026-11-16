@@ -45,8 +45,6 @@ pub(super) fn paint_composer(
         fade(palette.ink, 0.08),
     );
     cx.backend.fill_round_rect(composer, 14.0, palette.panel);
-    cx.backend
-        .stroke_round_rect(composer, 14.0, palette.line, 1.0);
 
     // ── label row + segmented control ─────────────────────────────────
     let task_copy = copy::task_copy(locale, surface.state.task, surface.state.task_draft());
@@ -67,8 +65,6 @@ pub(super) fn paint_composer(
         let selected = copy::segment_index(surface.state.task, surface.state.task_draft());
         let segment = shift(layout.segment, rise);
         cx.backend.fill_round_rect(segment, 7.0, palette.segment_bg);
-        cx.backend
-            .stroke_round_rect(segment, 7.0, palette.segment_line, 1.0);
         for (index, label) in labels.iter().enumerate() {
             let option = shift(layout.segment_options[index], rise);
             let on = index as u8 == selected;
@@ -119,17 +115,9 @@ pub(super) fn paint_composer(
             13.0,
             fade(palette.blue, 0.05),
         );
+        cx.backend
+            .stroke_round_rect(input_box, 10.0, palette.blue, 1.0);
     }
-    cx.backend.stroke_round_rect(
-        input_box,
-        10.0,
-        if engaged {
-            Color::rgb_u8(0x74, 0xA7, 0xFF)
-        } else {
-            palette.input_line
-        },
-        1.0,
-    );
     let text_rect = surface.input_text_rect(input_box);
     let text_area = surface.input_text_area(task_copy.placeholder, input_box);
     // `draw_text` is baseline-relative but jian's TextArea positions glyph
@@ -150,8 +138,6 @@ pub(super) fn paint_composer(
     if surface.state.replace_pending {
         let strip = shift(layout.replace_strip, rise);
         cx.backend.fill_round_rect(strip, 8.0, palette.raised);
-        cx.backend
-            .stroke_round_rect(strip, 8.0, fade(palette.blue, 0.4), 1.0);
         text(
             cx,
             copy::home_str(locale, "home.replace.title"),
@@ -194,10 +180,6 @@ pub(super) fn paint_composer(
                     palette.raised
                 },
             );
-            if !primary {
-                cx.backend
-                    .stroke_round_rect(button, 7.0, palette.raised_line, 1.0);
-            }
             let label_w = cx.backend.measure_text_family(label, 12.0, SANS);
             text(
                 cx,
@@ -450,8 +432,6 @@ pub(super) fn paint_preview(
     let locale = surface.ui.locale;
     let panel = shift(layout.preview, rise);
     cx.backend.fill_round_rect(panel, 14.0, palette.preview);
-    cx.backend
-        .stroke_round_rect(panel, 14.0, palette.preview_line, 1.0);
 
     let heading = shift(layout.preview_heading, rise);
     let task_copy = copy::task_copy(locale, surface.state.task, surface.state.task_draft());

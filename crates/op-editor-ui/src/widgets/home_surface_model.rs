@@ -96,16 +96,6 @@ pub(super) fn paint_model_chip(
         palette.raised
     };
     cx.backend.fill_round_rect(rect, 9.0, fill);
-    cx.backend.stroke_round_rect(
-        rect,
-        9.0,
-        if hovered {
-            palette.button_hover_line
-        } else {
-            palette.raised_line
-        },
-        1.0,
-    );
     let dot_color = if usable {
         palette.status_green
     } else {
@@ -164,7 +154,6 @@ pub fn paint_connect_more_row(
     if hovered {
         cx.backend.fill_round_rect(rect, 10.0, theme.muted);
     }
-    cx.backend.stroke_round_rect(rect, 10.0, theme.border, 1.0);
     draw_icon(
         cx.backend,
         Icon::Plus,

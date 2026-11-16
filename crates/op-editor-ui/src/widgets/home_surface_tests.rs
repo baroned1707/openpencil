@@ -19,19 +19,29 @@ fn visible_home() -> op_editor_core::EditorState {
 }
 
 #[test]
-fn studio_palette_owns_the_exact_light_and_dark_tokens() {
+fn studio_palette_is_the_editor_theme_in_both_modes() {
+    use crate::theme::Theme;
+    // Chrome tokens ARE the Figma UI3 theme tokens: no private palette.
+    for (palette, theme) in [
+        (StudioPalette::light(), Theme::light()),
+        (StudioPalette::dark(), Theme::dark()),
+    ] {
+        assert_eq!(palette.page, theme.canvas_surface);
+        assert_eq!(palette.panel, theme.card);
+        assert_eq!(palette.topbar, theme.card);
+        assert_eq!(palette.surface_input, theme.input);
+        assert_eq!(palette.ink, theme.foreground);
+        assert_eq!(palette.muted, theme.muted_foreground);
+        assert_eq!(palette.blue, theme.primary);
+        assert_eq!(palette.tab_selected_bar, theme.primary);
+        assert_eq!(palette.button_hover, theme.accent);
+    }
     let light = StudioPalette::light();
-    assert_hex(light.page, "F9FBFD");
-    assert_hex(light.ink, "111A32");
-    assert_hex(light.muted, "78859C");
-    assert_hex(light.blue, "075BFF");
-    assert_hex(light.blue_hover, "004CE0");
-    assert_hex(light.line, "E1E8F2");
+    assert_hex(light.page, "E5E5E5");
+    assert_hex(light.panel, "FFFFFF");
+    assert_hex(light.surface_input, "F5F5F5");
+    assert_hex(light.blue, "0D99FF");
     assert_hex(light.yellow, "F3FF23");
-    assert_hex(light.disabled_primary, "9ABBFF");
-    assert_hex(light.preview, "EEF4FF");
-    assert_hex(light.selected_tab, "EDF4FF");
-    assert_hex(light.input_line, "D5DEEC");
     assert_hex(light.tint_knowledge, "FFF3E8");
     assert_hex(light.tint_tutorial, "EDF5FF");
     assert_hex(light.tint_poster, "F4FADD");
@@ -39,53 +49,27 @@ fn studio_palette_owns_the_exact_light_and_dark_tokens() {
     assert_hex(light.tile_tutorial, "68A6FF");
     assert_hex(light.tile_poster, "C9FA15");
 
-    // The founder-approved dark values (prototype `dark-theme.css`).
     let dark = StudioPalette::dark();
-    assert_hex(dark.page, "10131A");
-    assert_hex(dark.panel, "191E28");
-    assert_hex(dark.line, "293244");
-    assert_hex(dark.ink, "EDF1F8");
-    assert_hex(dark.muted, "A0AEC3");
-    assert_hex(dark.placeholder, "8F9DB3");
-    assert_hex(dark.topbar, "141821");
-    assert_hex(dark.topbar_line, "262F3E");
-    assert_hex(dark.raised, "222A38");
-    assert_hex(dark.raised_line, "303A4D");
-    assert_hex(dark.surface_input, "131821");
-    assert_hex(dark.input_line, "364157");
-    assert_hex(dark.button_hover, "2A3445");
-    assert_hex(dark.preview, "1B2538");
-    assert_hex(dark.preview_line, "2A3952");
-    assert_hex(dark.disabled_primary, "253754");
-    assert_hex(dark.disabled_primary_ink, "93A8C8");
-    assert_hex(dark.tab_selected_fill, "202F4C");
-    assert_hex(dark.tab_selected_line, "3B5682");
-    assert_hex(dark.tab_selected_ink, "A7C6FF");
-    assert_hex(dark.canvas, "111620");
-    assert_hex(dark.canvas_dot, "303A4E");
-    assert_hex(dark.tint_knowledge, "2B2321");
-    assert_hex(dark.tint_tutorial, "1D293C");
-    assert_hex(dark.tint_poster, "252C1D");
+    assert_hex(dark.page, "1E1E1E");
+    assert_hex(dark.panel, "2C2C2C");
+    assert_hex(dark.surface_input, "383838");
+    assert_hex(dark.ink, "FFFFFF");
+    assert_hex(dark.blue, "0D99FF");
+    assert_hex(dark.canvas, "1E1E1E");
+    assert_hex(dark.sticker_ink, "182019");
 
     // Three contracts the dark theme must not break.
-    // 1. The button blue stays the button blue; only the TEXT blue lifts.
-    assert_hex(dark.blue, "075BFF");
-    assert_hex(dark.link, "8BB3FF");
-    assert_ne!(dark.blue, dark.link);
-    // 2. Cards, inset inputs and raised popovers stay three distinct
-    //    surfaces — this is what a single `panel` token cannot express.
+    // 1. Surfaces separate by tone alone: page < panel < input.
+    assert_ne!(dark.page, dark.panel);
     assert_ne!(dark.panel, dark.surface_input);
-    assert_ne!(dark.panel, dark.raised);
-    assert_ne!(dark.surface_input, dark.raised);
-    // 3. The work keeps its own colours: the yellow marker, the sticker's
+    // 2. The work keeps its own colours: the yellow marker, the sticker's
     //    dark ink and the three bright example tiles are theme-independent.
     assert_hex(dark.yellow, "F3FF23");
-    assert_hex(dark.sticker_ink, "182019");
     assert_eq!(dark.tile_knowledge, light.tile_knowledge);
     assert_eq!(dark.tile_tutorial, light.tile_tutorial);
     assert_eq!(dark.tile_poster, light.tile_poster);
-    // The marker becomes an underline in dark so it cannot sit behind
-    // near-white glyphs.
+    // 3. The marker becomes an underline in dark so it cannot sit behind
+    //    near-white glyphs.
     assert!(!light.marker_underline);
     assert!(dark.marker_underline);
 }
