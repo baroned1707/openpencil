@@ -319,7 +319,7 @@ pub fn process_message_with_applier_profiled<F>(
     state: &mut EditorState,
     line: &str,
     profile: tool_profile::McpAccessProfile,
-    mut apply: F,
+    apply: F,
 ) -> Result<Option<String>, McpServeError>
 where
     F: FnMut(&str, &mut EditorState, &EditorCommand) -> bool,
@@ -361,11 +361,13 @@ where
             return Ok(Some(op_mcp::tool_response_to_json(&refusal)));
         }
     }
+    let feedback_call = call
+        .as_ref()
+        .filter(|c| write_diagnostics::wants_feedback(&c.tool));
+    let feedback_call = feedback_call.cloned();
     let requested_tool = call.map(|call| call.tool);
     let registry = rebuild_registry(state, requested_tool.as_deref(), profile);
-    process_tool_message_with_registry(&registry, line, |tool_name, cmd| {
-        apply(tool_name, state, cmd)
-    })
+    write_diagnostics::dispatch(&registry, line, state, feedback_call, apply)
 }
 
 /// Dispatch one already-classified tool call through a caller-provided
@@ -724,6 +726,7 @@ mod save_in_place_headless;
 mod server_instructions;
 mod tool_annotations;
 mod wire;
+mod write_diagnostics;
 pub use wire::*;
 
 mod doc_sync;

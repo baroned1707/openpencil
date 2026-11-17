@@ -76,6 +76,14 @@ const MAX_CONTRAST_ISSUES: usize = 64;
 /// (`remove_nested_duplicate_status_bars` and mobile-nav reflow), making this
 /// safe for read-only MCP credentials and repeated polling.
 pub fn collect_design_quality(state: &EditorState) -> DesignQualityDiagnostics {
+    collect_design_quality_with_structure_cap(state, 12)
+}
+
+/// [`collect_design_quality`] with an explicit cap on `structureIssues`.
+fn collect_design_quality_with_structure_cap(
+    state: &EditorState,
+    structure_cap: usize,
+) -> DesignQualityDiagnostics {
     let geometry_issues = op_orchestrator::geometry_validation::geometry_diagnostics(state);
     let effective_theme = op_editor_core::variables_resolve::effective_theme(
         &state.doc,
@@ -91,7 +99,7 @@ pub fn collect_design_quality(state: &EditorState) -> DesignQualityDiagnostics {
     let mut structure_issues = scan_duplicate_root_issues(state.active_children());
     structure_issues.extend(scan_ring_issues(state.active_children()));
     structure_issues.extend(scan_header_icon_row_issues(state.active_children()));
-    structure_issues.truncate(12);
+    structure_issues.truncate(structure_cap);
     let empty_shells = scan_empty_shells(state.active_children());
     let diagnostics = crate::design_agent_diagnostics::collect_batch_design_diagnostics(state);
     let nav_issues = op_orchestrator::nav_issues::scan_nav_issues(state);
@@ -240,145 +248,35 @@ pub fn execute_design_tool_with_root_seed_guard(
         // The orchestrator owns the narrow structural proof and only grows the
         // numeric root when the shell's real content actually needs it.
         let mobile_nav_reflowed = op_orchestrator::repair_mobile_trailing_nav_reflow(state);
-        let mut layout_issues = op_orchestrator::geometry_validation::geometry_diagnostics(state);
-        let effective_theme = op_editor_core::variables_resolve::effective_theme(
-            &state.doc,
-            &state.ui.variables.active_theme,
-        );
-        let mut contrast_issues = scan_contrast_issues(
-            state.active_children(),
-            state.doc.variables.as_ref(),
-            &effective_theme,
-        );
-        contrast_issues.truncate(MAX_CONTRAST_ISSUES);
-        let icon_issues = scan_icon_issues(state.active_children());
-        let mut dup_root_issues = scan_duplicate_root_issues(state.active_children());
-        dup_root_issues.extend(scan_ring_issues(state.active_children()));
-        dup_root_issues.extend(scan_header_icon_row_issues(state.active_children()));
+        let mut structure_notes = Vec::new();
         if dup_bars_removed > 0 {
-            dup_root_issues.push(format!(
+            structure_notes.push(format!(
                 "removed {dup_bars_removed} extra status bar(s) you built - the standard                  status bar already exists; NEVER create another one"
             ));
         }
         if mobile_nav_reflowed {
-            dup_root_issues.push(
+            structure_notes.push(
                 "reflowed the mobile content shell and trailing bottom nav inside the root - keep ordinary content wrappers height=fit_content, preserve the status/content/nav region gap, and grow the numeric root only when real content requires it"
                     .to_string(),
             );
         }
-        let empty_shells = scan_empty_shells(state.active_children());
-        // Track B of the interactive-preview plan: an intent-shaped echo (not
-        // an auto-fix — see `op_orchestrator::nav_issues` module doc) naming
-        // any nav-tab item that name-matches an already screen-marked frame
-        // but has no `events.onTap` bound yet. `wire_screen_navigation`
-        // (Track A) is the deterministic backstop if the model never gets to
-        // it before the design ends.
-        let nav_issues = op_orchestrator::nav_issues::scan_nav_issues(state);
-        let design_diagnostics =
-            crate::design_agent_diagnostics::collect_batch_design_diagnostics(state);
-        layout_issues.extend(design_diagnostics.layout_issues);
-        let intent_questions = design_diagnostics.intent_questions;
-        let variable_issues = design_diagnostics.variable_issues;
-        let image_slot_candidates = design_diagnostics.image_slot_candidates;
-        if !layout_issues.is_empty()
-            || !dup_root_issues.is_empty()
-            || !contrast_issues.is_empty()
-            || !icon_issues.is_empty()
-            || !empty_shells.is_empty()
-            || !intent_questions.is_empty()
-            || !variable_issues.is_empty()
-            || !image_slot_candidates.is_empty()
-            || !nav_issues.is_empty()
-            || root_seed_hint.is_some()
-        {
+        // Everything the real layout proves wrong after this batch (collapses,
+        // table / text overflow, fallback icons, contrast, empty shells,
+        // nav wiring, ...), so the model repairs it in-process instead of
+        // piling defects up for the loop-end finalize. The MCP write path
+        // calls the same function, so external agents get the same feedback.
+        let feedback = post_write_diagnostics(
+            state,
+            PostWriteExtras {
+                structure_notes,
+                root_seed_hint,
+            },
+            None,
+        );
+        if !feedback.is_empty() {
             if let Ok(mut envelope) = serde_json::from_str::<serde_json::Value>(&result.content) {
                 if let Some(obj) = envelope.as_object_mut() {
-                    if !layout_issues.is_empty() {
-                        obj.insert("layoutIssues".into(), serde_json::json!(layout_issues));
-                    }
-                    if !icon_issues.is_empty() {
-                        obj.insert("iconIssues".into(), serde_json::json!(icon_issues));
-                    }
-                    if !dup_root_issues.is_empty() {
-                        obj.insert("structureIssues".into(), serde_json::json!(dup_root_issues));
-                    }
-                    if !intent_questions.is_empty() {
-                        obj.insert(
-                            "intentQuestions".into(),
-                            serde_json::json!(intent_questions),
-                        );
-                    }
-                    if !variable_issues.is_empty() {
-                        obj.insert("variableIssues".into(), serde_json::json!(variable_issues));
-                    }
-                    if !image_slot_candidates.is_empty() {
-                        obj.insert(
-                            "imageSlots".into(),
-                            serde_json::json!(image_slot_candidates),
-                        );
-                    }
-                    if !empty_shells.is_empty() {
-                        obj.insert(
-                            "shellsRemaining".into(),
-                            serde_json::json!(format!(
-                                "{} - fill each in its own batch; NEVER end the design while any shell is empty (D() a shell you decided against)",
-                                empty_shells.join(", ")
-                            )),
-                        );
-                    }
-                    if !contrast_issues.is_empty() {
-                        obj.insert(
-                            "contrastHint".into(),
-                            serde_json::json!(contrast_hint(&contrast_issues)),
-                        );
-                        obj.insert("contrastIssues".into(), serde_json::json!(contrast_issues));
-                    }
-                    if !nav_issues.is_empty() {
-                        obj.insert("navIssues".into(), serde_json::json!(nav_issues));
-                    }
-                    let mut hints = Vec::new();
-                    if !layout_issues.is_empty() {
-                        hints.push(
-                            "The resolved layout has the issues above. Fix them with a follow-up batch_design before building the next section."
-                                .to_string(),
-                        );
-                    }
-                    if !icon_issues.is_empty() {
-                        hints.push(
-                            "iconIssues: every icon listed renders as a fallback dot. Fix each with U(id, {\"iconFontName\":\"<glyph>\"}) using a real lucide glyph name (home/search/heart/compass/...)."
-                                .to_string(),
-                        );
-                    }
-                    if !intent_questions.is_empty() {
-                        hints.push(
-                            "intentQuestions are ambiguous: inspect the named nodes and choose explicitly. Do not assume the finalizer will move, resize, delete, or recolor them."
-                                .to_string(),
-                        );
-                    }
-                    if !variable_issues.is_empty() {
-                        hints.push(
-                            "variableIssues name broken references. Replace them deliberately with a token returned by get_variables or a concrete value; nearby colours are not sufficient evidence."
-                                .to_string(),
-                        );
-                    }
-                    if !image_slot_candidates.is_empty() {
-                        hints.push(
-                            "imageSlots lists unresolved media slots. Resolve them before continuing: default G requires the exact EMPTY slot id, never its row/card container; if an image is already a direct sibling, use M(imageId, slotId) only when explicit parent/slot hierarchy assigns it there. Do not decide from image subject, aesthetics, or perceived quality."
-                                .to_string(),
-                        );
-                    }
-                    if !nav_issues.is_empty() {
-                        hints.push(
-                            "navIssues: this is a multi-screen app - the listed nav tabs are not wired to switch screens yet. Bind each one's events.onTap exactly as shown; do not guess a different destination."
-                                .to_string(),
-                        );
-                    }
-                    if let Some(hint) = root_seed_hint {
-                        hints.push(hint);
-                    }
-                    if !hints.is_empty() {
-                        obj.insert("layoutHint".into(), serde_json::json!(hints.join(" ")));
-                    }
+                    obj.extend(feedback);
                     result.content = envelope.to_string();
                 }
             }
@@ -407,7 +305,14 @@ fn batch_design_target_page_index(state: &EditorState, args_json: &str) -> Optio
                 .filter(|page| !page.is_empty())
                 .map(str::to_string)
         });
-    match page_selector.as_deref() {
+    page_index_for_selector(state, page_selector.as_deref())
+}
+
+/// Index of the page a write's optional page selector names (`None` selector:
+/// the active page). Shared by the in-app wrapper and the MCP write path so
+/// both diagnose the page the write actually landed on.
+pub fn page_index_for_selector(state: &EditorState, page_selector: Option<&str>) -> Option<usize> {
+    match page_selector {
         Some(page) => match state.doc.pages.as_ref() {
             Some(pages) if !pages.is_empty() => pages
                 .iter()
@@ -592,9 +497,12 @@ fn extract_from_schema_entry(entry: &str) -> Option<(String, String)> {
     Some((description, input_schema.to_string()))
 }
 
+mod icon_names;
+mod post_write_diagnostics;
 mod quality_scans;
 mod root_seed;
 
+pub use post_write_diagnostics::*;
 pub use quality_scans::*;
 pub use root_seed::*;
 
@@ -617,3 +525,7 @@ mod continuation_tests;
 #[cfg(test)]
 #[path = "mobile_normalize_tests.rs"]
 mod mobile_normalize_tests;
+
+#[cfg(test)]
+#[path = "design_agent_tools_feedback_tests.rs"]
+mod feedback_tests;

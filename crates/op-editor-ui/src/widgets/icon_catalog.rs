@@ -123,6 +123,18 @@ pub fn lookup_icon(collection: &str, name: &str) -> Option<&'static IconCatalogE
     None
 }
 
+/// Every glyph name the embedded core catalog holds for `collection`
+/// (`"lucide"` or `"feather"`), in catalog order. Empty when the catalog is
+/// not loaded yet (web, before its fetch lands) or the collection is not a core
+/// one. Unlike [`search_icons`] this leaves the picker's one-slot search cache
+/// alone, so a diagnostic can walk the names without evicting it.
+pub fn core_icon_names(collection: &str) -> impl Iterator<Item = &'static str> + '_ {
+    core_catalog()
+        .iter()
+        .filter(move |icon| icon.collection == collection)
+        .map(|icon| icon.name.as_str())
+}
+
 /// Exact `collection:name` lookup across the core and brand catalogs.
 fn lookup_icon_exact(collection: &str, name: &str) -> Option<&'static IconCatalogEntry> {
     let key = format!("{collection}:{name}");

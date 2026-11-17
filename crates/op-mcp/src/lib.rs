@@ -187,6 +187,8 @@ mod write_tools_variables;
 #[cfg(test)]
 mod mcp_read_tests;
 #[cfg(test)]
+mod snapshot_layout_flag_tests;
+#[cfg(test)]
 mod mcp_tests;
 
 // The MCP command DTO is now `op_editor_core::EditorCommand` — the

@@ -46,6 +46,11 @@ struct LayoutRecord {
     y: f64,
     w: f64,
     h: f64,
+    /// `Some("partial" | "full")` when the node's own bounds extend beyond its
+    /// parent's while that parent clips its content.
+    clipped: Option<&'static str>,
+    /// A frame or text whose own width or height resolved to zero.
+    collapsed: bool,
 }
 
 #[derive(Clone)]
@@ -162,6 +167,13 @@ fn layout_entry_value(
     obj.insert("y".into(), js_number(record.y - offset.1));
     obj.insert("width".into(), js_number(record.w));
     obj.insert("height".into(), js_number(record.h));
+    // Only present when true, so a clean tree keeps its exact bytes.
+    if let Some(clipped) = record.clipped {
+        obj.insert("clipped".into(), json!(clipped));
+    }
+    if record.collapsed {
+        obj.insert("collapsed".into(), json!(true));
+    }
     let children = layout_children_values(selected, &record.id, offset);
     if !children.is_empty() {
         obj.insert("children".into(), Value::Array(children));
@@ -417,12 +429,28 @@ fn scene_layout_records(
         meta: &BTreeMap<String, NodeMeta>,
         ancestors: &[String],
         depth: u32,
+        clip: Option<Extent>,
         out: &mut Vec<LayoutRecord>,
     ) {
         for node in nodes {
             let id = node.id.clone();
             let node_meta = meta.get(&id);
             let bounds = node.aggregate_bounds();
+            // Own bounds (not the aggregate): the aggregate unions in the
+            // children, so an overflowing child would never read as outside.
+            let own = Extent::of(
+                node.bounds.origin.x,
+                node.bounds.origin.y,
+                node.bounds.size.x,
+                node.bounds.size.y,
+            );
+            let collapsed = matches!(node.kind, NodeKind::Frame | NodeKind::Text)
+                && (own.right - own.left < COLLAPSE_EPSILON
+                    || own.bottom - own.top < COLLAPSE_EPSILON);
+            let clipped = match clip {
+                Some(parent) if !collapsed && node.rotation == 0.0 => parent.overflow_of(&own),
+                _ => None,
+            };
             out.push(LayoutRecord {
                 id: id.clone(),
                 name: node_meta.and_then(|m| m.name.clone()),
@@ -435,16 +463,69 @@ fn scene_layout_records(
                 y: f64::from(bounds.origin.y),
                 w: f64::from(bounds.size.x),
                 h: f64::from(bounds.size.y),
+                clipped,
+                collapsed,
             });
             let mut child_ancestors = ancestors.to_vec();
             child_ancestors.push(id);
-            walk(&node.children, meta, &child_ancestors, depth + 1, out);
+            let child_clip = node.clip_content.then_some(own);
+            walk(
+                &node.children,
+                meta,
+                &child_ancestors,
+                depth + 1,
+                child_clip,
+                out,
+            );
         }
     }
 
     let mut out = Vec::new();
-    walk(roots, meta, &[], 0, &mut out);
+    walk(roots, meta, &[], 0, None, &mut out);
     out
+}
+
+/// A node's own rectangle as edges, in document px.
+#[derive(Clone, Copy)]
+struct Extent {
+    left: f64,
+    top: f64,
+    right: f64,
+    bottom: f64,
+}
+
+/// Sub-pixel slack: layout rounding must not flag a tree that fits.
+const CLIP_TOLERANCE: f64 = 0.5;
+/// A frame or text narrower or shorter than this has collapsed.
+const COLLAPSE_EPSILON: f64 = 0.5;
+
+impl Extent {
+    fn of(x: f32, y: f32, w: f32, h: f32) -> Self {
+        let (x, y, w, h) = (f64::from(x), f64::from(y), f64::from(w), f64::from(h));
+        Self {
+            left: x,
+            top: y,
+            right: x + w,
+            bottom: y + h,
+        }
+    }
+
+    /// How `child` sits against this clipping rectangle: `None` when it fits,
+    /// `"partial"` when part of it is cut off, `"full"` when none of it shows.
+    fn overflow_of(&self, child: &Extent) -> Option<&'static str> {
+        let beyond = child.left < self.left - CLIP_TOLERANCE
+            || child.top < self.top - CLIP_TOLERANCE
+            || child.right > self.right + CLIP_TOLERANCE
+            || child.bottom > self.bottom + CLIP_TOLERANCE;
+        if !beyond {
+            return None;
+        }
+        let shows = child.left < self.right
+            && child.right > self.left
+            && child.top < self.bottom
+            && child.bottom > self.top;
+        Some(if shows { "partial" } else { "full" })
+    }
 }
 
 fn scene_kind_label(kind: &NodeKind) -> &str {
@@ -508,6 +589,8 @@ fn layout_records_in(roots: &[PenNode], all_nodes: &[PenNode]) -> Vec<LayoutReco
                 y,
                 w: b.2,
                 h: b.3,
+                clipped: None,
+                collapsed: false,
             });
             if let Some(children) = n.children() {
                 let mut child_ancestors = ancestors.to_vec();

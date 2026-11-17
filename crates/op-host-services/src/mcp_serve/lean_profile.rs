@@ -52,12 +52,15 @@ fn lean_description(tool: &str) -> String {
              M(id,parent[,index]) move, C(id,parent,{…}) copy, R(id,{…}) replace, G(…) image \
              fill. Send exactly one of script / operations / nodes_json. Transactional: any \
              failing line applies nothing and errors[] lists every failure — fix and resend. \
-             Keep each call to <=25 operations; build large screens section by section."
+             Keep each call to <=25 operations; build large screens section by section. The \
+             result may carry layoutIssues, iconIssues, structureIssues, contrastIssues and \
+             similar keys naming what this write broke: fix them before finalize_design."
         }
         "snapshot_layout" => {
             "STEP 4a · VERIFY GEOMETRY. Resolved bounding-box tree of the active page (or of \
              parentId), maxDepth levels deep (default 1). Cheap — run after every batch_design \
-             to catch overlap, overflow and zero-size nodes."
+             to catch overlap, overflow and zero-size nodes. An entry carries clipped \
+             (partial|full) or collapsed (true) only when that is true."
         }
         "get_screenshot" => {
             "STEP 4b · VERIFY VISUALLY. Render nodeId (or \"root\", the page's first top-level \

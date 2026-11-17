@@ -347,6 +347,12 @@ pub(super) fn scan_icon_issues(nodes: &[PenNode]) -> Vec<String> {
                             format!("\"{name}\"")
                         }
                     ));
+                } else if let Some(line) = super::icon_names::unknown_glyph_issue(
+                    &icon.base.id,
+                    icon.icon_font_family.as_deref(),
+                    name,
+                ) {
+                    out.push(line);
                 }
             }
             if let Some(children) = node.children() {
@@ -436,7 +442,15 @@ pub(super) fn collect_contrast_candidates(
         _ => None,
     };
     if let (Some((fill, target)), Some(bg)) = (foreground, bg_stack.last()) {
-        if let Some(fg) = first_solid_hex(fill, variables, theme, Some(bg), opacity) {
+        // A text node without a resolvable fill is not invisible: the canvas
+        // paints it in a near-black default ink. That ink is what has to
+        // contrast with the background, so check it instead of skipping the
+        // node (the dark-surface case is where such text really vanishes).
+        let fg = first_solid_hex(fill, variables, theme, Some(bg), opacity).or_else(|| {
+            (matches!(node, PenNode::Text(_)) && fill_is_unresolved(fill))
+                .then(|| DEFAULT_TEXT_INK_HEX.to_string())
+        });
+        if let Some(fg) = fg {
             out.push(ContrastCandidate {
                 node_id: node.id_str().to_string(),
                 node_name: node.base().name.clone(),
@@ -456,6 +470,19 @@ pub(super) fn collect_contrast_candidates(
     if pushed_bg.is_some() {
         bg_stack.pop();
     }
+}
+
+/// The colour the canvas paints text with when no fill resolves
+/// (`canvas_viewport_text.rs`: 0.08 grey, `#141414`).
+const DEFAULT_TEXT_INK_HEX: &str = "#141414";
+
+/// True when the fill list paints nothing the contrast scan can resolve to a
+/// colour AND the renderer falls back to its default ink: no fill at all, or
+/// only solid fills whose colour did not resolve. A gradient or image fill is
+/// a deliberate paint and is left alone.
+fn fill_is_unresolved(fill: &Option<Vec<PenFill>>) -> bool {
+    fill.as_ref()
+        .is_none_or(|fills| fills.iter().all(|paint| matches!(paint, PenFill::Solid(_))))
 }
 
 pub(super) fn container_background_hex(
