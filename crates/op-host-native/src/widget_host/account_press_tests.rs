@@ -220,6 +220,15 @@ fn login_modal_sign_in_with_dev_flag_signs_in_and_closes() {
 
     host.dispatch_login_modal_press(hit_point.x, hit_point.y, VW, VH);
 
+    if op_auth_bridge::LOCAL_ONLY {
+        // Local-only build (the default): the variable is ignored, so the
+        // press never signs anyone in.
+        assert_eq!(
+            host.editor_state().editor_ui.account,
+            AccountState::Anonymous
+        );
+        return;
+    }
     assert_eq!(
         host.editor_state().editor_ui.account,
         AccountState::SignedIn {
@@ -228,6 +237,34 @@ fn login_modal_sign_in_with_dev_flag_signs_in_and_closes() {
         }
     );
     assert!(!host.editor_state().editor_ui.login_modal_open);
+}
+
+/// Mutation guard for the local-only switch: with the fake-login variable set
+/// the sign-in press must still leave the account anonymous.
+#[test]
+fn fake_login_env_is_ignored_in_local_only() {
+    let _lock = env_lock();
+    let _guard = EnvVarGuard::set("OPENPENCIL_DEV_FAKE_LOGIN", "1");
+    let mut host = WidgetHostNative::new();
+    host.editor_state_mut().editor_ui.login_modal_open = true;
+    let modal = LoginModal::for_editor(host.editor_state());
+    let panel = modal.rect(VW, VH);
+    let hit_point = Point2D::new(
+        panel.origin.x + panel.size.x / 2.0,
+        panel.origin.y + panel.size.y - 56.0,
+    );
+
+    host.dispatch_login_modal_press(hit_point.x, hit_point.y, VW, VH);
+
+    assert!(
+        std::hint::black_box(op_auth_bridge::LOCAL_ONLY),
+        "default features expected"
+    );
+    assert_eq!(
+        host.editor_state().editor_ui.account,
+        AccountState::Anonymous
+    );
+    assert!(!op_auth_bridge::dev_fake_login_enabled());
 }
 
 #[test]

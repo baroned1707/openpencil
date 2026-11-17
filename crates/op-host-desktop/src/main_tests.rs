@@ -583,3 +583,20 @@ fn first_window_show_rearms_the_home_entrance_once() {
         "later focus or occlusion changes never replay it"
     );
 }
+
+/// Local-only invariant: the startup account gate stays closed even when the
+/// dev fake-login variable asks for it, so no sign-in surface is ever shown.
+#[test]
+fn startup_account_gate_stays_closed_in_local_only_even_with_fake_login_env() {
+    use op_editor_core::CollabAvailability;
+
+    std::env::set_var(op_auth_bridge::ENV_DEV_FAKE_LOGIN, "1");
+    let mut host = WidgetHostNative::new();
+    init_auth_runtime(&mut host);
+    std::env::remove_var(op_auth_bridge::ENV_DEV_FAKE_LOGIN);
+
+    let ui = &host.editor_state().editor_ui;
+    assert!(!ui.account_ui_available);
+    assert!(!ui.account.is_signed_in());
+    assert_eq!(ui.collab.availability, CollabAvailability::Unavailable);
+}

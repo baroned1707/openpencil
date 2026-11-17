@@ -12,7 +12,14 @@ readme = "README.md"
 exclude = ["prebuilt/**"]
 
 [features]
-default = []
+# OpenPencil is a purely local app by default: `build.rs` neither probes nor
+# links the proprietary prebuilt, `available()` is false, and the account /
+# collaboration UI stays hidden exactly as in an open-source stub build.
+# Restoring the account backend needs `--no-default-features` on THIS crate
+# (a dependent cannot opt out: Cargo unifies features across the graph, and no
+# dependent may set `default-features = false` on op-auth-bridge).
+default = ["local-only"]
+local-only = []
 # Deterministic, non-production signing keys for downstream integration tests.
 # Production verifier configuration never trusts this fixture issuer.
 test-issuer = []

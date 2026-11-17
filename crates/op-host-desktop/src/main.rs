@@ -516,9 +516,11 @@ fn parse_live_mcp_port<I: Iterator<Item = String>>(args: I) -> Option<u16> {
 /// Initialize the device-login runtime (proprietary bridge library) and
 /// restore a persisted session, then set the runtime account gate. Stub
 /// builds (no prebuilt library for this target) leave the gate closed
-/// unless `OPENPENCIL_DEV_FAKE_LOGIN=1` re-opens it for UI work.
+/// unless `OPENPENCIL_DEV_FAKE_LOGIN=1` re-opens it for UI work. A local-only
+/// build (the default) keeps the gate closed in every case: `available()` is
+/// false and the fake-login variable is ignored.
 fn init_auth_runtime(host: &mut WidgetHostNative) {
-    let dev_fake = std::env::var(op_auth_bridge::ENV_DEV_FAKE_LOGIN).as_deref() == Ok("1");
+    let dev_fake = op_auth_bridge::dev_fake_login_enabled();
     let mut backend_ready = false;
     if op_auth_bridge::available() {
         if let Ok(dir) = op_config_store::openpencil_dir() {

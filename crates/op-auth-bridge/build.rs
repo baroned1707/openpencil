@@ -16,6 +16,7 @@ mod prebuilt_provenance;
 
 const DEV_ARCHIVE_ENV: &str = "OPENPENCIL_DEV_OP_AUTH_ARCHIVE";
 const DEV_ABI_VERSION_ENV: &str = "OPENPENCIL_DEV_OP_AUTH_ABI_VERSION";
+const LOCAL_ONLY_FEATURE_ENV: &str = "CARGO_FEATURE_LOCAL_ONLY";
 const DEV_FEATURE_ENV: &str = "CARGO_FEATURE_DEV_PREBUILT";
 const DEV_HOSTED_FEATURE_ENV: &str = "CARGO_FEATURE_DEV_HOSTED";
 
@@ -25,11 +26,23 @@ fn main() {
     println!("cargo:rustc-check-cfg=cfg(op_auth_collab_relay_token_prebuilt)");
     println!("cargo:rustc-check-cfg=cfg(op_auth_development_prebuilt)");
     println!("cargo:rustc-check-cfg=cfg(op_auth_hosted_access_prebuilt)");
+    println!("cargo:rerun-if-env-changed={DEV_ARCHIVE_ENV}");
+    println!("cargo:rerun-if-env-changed={DEV_ABI_VERSION_ENV}");
+
+    if env::var_os(LOCAL_ONLY_FEATURE_ENV).is_some() {
+        // Local-only build: never probe or link the prebuilt, so the stub
+        // backend is selected. An explicit development archive override is a
+        // contradiction with this switch; fail loudly instead of ignoring it.
+        assert!(
+            env::var_os(DEV_ARCHIVE_ENV).is_none(),
+            "{DEV_ARCHIVE_ENV} cannot be honoured while op-auth-bridge's `local-only` \
+             feature (default) is on; build op-auth-bridge with --no-default-features"
+        );
+        return;
+    }
     println!("cargo:rerun-if-changed=prebuilt");
     println!("cargo:rerun-if-changed=AUTH-RELEASE-POLICY");
     println!("cargo:rerun-if-changed=prebuilt_link_compat.rs");
-    println!("cargo:rerun-if-env-changed={DEV_ARCHIVE_ENV}");
-    println!("cargo:rerun-if-env-changed={DEV_ABI_VERSION_ENV}");
 
     let target = env::var("TARGET").unwrap_or_default();
     let manifest_dir = PathBuf::from(env::var("CARGO_MANIFEST_DIR").unwrap());

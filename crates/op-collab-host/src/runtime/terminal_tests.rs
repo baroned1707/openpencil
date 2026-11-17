@@ -168,3 +168,53 @@ fn typed_bye_after_queued_commit_preserves_authority_and_exact_terminal_notice()
         assert!(!runtime.transaction_active);
     }
 }
+
+/// Local-only invariant: the runtime object exists for every document slot,
+/// but with no collaboration backend it must report `Unavailable` and leave
+/// every start / discovery / join request without a network, a discovery
+/// worker, an actor or a phase change — even for a signed-in profile.
+#[test]
+fn unavailable_collab_never_leaves_idle_or_opens_a_network() {
+    use op_editor_core::{AccountState, CollabAvailability, CollabUiAction};
+
+    assert!(
+        !op_auth_bridge::collab_ticket_available(),
+        "default (local-only) builds must not expose a collaboration ticket provider"
+    );
+    let mut runtime = CollabRuntime::new();
+    let mut host = HeadlessCollabHost::new();
+    host.editor_state_mut().editor_ui.account = AccountState::dev_fake_signed_in();
+    runtime.refresh_availability(&mut host);
+    assert_eq!(
+        host.editor_state().editor_ui.collab.availability,
+        CollabAvailability::Unavailable
+    );
+
+    for action in [
+        CollabUiAction::Start,
+        CollabUiAction::StartLan,
+        CollabUiAction::BeginDiscovery,
+        CollabUiAction::JoinAddress {
+            endpoint: "127.0.0.1:9".into(),
+        },
+    ] {
+        host.editor_state_mut().editor_ui.collab.pending_action = Some(action);
+        runtime.drain_ui_action(&mut host);
+        assert_ne!(
+            host.editor_state().editor_ui.collab.phase,
+            CollabConnectionPhase::Starting,
+        );
+        assert_ne!(
+            host.editor_state().editor_ui.collab.phase,
+            CollabConnectionPhase::Discovering,
+        );
+        assert_ne!(
+            host.editor_state().editor_ui.collab.phase,
+            CollabConnectionPhase::Joining,
+        );
+        assert!(runtime.pending_network_launch.is_none());
+        assert!(runtime.network.is_none());
+        assert!(runtime.discovery.is_none());
+        assert!(runtime.actor.is_none());
+    }
+}

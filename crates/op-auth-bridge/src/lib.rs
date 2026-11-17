@@ -205,9 +205,30 @@ pub struct AuthInitConfig {
     pub app_version: String,
 }
 
+/// Whether this build is local-only (the default): no account, no sign-in and
+/// no collaboration, whatever prebuilt archive happens to sit in the tree.
+///
+/// `build.rs` already refuses to link the prebuilt under this feature; the
+/// gates below repeat the decision at the API so no code path depends on that
+/// build-script behaviour alone.
+pub const LOCAL_ONLY: bool = cfg!(feature = "local-only");
+
 /// Whether a working auth backend is linked into this build.
 pub fn available() -> bool {
-    backend::available()
+    !LOCAL_ONLY && backend::available()
+}
+
+/// Whether the dev/demo fake-login fast path is on for the given
+/// `OPENPENCIL_DEV_FAKE_LOGIN` value. Always off in a local-only build, so the
+/// account surfaces cannot be re-opened by an environment variable.
+pub fn dev_fake_login_enabled_for(value: Option<&str>) -> bool {
+    !LOCAL_ONLY && value == Some("1")
+}
+
+/// [`dev_fake_login_enabled_for`] applied to the process environment. Every
+/// host asks this one function instead of reading [`ENV_DEV_FAKE_LOGIN`].
+pub fn dev_fake_login_enabled() -> bool {
+    dev_fake_login_enabled_for(std::env::var(ENV_DEV_FAKE_LOGIN).ok().as_deref())
 }
 
 static UNAVAILABLE_COLLAB_TICKET_PROVIDER: UnavailableCollabTicketProvider =
@@ -230,18 +251,24 @@ pub fn collab_ticket_available() -> bool {
 
 /// Provider for short-lived collaboration admission tickets.
 pub fn collab_ticket_provider() -> &'static dyn CollabTicketProvider {
+    if LOCAL_ONLY {
+        return &UNAVAILABLE_COLLAB_TICKET_PROVIDER;
+    }
     backend::collab_ticket_provider()
 }
 
 /// Ephemeral Hosted access is negotiated independently of login/collaboration.
 pub fn hosted_access_provider() -> &'static dyn HostedAccessProvider {
+    if LOCAL_ONLY {
+        return &UNAVAILABLE_HOSTED_ACCESS_PROVIDER;
+    }
     backend::hosted_access_provider()
 }
 
 /// Initialize the runtime once per process; returns false when the
 /// backend is unavailable or already initialized.
 pub fn init(config: &AuthInitConfig) -> bool {
-    backend::init(config)
+    !LOCAL_ONLY && backend::init(config)
 }
 
 /// Initialize the process-global runtime for an embedded mobile shell.
@@ -259,7 +286,7 @@ pub fn init_mobile(config: &AuthInitConfig) -> bool {
     if let Some(existing) = initialized.as_ref() {
         return existing == config;
     }
-    if !backend::init(config) {
+    if LOCAL_ONLY || !backend::init(config) {
         return false;
     }
     *initialized = Some(config.clone());
@@ -269,26 +296,38 @@ pub fn init_mobile(config: &AuthInitConfig) -> bool {
 /// Load a persisted session, if any; the profile then arrives via
 /// `poll(SESSION_HANDLE)`. Returns whether a credential was restored.
 pub fn restore() -> bool {
-    backend::restore()
+    !LOCAL_ONLY && backend::restore()
 }
 
 /// Start a browser login and return the flow handle (0 when unavailable).
 pub fn login_begin() -> u64 {
+    if LOCAL_ONLY {
+        return 0;
+    }
     backend::login_begin()
 }
 
 /// Poll a flow handle (or [`SESSION_HANDLE`]) for its current status.
 pub fn poll(handle: u64) -> AuthStatus {
+    if LOCAL_ONLY {
+        return AuthStatus::Idle;
+    }
     backend::poll(handle)
 }
 
 /// Abort an in-flight login flow.
 pub fn cancel(handle: u64) {
+    if LOCAL_ONLY {
+        return;
+    }
     backend::cancel(handle)
 }
 
 /// Drop the local session and revoke the device token server-side.
 pub fn sign_out() {
+    if LOCAL_ONLY {
+        return;
+    }
     backend::sign_out()
 }
 

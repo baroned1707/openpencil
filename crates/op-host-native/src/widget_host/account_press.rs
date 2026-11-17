@@ -105,7 +105,8 @@ impl WidgetHostNative {
 /// instead of showing the honest "coming soon" stub. Lets the topbar
 /// avatar, its dropdown, and the settings Account tab be exercised
 /// end-to-end before the real OIDC backend lands. Never read outside
-/// this native host, so it can't leak into the wasm web build.
+/// this native host, so it can't leak into the wasm web build. A local-only
+/// build (the default) ignores the variable entirely.
 fn dev_fake_login_enabled() -> bool {
-    std::env::var(op_auth_bridge::ENV_DEV_FAKE_LOGIN).as_deref() == Ok("1")
+    op_auth_bridge::dev_fake_login_enabled()
 }
