@@ -606,6 +606,15 @@ pub fn lookup(key: &str) -> Option<&'static str> {
         "project.unreadable" => "Не удаётся прочитать эту папку",
         "documents.emptyFileInitialized" => "Файл «{{name}}» был пустым и теперь настроен как пустой дизайн.",
         "documents.emptyFileNotWritable" => "Файл «{{name}}» был пустым, но запись в него невозможна. Он открыт без сохранения: сохраните его, чтобы не потерять работу.",
+        "project.figConvert" => "Конвертировать",
+        "project.figConverted" => "Конвертировано",
+        "project.figConverting" => "Конвертация…",
+        "project.figFailed" => "Сбой",
+        "project.figConvertAll" => "Конвертировать все ({{count}})",
+        "project.figConvertTip" => "Конвертировать в .op рядом с этим файлом",
+        "project.figConvertedTip" => "Открыть сконвертированный файл .op",
+        "project.figFailedTip" => "Не удалось конвертировать: {{reason}}. Нажмите, чтобы повторить.",
+        "project.figConvertAllTip" => "Конвертировать каждый файл .fig здесь в .op рядом с ним",
         _ => return None,
     })
 }

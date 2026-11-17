@@ -592,6 +592,15 @@ pub fn lookup(key: &str) -> Option<&'static str> {
         "project.unreadable" => "이 폴더를 읽을 수 없습니다",
         "documents.emptyFileInitialized" => "“{{name}}” 파일이 비어 있어 빈 디자인으로 초기화했습니다.",
         "documents.emptyFileNotWritable" => "“{{name}}” 파일이 비어 있었지만 쓸 수 없습니다. 저장되지 않은 상태로 열렸으니 작업을 보존하려면 저장하세요.",
+        "project.figConvert" => "변환",
+        "project.figConverted" => "변환됨",
+        "project.figConverting" => "변환 중…",
+        "project.figFailed" => "실패",
+        "project.figConvertAll" => "모두 변환 ({{count}})",
+        "project.figConvertTip" => "이 파일 옆에 .op로 변환",
+        "project.figConvertedTip" => "변환된 .op 파일 열기",
+        "project.figFailedTip" => "변환 실패: {{reason}}. 클릭하여 다시 시도하세요.",
+        "project.figConvertAllTip" => "여기 있는 모든 .fig 파일을 옆에 .op로 변환",
         _ => return None,
     })
 }

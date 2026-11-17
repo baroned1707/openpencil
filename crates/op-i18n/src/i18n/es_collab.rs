@@ -576,6 +576,15 @@ pub fn lookup(key: &str) -> Option<&'static str> {
         "project.unreadable" => "No se puede leer esta carpeta",
         "documents.emptyFileInitialized" => "«{{name}}» estaba vacío, así que se inicializó como un diseño en blanco.",
         "documents.emptyFileNotWritable" => "«{{name}}» estaba vacío pero no se pudo escribir. Está abierto sin guardar: guárdalo para conservar tu trabajo.",
+        "project.figConvert" => "Convertir",
+        "project.figConverted" => "Convertido",
+        "project.figConverting" => "Convirtiendo…",
+        "project.figFailed" => "Error",
+        "project.figConvertAll" => "Convertir todo ({{count}})",
+        "project.figConvertTip" => "Convertir a .op junto a este archivo",
+        "project.figConvertedTip" => "Abrir el archivo .op convertido",
+        "project.figFailedTip" => "La conversión falló: {{reason}}. Haz clic para reintentar.",
+        "project.figConvertAllTip" => "Convertir cada archivo .fig de aquí a .op junto a él",
         _ => return None,
     })
 }

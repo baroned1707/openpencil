@@ -9,7 +9,7 @@
 //! only records a [`ProjectRequest`] on `projects_panel.pending_request`,
 //! which the host drains.
 
-use op_editor_core::{EditorState, ProjectRequest, ProjectRowTarget};
+use op_editor_core::{EditorState, ProjectFileKind, ProjectRequest, ProjectRowTarget};
 
 use crate::widgets::projects_panel::{ProjectsPanel, ProjectsPanelText};
 use crate::widgets::projects_panel_layout::ProjectsPanelLayout;
@@ -43,6 +43,15 @@ pub fn text(state: &EditorState) -> ProjectsPanelText<'static> {
         unreadable: translate(ui, "project.unreadable"),
         truncated: translate(ui, "project.truncated"),
         no_designs: translate(ui, "project.noDesigns"),
+        fig_convert: translate(ui, "project.figConvert"),
+        fig_converted: translate(ui, "project.figConverted"),
+        fig_converting: translate(ui, "project.figConverting"),
+        fig_failed: translate(ui, "project.figFailed"),
+        fig_convert_all: translate(ui, "project.figConvertAll"),
+        fig_convert_tip: translate(ui, "project.figConvertTip"),
+        fig_converted_tip: translate(ui, "project.figConvertedTip"),
+        fig_failed_tip: translate(ui, "project.figFailedTip"),
+        fig_convert_all_tip: translate(ui, "project.figConvertAllTip"),
     }
 }
 
@@ -81,8 +90,22 @@ fn request_for(state: &EditorState, target: ProjectRowTarget) -> Option<ProjectR
             ))
         }
         ProjectRowTarget::OpenProject => Some(ProjectRequest::OpenProjectPicker),
+        ProjectRowTarget::ConvertAll(project, first_file) => {
+            let view = projects.get(project)?;
+            let folder = match first_file {
+                Some(index) => Some(view.files.get(index)?.folder.clone()),
+                None => None,
+            };
+            Some(ProjectRequest::ConvertAllFigs(view.root.clone(), folder))
+        }
         ProjectRowTarget::File(project, file) => {
             let file = projects.get(project)?.files.get(file)?;
+            // A `.fig` is never opened as a document from here: opening one
+            // would run the whole-file Figma import into a tab. The host turns
+            // the click into a conversion, or opens the `.op` beside it.
+            if matches!(file.kind, ProjectFileKind::Figma(_)) {
+                return Some(ProjectRequest::ConvertFig(file.path.clone()));
+            }
             Some(match file.open_id {
                 Some(id) => ProjectRequest::SwitchTo(id),
                 None => ProjectRequest::OpenFile(file.path.clone()),

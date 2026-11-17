@@ -592,6 +592,15 @@ pub fn lookup(key: &str) -> Option<&'static str> {
         "project.unreadable" => "このフォルダを読み取れません",
         "documents.emptyFileInitialized" => "「{{name}}」は空だったため、空白のデザインとして初期化しました。",
         "documents.emptyFileNotWritable" => "「{{name}}」は空でしたが、書き込めませんでした。未保存の状態で開いています。作業を残すには保存してください。",
+        "project.figConvert" => "変換",
+        "project.figConverted" => "変換済み",
+        "project.figConverting" => "変換中…",
+        "project.figFailed" => "失敗",
+        "project.figConvertAll" => "すべて変換 ({{count}})",
+        "project.figConvertTip" => "このファイルの隣に .op へ変換",
+        "project.figConvertedTip" => "変換した .op ファイルを開く",
+        "project.figFailedTip" => "変換に失敗しました: {{reason}}。クリックで再試行します。",
+        "project.figConvertAllTip" => "ここにあるすべての .fig を隣の .op に変換",
         _ => return None,
     })
 }

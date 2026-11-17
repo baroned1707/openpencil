@@ -16,7 +16,8 @@
 //! `ProjectView` rows.
 
 use op_editor_core::{
-    DocumentTabStatus, ProjectFileView, ProjectRowTarget, ProjectScanState, ProjectView,
+    DocumentTabStatus, ProjectFileKind, ProjectFileView, ProjectRowTarget, ProjectScanState,
+    ProjectView,
 };
 
 use crate::theme::Theme;
@@ -28,6 +29,8 @@ use crate::widgets::text_metrics;
 use crate::widgets::PaintCx;
 use crate::{Color, Point2D, Rect, TextLayout};
 
+#[path = "projects_panel_fig.rs"]
+mod fig;
 #[path = "projects_panel_rows.rs"]
 mod rows;
 
@@ -77,6 +80,19 @@ pub struct ProjectsPanelText<'a> {
     pub truncated: &'a str,
     /// An opened folder with no `.op` file in it.
     pub no_designs: &'a str,
+    /// A `.fig` row's status words.
+    pub fig_convert: &'a str,
+    pub fig_converted: &'a str,
+    pub fig_converting: &'a str,
+    pub fig_failed: &'a str,
+    /// "Convert all ({{count}})" action row.
+    pub fig_convert_all: &'a str,
+    /// Tooltips: convert one, open the converted file, a failure (carries
+    /// `{{reason}}`) and convert all.
+    pub fig_convert_tip: &'a str,
+    pub fig_converted_tip: &'a str,
+    pub fig_failed_tip: &'a str,
+    pub fig_convert_all_tip: &'a str,
 }
 
 /// The widget for one frame.
@@ -126,10 +142,14 @@ impl ProjectsPanel<'_> {
                 RowKind::Folder(project, file) => self.paint_folder(cx, theme, row, project, file),
                 RowKind::Status(project) => self.paint_status(cx, theme, row, project),
                 RowKind::NoDesigns(_) => self.paint_note(cx, theme, row, self.text.no_designs),
+                RowKind::ConvertAll(project, folder) => {
+                    self.paint_convert_all(cx, theme, row, project, folder)
+                }
             }
         }
         cx.backend.restore();
         self.paint_button_tooltip(cx, theme, layout);
+        self.paint_fig_tooltip(cx, theme, layout);
     }
 
     fn paint_header(&self, cx: &mut PaintCx<'_>, theme: &Theme, row: &ProjectRow, index: usize) {
@@ -289,6 +309,10 @@ impl ProjectsPanel<'_> {
         project: usize,
         index: usize,
     ) {
+        if matches!(file.kind, ProjectFileKind::Figma(_)) {
+            self.paint_fig_file(cx, theme, row, file, project, index);
+            return;
+        }
         let rect = row.rect;
         let hovered = self.hover == Some(ProjectRowTarget::File(project, index));
         if file.active {

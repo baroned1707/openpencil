@@ -103,6 +103,8 @@ impl DesktopApp {
             || self.current_html_import.is_some()
             || self.pending_figma_paste.is_some()
             || self.pending_html_paste.is_some()
+            // `.fig` conversions run in child processes that are polled here.
+            || self.projects_host.figs_pending()
         {
             event_loop.set_control_flow(ControlFlow::WaitUntil(self.periodic_wake_instant(100)));
         } else if let Some(deadline_ms) = self.host.next_animation_deadline_ms() {
@@ -182,6 +184,7 @@ impl DesktopApp {
             || self.current_html_import.is_some()
             || self.pending_figma_paste.is_some()
             || self.pending_html_paste.is_some()
+            || self.projects_host.figs_pending()
             || self.host.next_animation_deadline_ms().is_some()
             // The top-bar tooltip's dwell deadline retires the moment it
             // elapses, so by the time this wake runs the clock has

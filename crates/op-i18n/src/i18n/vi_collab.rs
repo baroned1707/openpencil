@@ -588,6 +588,15 @@ pub fn lookup(key: &str) -> Option<&'static str> {
         "project.unreadable" => "Không thể đọc thư mục này",
         "documents.emptyFileInitialized" => "“{{name}}” trống nên đã được khởi tạo thành một thiết kế trắng.",
         "documents.emptyFileNotWritable" => "“{{name}}” trống nhưng không ghi được. Tệp đang mở ở trạng thái chưa lưu: hãy lưu để giữ lại công việc của bạn.",
+        "project.figConvert" => "Chuyển đổi",
+        "project.figConverted" => "Đã chuyển đổi",
+        "project.figConverting" => "Đang chuyển đổi…",
+        "project.figFailed" => "Thất bại",
+        "project.figConvertAll" => "Chuyển đổi tất cả ({{count}})",
+        "project.figConvertTip" => "Chuyển thành .op cạnh tệp này",
+        "project.figConvertedTip" => "Mở tệp .op đã chuyển đổi",
+        "project.figFailedTip" => "Chuyển đổi thất bại: {{reason}}. Nhấp để thử lại.",
+        "project.figConvertAllTip" => "Chuyển mọi tệp .fig ở đây thành .op cạnh tệp đó",
         _ => return None,
     })
 }

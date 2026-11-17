@@ -2,7 +2,9 @@
 //! documents and the disk, and execute what the tab asked for.
 //!
 //! A project is either a folder the user opened (`projects_host_open.rs`;
-//! every `*.op` anywhere inside it, found by a recursive walk) or the folder
+//! every `*.op` anywhere inside it, found by a recursive walk, plus the Figma
+//! `*.fig` files the user can convert to `.op` beside them:
+//! `projects_host_fig*.rs`) or the folder
 //! `project_root_for` resolves for an open document (its `<root>/designs/*.op`
 //! plus any other document open from it). A document inside an opened folder
 //! belongs to the deepest such folder, so the tab strip, the dock and the agent
@@ -28,13 +30,21 @@ use std::time::{Duration, Instant};
 
 use op_editor_core::editor_toast::EditorToastLevel;
 use op_editor_core::{
-    DocumentId, DocumentTabStatus, DocumentTabView, ProjectFileView, ProjectRequest,
-    ProjectScanState, ProjectView,
+    DocumentId, DocumentTabStatus, DocumentTabView, FigStatus, ProjectFileKind, ProjectFileView,
+    ProjectRequest, ProjectScanState, ProjectView,
 };
 use op_host_services::project_root::ProjectRootCache;
 
 use crate::DesktopApp;
 
+#[path = "projects_host_fig.rs"]
+mod fig;
+#[path = "projects_host_fig_app.rs"]
+mod fig_app;
+#[path = "projects_host_fig_plan.rs"]
+mod fig_plan;
+#[path = "projects_host_fig_process.rs"]
+mod fig_process;
 #[path = "projects_host_new_design.rs"]
 mod new_design;
 #[path = "projects_host_open.rs"]
@@ -100,6 +110,11 @@ pub(crate) struct ProjectsHostState {
     mcp_roots_sent: Option<Vec<PathBuf>>,
     /// Opened roots saved by the last run, restored once the window is up.
     pending_restore: Vec<String>,
+    /// `.fig` conversions: queued, running and failed (`projects_host_fig.rs`).
+    figs: fig::FigJobs,
+    /// Opened roots rescanned because a conversion finished in them; once that
+    /// scan is done their "done" marks are dropped.
+    fig_rescans: BTreeSet<PathBuf>,
 }
 
 impl Default for ProjectsHostState {
@@ -132,6 +147,8 @@ impl ProjectsHostState {
             system_dirs: op_host_services::project_root::SystemDirs::host(),
             mcp_roots_sent: None,
             pending_restore: Vec::new(),
+            figs: fig::FigJobs::new(fig_process::default_converter()),
+            fig_rescans: BTreeSet::new(),
         }
     }
 }
@@ -143,6 +160,26 @@ pub(crate) struct OpenDoc {
     pub dirty: bool,
     pub status: DocumentTabStatus,
     pub active: bool,
+}
+
+/// `.op` design, or a `.fig` with its conversion status: a running or failed
+/// job first, else "converted" when `<stem>.op` is listed beside it.
+fn file_kind(
+    path: &Path,
+    listed: &BTreeSet<PathBuf>,
+    jobs: &BTreeMap<PathBuf, fig::JobStatus>,
+) -> ProjectFileKind {
+    if path.extension().is_none_or(|extension| extension != "fig") {
+        return ProjectFileKind::Design;
+    }
+    let status = match jobs.get(path) {
+        Some(fig::JobStatus::Converting) => FigStatus::Converting,
+        Some(fig::JobStatus::Done) => FigStatus::Converted,
+        _ if listed.contains(&path.with_extension("op")) => FigStatus::Converted,
+        Some(fig::JobStatus::Failed(reason)) => FigStatus::Failed(reason.clone()),
+        None => FigStatus::NotConverted,
+    };
+    ProjectFileKind::Figma(status)
 }
 
 fn file_label(path: &Path) -> String {
@@ -179,6 +216,8 @@ pub(crate) struct TreeInputs<'a> {
     pub open: &'a [OpenDoc],
     pub collapsed: &'a HashSet<PathBuf>,
     pub collapsed_folders: &'a HashSet<(PathBuf, String)>,
+    /// Queued, running and failed `.fig` conversions, by the `.fig` path.
+    pub fig_jobs: &'a BTreeMap<PathBuf, fig::JobStatus>,
     pub scan_state: &'a dyn Fn(&Path) -> ProjectScanState,
 }
 
@@ -214,11 +253,14 @@ pub(crate) fn build_projects(
                     }
                 }
             }
+            let paths_set = paths.clone();
             let mut files: Vec<ProjectFileView> = paths
                 .into_iter()
                 .map(|path| {
                     let doc = inputs.open.iter().find(|d| d.path.as_ref() == Some(&path));
+                    let kind = file_kind(&path, &paths_set, inputs.fig_jobs);
                     ProjectFileView {
+                        kind,
                         label: file_label(&path),
                         folder: folder_of(root, &path),
                         path: path.to_string_lossy().into_owned(),
@@ -252,6 +294,24 @@ pub(crate) fn build_projects(
 }
 
 impl ProjectsHostState {
+    /// Whether a `.fig` conversion is queued or running (the event loop keeps
+    /// waking to poll it) or a finished one still waits for its rescan.
+    pub(crate) fn figs_pending(&self) -> bool {
+        self.figs.has_work() || !self.fig_rescans.is_empty()
+    }
+
+    /// Replace the `.fig` converter and its limits (tests inject fakes, so no
+    /// test ever runs the test binary as a converter).
+    #[cfg(test)]
+    pub(crate) fn set_fig_converter(
+        &mut self,
+        converter: Arc<dyn fig::FigConverter>,
+        limits: fig::FigLimits,
+    ) {
+        self.figs.set_converter(converter);
+        self.figs.set_limits(limits);
+    }
+
     /// Forget the cached root of every path a document no longer has (it was
     /// saved elsewhere, renamed or closed). Memory only.
     fn track_document_paths(&mut self, open: &[OpenDoc]) {
@@ -318,6 +378,7 @@ impl ProjectsHostState {
         folders.hash(&mut hasher);
         explicit_generation.hash(&mut hasher);
         self.scan.version().hash(&mut hasher);
+        self.figs.version().hash(&mut hasher);
         // Whether each opened walk is still pending changes what the dock says.
         let completed = self.scan.completed_serial();
         for (root, serial) in &self.awaiting {
@@ -366,7 +427,7 @@ impl DesktopApp {
     /// Execute the Projects dock's request, then publish the tree. Returns
     /// whether anything changed. Runs once per frame next to the tab strip.
     pub(crate) fn pump_projects(&mut self) -> bool {
-        let mut changed = false;
+        let mut changed = self.pump_fig_conversions();
         if let Some(request) = self
             .host
             .editor_state_mut()
@@ -404,6 +465,10 @@ impl DesktopApp {
             }
             ProjectRequest::CloseProject(root) => self.close_project(Path::new(&root)),
             ProjectRequest::RefreshProject(root) => self.refresh_project(Path::new(&root)),
+            ProjectRequest::ConvertFig(path) => self.convert_fig_clicked(Path::new(&path)),
+            ProjectRequest::ConvertAllFigs(root, folder) => {
+                self.convert_all_figs(Path::new(&root), folder.as_deref());
+            }
             ProjectRequest::ToggleFolder(root, folder) => {
                 let key = (PathBuf::from(root), folder);
                 if !self.projects_host.collapsed_folders.remove(&key) {
@@ -540,6 +605,7 @@ impl DesktopApp {
                 open: &open,
                 collapsed: &host.collapsed,
                 collapsed_folders: &host.collapsed_folders,
+                fig_jobs: host.figs.status(),
                 scan_state: &scan_state,
             },
             &|path| root_by_path.get(path).map(|root| (*root).clone()),
@@ -555,6 +621,9 @@ impl DesktopApp {
     }
 }
 
+#[cfg(test)]
+#[path = "projects_host_fig_app_tests.rs"]
+mod fig_app_tests;
 #[cfg(test)]
 #[path = "projects_host_open_tests.rs"]
 mod open_tests;

@@ -1,5 +1,6 @@
-//! The disk side of an opened project: every `*.op` file anywhere inside the
-//! folder, found by one bounded recursive walk.
+//! The disk side of an opened project: every `*.op` file (and every Figma
+//! `*.fig` file, listed so it can be converted) anywhere inside the folder,
+//! found by one bounded recursive walk.
 //!
 //! Like `projects_host_scan.rs` this runs on the scan worker, never on a
 //! frame, and never leaves the folder it was given:
@@ -9,7 +10,9 @@
 //! * a symlinked DIRECTORY is never followed (it would only list the same files
 //!   twice, or leave the folder), which also rules out loops; a symlinked `.op`
 //!   FILE is listed only when its canonical target is a file inside the
-//!   canonical root;
+//!   canonical root (a `.fig` is treated the same way);
+//! * `.fig` files share the one file cap with the `.op` files (the cap is not
+//!   doubled), and the omitted count covers both;
 //! * the walk is bounded four ways ([`TreeLimits`]): depth, listed files, entries
 //!   examined and a time budget. A run that hits the file cap lists the first
 //!   files by relative path and reports how many were left out
@@ -68,7 +71,8 @@ impl Default for TreeLimits {
 /// How often (in entries) the clock is read.
 const CLOCK_EVERY: usize = 256;
 
-/// Every `.op` file under `root` (canonical), sorted by path relative to it.
+/// Every `.op` and `.fig` file under `root` (canonical), sorted by path relative
+/// to it.
 pub(crate) fn scan_project_tree(root: &Path, limits: &TreeLimits) -> DesignListing {
     let started = Instant::now();
     let canonical_root = match std::fs::canonicalize(root) {
@@ -128,9 +132,9 @@ struct Walk {
     canonical_root: PathBuf,
     /// A max-heap of the smallest `max_files` relative paths seen so far.
     kept: BinaryHeap<PathBuf>,
-    /// Every `.op` file seen, kept or not.
+    /// Every `.op` or `.fig` file seen, kept or not.
     found: usize,
-    /// `.op` files directly inside directories beyond the depth cap.
+    /// `.op` / `.fig` files directly inside directories beyond the depth cap.
     beyond_depth: usize,
     entries: usize,
     cut_short: bool,
@@ -164,11 +168,11 @@ impl Walk {
                 return;
             }
             if depth + 1 > self.limits.max_depth {
-                self.beyond_depth += count_op_files(&entry.path());
+                self.beyond_depth += count_listed_files(&entry.path());
             } else {
                 pending.push((entry.path(), depth + 1));
             }
-        } else if is_op(&name) {
+        } else if is_listed(&name) {
             let path = entry.path();
             let usable =
                 file_type.is_file() || (file_type.is_symlink() && self.link_to_file_inside(&path));
@@ -213,14 +217,15 @@ impl Walk {
     }
 }
 
-fn is_op(name: &str) -> bool {
+/// A name the walk lists: an `.op` design or a Figma `.fig` export.
+fn is_listed(name: &str) -> bool {
     Path::new(name)
         .extension()
-        .is_some_and(|extension| extension == "op")
+        .is_some_and(|extension| extension == "op" || extension == "fig")
 }
 
-/// `.op` files directly inside `dir` (no recursion).
-fn count_op_files(dir: &Path) -> usize {
+/// Listed files directly inside `dir` (no recursion).
+fn count_listed_files(dir: &Path) -> usize {
     std::fs::read_dir(dir)
         .map(|entries| {
             entries
@@ -229,7 +234,7 @@ fn count_op_files(dir: &Path) -> usize {
                     let name = entry.file_name();
                     let name = name.to_string_lossy();
                     !name.starts_with('.')
-                        && is_op(&name)
+                        && is_listed(&name)
                         && entry.file_type().is_ok_and(|kind| kind.is_file())
                 })
                 .count()

@@ -576,6 +576,15 @@ pub fn lookup(key: &str) -> Option<&'static str> {
         "project.unreadable" => "无法读取此文件夹",
         "documents.emptyFileInitialized" => "“{{name}}”是空文件，已初始化为空白设计。",
         "documents.emptyFileNotWritable" => "“{{name}}”是空文件，但无法写入。它已作为未保存的文档打开：请保存以保留你的工作。",
+        "project.figConvert" => "转换",
+        "project.figConverted" => "已转换",
+        "project.figConverting" => "转换中…",
+        "project.figFailed" => "失败",
+        "project.figConvertAll" => "全部转换（{{count}}）",
+        "project.figConvertTip" => "在此文件旁转换为 .op",
+        "project.figConvertedTip" => "打开已转换的 .op 文件",
+        "project.figFailedTip" => "转换失败：{{reason}}。点击重试。",
+        "project.figConvertAllTip" => "将这里的每个 .fig 文件转换为其旁边的 .op",
         _ => return None,
     })
 }

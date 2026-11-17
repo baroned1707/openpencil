@@ -580,6 +580,15 @@ pub fn lookup(key: &str) -> Option<&'static str> {
         "project.unreadable" => "यह फ़ोल्डर पढ़ा नहीं जा सका",
         "documents.emptyFileInitialized" => "“{{name}}” खाली था, इसलिए उसे खाली डिज़ाइन के रूप में तैयार किया गया।",
         "documents.emptyFileNotWritable" => "“{{name}}” खाली था, लेकिन उसमें लिखा नहीं जा सका। यह बिना सहेजे खुला है: अपना काम बचाने के लिए इसे सहेजें।",
+        "project.figConvert" => "बदलें",
+        "project.figConverted" => "बदला गया",
+        "project.figConverting" => "बदला जा रहा है…",
+        "project.figFailed" => "विफल",
+        "project.figConvertAll" => "सभी बदलें ({{count}})",
+        "project.figConvertTip" => "इस फ़ाइल के बगल में .op में बदलें",
+        "project.figConvertedTip" => "बदली गई .op फ़ाइल खोलें",
+        "project.figFailedTip" => "रूपांतरण विफल: {{reason}}। दोबारा कोशिश करने के लिए क्लिक करें।",
+        "project.figConvertAllTip" => "यहाँ की हर .fig फ़ाइल को उसके बगल में .op में बदलें",
         _ => return None,
     })
 }

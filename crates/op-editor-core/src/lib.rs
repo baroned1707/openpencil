@@ -168,7 +168,8 @@ pub mod square_chrome;
 pub use document_scope::{DocumentScope, SessionDocument};
 pub use document_tabs::{DocumentId, DocumentTabRequest, DocumentTabStatus, DocumentTabView};
 pub use project_tree::{
-    ProjectFileView, ProjectRequest, ProjectRowTarget, ProjectScanState, ProjectView,
+    in_folder_tree, FigStatus, ProjectFileKind, ProjectFileView, ProjectRequest, ProjectRowTarget,
+    ProjectScanState, ProjectView,
 };
 pub mod state;
 pub mod statusbar_state;

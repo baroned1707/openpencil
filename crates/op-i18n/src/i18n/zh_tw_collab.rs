@@ -576,6 +576,15 @@ pub fn lookup(key: &str) -> Option<&'static str> {
         "project.unreadable" => "無法讀取此資料夾",
         "documents.emptyFileInitialized" => "「{{name}}」是空檔案，已初始化為空白設計。",
         "documents.emptyFileNotWritable" => "「{{name}}」是空檔案，但無法寫入。它已作為未儲存的文件開啟：請儲存以保留你的工作。",
+        "project.figConvert" => "轉換",
+        "project.figConverted" => "已轉換",
+        "project.figConverting" => "轉換中…",
+        "project.figFailed" => "失敗",
+        "project.figConvertAll" => "全部轉換（{{count}}）",
+        "project.figConvertTip" => "在此檔案旁轉換為 .op",
+        "project.figConvertedTip" => "開啟已轉換的 .op 檔案",
+        "project.figFailedTip" => "轉換失敗：{{reason}}。點擊重試。",
+        "project.figConvertAllTip" => "將這裡的每個 .fig 檔案轉換為其旁邊的 .op",
         _ => return None,
     })
 }

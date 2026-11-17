@@ -3,14 +3,18 @@
 //! sub-headers (some folded), the scanning / slow / truncated status lines, the
 //! header's refresh and close buttons, and long folder and file names.
 //!
-//! Writes `.proof-of-work/92-open-project-<scene>-<theme>.png` when
-//! `OP_PROOF_DIR` is set.
+//! The `93-fig-*` scenes show the same dock with Figma `.fig` files listed among
+//! the `.op` files: every conversion status, the "Convert all" rows and a project
+//! that holds nothing but `.fig` files.
+//!
+//! Writes `.proof-of-work/92-open-project-<scene>-<theme>.png` (and
+//! `93-fig-<scene>-<theme>.png`) when `OP_PROOF_DIR` is set.
 
 use super::super::ui3_proof::{editor_host, render_probes, rgb8, PROOF_H, PROOF_W};
 use crate::widget_host::WidgetHostNative;
 use op_editor_core::{
-    DocumentId, DocumentTabStatus, ProjectFileView, ProjectRowTarget, ProjectScanState,
-    ProjectView, ThemeMode,
+    DocumentId, DocumentTabStatus, FigStatus, ProjectFileKind, ProjectFileView, ProjectRowTarget,
+    ProjectScanState, ProjectView, ThemeMode,
 };
 use op_editor_ui::widgets::host_canvas_geometry as canvas_geometry;
 use op_editor_ui::widgets::projects_dock_flow as dock_flow;
@@ -39,6 +43,7 @@ fn file(
         status,
         active: open == Some(1),
         folder: folder.to_string(),
+        kind: op_editor_core::ProjectFileKind::Design,
     }
 }
 
@@ -257,4 +262,107 @@ fn home_with_an_empty_dock_keeps_its_clicks_proof() {
             "{mode:?}: Home owns the pointer, the strip behind it asks for nothing"
         );
     }
+}
+
+fn fig(folder: &str, label: &str, status: FigStatus) -> ProjectFileView {
+    ProjectFileView {
+        kind: ProjectFileKind::Figma(status),
+        ..file(folder, label, None, DocumentTabStatus::Idle)
+    }
+}
+
+/// A project mixing `.op` designs with `.fig` exports in every status.
+fn with_figs() -> ProjectView {
+    use DocumentTabStatus::Idle;
+    ProjectView {
+        root: "/Users/me/Work/storefront".to_string(),
+        name: "storefront".to_string(),
+        files: vec![
+            fig("", "brand-kit.fig", FigStatus::NotConverted),
+            file("", "brand.op", None, Idle),
+            fig("designs", "checkout.fig", FigStatus::Converted),
+            file(
+                "designs",
+                "checkout.op",
+                Some(1),
+                DocumentTabStatus::Running,
+            ),
+            fig("designs", "cart.fig", FigStatus::Converting),
+            fig(
+                "designs",
+                "wishlist.fig",
+                FigStatus::Failed("timed out".to_string()),
+            ),
+            fig("imports", "marketing-site.fig", FigStatus::NotConverted),
+            fig("imports", "icons.fig", FigStatus::NotConverted),
+            fig("imports", "illustrations.fig", FigStatus::NotConverted),
+            file("imports", "notes.op", None, Idle),
+        ],
+        closable: true,
+        ..ProjectView::default()
+    }
+}
+
+#[test]
+fn fig_files_listed_among_op_files_in_every_status_proof() {
+    each_theme("93-fig-tree", vec![with_figs(), inferred()], |_| {});
+}
+
+#[test]
+fn a_folder_header_offers_convert_all_with_its_count_proof() {
+    let mut project = with_figs();
+    // The root's own fig is done, so only the `imports` folder has a row.
+    project.files[0].kind = ProjectFileKind::Figma(FigStatus::Converted);
+    each_theme("93-fig-folder-convert-all", vec![project.clone()], |_| {});
+    let rows = dock_flow::layout(
+        seeded(ThemeMode::Dark, vec![project]).editor_state(),
+        PROOF_W,
+        PROOF_H,
+    )
+    .unwrap()
+    .list
+    .unwrap();
+    assert!(
+        rows.rows.iter().any(|row| matches!(
+            row.kind,
+            op_editor_ui::widgets::projects_panel_layout::RowKind::ConvertAll(0, Some(_))
+        )),
+        "the folder carries its own Convert all row"
+    );
+}
+
+#[test]
+fn a_project_of_only_fig_files_proof() {
+    let only = ProjectView {
+        root: "/Users/me/Work/exports".to_string(),
+        name: "exports".to_string(),
+        files: vec![
+            fig("", "landing-v1.fig", FigStatus::NotConverted),
+            fig("", "landing-v2.fig", FigStatus::NotConverted),
+            fig("", "app-screens.fig", FigStatus::NotConverted),
+            fig(
+                "archive",
+                "old-brand.fig",
+                FigStatus::Failed("not a regular file".to_string()),
+            ),
+        ],
+        closable: true,
+        ..ProjectView::default()
+    };
+    each_theme("93-fig-only-figs", vec![only], |_| {});
+}
+
+#[test]
+fn hovering_fig_rows_and_convert_all_shows_the_wash_and_tooltip_proof() {
+    // Rows: header, project Convert all, brand-kit.fig, ...
+    each_theme("93-fig-hover-row", vec![with_figs()], |host| {
+        host.editor_state_mut().editor_ui.projects_panel.hover = Some(ProjectRowTarget::File(0, 0));
+    });
+    each_theme("93-fig-hover-convert-all", vec![with_figs()], |host| {
+        host.editor_state_mut().editor_ui.projects_panel.hover =
+            Some(ProjectRowTarget::ConvertAll(0, None));
+    });
+    each_theme("93-fig-hover-failed", vec![with_figs()], |host| {
+        host.editor_state_mut().editor_ui.projects_panel.hover = Some(ProjectRowTarget::File(0, 5));
+    });
 }

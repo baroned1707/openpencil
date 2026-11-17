@@ -18,6 +18,33 @@ pub(crate) const BODY: Rect = Rect {
     size: Point2D { x: 280.0, y: 556.0 },
 };
 
+/// The list's English strings, shared by the tests that paint it.
+pub(crate) const TEXT: crate::widgets::projects_panel::ProjectsPanelText<'static> =
+    crate::widgets::projects_panel::ProjectsPanelText {
+        empty: "No projects yet",
+        new_design: "New design",
+        needs_review: "{{count}} need review",
+        running: "{{count}} running",
+        open_project: "Open Project…",
+        open_hint: "Choose a folder, or drop one here",
+        close: "Close project",
+        refresh: "Refresh",
+        scanning: "Scanning…",
+        slow: "Slow folder: showing what was found",
+        unreadable: "Cannot read this folder",
+        truncated: "{{count}} more not shown",
+        no_designs: "No .op files here yet",
+        fig_convert: "Convert",
+        fig_converted: "Converted",
+        fig_converting: "Converting…",
+        fig_failed: "Failed",
+        fig_convert_all: "Convert all ({{count}})",
+        fig_convert_tip: "Convert to .op next to this file",
+        fig_converted_tip: "Open the converted .op file",
+        fig_failed_tip: "Conversion failed: {{reason}}. Click to retry.",
+        fig_convert_all_tip: "Convert every .fig file here to .op next to it",
+    };
+
 pub(crate) fn file(label: &str, open: Option<u64>) -> ProjectFileView {
     ProjectFileView {
         path: format!("/work/shop/designs/{label}"),
@@ -27,6 +54,7 @@ pub(crate) fn file(label: &str, open: Option<u64>) -> ProjectFileView {
         status: DocumentTabStatus::Idle,
         active: false,
         folder: String::new(),
+        kind: op_editor_core::ProjectFileKind::Design,
     }
 }
 

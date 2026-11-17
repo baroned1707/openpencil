@@ -33,6 +33,7 @@ mod collab_runtime;
 mod collab_slots_host;
 mod commit_diff_host;
 mod commit_diff_semantic;
+mod convert_fig_cli;
 mod cursor_icon;
 mod design_loop_indicator;
 mod design_md_error;
@@ -612,6 +613,12 @@ fn main() {
     // networked CLI probes need the proxy vars, and the SDK's dangerous-env
     // blocklist forbids passing PATH per-request, so the process env is the
     // only correct carrier.
+    // `--convert-fig <in> <out>` (the Projects dock's child process) is a pure
+    // file-to-file conversion: it needs none of the GUI process setup below
+    // (a login-shell PATH repair per file would be pure delay), so it runs first.
+    if convert_fig_cli::run_cli_if_requested() {
+        return;
+    }
     op_host_services::chat_spawn::repair_gui_process_env();
     // Local integration runs can isolate settings and device sessions without
     // changing HOME or the production profile. Release builds ignore this.

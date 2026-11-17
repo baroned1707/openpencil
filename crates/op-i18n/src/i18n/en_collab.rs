@@ -616,6 +616,15 @@ pub fn lookup(key: &str) -> Option<&'static str> {
         "project.unreadable" => "Cannot read this folder",
         "documents.emptyFileInitialized" => "“{{name}}” was empty, so it was set up as a blank design.",
         "documents.emptyFileNotWritable" => "“{{name}}” was empty but could not be written. It is open unsaved: save it to keep your work.",
+        "project.figConvert" => "Convert",
+        "project.figConverted" => "Converted",
+        "project.figConverting" => "Converting…",
+        "project.figFailed" => "Failed",
+        "project.figConvertAll" => "Convert all ({{count}})",
+        "project.figConvertTip" => "Convert to .op next to this file",
+        "project.figConvertedTip" => "Open the converted .op file",
+        "project.figFailedTip" => "Conversion failed: {{reason}}. Click to retry.",
+        "project.figConvertAllTip" => "Convert every .fig file here to .op next to it",
         _ => return None,
     })
 }

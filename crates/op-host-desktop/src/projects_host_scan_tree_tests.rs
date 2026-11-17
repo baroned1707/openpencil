@@ -203,3 +203,84 @@ fn symlink_pointing_outside_the_root_is_ignored_and_loops_do_not_hang() {
     );
     assert_eq!(listing.status, ScanStatus::Ok);
 }
+
+#[test]
+fn scan_lists_fig_files_beside_op_files() {
+    let tree = Tree::new();
+    for relative in [
+        "home.op",
+        "home.fig",
+        "screens/cart.fig",
+        "screens/cart.op",
+        "screens/only.fig",
+        "notes.figma",
+        "readme.txt",
+        ".hidden.fig",
+        "node_modules/dep/lib.fig",
+        ".git/objects/x.fig",
+    ] {
+        tree.file(relative);
+    }
+    let listing = scan(&tree);
+    assert_eq!(
+        tree.relative(&listing),
+        [
+            "home.fig",
+            "home.op",
+            "screens/cart.fig",
+            "screens/cart.op",
+            "screens/only.fig",
+        ],
+        "same skips as for .op: hidden files, heavy and hidden folders"
+    );
+    assert_eq!(listing.status, ScanStatus::Ok);
+}
+
+#[test]
+fn fig_files_share_the_one_file_cap() {
+    let tree = Tree::new();
+    for n in 0..3 {
+        tree.file(&format!("f{n}.op"));
+        tree.file(&format!("f{n}.fig"));
+    }
+    let limits = TreeLimits {
+        max_files: 4,
+        ..TreeLimits::default()
+    };
+    let listing = scan_project_tree(&tree.0, &limits);
+    assert_eq!(
+        tree.relative(&listing),
+        ["f0.fig", "f0.op", "f1.fig", "f1.op"],
+        "the cap is not doubled"
+    );
+    assert_eq!(listing.status, ScanStatus::Truncated(2));
+    // Beyond the depth cap a `.fig` counts as left out too.
+    let deep = Tree::new();
+    deep.file("one/two/three/lost.fig");
+    let limits = TreeLimits {
+        max_depth: 2,
+        ..TreeLimits::default()
+    };
+    assert_eq!(
+        scan_project_tree(&deep.0, &limits).status,
+        ScanStatus::Truncated(1)
+    );
+}
+
+#[cfg(unix)]
+#[test]
+fn a_fig_link_leaving_the_root_is_not_listed() {
+    use std::os::unix::fs::symlink;
+    let tree = Tree::new();
+    let outside = Tree::new();
+    let secret = outside.file("secret.fig");
+    tree.file("real.fig");
+    symlink(&secret, tree.0.join("leak.fig")).unwrap();
+    symlink(outside.0.clone(), tree.0.join("leaked-dir")).unwrap();
+    symlink(tree.0.join("real.fig"), tree.0.join("alias.fig")).unwrap();
+    assert_eq!(
+        tree.relative(&scan(&tree)),
+        ["alias.fig", "real.fig"],
+        "only links to a file inside the root"
+    );
+}

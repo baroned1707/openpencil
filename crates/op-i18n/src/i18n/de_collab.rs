@@ -576,6 +576,15 @@ pub fn lookup(key: &str) -> Option<&'static str> {
         "project.unreadable" => "Dieser Ordner kann nicht gelesen werden",
         "documents.emptyFileInitialized" => "„{{name}}“ war leer und wurde als leeres Design eingerichtet.",
         "documents.emptyFileNotWritable" => "„{{name}}“ war leer, konnte aber nicht beschrieben werden. Es ist ungespeichert geöffnet – speichere es, um deine Arbeit zu behalten.",
+        "project.figConvert" => "Konvertieren",
+        "project.figConverted" => "Konvertiert",
+        "project.figConverting" => "Wird konvertiert…",
+        "project.figFailed" => "Fehlgeschlagen",
+        "project.figConvertAll" => "Alle konvertieren ({{count}})",
+        "project.figConvertTip" => "In .op neben dieser Datei konvertieren",
+        "project.figConvertedTip" => "Die konvertierte .op-Datei öffnen",
+        "project.figFailedTip" => "Konvertierung fehlgeschlagen: {{reason}}. Zum Wiederholen klicken.",
+        "project.figConvertAllTip" => "Jede .fig-Datei hier in .op neben der Datei konvertieren",
         _ => return None,
     })
 }

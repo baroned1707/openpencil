@@ -576,6 +576,15 @@ pub fn lookup(key: &str) -> Option<&'static str> {
         "project.unreadable" => "Bu klasör okunamıyor",
         "documents.emptyFileInitialized" => "“{{name}}” boştu, bu yüzden boş bir tasarım olarak hazırlandı.",
         "documents.emptyFileNotWritable" => "“{{name}}” boştu ancak yazılamadı. Kaydedilmemiş olarak açıldı: çalışmanızı korumak için kaydedin.",
+        "project.figConvert" => "Dönüştür",
+        "project.figConverted" => "Dönüştürüldü",
+        "project.figConverting" => "Dönüştürülüyor…",
+        "project.figFailed" => "Başarısız",
+        "project.figConvertAll" => "Tümünü dönüştür ({{count}})",
+        "project.figConvertTip" => "Bu dosyanın yanına .op olarak dönüştür",
+        "project.figConvertedTip" => "Dönüştürülen .op dosyasını aç",
+        "project.figFailedTip" => "Dönüştürme başarısız: {{reason}}. Yeniden denemek için tıkla.",
+        "project.figConvertAllTip" => "Buradaki her .fig dosyasını yanına .op olarak dönüştür",
         _ => return None,
     })
 }

@@ -150,6 +150,8 @@ impl DesktopApp {
         state.known.remove(root);
         state.scan.forget_root(root);
         state.awaiting.remove(root);
+        state.figs.forget_root(root);
+        state.fig_rescans.remove(root);
         state.collapsed.remove(root);
         state
             .collapsed_folders

@@ -28,6 +28,15 @@ const TEXT: ProjectsPanelText<'static> = ProjectsPanelText {
     unreadable: "Cannot read this folder",
     truncated: "{{count}} more not shown",
     no_designs: "No .op files here yet",
+    fig_convert: "Convert",
+    fig_converted: "Converted",
+    fig_converting: "Converting…",
+    fig_failed: "Failed",
+    fig_convert_all: "Convert all ({{count}})",
+    fig_convert_tip: "Convert to .op next to this file",
+    fig_converted_tip: "Open the converted .op file",
+    fig_failed_tip: "Conversion failed: {{reason}}. Click to retry.",
+    fig_convert_all_tip: "Convert every .fig file here to .op next to it",
 };
 
 fn in_folder(label: &str, folder: &str) -> op_editor_core::ProjectFileView {

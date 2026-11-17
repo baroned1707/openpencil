@@ -576,6 +576,15 @@ pub fn lookup(key: &str) -> Option<&'static str> {
         "project.unreadable" => "Impossible de lire ce dossier",
         "documents.emptyFileInitialized" => "« {{name}} » était vide : il a été initialisé comme un design vierge.",
         "documents.emptyFileNotWritable" => "« {{name}} » était vide mais n’a pas pu être écrit. Il est ouvert sans enregistrement : enregistrez-le pour conserver votre travail.",
+        "project.figConvert" => "Convertir",
+        "project.figConverted" => "Converti",
+        "project.figConverting" => "Conversion…",
+        "project.figFailed" => "Échec",
+        "project.figConvertAll" => "Tout convertir ({{count}})",
+        "project.figConvertTip" => "Convertir en .op à côté de ce fichier",
+        "project.figConvertedTip" => "Ouvrir le fichier .op converti",
+        "project.figFailedTip" => "Échec de la conversion : {{reason}}. Cliquez pour réessayer.",
+        "project.figConvertAllTip" => "Convertir chaque fichier .fig ici en .op à côté de celui-ci",
         _ => return None,
     })
 }

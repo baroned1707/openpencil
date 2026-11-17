@@ -576,6 +576,15 @@ pub fn lookup(key: &str) -> Option<&'static str> {
         "project.unreadable" => "Folder ini tidak dapat dibaca",
         "documents.emptyFileInitialized" => "“{{name}}” kosong, jadi disiapkan sebagai desain kosong.",
         "documents.emptyFileNotWritable" => "“{{name}}” kosong tetapi tidak dapat ditulis. File terbuka tanpa tersimpan: simpan untuk mempertahankan pekerjaan Anda.",
+        "project.figConvert" => "Konversi",
+        "project.figConverted" => "Terkonversi",
+        "project.figConverting" => "Mengonversi…",
+        "project.figFailed" => "Gagal",
+        "project.figConvertAll" => "Konversi semua ({{count}})",
+        "project.figConvertTip" => "Konversi ke .op di samping file ini",
+        "project.figConvertedTip" => "Buka file .op hasil konversi",
+        "project.figFailedTip" => "Konversi gagal: {{reason}}. Klik untuk mencoba lagi.",
+        "project.figConvertAllTip" => "Konversi setiap file .fig di sini ke .op di sampingnya",
         _ => return None,
     })
 }

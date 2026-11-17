@@ -55,6 +55,11 @@ pub enum RowKind {
     Status(usize),
     /// "No designs here yet", the line above an empty project's New design row.
     NoDesigns(usize),
+    /// A "Convert all (N)" action row for the `.fig` files not yet converted:
+    /// `(project index, first file index of the folder group)`, or `None` for
+    /// the whole project. A row, not a header button, because the layout cannot
+    /// measure text and the label carries a count.
+    ConvertAll(usize, Option<usize>),
 }
 
 /// One laid-out row.
@@ -112,6 +117,9 @@ impl ProjectsPanelLayout {
             ) {
                 specs.push((RowKind::Status(index), STATUS_HEIGHT, 0.0));
             }
+            if project_convert_row_shown(project) {
+                specs.push((RowKind::ConvertAll(index, None), FILE_HEIGHT, 0.0));
+            }
             if project.files.is_empty() {
                 if matches!(
                     project.scan,
@@ -129,6 +137,13 @@ impl ProjectsPanelLayout {
                     folded = !file.folder.is_empty() && project.is_folder_collapsed(&file.folder);
                     if !file.folder.is_empty() {
                         specs.push((RowKind::Folder(index, file_index), FOLDER_HEIGHT, 0.0));
+                        if !folded && project.not_converted_count(Some(&file.folder)) > 0 {
+                            specs.push((
+                                RowKind::ConvertAll(index, Some(file_index)),
+                                FILE_HEIGHT,
+                                0.0,
+                            ));
+                        }
                     }
                 }
                 if !folded {
@@ -233,6 +248,9 @@ impl ProjectsPanelLayout {
                 RowKind::Folder(project, file) => ProjectRowTarget::Folder(project, file),
                 RowKind::File(project, file) => ProjectRowTarget::File(project, file),
                 RowKind::NewDesign(project) => ProjectRowTarget::NewDesignRow(project),
+                RowKind::ConvertAll(project, folder) => {
+                    ProjectRowTarget::ConvertAll(project, folder)
+                }
                 // Status lines are text, not targets.
                 RowKind::Status(_) | RowKind::NoDesigns(_) => return None,
             })
@@ -243,6 +261,21 @@ impl ProjectsPanelLayout {
     pub fn row(&self, kind: RowKind) -> Option<&ProjectRow> {
         self.rows.iter().find(|row| row.kind == kind)
     }
+}
+
+/// Whether the project-wide "Convert all" row shows: some `.fig` is waiting and
+/// the project's own folder rows do not already offer exactly that (a single
+/// sub-folder holding every one of them has its own row).
+fn project_convert_row_shown(project: &ProjectView) -> bool {
+    let mut folders = project
+        .files
+        .iter()
+        .filter(|file| file.kind.is_not_converted())
+        .map(|file| file.folder.as_str());
+    let Some(first) = folders.next() else {
+        return false;
+    };
+    first.is_empty() || project.is_folder_collapsed(first) || folders.any(|folder| folder != first)
 }
 
 /// A header row with its buttons, laid out from the right: `+`, then close,

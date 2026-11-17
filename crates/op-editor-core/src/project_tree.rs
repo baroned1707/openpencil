@@ -10,6 +10,37 @@
 
 use crate::document_tabs::{DocumentId, DocumentTabStatus};
 
+/// Where a Figma `.fig` file stands on its way to an `.op` file next to it.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum FigStatus {
+    /// No `<stem>.op` beside it yet; clicking the row converts it.
+    NotConverted,
+    /// `<stem>.op` exists beside it; clicking the row opens that file.
+    Converted,
+    /// A conversion is queued or running.
+    Converting,
+    /// The last conversion failed; the short reason is shown as a tooltip and
+    /// clicking the row tries again.
+    Failed(String),
+}
+
+/// What kind of file a project row stands for.
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub enum ProjectFileKind {
+    /// An `.op` design (the default).
+    #[default]
+    Design,
+    /// A Figma `.fig` export, listed so it can be converted.
+    Figma(FigStatus),
+}
+
+impl ProjectFileKind {
+    /// Whether this row is a `.fig` that has not been converted.
+    pub fn is_not_converted(&self) -> bool {
+        matches!(self, Self::Figma(FigStatus::NotConverted))
+    }
+}
+
 /// One design file inside a project, as the Projects dock draws it.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ProjectFileView {
@@ -28,6 +59,8 @@ pub struct ProjectFileView {
     /// root with `/` separators; empty for a file directly in the root. The
     /// dock groups rows under this.
     pub folder: String,
+    /// `.op` design or `.fig` export with its conversion status.
+    pub kind: ProjectFileKind,
 }
 
 /// How far the last disk scan of a project got; the dock shows a status line
@@ -96,6 +129,15 @@ impl ProjectView {
         self.collapsed_folders.iter().any(|name| name == folder)
     }
 
+    /// `.fig` files not converted yet: those under `folder` and its subfolders
+    /// (a relative folder, `""` for the root), or the whole project for `None`.
+    pub fn not_converted_count(&self, folder: Option<&str>) -> usize {
+        self.files
+            .iter()
+            .filter(|file| file.kind.is_not_converted() && in_folder_tree(&file.folder, folder))
+            .count()
+    }
+
     /// Whether any file has unsaved changes.
     pub fn any_dirty(&self) -> bool {
         self.files.iter().any(|file| file.dirty)
@@ -129,6 +171,14 @@ pub enum ProjectRequest {
     RefreshProject(String),
     /// Fold or unfold a folder: `(project root, relative folder)`.
     ToggleFolder(String, String),
+    /// A click on the `.fig` file at this path: convert it (and open the result),
+    /// open the `.op` beside it when that exists, or retry a failed conversion.
+    /// The host decides which, from what is on disk.
+    ConvertFig(String),
+    /// Convert every not-yet-converted `.fig` under a folder: `(project root,
+    /// relative folder)`, or the whole project when the folder is `None`. Never
+    /// opens a tab.
+    ConvertAllFigs(String, Option<String>),
 }
 
 /// What the cursor is over in the Projects dock. Indices point into
@@ -151,6 +201,23 @@ pub enum ProjectRowTarget {
     Close(usize),
     /// The empty dock's "Open project" button.
     OpenProject,
+    /// A "Convert all" row: `(project index, index of the first file of the
+    /// folder it belongs to)`, or `None` for the whole project.
+    ConvertAll(usize, Option<usize>),
+}
+
+/// Whether `file_folder` is `folder` or below it; `None` matches everything.
+pub fn in_folder_tree(file_folder: &str, folder: Option<&str>) -> bool {
+    match folder {
+        None => true,
+        Some("") => true,
+        Some(folder) => {
+            file_folder == folder
+                || file_folder
+                    .strip_prefix(folder)
+                    .is_some_and(|rest| rest.starts_with('/'))
+        }
+    }
 }
 
 #[cfg(test)]
@@ -166,6 +233,7 @@ mod tests {
             status,
             active: false,
             folder: String::new(),
+            kind: ProjectFileKind::Design,
         }
     }
 
@@ -188,6 +256,29 @@ mod tests {
         ]);
         assert_eq!(view.needs_review_count(), 2);
         assert_eq!(view.running_count(), 1);
+    }
+
+    #[test]
+    fn not_converted_count_scopes_to_a_folder_tree() {
+        let fig = |folder: &str, status: FigStatus| ProjectFileView {
+            folder: folder.to_string(),
+            kind: ProjectFileKind::Figma(status),
+            ..file(DocumentTabStatus::Idle, false)
+        };
+        let view = project(vec![
+            fig("", FigStatus::NotConverted),
+            fig("a", FigStatus::NotConverted),
+            fig("a/b", FigStatus::NotConverted),
+            fig("ab", FigStatus::NotConverted),
+            fig("a", FigStatus::Converted),
+            fig("a", FigStatus::Failed("x".to_string())),
+            file(DocumentTabStatus::Idle, false),
+        ]);
+        assert_eq!(view.not_converted_count(None), 4);
+        assert_eq!(view.not_converted_count(Some("")), 4);
+        assert_eq!(view.not_converted_count(Some("a")), 2, "a and a/b, not ab");
+        assert_eq!(view.not_converted_count(Some("a/b")), 1);
+        assert_eq!(view.not_converted_count(Some("zzz")), 0);
     }
 
     #[test]

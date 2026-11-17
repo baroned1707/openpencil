@@ -256,8 +256,9 @@ fn convert_prepared(
     })
 }
 
-#[cfg(test)]
-fn parse_path(path: &Path) -> Result<PreparedImport, FigmaImportError> {
+/// The whole-file conversion (every page, Preserve layout) without a session:
+/// what the Projects dock's headless `--convert-fig` runs. Tests use it too.
+pub(crate) fn parse_path(path: &Path) -> Result<PreparedImport, FigmaImportError> {
     let cancellation = CancellationToken::default();
     convert_prepared(
         prepare_path(path, &cancellation)?,

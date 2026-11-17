@@ -578,6 +578,15 @@ pub fn lookup(key: &str) -> Option<&'static str> {
         "project.unreadable" => "อ่านโฟลเดอร์นี้ไม่ได้",
         "documents.emptyFileInitialized" => "“{{name}}” เป็นไฟล์ว่าง จึงตั้งค่าเป็นดีไซน์เปล่าให้แล้ว",
         "documents.emptyFileNotWritable" => "“{{name}}” เป็นไฟล์ว่างแต่เขียนข้อมูลลงไม่ได้ ไฟล์เปิดอยู่โดยยังไม่ได้บันทึก: บันทึกเพื่อเก็บงานของคุณไว้",
+        "project.figConvert" => "แปลง",
+        "project.figConverted" => "แปลงแล้ว",
+        "project.figConverting" => "กำลังแปลง…",
+        "project.figFailed" => "ล้มเหลว",
+        "project.figConvertAll" => "แปลงทั้งหมด ({{count}})",
+        "project.figConvertTip" => "แปลงเป็น .op ข้างไฟล์นี้",
+        "project.figConvertedTip" => "เปิดไฟล์ .op ที่แปลงแล้ว",
+        "project.figFailedTip" => "แปลงไม่สำเร็จ: {{reason}} คลิกเพื่อลองอีกครั้ง",
+        "project.figConvertAllTip" => "แปลงทุกไฟล์ .fig ที่นี่เป็น .op ไว้ข้างไฟล์",
         _ => return None,
     })
 }

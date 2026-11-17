@@ -33,6 +33,7 @@ fn file(
         status,
         active,
         folder: String::new(),
+        kind: op_editor_core::ProjectFileKind::Design,
     }
 }
 

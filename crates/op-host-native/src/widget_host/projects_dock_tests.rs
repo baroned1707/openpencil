@@ -40,6 +40,7 @@ fn project() -> ProjectView {
             status: op_editor_core::DocumentTabStatus::Idle,
             active: false,
             folder: "designs".to_string(),
+            kind: op_editor_core::ProjectFileKind::Design,
         }],
         ..ProjectView::default()
     }
