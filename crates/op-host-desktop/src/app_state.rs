@@ -5,10 +5,11 @@
 //! motion.
 
 use crate::{
-    collab_avatar_host, figma_import_session, git_session, html_import_session, image_decode_host,
-    image_panel_host, image_search_session, ime_window, init_auth_runtime, kit_persistence,
-    prompt_center_store, remote_image_host, save_session, single_instance, theme_preset_host,
-    update_check, DesktopApp, PaintedPageIdentity, INITIAL_VIEWPORT_H, INITIAL_VIEWPORT_W,
+    collab_avatar_host, figma_import_session, font_download_host, git_session, html_import_session,
+    image_decode_host, image_panel_host, image_search_session, ime_window, init_auth_runtime,
+    kit_persistence, prompt_center_store, remote_image_host, save_session, single_instance,
+    theme_preset_host, update_check, DesktopApp, PaintedPageIdentity, INITIAL_VIEWPORT_H,
+    INITIAL_VIEWPORT_W,
 };
 use op_host_native::WidgetHostNative;
 use std::path::PathBuf;
@@ -70,6 +71,9 @@ impl DesktopApp {
         // — the picker paints the Import row + imported group here, and
         // web leaves the default `false` so those controls stay hidden.
         host.editor_state_mut().editor_ui.font_import_supported = true;
+        // …and the missing-font downloader (Download actions + the Settings
+        // switch), which only the desktop host can drive.
+        host.editor_state_mut().editor_ui.font_downloads.supported = true;
         // Desktop keeps several documents open as tabs (`document_registry`).
         host.editor_state_mut().editor_ui.document_tabs_supported = true;
         // The documents open at the last quit, reopened once the window is up.
@@ -214,6 +218,7 @@ impl DesktopApp {
             guest_join_tab: None,
             forwarded_files: single_instance::ForwardQueue::default(),
             iconify_job: None,
+            font_downloads: font_download_host::FontDownloadHost::new(),
             image_gen_test_job: None,
             kit_browser_open_persisted,
             provider_connect_job: None,

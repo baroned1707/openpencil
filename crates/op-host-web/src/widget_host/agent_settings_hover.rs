@@ -377,6 +377,11 @@ impl WidgetHost {
                     None,
                     false,
                 ),
+                AgentSettingsHit::Fonts(FontsHit::DownloadFont(row)) => (
+                    Some(op_editor_core::missing_fonts::MissingFontsHover::DownloadFont(row)),
+                    None,
+                    false,
+                ),
                 AgentSettingsHit::Fonts(FontsHit::RemoveImportedFont(row)) => (
                     Some(op_editor_core::missing_fonts::MissingFontsHover::RemoveImported(row)),
                     None,

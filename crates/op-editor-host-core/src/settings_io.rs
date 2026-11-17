@@ -128,6 +128,8 @@ struct SettingsPayload {
     #[serde(default)]
     autosave_on_agent_run_end: Option<bool>,
     #[serde(default)]
+    auto_download_missing_fonts: Option<bool>,
+    #[serde(default)]
     images_advanced_open: Option<bool>,
     #[serde(default)]
     openverse_oauth: Option<OpenverseOAuthPayload>,
@@ -235,6 +237,7 @@ fn to_payload(state: &EditorState) -> SettingsPayload {
         mcp_lean_profile: Some(eui.agent_settings.mcp_lean_profile),
         mcp_require_token: Some(eui.agent_settings.mcp_require_token),
         autosave_on_agent_run_end: Some(eui.agent_settings.autosave_on_agent_run_end),
+        auto_download_missing_fonts: Some(eui.agent_settings.auto_download_missing_fonts),
         images_advanced_open: Some(eui.agent_settings.images_advanced_open),
         openverse_oauth: openverse_oauth_to_payload(&eui.agent_settings),
         openverse_credential_owner: eui.agent_settings.openverse_credential_owner.clone(),
@@ -322,6 +325,9 @@ fn apply_payload_with_options(
     // An absent field keeps the default (on).
     if let Some(autosave) = payload.autosave_on_agent_run_end {
         eui.agent_settings.autosave_on_agent_run_end = autosave;
+    }
+    if let Some(download) = payload.auto_download_missing_fonts {
+        eui.agent_settings.auto_download_missing_fonts = download;
     }
     if let Some(b) = payload.images_advanced_open {
         eui.agent_settings.images_advanced_open = b;

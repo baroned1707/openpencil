@@ -21,6 +21,8 @@ use serde::{Deserialize, Serialize};
 /// that still bounds disk + parse cost and a hostile input.
 pub(crate) const MAX_FONT_BYTES: usize = 16 * 1024 * 1024;
 
+mod downloaded;
+
 const FONTS_SUBDIR: &str = "fonts";
 const INDEX_FILE: &str = "fonts/index.json";
 

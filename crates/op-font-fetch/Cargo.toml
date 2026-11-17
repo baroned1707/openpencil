@@ -1,0 +1,21 @@
+# Native-only, skia-free logic for downloading missing Google Fonts: catalog
+# parsing, licence allow-list, METADATA.pb parsing, file planning, the
+# injectable HTTP seam (`FontSource`) and the bounded download scheduler. The
+# real HTTP client and the font registration live in op-host-desktop; nothing
+# here touches the network, skia or the UI, so every rule is unit-testable
+# against `fake::FakeFontSource`.
+[package]
+name = "op-font-fetch"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+description = "OpenPencil missing-font downloader core: Fontsource catalog, google/fonts METADATA, licence gate, bounded scheduler"
+
+[features]
+# Exposes `fake::FakeFontSource` to dependents' tests.
+fake = []
+
+[dependencies]
+serde = { workspace = true }
+serde_json = { workspace = true }

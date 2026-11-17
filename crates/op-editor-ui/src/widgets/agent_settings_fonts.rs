@@ -1,10 +1,12 @@
 //! Fonts tab of the settings modal.
 
 use crate::theme::Theme;
+use crate::widgets::agent_settings_fonts_auto as auto_toggle;
 use crate::widgets::editor_state_ext::translate;
 use crate::widgets::missing_fonts_panel::{
     paint_missing_font_row, paint_text, row_button_rect, ROW_HEIGHT,
 };
+use crate::widgets::missing_fonts_row::row_download_rect;
 use crate::widgets::property_panel_typography::{
     font_picker_action_in_layout, font_picker_entries, font_picker_hit_in_layout,
     font_picker_layout_at_for_ui, paint_font_picker_at_for_ui, FontPickerAction, FontPickerLayout,
@@ -77,6 +79,10 @@ pub enum FontsHit {
     ClosePicker,
     PickerInside,
     RemoveImportedFont(usize),
+    /// Download / Retry pill of a missing-font row.
+    DownloadFont(usize),
+    /// The "Download missing fonts automatically" switch.
+    ToggleAutoDownload,
     None,
 }
 
@@ -97,10 +103,14 @@ fn missing_body_height(ui: &EditorUiState) -> f32 {
     }
 }
 
+/// Top of the first section: below the top pad and the auto-download switch.
+fn sections_top(content: Rect, ui: &EditorUiState) -> f32 {
+    content.origin.y + density(ui).top_pad + auto_toggle::block_height(ui)
+}
+
 fn imported_section_top(content: Rect, ui: &EditorUiState) -> f32 {
     let metrics = density(ui);
-    content.origin.y
-        + metrics.top_pad
+    sections_top(content, ui)
         + metrics.section_title_height
         + missing_body_height(ui)
         + metrics.section_gap
@@ -110,8 +120,7 @@ pub(crate) fn missing_row_rect(content: Rect, ui: &EditorUiState, row: usize) ->
     let metrics = density(ui);
     Rect::xywh(
         content.origin.x,
-        content.origin.y
-            + metrics.top_pad
+        sections_top(content, ui)
             + metrics.section_title_height
             + row as f32 * metrics.missing_row_height,
         content.size.x,
@@ -169,6 +178,7 @@ pub(crate) fn imported_remove_rect(content: Rect, ui: &EditorUiState, row: usize
 pub(super) fn content_height(ui: &EditorUiState) -> f32 {
     let metrics = density(ui);
     metrics.top_pad
+        + auto_toggle::block_height(ui)
         + metrics.section_title_height
         + missing_body_height(ui)
         + metrics.section_gap
@@ -251,7 +261,20 @@ pub fn hit_test(
         return FontsHit::ClosePicker;
     }
     let scrolled = Point2D::new(point.x, point.y + scroll_y);
+    if auto_toggle::hit(
+        content,
+        content.origin.y + density(ui).top_pad,
+        ui,
+        scrolled,
+    ) {
+        return FontsHit::ToggleAutoDownload;
+    }
     for (row, entry) in missing_entries(ui).iter().enumerate() {
+        if row_download_rect(missing_row_rect(content, ui, row), ui, entry)
+            .is_some_and(|rect| !ui.touch_chrome() && rect.contains(scrolled))
+        {
+            return FontsHit::DownloadFont(row);
+        }
         if !entry.resolved
             && settings_row_button_rect(missing_row_rect(content, ui, row), ui).contains(scrolled)
         {
@@ -332,12 +355,13 @@ pub(super) fn paint_fonts_tab(
 ) {
     let metrics = density(ui);
     let touch = ui.touch_chrome();
+    auto_toggle::paint(cx, theme, ui, content, content.origin.y + metrics.top_pad);
     paint_section_title(
         cx,
         theme,
         translate(ui, "missingFonts.title"),
         content.origin.x,
-        content.origin.y + metrics.top_pad,
+        sections_top(content, ui),
         touch,
     );
 
@@ -348,8 +372,7 @@ pub(super) fn paint_fonts_tab(
             translate(ui, "missingFonts.noneMissing"),
             Point2D::new(
                 content.origin.x,
-                content.origin.y
-                    + metrics.top_pad
+                sections_top(content, ui)
                     + metrics.section_title_height
                     + if touch { 28.0 } else { 20.0 },
             ),

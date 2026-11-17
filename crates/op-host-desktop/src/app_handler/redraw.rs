@@ -284,6 +284,11 @@ impl DesktopApp {
         if self.drain_iconify_picker() {
             self.redraw_dirty = true;
         }
+        // Missing Google Fonts: queue clicked / automatic downloads and land
+        // finished ones (registration stays on this thread).
+        if self.font_downloads.drain(&mut self.host) {
+            self.redraw_dirty = true;
+        }
         // Drain the connect-time provider probe (Settings →
         // Agents → Connect) — spawn requested probes, land
         // finished ones into agent_settings + the model

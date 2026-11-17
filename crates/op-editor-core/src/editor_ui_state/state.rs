@@ -604,6 +604,8 @@ pub struct EditorUiState {
     /// Raised by `PropertyPanelAction::RemoveImportedFont` — carries the
     /// resolved family; the desktop host drains it to `FontStore::remove`.
     pub pending_font_remove: Option<String>,
+    /// Missing-font download surface state (status per family, requests).
+    pub font_downloads: crate::font_download::FontDownloadUi,
     /// Image-node section Search / Generate popover state.
     pub image_panel: crate::image_panel_state::ImagePanelState,
     /// Whether the typography font-weight dropdown is open.

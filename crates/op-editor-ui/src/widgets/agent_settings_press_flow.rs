@@ -342,6 +342,16 @@ fn apply_fonts_hit(state: &mut EditorState, hit: FontsHit) -> SettingsPressOutco
             }
             SettingsPressOutcome::handled()
         }
+        FontsHit::DownloadFont(row) => {
+            crate::widgets::missing_fonts_flow::request_row_download(state, row);
+            SettingsPressOutcome::handled()
+        }
+        FontsHit::ToggleAutoDownload => {
+            // Persisted by the host's per-frame settings save, like every
+            // other switch on this surface.
+            state.editor_ui.agent_settings.auto_download_missing_fonts ^= true;
+            SettingsPressOutcome::handled()
+        }
         FontsHit::PickerInside | FontsHit::None => SettingsPressOutcome::handled(),
     }
 }

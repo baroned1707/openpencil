@@ -183,6 +183,8 @@ pub fn missing_fonts_button(
     use op_editor_core::missing_fonts::MissingFontsHover;
     match hit {
         MissingFontsHit::ChooseFont(row) => Some(MissingFontsHover::ChooseFile(row)),
+        MissingFontsHit::DownloadFont(row) => Some(MissingFontsHover::DownloadFont(row)),
+        MissingFontsHit::DownloadAll => Some(MissingFontsHover::DownloadAll),
         MissingFontsHit::Dismiss => Some(MissingFontsHover::Dismiss),
         MissingFontsHit::SelectFont(_)
         | MissingFontsHit::ImportFont(_)

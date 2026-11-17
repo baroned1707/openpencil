@@ -103,6 +103,9 @@ op-editor-core = { path = "../op-editor-core" }
 op-editor-host-core = { path = "../op-editor-host-core" }
 # Shared `~/.openpencil` well-known paths used by CLI and desktop discovery.
 op-config-store = { path = "../op-config-store" }
+# Missing Google Fonts downloader core (catalog, licence gate, scheduler); the
+# HTTPS client and the font registration stay in this crate.
+op-font-fetch = { path = "../op-font-fetch" }
 # Device-login bridge (prebuilt proprietary library or inert stub).
 op-auth-bridge = { path = "../op-auth-bridge" }
 # Open collaboration protocol + the native Noise/TCP/mDNS transport. The
@@ -369,6 +372,9 @@ libc = "0.2"
 
 [dev-dependencies]
 static_assertions = "1"
+# Canned catalog / METADATA.pb / TTF responses: the downloader tests never use
+# the network.
+op-font-fetch = { path = "../op-font-fetch", features = ["fake"] }
 # Controlled collaboration sessions for the tab-switching tests (the
 # open-source build has no ticket issuer, so a real session cannot start).
 # Dev-only: the shipped binary links op-collab-host without the fixtures.

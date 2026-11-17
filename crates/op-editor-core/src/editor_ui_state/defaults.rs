@@ -189,6 +189,7 @@ impl Default for EditorUiState {
             missing_fonts_hover: None,
             pending_font_import: false,
             pending_font_remove: None,
+            font_downloads: Default::default(),
             image_panel: crate::image_panel_state::ImagePanelState::default(),
             font_weight_picker_open: false,
             font_weight_picker_hover: None,

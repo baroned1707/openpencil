@@ -48,6 +48,8 @@ mod document_tabs_host;
 mod drag_cursor;
 mod empty_file_notice;
 mod figma_import_session;
+mod font_download_host;
+mod font_download_source;
 mod font_import_host;
 mod fonts;
 mod fonts_error;
@@ -360,6 +362,8 @@ struct DesktopApp {
     /// drained on the UI thread by `drain_forwarded_files`.
     forwarded_files: single_instance::ForwardQueue,
     iconify_job: Option<iconify_host::IconifyJob>,
+    /// Missing Google Fonts downloader (catalog, workers, font store).
+    font_downloads: font_download_host::FontDownloadHost,
     /// In-flight Workbench image-gen status probe (Settings → Images →
     /// Test) — spawned from the `pending_image_gen_test` seam, drained by
     /// `drain_image_gen_test`.

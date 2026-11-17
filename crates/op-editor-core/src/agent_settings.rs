@@ -321,6 +321,10 @@ pub struct AgentSettings {
     /// successfully (see `autosave::should_autosave_after_run` in the desktop
     /// host). On by default; switched in Settings > System. Persisted.
     pub autosave_on_agent_run_end: bool,
+    /// Download missing Google Fonts families automatically when a document
+    /// opens (only the public family names are sent, to Fontsource and
+    /// GitHub). On by default; switched in Settings > Fonts. Persisted.
+    pub auto_download_missing_fonts: bool,
     pub mcp_client_config_copied_at_ms: Option<u64>,
     pub hover_agent_settings_close: bool,
     pub hover_mcp_server_button: bool,
@@ -417,6 +421,7 @@ impl Default for AgentSettings {
             mcp_lean_profile: false,
             mcp_require_token: false,
             autosave_on_agent_run_end: true,
+            auto_download_missing_fonts: true,
             mcp_client_config_copied_at_ms: None,
             hover_agent_settings_close: false,
             hover_mcp_server_button: false,

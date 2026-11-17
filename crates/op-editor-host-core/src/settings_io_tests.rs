@@ -5,6 +5,8 @@ use op_editor_core::ImageTestStatus;
 mod autosave_tests;
 #[path = "settings_io_checked_tests.rs"]
 mod checked_tests;
+#[path = "settings_io_font_download_tests.rs"]
+mod font_download_tests;
 #[path = "settings_io_save_tests.rs"]
 mod save_tests;
 

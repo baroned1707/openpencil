@@ -116,6 +116,16 @@ pub fn press(
         MissingFontsHit::ImportFont(row) => {
             state.editor_ui.missing_fonts_import_row = Some(row);
         }
+        MissingFontsHit::DownloadFont(row) => {
+            request_row_download(state, row);
+        }
+        MissingFontsHit::DownloadAll => {
+            state
+                .editor_ui
+                .font_downloads
+                .pending
+                .push(op_editor_core::font_download::FontDownloadRequest::All);
+        }
         MissingFontsHit::ClosePicker => {
             state.editor_ui.close_font_picker();
         }
@@ -127,6 +137,23 @@ pub fn press(
         MissingFontsHit::PickerInside | MissingFontsHit::Inside | MissingFontsHit::Outside => {}
     }
     true
+}
+
+/// Raise the host request behind a row's Download / Retry pill. Downloading is
+/// not a document mutation (like importing a font file), so it is not gated by
+/// the collaboration check that guards `ReplaceFontFamily`.
+pub fn request_row_download(state: &mut EditorState, row: usize) {
+    let family = state
+        .editor_ui
+        .missing_fonts_prompt
+        .as_ref()
+        .and_then(|prompt| prompt.entries.get(row))
+        .map(|entry| entry.family.clone());
+    if let Some(family) = family {
+        state.editor_ui.font_downloads.pending.push(
+            op_editor_core::font_download::FontDownloadRequest::Family(family),
+        );
+    }
 }
 
 /// Record that a font scan is owed, along with whether its result may

@@ -289,6 +289,7 @@ mod agent_settings_embed_tests;
 mod agent_settings_external_cli_tests;
 mod agent_settings_focus_geometry;
 pub mod agent_settings_fonts;
+mod agent_settings_fonts_auto;
 #[cfg(test)]
 mod agent_settings_form_action_tests;
 mod agent_settings_form_actions;
@@ -406,6 +407,9 @@ pub(crate) mod menu_paint;
 pub mod missing_fonts_flow;
 pub mod missing_fonts_notice;
 pub mod missing_fonts_panel;
+pub(crate) mod missing_fonts_row;
+#[cfg(test)]
+mod missing_fonts_download_tests;
 pub mod mobile_chrome;
 #[cfg(test)]
 mod mobile_layout_tests;

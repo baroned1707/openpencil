@@ -4529,6 +4529,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "op-font-fetch"
+version = "0.8.5"
+dependencies = [
+ "serde",
+ "serde_json",
+]
+
+[[package]]
 name = "op-git"
 version = "0.8.5"
 dependencies = [
@@ -4584,6 +4592,7 @@ dependencies = [
  "op-editor-host-core",
  "op-editor-ui",
  "op-figma",
+ "op-font-fetch",
  "op-git",
  "op-host-native",
  "op-host-services",

@@ -2,6 +2,8 @@
 
 #[path = "ui3_proof_chat_tests.rs"]
 mod chat;
+#[path = "ui3_proof_font_download_tests.rs"]
+mod font_download;
 #[path = "ui3_proof_frame_tests.rs"]
 mod frame;
 #[path = "ui3_proof_home_tests.rs"]

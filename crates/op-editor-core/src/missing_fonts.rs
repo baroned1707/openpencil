@@ -27,6 +27,10 @@ pub struct MissingFontEntry {
 pub enum MissingFontsHover {
     ChooseFile(usize),
     RemoveImported(usize),
+    /// Per-row Download / Retry pill.
+    DownloadFont(usize),
+    /// Footer Download all button.
+    DownloadAll,
     Dismiss,
 }
 
