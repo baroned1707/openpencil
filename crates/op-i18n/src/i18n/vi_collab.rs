@@ -602,6 +602,14 @@ pub fn lookup(key: &str) -> Option<&'static str> {
         "projects.renameExists" => "Đã có tệp trùng tên này",
         "projects.renameInvalid" => "Không thể dùng tên này",
         "projects.renameFailed" => "Không thể đổi tên: {{reason}}",
+        "projects.trash" => "Chuyển vào Thùng rác",
+        "projects.trashConfirm" => "Chuyển vào Thùng rác?",
+        "projects.trashFailed" => "Không thể chuyển vào Thùng rác: {{reason}}",
+        "projects.trashOpenTab" => "Hãy đóng tab trước, rồi chuyển tệp vào Thùng rác",
+        "projects.newDesignHere" => "Thiết kế mới tại đây",
+        "projects.notOnDisk" => "không có trên đĩa",
+        "settings.autosaveOnAgentRun" => "Tự động lưu khi agent hoàn tất",
+        "settings.autosaveOnAgentRunDesc" => "Lưu tài liệu vào tệp của chính nó khi một lượt chạy của agent kết thúc thành công.",
         _ => return None,
     })
 }

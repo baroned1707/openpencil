@@ -4,7 +4,8 @@
 //! which (i) drains a finished scan from the channel and (ii) starts a new one
 //! on a fresh thread when one is due: when something that can change the
 //! listing happened ([`ScanScheduler::request_now`]) or every few seconds while
-//! the window has focus. At most one scan is ever alive.
+//! the caller says a background refresh is wanted (the window is focused and the
+//! dock is showing). At most one scan is ever alive.
 //!
 //! A scan that has not finished after `slow_after` is *abandoned*, not killed
 //! (a `read_dir` stuck on a dead network drive cannot be interrupted): its
@@ -14,11 +15,22 @@
 //! clears. A request that arrives meanwhile is remembered and runs next.
 //!
 //! Two kinds of root share the one worker. An inferred project's `designs/` folder
-//! is cheap and re-read on the periodic tick. A folder the user opened is walked
-//! recursively (`projects_host_scan_tree.rs`) ONLY when it was just opened, or
-//! refreshed ([`ScanScheduler::request_tree_scan`]): the periodic tick never
-//! re-walks a whole repository. Each started scan gets a serial number, so the
-//! host can tell "the scan I asked for has finished" from "some older scan did".
+//! is cheap. A folder the user opened is walked recursively
+//! (`projects_host_scan_tree.rs`) when it was just opened or refreshed
+//! ([`ScanScheduler::request_tree_scan`]), and AGAIN whenever the app asks for a
+//! full rescan: the window regained focus, an in-app file operation finished
+//! ([`ScanScheduler::request_rescan_all`]) or the background tick came due. The
+//! tick runs only while the caller's `active` check passes, waits at least
+//! three times as long as the last scan took (a huge repository is not walked
+//! back to back) and an unchanged result changes nothing, so the dock does not
+//! flicker. Each started scan gets a serial number, so the host can tell "the
+//! scan I asked for has finished" from "some older scan did".
+//!
+//! Besides the listings, every scan stats the paths of the open documents
+//! ([`ScanScheduler::set_watched`]) and reports the ones that are gone, so the
+//! dock can mark an open tab whose file vanished. That is the only way to know:
+//! an open file missing from a listing may just be outside what the listing
+//! covers (a hidden folder, `vendor/`, deeper than the walk goes).
 
 use std::collections::{BTreeMap, BTreeSet};
 use std::io::ErrorKind;
@@ -32,9 +44,13 @@ use op_host_services::project_root::ProjectRootCache;
 use super::scan::{scan_design_dir, DesignListing, ScanStatus};
 use super::scan_tree::{scan_project_tree, TreeLimits};
 
-/// How often `<root>/designs` is re-read while nothing else changed, so a file
-/// an agent created from outside the editor shows up.
-pub(crate) const RESCAN_EVERY: Duration = Duration::from_secs(3);
+/// How often the listings are refreshed in the background while the window is
+/// focused and the dock is showing, so a file created, renamed or deleted
+/// outside the editor shows up.
+pub(crate) const RESCAN_EVERY: Duration = Duration::from_secs(5);
+/// A background rescan waits at least this many times as long as the previous
+/// scan took.
+const BACKOFF_FACTOR: u32 = 3;
 /// A scan still running after this long is abandoned (marked slow).
 pub(crate) const SLOW_AFTER: Duration = Duration::from_secs(5);
 /// A scan that includes a recursive walk is abandoned only after this long:
@@ -45,6 +61,55 @@ pub(crate) const TREE_SLOW_AFTER: Duration = Duration::from_secs(12);
 /// What one scan does with a set of project roots. Replaceable so tests can
 /// block, count and time it.
 pub(crate) type ScanJob = Arc<dyn Fn(&[PathBuf]) -> Vec<(PathBuf, DesignListing)> + Send + Sync>;
+
+/// What a finished scan hands back.
+struct ScanOutput {
+    listings: Vec<(PathBuf, DesignListing)>,
+    /// The watched paths that no longer exist.
+    missing: BTreeSet<PathBuf>,
+}
+
+/// A change the app made to the disk while a scan was running. That scan read
+/// the folder before the change, so its result is patched the same way when it
+/// lands; otherwise the row would flicker back (or fail to appear) until the
+/// next scan.
+#[derive(Debug, Clone, PartialEq, Eq)]
+enum ListingPatch {
+    Rename(PathBuf, PathBuf),
+    /// A file created in the listing of `root`.
+    Add {
+        root: PathBuf,
+        file: PathBuf,
+    },
+    Remove(PathBuf),
+}
+
+impl ListingPatch {
+    /// Apply to the listing of `root`; whether it changed.
+    fn apply(&self, root: &Path, files: &mut Vec<PathBuf>) -> bool {
+        match self {
+            Self::Rename(old, new) => swap_listed(files, old, new),
+            Self::Add { root: target, file } => target == root && insert_listed_sorted(files, file),
+            Self::Remove(path) => {
+                let before = files.len();
+                files.retain(|listed| listed != path);
+                files.len() != before
+            }
+        }
+    }
+}
+
+/// The watched paths that are certainly gone (not found; a permission error is
+/// not "gone").
+fn missing_paths(watched: &[PathBuf]) -> BTreeSet<PathBuf> {
+    watched
+        .iter()
+        .filter(|path| {
+            std::fs::symlink_metadata(path).is_err_and(|error| error.kind() == ErrorKind::NotFound)
+        })
+        .cloned()
+        .collect()
+}
 
 /// The real `designs/` job: re-resolve project roots that went stale (off the UI
 /// thread), then list every project's `designs/` folder.
@@ -78,7 +143,7 @@ struct InFlight {
     started: Instant,
     /// Whether this scan walks an opened project (it may take longer).
     walks_trees: bool,
-    results: Receiver<Vec<(PathBuf, DesignListing)>>,
+    results: Receiver<ScanOutput>,
     roots: Vec<PathBuf>,
     slow_reported: bool,
 }
@@ -94,6 +159,14 @@ pub(crate) struct ScanScheduler {
     trees: BTreeSet<PathBuf>,
     /// Opened roots waiting for their walk.
     dirty_trees: BTreeSet<PathBuf>,
+    /// The next scan walks every opened root, not only the dirty ones.
+    rescan_all: bool,
+    /// Paths of the open documents; each scan checks that they still exist.
+    watched: Vec<PathBuf>,
+    /// The watched paths the last scan did not find.
+    missing: BTreeSet<PathBuf>,
+    /// How long the last scan took.
+    last_duration: Duration,
     /// Serial of the latest scan that started, and of the latest that finished.
     started_serial: u64,
     completed_serial: u64,
@@ -105,11 +178,9 @@ pub(crate) struct ScanScheduler {
     status: BTreeMap<PathBuf, ScanStatus>,
     /// Bumped whenever `files` or `status` change, so the frame can tell.
     version: u64,
-    /// Renames made while a scan was already running: `(old, new, serial of
-    /// that scan)`. The running scan read the folder before the rename, so its
-    /// result still lists the old name; applying it must not bring the old row
-    /// back.
-    renamed: Vec<(PathBuf, PathBuf, u64)>,
+    /// Changes made while a scan was already running, with the serial of that
+    /// scan (see [`ListingPatch`]).
+    patches: Vec<(ListingPatch, u64)>,
 }
 
 impl ScanScheduler {
@@ -126,6 +197,10 @@ impl ScanScheduler {
             tree_slow_after: TREE_SLOW_AFTER,
             trees: BTreeSet::new(),
             dirty_trees: BTreeSet::new(),
+            rescan_all: false,
+            watched: Vec::new(),
+            missing: BTreeSet::new(),
+            last_duration: Duration::ZERO,
             started_serial: 0,
             completed_serial: 0,
             in_flight: None,
@@ -134,7 +209,7 @@ impl ScanScheduler {
             files: BTreeMap::new(),
             status: BTreeMap::new(),
             version: 0,
-            renamed: Vec::new(),
+            patches: Vec::new(),
         }
     }
 
@@ -175,20 +250,80 @@ impl ScanScheduler {
 
     /// A listed file was renamed on disk: show the new name at once, in every
     /// listing that holds the old one, instead of waiting for the next scan.
-    /// A scan already running read the folder before the rename, so its result
-    /// is patched the same way when it lands.
     pub(crate) fn rename_listed(&mut self, old: &Path, new: &Path) {
+        let patch = ListingPatch::Rename(old.to_path_buf(), new.to_path_buf());
+        self.patch_listed(patch);
+    }
+
+    /// A file was created inside `root`'s listing: show it at once.
+    pub(crate) fn insert_listed(&mut self, root: &Path, file: &Path) {
+        let patch = ListingPatch::Add {
+            root: root.to_path_buf(),
+            file: file.to_path_buf(),
+        };
+        self.patch_listed(patch);
+    }
+
+    /// A listed file left the disk (moved to the Trash): drop its row at once.
+    pub(crate) fn remove_listed(&mut self, file: &Path) {
+        self.patch_listed(ListingPatch::Remove(file.to_path_buf()));
+    }
+
+    fn patch_listed(&mut self, patch: ListingPatch) {
         let mut changed = false;
-        for files in self.files.values_mut() {
-            changed |= swap_listed(files, old, new);
+        for (root, files) in &mut self.files {
+            changed |= patch.apply(root, files);
         }
         if let Some(flight) = self.in_flight.as_ref() {
-            self.renamed
-                .push((old.to_path_buf(), new.to_path_buf(), flight.serial));
+            self.patches.push((patch, flight.serial));
         }
         if changed {
             self.version += 1;
         }
+    }
+
+    /// Walk every opened project (and re-list the inferred ones) at the next
+    /// chance: the window regained focus, or an in-app file operation finished.
+    pub(crate) fn request_rescan_all(&mut self) {
+        self.rescan_all = true;
+        self.wanted = true;
+    }
+
+    /// The open documents' paths, checked by every scan. A change asks for a
+    /// scan so a tab opened on a file that is already gone is marked at once.
+    pub(crate) fn set_watched(&mut self, paths: Vec<PathBuf>) {
+        if self.watched != paths {
+            self.watched = paths;
+            self.wanted = true;
+        }
+    }
+
+    /// Whether any listing holds `path`.
+    pub(crate) fn is_listed(&self, path: &Path) -> bool {
+        self.files
+            .values()
+            .any(|files| files.iter().any(|listed| listed == path))
+    }
+
+    /// The watched paths the last scan did not find.
+    pub(crate) fn missing(&self) -> &BTreeSet<PathBuf> {
+        &self.missing
+    }
+
+    /// When the next background rescan is due, or `None` while a scan runs or
+    /// one is already wanted (the next frame starts it).
+    pub(crate) fn next_background_due(&self) -> Option<Instant> {
+        if self.in_flight.is_some() || self.wanted {
+            return None;
+        }
+        Some(
+            self.last_finished
+                .map_or_else(Instant::now, |at| at + self.background_interval()),
+        )
+    }
+
+    fn background_interval(&self) -> Duration {
+        self.every.max(self.last_duration * BACKOFF_FACTOR)
     }
 
     /// Serial of the latest scan whose result was applied.
@@ -225,33 +360,41 @@ impl ScanScheduler {
         self.status.get(root).copied()
     }
 
-    /// One frame's worth of scan bookkeeping. Never blocks. `focused` is asked
-    /// only when a periodic rescan is due. Returns whether the listing or a
+    /// One frame's worth of scan bookkeeping. Never blocks. `active` is asked
+    /// only when a background rescan is due: it says whether one is wanted now
+    /// (the window is focused and the dock is showing); when it is not, an idle
+    /// app does no file-system work at all. Returns whether the listing or a
     /// status changed.
     pub(crate) fn poll(
         &mut self,
         roots: &BTreeSet<PathBuf>,
-        focused: impl FnOnce() -> bool,
+        active: impl FnOnce() -> bool,
     ) -> bool {
         let changed = self.drain();
         if self.in_flight.is_none() && !roots.is_empty() {
-            let periodic_due = self
+            let background_due = self
                 .last_finished
-                .is_none_or(|at| at.elapsed() >= self.every);
-            if self.wanted || (periodic_due && focused()) {
+                .is_none_or(|at| at.elapsed() >= self.background_interval());
+            let background = !self.wanted && background_due && active();
+            if self.wanted || background {
                 let designs: Vec<PathBuf> = roots
                     .iter()
                     .filter(|root| !self.trees.contains(*root))
                     .cloned()
                     .collect();
-                let trees: Vec<PathBuf> = self
-                    .dirty_trees
-                    .iter()
-                    .filter(|root| roots.contains(*root))
-                    .cloned()
-                    .collect();
+                let every_tree = background || self.rescan_all;
+                let trees: Vec<PathBuf> = if every_tree {
+                    &self.trees
+                } else {
+                    &self.dirty_trees
+                }
+                .iter()
+                .filter(|root| roots.contains(*root))
+                .cloned()
+                .collect();
                 if designs.is_empty() && trees.is_empty() {
                     self.wanted = false;
+                    self.rescan_all = false;
                 } else {
                     self.start(designs, trees);
                 }
@@ -265,24 +408,38 @@ impl ScanScheduler {
             return false;
         };
         match flight.results.try_recv() {
-            Ok(results) => {
+            Ok(output) => {
                 let serial = flight.serial;
                 self.completed_serial = serial;
+                self.last_duration = flight.started.elapsed();
                 self.in_flight = None;
                 self.last_finished = Some(Instant::now());
-                for (root, mut listing) in results {
-                    // A rename made after this scan started is not in what it read.
-                    for (old, new, after) in &self.renamed {
+                // Only a difference counts: an unchanged rescan must not bump
+                // the version, or the dock would rebuild its rows for nothing.
+                let mut changed = false;
+                for (root, mut listing) in output.listings {
+                    // A change made after this scan started is not in what it read.
+                    for (patch, after) in &self.patches {
                         if *after >= serial {
-                            swap_listed(&mut listing.files, old, new);
+                            patch.apply(&root, &mut listing.files);
                         }
                     }
-                    self.status.insert(root.clone(), listing.status);
-                    self.files.insert(root, listing.files);
+                    changed |=
+                        self.status.insert(root.clone(), listing.status) != Some(listing.status);
+                    if self.files.get(&root) != Some(&listing.files) {
+                        self.files.insert(root, listing.files);
+                        changed = true;
+                    }
                 }
-                self.renamed.retain(|(_, _, after)| *after > serial);
-                self.version += 1;
-                true
+                if self.missing != output.missing {
+                    self.missing = output.missing;
+                    changed = true;
+                }
+                self.patches.retain(|(_, after)| *after > serial);
+                if changed {
+                    self.version += 1;
+                }
+                changed
             }
             Err(TryRecvError::Empty) => {
                 let limit = if flight.walks_trees {
@@ -294,11 +451,15 @@ impl ScanScheduler {
                     return false;
                 }
                 flight.slow_reported = true;
+                let mut changed = false;
                 for root in &flight.roots {
-                    self.status.insert(root.clone(), ScanStatus::Slow);
+                    changed |= self.status.insert(root.clone(), ScanStatus::Slow)
+                        != Some(ScanStatus::Slow);
                 }
-                self.version += 1;
-                true
+                if changed {
+                    self.version += 1;
+                }
+                changed
             }
             Err(TryRecvError::Disconnected) => {
                 // The scan thread died without answering (a panic).
@@ -314,6 +475,7 @@ impl ScanScheduler {
 
     fn start(&mut self, designs: Vec<PathBuf>, trees: Vec<PathBuf>) {
         self.wanted = false;
+        self.rescan_all = false;
         self.dirty_trees.clear();
         self.started_serial += 1;
         let serial = self.started_serial;
@@ -322,6 +484,7 @@ impl ScanScheduler {
         let job = Arc::clone(&self.job);
         let tree_job = Arc::clone(&self.tree_job);
         let walks_trees = !trees.is_empty();
+        let watched = self.watched.clone();
         let spawned = std::thread::Builder::new()
             .name("projects-scan".to_string())
             .spawn(move || {
@@ -333,8 +496,12 @@ impl ScanScheduler {
                 if !trees.is_empty() {
                     found.extend(tree_job(&trees));
                 }
+                let missing = missing_paths(&watched);
                 // The receiver is gone only when the app is shutting down.
-                let _ = sender.send(found);
+                let _ = sender.send(ScanOutput {
+                    listings: found,
+                    missing,
+                });
             });
         match spawned {
             Ok(_) => {
@@ -375,6 +542,17 @@ fn swap_listed(files: &mut Vec<PathBuf>, old: &Path, new: &Path) -> bool {
         files[at] = new.to_path_buf();
     }
     true
+}
+
+/// Insert `file` keeping the listing sorted; `false` when it is already there.
+fn insert_listed_sorted(files: &mut Vec<PathBuf>, file: &Path) -> bool {
+    match files.binary_search_by(|listed| listed.as_path().cmp(file)) {
+        Ok(_) => false,
+        Err(at) => {
+            files.insert(at, file.to_path_buf());
+            true
+        }
+    }
 }
 
 #[cfg(test)]

@@ -10,6 +10,8 @@ mod home;
 mod menus;
 #[path = "ui3_proof_open_project_tests.rs"]
 mod open_project;
+#[path = "ui3_proof_open_project_actions_tests.rs"]
+mod open_project_actions;
 #[path = "ui3_proof_panels_tests.rs"]
 mod panels;
 #[path = "ui3_proof_projects_tests.rs"]

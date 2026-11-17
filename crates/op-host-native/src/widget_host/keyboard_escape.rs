@@ -70,6 +70,16 @@ impl WidgetHostNative {
             self.mark_dirty();
             return true;
         }
+        // A "Move to Trash?" question on a Projects dock row: Escape cancels it.
+        if self
+            .editor_state
+            .editor_ui
+            .projects_panel
+            .cancel_trash_confirm()
+        {
+            self.mark_dirty();
+            return true;
+        }
         // The save-name dialog is modal: Escape cancels it and nothing else.
         if self.editor_state.editor_ui.save_name_dialog.open {
             self.editor_state.editor_ui.save_name_dialog.close();

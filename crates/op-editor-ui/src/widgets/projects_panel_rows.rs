@@ -6,7 +6,7 @@
 
 use op_editor_core::{ProjectRowTarget, ProjectScanState};
 
-use super::{draw_label, ProjectsPanel, FILE_FONT, FILE_INDENT};
+use super::{draw_label, paint_header_button, ProjectsPanel, FILE_FONT, FILE_INDENT};
 use crate::theme::Theme;
 use crate::widgets::icons::{draw_icon, Icon};
 use crate::widgets::projects_panel_layout::{
@@ -120,7 +120,11 @@ impl ProjectsPanel<'_> {
             return;
         };
         let rect = row.rect;
-        let hovered = self.hover == Some(ProjectRowTarget::Folder(project, first_file));
+        let hovered = matches!(
+            self.hover,
+            Some(ProjectRowTarget::Folder(p, f) | ProjectRowTarget::NewHere(p, Some(f)))
+                if (p, f) == (project, first_file)
+        );
         if hovered {
             cx.backend.fill_rect(rect, theme.accent);
         }
@@ -142,7 +146,13 @@ impl ProjectsPanel<'_> {
         );
         let right_edge = rect.origin.x + rect.size.x - ROW_PAD_RIGHT;
         let mut text_right = right_edge;
-        if folded {
+        // The hovered row's "New design here" button takes the count's place.
+        let button = row.new_here.filter(|_| hovered);
+        if let Some(button) = button {
+            let hot = self.hover == Some(ProjectRowTarget::NewHere(project, Some(first_file)));
+            paint_header_button(cx, theme, button, Icon::FilePlus, hot);
+            text_right = button.origin.x - FOLDER_GAP;
+        } else if folded {
             let hidden = view
                 .files
                 .iter()
@@ -259,13 +269,34 @@ impl ProjectsPanel<'_> {
         theme: &Theme,
         layout: &ProjectsPanelLayout,
     ) {
+        let asking = |project: usize, file: usize| {
+            self.projects
+                .get(project)
+                .and_then(|view| view.files.get(file))
+                .is_some_and(|view| self.trash_confirm == Some(view.path.as_str()))
+        };
         let (kind, label) = match self.hover {
             Some(ProjectRowTarget::Close(project)) => (RowKind::Header(project), self.text.close),
             Some(ProjectRowTarget::Refresh(project)) => {
                 (RowKind::Header(project), self.text.refresh)
             }
-            Some(ProjectRowTarget::RenameFile(project, file)) => {
-                (RowKind::File(project, file), self.text.rename)
+            // While a row asks "Move to Trash?" its pencil slot cancels.
+            Some(ProjectRowTarget::RenameFile(project, file)) => (
+                RowKind::File(project, file),
+                if asking(project, file) {
+                    self.text.cancel
+                } else {
+                    self.text.rename
+                },
+            ),
+            Some(ProjectRowTarget::TrashFile(project, file)) => {
+                (RowKind::File(project, file), self.text.trash)
+            }
+            Some(ProjectRowTarget::NewHere(project, None)) => {
+                (RowKind::Header(project), self.text.new_here)
+            }
+            Some(ProjectRowTarget::NewHere(project, Some(file))) => {
+                (RowKind::Folder(project, file), self.text.new_here)
             }
             _ => return,
         };
@@ -275,6 +306,8 @@ impl ProjectsPanel<'_> {
         let anchor = match self.hover {
             Some(ProjectRowTarget::Close(_)) => row.close,
             Some(ProjectRowTarget::RenameFile(..)) => row.rename,
+            Some(ProjectRowTarget::TrashFile(..)) => row.trash,
+            Some(ProjectRowTarget::NewHere(..)) => row.new_here,
             _ => row.refresh,
         };
         let Some(anchor) = anchor else { return };

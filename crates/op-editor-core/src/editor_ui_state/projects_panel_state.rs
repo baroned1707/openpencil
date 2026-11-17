@@ -47,6 +47,13 @@ pub struct ProjectsPanelState {
     /// path within `DOUBLE_CLICK_MS` starts a rename. Keyed by path because the
     /// host rebuilds the rows between the two presses.
     pub last_file_press: Option<(String, u64)>,
+    /// The file whose row asks "Move to Trash?", keyed by path like the rename
+    /// (the rows shift whenever the disk changes). Only one at a time, and never
+    /// together with a rename. See `project_trash`.
+    pub trash_confirm: Option<String>,
+    /// A confirmed move to the Trash for the host to execute. Its own slot, so
+    /// a destructive request is never overwritten by another press of the frame.
+    pub trash_commit: Option<String>,
 }
 
 impl Default for ProjectsPanelState {
@@ -63,6 +70,8 @@ impl Default for ProjectsPanelState {
             rename: None,
             rename_commit: None,
             last_file_press: None,
+            trash_confirm: None,
+            trash_commit: None,
         }
     }
 }

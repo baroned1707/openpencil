@@ -8,8 +8,8 @@
 //! half below gathers its facts, runs it on the right document (on screen, or
 //! parked through the lens without switching tabs) and reports a failure.
 //!
-//! The setting `autosave_on_agent_run_end` (default on) is read from the
-//! settings file; there is no Settings control for it yet.
+//! The setting `autosave_on_agent_run_end` (default on) is the switch "Save
+//! automatically when an agent finishes" in Settings > System.
 
 use op_editor_core::editor_toast::EditorToastLevel;
 use op_editor_core::{CollabEditSource, CollabGateAction, CollabGatePolicy, DocumentId};

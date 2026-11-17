@@ -302,3 +302,196 @@ fn a_rename_updates_the_cached_listing_and_its_version() {
     scheduler.rename_listed(&PathBuf::from("/elsewhere/x.op"), &new);
     assert_eq!(scheduler.version(), version);
 }
+
+/// A scan job over a shared, editable "disk": every call reads `disk` as it is
+/// then, and counts itself.
+struct FakeDisk {
+    files: Mutex<Vec<PathBuf>>,
+    calls: AtomicUsize,
+}
+
+impl FakeDisk {
+    fn new(files: &[&str]) -> Arc<Self> {
+        Arc::new(Self {
+            files: Mutex::new(files.iter().map(PathBuf::from).collect()),
+            calls: AtomicUsize::new(0),
+        })
+    }
+
+    fn job(self: &Arc<Self>) -> ScanJob {
+        let disk = Arc::clone(self);
+        Arc::new(move |roots| {
+            disk.calls.fetch_add(1, Ordering::SeqCst);
+            let files = disk.files.lock().unwrap().clone();
+            roots
+                .iter()
+                .map(|root| {
+                    (
+                        root.clone(),
+                        DesignListing {
+                            files: files.clone(),
+                            status: ScanStatus::Ok,
+                        },
+                    )
+                })
+                .collect()
+        })
+    }
+
+    fn calls(&self) -> usize {
+        self.calls.load(Ordering::SeqCst)
+    }
+
+    fn set(&self, files: &[&str]) {
+        *self.files.lock().unwrap() = files.iter().map(PathBuf::from).collect();
+    }
+}
+
+/// Poll until the scan that is running (if any) has landed.
+fn land(scheduler: &mut ScanScheduler, active: bool) {
+    wait_until(|| {
+        scheduler.poll(&roots(), || active);
+        !scheduler.in_flight() && !scheduler.wanted
+    });
+}
+
+/// Invariant: a rescan that finds exactly what is already listed changes nothing
+/// the frame can see (no version bump, so no tree rebuild and no snapshot churn).
+#[test]
+fn unchanged_rescan_does_not_touch_the_snapshot() {
+    let disk = FakeDisk::new(&["/p/shop/designs/a.op", "/p/shop/designs/b.op"]);
+    let mut scheduler = ScanScheduler::with_timing(disk.job(), Duration::ZERO, SLOW_AFTER);
+    land(&mut scheduler, true);
+    let version = scheduler.version();
+    assert!(version > 0, "the first scan is news");
+
+    for _ in 0..4 {
+        scheduler.request_rescan_all();
+        land(&mut scheduler, true);
+    }
+    assert!(disk.calls() >= 5, "the rescans really ran");
+    assert_eq!(scheduler.version(), version, "and changed nothing");
+
+    disk.set(&["/p/shop/designs/a.op"]);
+    scheduler.request_rescan_all();
+    land(&mut scheduler, true);
+    assert!(scheduler.version() > version, "a real change is news");
+}
+
+/// Invariant: an idle app that is not focused (or whose dock is folded) does no
+/// file-system work, however long it sits; and it starts again the moment the
+/// caller says a background rescan is wanted.
+#[test]
+fn idle_unfocused_app_does_no_file_system_work() {
+    let disk = FakeDisk::new(&["/p/shop/designs/a.op"]);
+    let mut scheduler = ScanScheduler::with_timing(disk.job(), Duration::ZERO, SLOW_AFTER);
+    land(&mut scheduler, false);
+    let after_first = disk.calls();
+    assert_eq!(after_first, 1, "the first listing");
+
+    for _ in 0..200 {
+        scheduler.poll(&roots(), || false);
+    }
+    std::thread::sleep(Duration::from_millis(20));
+    for _ in 0..200 {
+        scheduler.poll(&roots(), || false);
+    }
+    assert_eq!(disk.calls(), after_first, "no scan while unfocused");
+    assert!(!scheduler.in_flight());
+    assert_eq!(scheduler.next_background_due().is_some(), true);
+
+    wait_until(|| {
+        scheduler.poll(&roots(), || true);
+        disk.calls() > after_first
+    });
+}
+
+/// Invariant: the background tick waits at least `every`, and a scan that took
+/// long pushes the next one further out (a huge repository is not walked back
+/// to back).
+#[test]
+fn background_rescans_are_spaced_and_back_off_after_a_slow_scan() {
+    let disk = FakeDisk::new(&["/p/shop/designs/a.op"]);
+    let mut scheduler =
+        ScanScheduler::with_timing(disk.job(), Duration::from_secs(3600), SLOW_AFTER);
+    land(&mut scheduler, true);
+    let calls = disk.calls();
+    for _ in 0..50 {
+        scheduler.poll(&roots(), || true);
+    }
+    assert_eq!(disk.calls(), calls, "not due for an hour");
+    let due = scheduler.next_background_due().expect("a due time");
+    assert!(due > Instant::now() + Duration::from_secs(3000));
+
+    let mut scheduler = ScanScheduler::with_timing(disk.job(), Duration::ZERO, SLOW_AFTER);
+    land(&mut scheduler, true);
+    scheduler.last_duration = Duration::from_secs(10);
+    let due = scheduler.next_background_due().expect("a due time");
+    assert!(
+        due >= scheduler.last_finished.unwrap() + Duration::from_secs(30),
+        "three times the last scan"
+    );
+}
+
+/// Invariant: a scan that started before the app changed the disk must not undo
+/// that change when it lands (the row would flicker back, or a just-created row
+/// would be missing and its rename dropped).
+#[test]
+fn a_scan_already_running_does_not_undo_a_patch_made_meanwhile() {
+    let script = ScriptedJob::new(vec![vec![
+        PathBuf::from("/p/shop/designs/a.op"),
+        PathBuf::from("/p/shop/designs/gone.op"),
+    ]]);
+    let mut scheduler = ScanScheduler::with_timing(script.job(), Duration::ZERO, SLOW_AFTER);
+    land(&mut scheduler, true);
+    script.hold.store(true, Ordering::SeqCst);
+    scheduler.request_rescan_all();
+    scheduler.poll(&roots(), || true);
+    assert!(scheduler.in_flight());
+
+    // While that scan reads the old disk, the app removes one file and creates one.
+    scheduler.remove_listed(Path::new("/p/shop/designs/gone.op"));
+    scheduler.insert_listed(
+        Path::new("/p/shop"),
+        Path::new("/p/shop/designs/Untitled.op"),
+    );
+    script.hold.store(false, Ordering::SeqCst);
+    land(&mut scheduler, true);
+
+    let listed = scheduler.files().get(Path::new("/p/shop")).unwrap();
+    assert!(!listed.contains(&PathBuf::from("/p/shop/designs/gone.op")));
+    assert!(listed.contains(&PathBuf::from("/p/shop/designs/Untitled.op")));
+
+    // The next scan reads the real disk and settles it.
+    scheduler.request_rescan_all();
+    land(&mut scheduler, true);
+    assert!(scheduler
+        .files()
+        .get(Path::new("/p/shop"))
+        .unwrap()
+        .contains(&PathBuf::from("/p/shop/designs/gone.op")));
+}
+
+/// Invariant: every scan stats the watched (open) paths and reports the ones
+/// that are gone; one that is present, or merely unreadable, is not missing.
+#[test]
+fn a_scan_reports_which_open_files_are_gone() {
+    let dir = std::env::temp_dir().join(format!("openpencil-watched-{}", std::process::id()));
+    std::fs::create_dir_all(&dir).unwrap();
+    let present = dir.join("here.op");
+    std::fs::write(&present, "{}").unwrap();
+    let gone = dir.join("gone.op");
+
+    let disk = FakeDisk::new(&[]);
+    let mut scheduler = ScanScheduler::with_timing(disk.job(), Duration::ZERO, SLOW_AFTER);
+    scheduler.set_watched(vec![present.clone(), gone.clone()]);
+    land(&mut scheduler, true);
+    assert_eq!(scheduler.missing().iter().collect::<Vec<_>>(), [&gone]);
+
+    // It comes back (a Save As onto the same path): the next scan clears it.
+    std::fs::write(&gone, "{}").unwrap();
+    scheduler.request_rescan_all();
+    land(&mut scheduler, true);
+    assert!(scheduler.missing().is_empty());
+    let _ = std::fs::remove_dir_all(&dir);
+}

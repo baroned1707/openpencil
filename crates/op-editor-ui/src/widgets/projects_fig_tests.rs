@@ -45,6 +45,7 @@ fn paint(projects: &[ProjectView], hover: Option<ProjectRowTarget>) -> CaptureBa
         projects,
         hover,
         rename: None,
+        trash_confirm: None,
         now_ms: 0,
         text: &TEXT,
     }

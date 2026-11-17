@@ -590,6 +590,14 @@ pub fn lookup(key: &str) -> Option<&'static str> {
         "projects.renameExists" => "已存在同名檔案",
         "projects.renameInvalid" => "無法使用這個名稱",
         "projects.renameFailed" => "無法重新命名: {{reason}}",
+        "projects.trash" => "移到垃圾桶",
+        "projects.trashConfirm" => "移到垃圾桶？",
+        "projects.trashFailed" => "無法移到垃圾桶：{{reason}}",
+        "projects.trashOpenTab" => "請先關閉分頁，再將檔案移到垃圾桶",
+        "projects.newDesignHere" => "在此新增設計",
+        "projects.notOnDisk" => "不在磁碟上",
+        "settings.autosaveOnAgentRun" => "智慧代理完成後自動儲存",
+        "settings.autosaveOnAgentRunDesc" => "智慧代理執行成功結束後，將文件儲存到其自身的檔案。",
         _ => return None,
     })
 }

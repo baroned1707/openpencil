@@ -18,6 +18,8 @@ fn state_renaming(label: &str) -> EditorState {
             active: false,
             folder: String::new(),
             kind: ProjectFileKind::Design,
+            missing: false,
+            removable: false,
         }],
         ..ProjectView::default()
     }];

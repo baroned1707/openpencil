@@ -63,6 +63,7 @@ fn inputs<'a>(
     static NO_FOLDERS: std::sync::OnceLock<HashSet<(PathBuf, String)>> = std::sync::OnceLock::new();
     static NO_JOBS: std::sync::OnceLock<BTreeMap<PathBuf, fig::JobStatus>> =
         std::sync::OnceLock::new();
+    static NO_MISSING: std::sync::OnceLock<BTreeSet<PathBuf>> = std::sync::OnceLock::new();
     TreeInputs {
         roots,
         explicit: &[],
@@ -71,6 +72,8 @@ fn inputs<'a>(
         collapsed,
         collapsed_folders: NO_FOLDERS.get_or_init(HashSet::new),
         fig_jobs: NO_JOBS.get_or_init(BTreeMap::new),
+        missing: NO_MISSING.get_or_init(BTreeSet::new),
+        trash_available: false,
         scan_state: &idle,
     }
 }

@@ -53,3 +53,26 @@ fn setting_defaults_true_and_round_trips() {
     assert!(legacy.editor_ui.agent_settings.autosave_on_agent_run_end);
     let _ = std::fs::remove_dir_all(path.parent().unwrap());
 }
+
+/// Invariant: the Settings switch's value survives both directions of a round
+/// trip through the settings file (off, then on again), and a fresh install
+/// starts ON.
+#[test]
+fn autosave_toggle_round_trips_and_defaults_on() {
+    let fresh = EditorState::new();
+    assert!(fresh.editor_ui.agent_settings.autosave_on_agent_run_end);
+
+    let path = scratch_settings_path("toggle");
+    let mut state = EditorState::new();
+    for wanted in [false, true, false] {
+        state.editor_ui.agent_settings.autosave_on_agent_run_end = wanted;
+        save_checked_to_path(&state, &path).expect("atomic save");
+        let mut restored = EditorState::new();
+        assert!(load_lenient_from_path(&mut restored, &path));
+        assert_eq!(
+            restored.editor_ui.agent_settings.autosave_on_agent_run_end, wanted,
+            "restored after saving {wanted}"
+        );
+    }
+    let _ = std::fs::remove_dir_all(path.parent().unwrap());
+}

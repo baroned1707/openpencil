@@ -125,27 +125,36 @@ fn scan_runs_off_the_ui_thread() {
     );
 }
 
+/// Invariant (replaces "the tick never re-walks an opened project"): the
+/// background tick runs only while the caller says it is wanted, and then walks
+/// every opened project again; a plain request (a folder toggled) still does not.
 #[test]
-fn the_periodic_tick_rescans_designs_folders_but_never_re_walks_an_opened_project() {
+fn the_background_tick_walks_opened_projects_only_while_it_is_wanted() {
     let (designs, tree) = (Arc::new(Probe::default()), Arc::new(Probe::default()));
     let mut scheduler = scheduler(&designs, &tree, Duration::ZERO);
     scheduler.request_tree_scan(&opened_root());
     drain(&mut scheduler);
     assert_eq!((designs.calls(), tree.calls()), (1, 1));
-    for _ in 0..5 {
-        scheduler.poll(&both(), || true);
-        drain(&mut scheduler);
-    }
-    assert!(designs.calls() > 1, "the tick still rescans designs/");
-    assert_eq!(
-        tree.calls(),
-        1,
-        "an opened project is walked on request only"
-    );
 
-    scheduler.request_tree_scan(&opened_root());
+    // Not wanted (unfocused or the dock is folded): no scan of any kind.
+    for _ in 0..5 {
+        scheduler.poll(&both(), || false);
+        assert!(!scheduler.in_flight());
+    }
+    assert_eq!((designs.calls(), tree.calls()), (1, 1));
+
+    // A request that is not a rescan re-lists the cheap folders only.
+    scheduler.request_now();
     drain(&mut scheduler);
-    assert_eq!(tree.calls(), 2, "a refresh walks it again");
+    assert_eq!((designs.calls(), tree.calls()), (2, 1));
+
+    // Wanted: the tick walks the opened project again.
+    wait_until(|| {
+        scheduler.poll(&both(), || true);
+        tree.calls() == 2
+    });
+    drain(&mut scheduler);
+    assert!(designs.calls() >= 3, "and re-lists designs/");
 }
 
 #[test]

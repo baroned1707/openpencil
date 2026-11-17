@@ -12,6 +12,8 @@ fn file(folder: &str, label: &str) -> ProjectFileView {
         active: false,
         folder: folder.to_string(),
         kind: ProjectFileKind::Design,
+        missing: false,
+        removable: false,
     }
 }
 

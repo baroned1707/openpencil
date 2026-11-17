@@ -34,6 +34,8 @@ fn file(
         active,
         folder: String::new(),
         kind: op_editor_core::ProjectFileKind::Design,
+        missing: false,
+        removable: false,
     }
 }
 
@@ -409,6 +411,7 @@ fn empty_state_proof() {
                 projects: &[],
                 hover: None,
                 rename: None,
+                trash_confirm: None,
                 now_ms: 0,
                 text: &text,
             }

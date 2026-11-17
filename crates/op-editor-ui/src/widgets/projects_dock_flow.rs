@@ -88,6 +88,11 @@ pub fn press(
     {
         return DockPress::Claimed;
     }
+    // A "Move to Trash?" question ends with any press off its own row; a press
+    // on the list is settled by the list itself (it must see where it landed).
+    if !matches!(layout.hit(point), Some(DockHit::Body(_))) {
+        projects_panel_flow::settle_trash_confirm(state, list, point);
+    }
     match layout.hit(point) {
         None => DockPress::Missed,
         Some(DockHit::Toggle) => {

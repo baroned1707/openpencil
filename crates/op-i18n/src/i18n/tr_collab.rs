@@ -590,6 +590,14 @@ pub fn lookup(key: &str) -> Option<&'static str> {
         "projects.renameExists" => "Bu ada sahip bir dosya zaten var",
         "projects.renameInvalid" => "Bu ad kullanılamaz",
         "projects.renameFailed" => "Yeniden adlandırılamadı: {{reason}}",
+        "projects.trash" => "Çöp Sepeti’ne taşı",
+        "projects.trashConfirm" => "Çöp Sepeti’ne taşınsın mı?",
+        "projects.trashFailed" => "Çöp Sepeti’ne taşınamadı: {{reason}}",
+        "projects.trashOpenTab" => "Önce sekmeyi kapatın, sonra dosyayı Çöp Sepeti’ne taşıyın",
+        "projects.newDesignHere" => "Buraya yeni tasarım",
+        "projects.notOnDisk" => "diskte yok",
+        "settings.autosaveOnAgentRun" => "Bir ajan bitince otomatik kaydet",
+        "settings.autosaveOnAgentRunDesc" => "Bir ajan çalışması başarıyla bittiğinde belgeyi kendi dosyasına kaydeder.",
         _ => return None,
     })
 }

@@ -36,6 +36,8 @@ const CURSOR_SWATCH_GAP: f32 = 8.0;
 pub enum SystemHit {
     SelectThemeMode(ThemeMode),
     ToggleAutoUpdate,
+    /// The "Save automatically when an agent finishes" switch.
+    ToggleAutosaveOnAgentRun,
     ToggleExperimental,
     /// Click on one of the pencil-cursor swatches.
     SelectPencilCursor(op_editor_core::PencilCursorStyle),
@@ -48,6 +50,12 @@ pub enum SystemHit {
 /// silently does nothing (same pattern as `GIT_BUTTON_AVAILABLE`).
 pub(super) const AUTO_UPDATE_AVAILABLE: bool = !cfg!(target_arch = "wasm32");
 
+/// Host capability: the agent-run autosave is a desktop feature (the host saves
+/// the document's own file; the web host has neither tabs nor an in-place
+/// save, and does not persist the setting). Hide the row there, like the
+/// auto-update one.
+pub(super) const AUTOSAVE_AVAILABLE: bool = !cfg!(target_arch = "wasm32");
+
 /// Row order. Auto-update drops out on the web, and every row below it
 /// moves up one slot — one table so paint and hit-test can't disagree
 /// about which slot a row sits in.
@@ -55,6 +63,10 @@ pub(super) const AUTO_UPDATE_AVAILABLE: bool = !cfg!(target_arch = "wasm32");
 enum SystemRow {
     Appearance,
     AutoUpdate,
+    /// Save a document to its own file when an agent run on it ends. Sits in
+    /// System with the other app-wide preferences (Agents is provider setup,
+    /// MCP is the server), next to auto-update, the other "do it for me" switch.
+    AutosaveOnAgentRun,
     Experimental,
     PencilCursor,
 }
@@ -64,6 +76,7 @@ fn visible_rows() -> &'static [SystemRow] {
         &[
             SystemRow::Appearance,
             SystemRow::AutoUpdate,
+            SystemRow::AutosaveOnAgentRun,
             SystemRow::Experimental,
             SystemRow::PencilCursor,
         ]
@@ -82,7 +95,9 @@ impl SystemRow {
     /// description; the other two are label-only.
     fn lines(self) -> RowLines {
         match self {
-            SystemRow::AutoUpdate | SystemRow::Experimental => RowLines::Two,
+            SystemRow::AutoUpdate | SystemRow::AutosaveOnAgentRun | SystemRow::Experimental => {
+                RowLines::Two
+            }
             SystemRow::Appearance | SystemRow::PencilCursor => RowLines::One,
         }
     }
@@ -173,6 +188,11 @@ pub fn hit_test(content: Rect, scrolled: Point2D) -> SystemHit {
     if AUTO_UPDATE_AVAILABLE && switch_rect_for(content, SystemRow::AutoUpdate).contains(scrolled) {
         return SystemHit::ToggleAutoUpdate;
     }
+    if AUTOSAVE_AVAILABLE
+        && switch_rect_for(content, SystemRow::AutosaveOnAgentRun).contains(scrolled)
+    {
+        return SystemHit::ToggleAutosaveOnAgentRun;
+    }
     if switch_rect_for(content, SystemRow::Experimental).contains(scrolled) {
         return SystemHit::ToggleExperimental;
     }
@@ -207,6 +227,22 @@ pub(super) fn paint_system_tab(
             SystemRow::Appearance => paint_appearance_row(cx, theme, ui, content, rect),
             SystemRow::AutoUpdate => {
                 paint_auto_update_row(cx, theme, ui, content, rect, settings.auto_update_enabled)
+            }
+            SystemRow::AutosaveOnAgentRun => {
+                paint_row_label(
+                    cx,
+                    theme,
+                    rect,
+                    t_settings(ui, "settings.autosaveOnAgentRun"),
+                    Some(t_settings(ui, "settings.autosaveOnAgentRunDesc")),
+                    SETTINGS_SWITCH_W + 16.0,
+                );
+                paint_settings_switch(
+                    cx,
+                    theme,
+                    switch_rect_for(content, SystemRow::AutosaveOnAgentRun),
+                    settings.autosave_on_agent_run_end,
+                );
             }
             SystemRow::Experimental => {
                 paint_row_label(

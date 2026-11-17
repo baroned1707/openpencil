@@ -325,3 +325,55 @@ fn external_cli_unavailable_kills_the_mcp_cli_toggle_press_path() {
         "pressing where the toggles used to be must not flip any CLI integration"
     );
 }
+
+/// The y of the Autosave-on-agent-run switch in the open System tab.
+fn autosave_switch_y(host: &WidgetHostNative, x: f32) -> f32 {
+    let panel = AgentSettingsPanel::for_editor(host.editor_state());
+    let rect = panel.rect(VIEWPORT_W, VIEWPORT_H);
+    let mut hits = (rect.origin.y.ceil() as i32..(rect.origin.y + rect.size.y).floor() as i32)
+        .map(|y| y as f32 + 0.5)
+        .filter(|y| {
+            matches!(
+                panel.hit_test(rect, Point2D::new(x, *y)),
+                AgentSettingsHit::ToggleAutosaveOnAgentRun
+            )
+        });
+    let first = hits.next().expect("autosave switch hit region");
+    let last = hits.next_back().unwrap_or(first);
+    (first + last) / 2.0
+}
+
+/// Invariant: the System tab's switch flips the persisted setting the host
+/// reads at the end of an agent run, and it starts ON. (That the flip is
+/// written to the settings file, and read back, is `op-editor-host-core`'s
+/// `autosave_toggle_round_trips_and_defaults_on`.)
+#[test]
+fn autosave_toggle_round_trips_and_defaults_on() {
+    let mut host = WidgetHostNative::new();
+    host.editor_state_mut().editor_ui.agent_settings.tab = AgentSettingsTab::System;
+    let setting = |host: &WidgetHostNative| {
+        host.editor_state()
+            .editor_ui
+            .agent_settings
+            .autosave_on_agent_run_end
+    };
+    assert!(setting(&host), "on by default");
+
+    let (cx, _, cw) = agent_settings_content_metrics(&host);
+    let switch_x = cx + cw - 28.0;
+    assert!(host.dispatch_agent_settings_press(
+        switch_x,
+        autosave_switch_y(&host, switch_x),
+        VIEWPORT_W,
+        VIEWPORT_H
+    ));
+    assert!(!setting(&host), "the press turned it off");
+
+    assert!(host.dispatch_agent_settings_press(
+        switch_x,
+        autosave_switch_y(&host, switch_x),
+        VIEWPORT_W,
+        VIEWPORT_H
+    ));
+    assert!(setting(&host), "and back on");
+}

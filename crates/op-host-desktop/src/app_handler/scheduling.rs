@@ -80,6 +80,11 @@ impl DesktopApp {
         if let Some(due) = self.next_collab_deadline() {
             wake_no_later_than(event_loop, due);
         }
+        // The Projects dock's background rescan: only while the window is
+        // focused and the dock is showing, so an idle unfocused app sleeps.
+        if let Some(due) = self.next_projects_wake() {
+            wake_no_later_than(event_loop, due);
+        }
     }
 
     fn schedule_primary_wake(&mut self, event_loop: &ActiveEventLoop) {

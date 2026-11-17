@@ -594,6 +594,14 @@ pub fn lookup(key: &str) -> Option<&'static str> {
         "projects.renameExists" => "इस नाम की फ़ाइल पहले से मौजूद है",
         "projects.renameInvalid" => "इस नाम का उपयोग नहीं किया जा सकता",
         "projects.renameFailed" => "नाम नहीं बदला जा सका: {{reason}}",
+        "projects.trash" => "ट्रैश में भेजें",
+        "projects.trashConfirm" => "ट्रैश में भेजें?",
+        "projects.trashFailed" => "ट्रैश में नहीं भेजा जा सका: {{reason}}",
+        "projects.trashOpenTab" => "पहले टैब बंद करें, फिर फ़ाइल को ट्रैश में भेजें",
+        "projects.newDesignHere" => "यहाँ नया डिज़ाइन",
+        "projects.notOnDisk" => "डिस्क पर नहीं है",
+        "settings.autosaveOnAgentRun" => "एजेंट के पूरा होने पर अपने आप सहेजें",
+        "settings.autosaveOnAgentRunDesc" => "एजेंट का रन सफलतापूर्वक समाप्त होने पर दस्तावेज़ को उसकी अपनी फ़ाइल में सहेजता है।",
         _ => return None,
     })
 }

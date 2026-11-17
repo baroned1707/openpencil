@@ -33,6 +33,11 @@ const TEXT: ProjectsPanelText<'static> = ProjectsPanelText {
     rename_placeholder: "Name",
     rename_invalid: "This name can't be used",
     rename_exists: "A file with that name already exists",
+    trash: "Move to Trash",
+    trash_confirm: "Move to Trash?",
+    cancel: "Cancel",
+    new_here: "New design here",
+    not_on_disk: "not on disk",
 };
 
 fn paint(
@@ -50,6 +55,7 @@ fn paint(
         projects,
         hover,
         rename: None,
+        trash_confirm: None,
         now_ms: 0,
         text: &TEXT,
     }
@@ -303,6 +309,7 @@ fn rows_scrolled_out_of_view_paint_nothing() {
         projects: &projects,
         hover: None,
         rename: None,
+        trash_confirm: None,
         now_ms: 0,
         text: &TEXT,
     }

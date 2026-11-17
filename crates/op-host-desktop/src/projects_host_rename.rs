@@ -46,8 +46,7 @@ impl DesktopApp {
             return false;
         };
         self.execute_project_rename(request);
-        self.projects_host.published_key = None;
-        self.projects_host.scan.request_now();
+        self.rescan_after_own_operation();
         true
     }
 

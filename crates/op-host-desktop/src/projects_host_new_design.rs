@@ -46,6 +46,9 @@ impl fmt::Display for NewDesignError {
 
 impl std::error::Error for NewDesignError {}
 
+/// The path of the `number`th candidate name in a folder (1 is the plain name).
+type Namer = fn(&Path, usize) -> PathBuf;
+
 fn design_path(designs: &Path, number: usize) -> PathBuf {
     if number <= 1 {
         designs.join("untitled.op")
@@ -54,18 +57,28 @@ fn design_path(designs: &Path, number: usize) -> PathBuf {
     }
 }
 
+/// `Untitled.op`, `Untitled 2.op`, ...: the names "New design here" gives, which
+/// the owner renames at once.
+fn untitled_path(folder: &Path, number: usize) -> PathBuf {
+    if number <= 1 {
+        folder.join("Untitled.op")
+    } else {
+        folder.join(format!("Untitled {number}.op"))
+    }
+}
+
 /// The path the next new design in `root` would get: `untitled.op`, then
 /// `untitled-2.op`, ...
 #[cfg(test)]
 pub(crate) fn next_untitled_design(root: &Path) -> PathBuf {
     let designs = root.join("designs");
-    let number = first_free_number(&designs);
+    let number = first_free_number(&designs, design_path);
     design_path(&designs, number)
 }
 
-fn first_free_number(designs: &Path) -> usize {
+fn first_free_number(folder: &Path, namer: Namer) -> usize {
     (1..)
-        .find(|&number| std::fs::symlink_metadata(design_path(designs, number)).is_err())
+        .find(|&number| std::fs::symlink_metadata(namer(folder, number)).is_err())
         .expect("an unused name exists")
 }
 
@@ -86,7 +99,7 @@ pub(crate) fn create_design_file(
             true
         }
     };
-    let outcome = write_first_free(&designs, write);
+    let outcome = write_first_free(&designs, design_path, write);
     if outcome.is_err() && made_folder {
         // Succeeds only while the folder is empty, so a design that appeared
         // there meanwhile is never touched.
@@ -95,13 +108,24 @@ pub(crate) fn create_design_file(
     outcome
 }
 
-fn write_first_free(
-    designs: &Path,
+/// Create `Untitled.op` (or the first free `Untitled N.op`) in the existing
+/// folder `folder`, writing each candidate with `write`. The folder is never
+/// created: one that has vanished is an error, not something to bring back.
+pub(crate) fn create_untitled_in(
+    folder: &Path,
     write: &dyn Fn(&Path) -> Result<(), SaveNewError>,
 ) -> Result<PathBuf, NewDesignError> {
-    let mut number = first_free_number(designs);
+    write_first_free(folder, untitled_path, write)
+}
+
+fn write_first_free(
+    folder: &Path,
+    namer: Namer,
+    write: &dyn Fn(&Path) -> Result<(), SaveNewError>,
+) -> Result<PathBuf, NewDesignError> {
+    let mut number = first_free_number(folder, namer);
     for _ in 0..MAX_NAME_ATTEMPTS {
-        let target = design_path(designs, number);
+        let target = namer(folder, number);
         match write(&target) {
             Ok(()) => return Ok(target),
             Err(SaveNewError::AlreadyExists) => number += 1,

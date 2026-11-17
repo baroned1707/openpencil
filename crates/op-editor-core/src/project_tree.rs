@@ -61,6 +61,14 @@ pub struct ProjectFileView {
     pub folder: String,
     /// `.op` design or `.fig` export with its conversion status.
     pub kind: ProjectFileKind,
+    /// The file is open in a tab but is no longer on disk (deleted or moved
+    /// outside the app). The tab keeps its document; the dock marks the row so
+    /// the user can Save As.
+    pub missing: bool,
+    /// The host can move this row's file to the Trash: an `.op` design on a
+    /// platform with a Trash backend. The dock offers the action only then; the
+    /// host re-validates before it acts.
+    pub removable: bool,
 }
 
 /// How far the last disk scan of a project got; the dock shows a status line
@@ -179,6 +187,10 @@ pub enum ProjectRequest {
     /// relative folder)`, or the whole project when the folder is `None`. Never
     /// opens a tab.
     ConvertAllFigs(String, Option<String>),
+    /// Create an untitled design in a folder of a project and start renaming
+    /// it: `(project root, relative folder)`, the folder `""` for the root. The
+    /// file is not opened in a tab.
+    NewDesignHere(String, String),
 }
 
 /// What the cursor is over in the Projects dock. Indices point into
@@ -206,6 +218,11 @@ pub enum ProjectRowTarget {
     ConvertAll(usize, Option<usize>),
     /// The pencil button of an `.op` file row: `(project index, file index)`.
     RenameFile(usize, usize),
+    /// The trash button of a removable file row: `(project index, file index)`.
+    TrashFile(usize, usize),
+    /// A "New design here" button: on a project header (`None`) or on a folder
+    /// sub-header (`Some(index of the folder's first file)`).
+    NewHere(usize, Option<usize>),
 }
 
 /// Whether `file_folder` is `folder` or below it; `None` matches everything.
@@ -236,6 +253,8 @@ mod tests {
             active: false,
             folder: String::new(),
             kind: ProjectFileKind::Design,
+            missing: false,
+            removable: false,
         }
     }
 

@@ -77,6 +77,13 @@ pub struct ProjectRow {
     pub close: Option<Rect>,
     /// The pencil button of an `.op` file row; `None` on every other row.
     pub rename: Option<Rect>,
+    /// The trash button of a removable file row, left of the pencil; while the
+    /// row asks "Move to Trash?" it is the confirm button and the pencil's slot
+    /// the cancel button.
+    pub trash: Option<Rect>,
+    /// A "New design here" button: on an opened project's header (left of `+`)
+    /// and on a folder sub-header that can hold a new design.
+    pub new_here: Option<Rect>,
 }
 
 /// Where the Projects dock's rows sit.
@@ -178,12 +185,26 @@ impl ProjectsPanelLayout {
                 match kind {
                     RowKind::Header(project) => header_row(project, rect, projects.get(project)),
                     RowKind::File(project, file) => {
-                        let renamable = projects
-                            .get(project)
-                            .and_then(|view| view.files.get(file))
-                            .is_some_and(is_renamable);
+                        let view = projects.get(project).and_then(|view| view.files.get(file));
+                        // A file that is gone from disk can be neither renamed nor
+                        // trashed: only its marker shows.
+                        let live = view.filter(|file| !file.missing);
+                        let renamable = live.is_some_and(is_renamable);
+                        let trashable = live.is_some_and(|file| file.removable);
                         ProjectRow {
                             rename: renamable.then(|| rename_button(rect)),
+                            trash: trashable.then(|| trash_button(rect)),
+                            ..plain_row(kind, rect)
+                        }
+                    }
+                    RowKind::Folder(project, file) => {
+                        let accepts = projects.get(project).is_some_and(|view| {
+                            view.files
+                                .get(file)
+                                .is_some_and(|first| folder_accepts_new_design(view, &first.folder))
+                        });
+                        ProjectRow {
+                            new_here: accepts.then(|| rename_button(rect)),
                             ..plain_row(kind, rect)
                         }
                     }
@@ -244,6 +265,8 @@ impl ProjectsPanelLayout {
                     let on = |button: Option<Rect>| button.is_some_and(|rect| rect.contains(point));
                     if on(row.plus) {
                         ProjectRowTarget::Plus(project)
+                    } else if on(row.new_here) {
+                        ProjectRowTarget::NewHere(project, None)
                     } else if on(row.close) {
                         ProjectRowTarget::Close(project)
                     } else if on(row.refresh) {
@@ -252,9 +275,17 @@ impl ProjectsPanelLayout {
                         ProjectRowTarget::Header(project)
                     }
                 }
-                RowKind::Folder(project, file) => ProjectRowTarget::Folder(project, file),
+                RowKind::Folder(project, file) => {
+                    if row.new_here.is_some_and(|button| button.contains(point)) {
+                        ProjectRowTarget::NewHere(project, Some(file))
+                    } else {
+                        ProjectRowTarget::Folder(project, file)
+                    }
+                }
                 RowKind::File(project, file) => {
-                    if row.rename.is_some_and(|button| button.contains(point)) {
+                    if row.trash.is_some_and(|button| button.contains(point)) {
+                        ProjectRowTarget::TrashFile(project, file)
+                    } else if row.rename.is_some_and(|button| button.contains(point)) {
                         ProjectRowTarget::RenameFile(project, file)
                     } else {
                         ProjectRowTarget::File(project, file)
@@ -284,6 +315,8 @@ fn plain_row(kind: RowKind, rect: Rect) -> ProjectRow {
         refresh: None,
         close: None,
         rename: None,
+        trash: None,
+        new_here: None,
     }
 }
 
@@ -295,6 +328,25 @@ fn rename_button(rect: Rect) -> Rect {
         PLUS_SIZE,
         PLUS_SIZE,
     )
+}
+
+/// The trash button, one button's width left of the pencil.
+fn trash_button(rect: Rect) -> Rect {
+    let pencil = rename_button(rect);
+    Rect::xywh(
+        pencil.origin.x - BUTTON_GAP - PLUS_SIZE,
+        pencil.origin.y,
+        PLUS_SIZE,
+        PLUS_SIZE,
+    )
+}
+
+/// Whether a folder sub-header offers "New design here". An opened project lists
+/// every folder it walked, so any of them can hold a new file; an inferred
+/// project only lists `designs/`, so a design made anywhere else would never
+/// show up.
+pub(crate) fn folder_accepts_new_design(project: &ProjectView, folder: &str) -> bool {
+    project.closable || folder == "designs"
 }
 
 /// Whether the project-wide "Convert all" row shows: some `.fig` is waiting and
@@ -312,20 +364,23 @@ fn project_convert_row_shown(project: &ProjectView) -> bool {
     first.is_empty() || project.is_folder_collapsed(first) || folders.any(|folder| folder != first)
 }
 
-/// A header row with its buttons, laid out from the right: `+`, then close,
-/// then refresh (the last two only on an explicit project; refresh only while
-/// nothing is being scanned).
+/// A header row with its buttons, laid out from the right: `+`, then (on an
+/// explicit project) "New design here", close and refresh; refresh only while
+/// nothing is being scanned.
 fn header_row(index: usize, rect: Rect, project: Option<&ProjectView>) -> ProjectRow {
     let top = rect.origin.y + (rect.size.y - PLUS_SIZE) / 2.0;
     let plus_x = rect.origin.x + rect.size.x - ROW_PAD_RIGHT / 2.0 - PLUS_SIZE;
     let button = |x: f32| Rect::xywh(x, top, PLUS_SIZE, PLUS_SIZE);
     let closable = project.is_some_and(|project| project.closable);
-    let close = closable.then(|| button(plus_x - BUTTON_GAP - PLUS_SIZE));
+    let step = BUTTON_GAP + PLUS_SIZE;
+    let new_here = closable.then(|| button(plus_x - step));
+    let close = closable.then(|| button(plus_x - step * 2.0));
     let refresh = (closable
         && project.is_some_and(|project| project.scan == ProjectScanState::Idle))
-    .then(|| button(plus_x - (BUTTON_GAP + PLUS_SIZE) * 2.0));
+    .then(|| button(plus_x - step * 3.0));
     ProjectRow {
         plus: Some(button(plus_x)),
+        new_here,
         refresh,
         close,
         ..plain_row(RowKind::Header(index), rect)

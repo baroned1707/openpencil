@@ -138,6 +138,10 @@ impl WidgetHostNative {
 // The inline file rename's platform tail rides with the dock it renames in.
 #[path = "project_rename_input.rs"]
 mod project_rename_input;
+// ... and so does the "Move to Trash?" question's routing test.
+#[cfg(test)]
+#[path = "project_trash_input_tests.rs"]
+mod project_trash_input_tests;
 
 #[cfg(test)]
 #[path = "projects_dock_tests.rs"]

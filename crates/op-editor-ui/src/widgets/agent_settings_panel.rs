@@ -330,6 +330,7 @@ pub enum AgentSettingsHit {
     },
     Fonts(FontsHit),
     ToggleAutoUpdate,
+    ToggleAutosaveOnAgentRun,
     ToggleExperimental,
     SelectThemeMode(op_editor_core::editor_ui_state::ThemeMode),
     SelectPencilCursor(op_editor_core::PencilCursorStyle),

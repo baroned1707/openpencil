@@ -282,6 +282,9 @@ impl AgentSettingsPanel<'_> {
             AgentSettingsTab::System => match agent_settings_system::hit_test(content, scrolled) {
                 SystemHit::SelectThemeMode(mode) => return AgentSettingsHit::SelectThemeMode(mode),
                 SystemHit::ToggleAutoUpdate => return AgentSettingsHit::ToggleAutoUpdate,
+                SystemHit::ToggleAutosaveOnAgentRun => {
+                    return AgentSettingsHit::ToggleAutosaveOnAgentRun
+                }
                 SystemHit::ToggleExperimental => return AgentSettingsHit::ToggleExperimental,
                 SystemHit::SelectPencilCursor(style) => {
                     return AgentSettingsHit::SelectPencilCursor(style)

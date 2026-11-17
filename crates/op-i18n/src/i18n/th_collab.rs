@@ -592,6 +592,14 @@ pub fn lookup(key: &str) -> Option<&'static str> {
         "projects.renameExists" => "มีไฟล์ชื่อนี้อยู่แล้ว",
         "projects.renameInvalid" => "ไม่สามารถใช้ชื่อนี้ได้",
         "projects.renameFailed" => "เปลี่ยนชื่อไม่สำเร็จ: {{reason}}",
+        "projects.trash" => "ย้ายไปที่ถังขยะ",
+        "projects.trashConfirm" => "ย้ายไปที่ถังขยะหรือไม่?",
+        "projects.trashFailed" => "ย้ายไปที่ถังขยะไม่ได้: {{reason}}",
+        "projects.trashOpenTab" => "ปิดแท็บก่อน แล้วจึงย้ายไฟล์ไปที่ถังขยะ",
+        "projects.newDesignHere" => "ดีไซน์ใหม่ที่นี่",
+        "projects.notOnDisk" => "ไม่อยู่ในดิสก์",
+        "settings.autosaveOnAgentRun" => "บันทึกอัตโนมัติเมื่อเอเจนต์ทำงานเสร็จ",
+        "settings.autosaveOnAgentRunDesc" => "บันทึกเอกสารลงในไฟล์ของตัวเองเมื่อการทำงานของเอเจนต์สิ้นสุดลงสำเร็จ",
         _ => return None,
     })
 }

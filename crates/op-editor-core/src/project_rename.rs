@@ -171,6 +171,8 @@ impl ProjectsPanelState {
         let mut input = TextInputState::with_text(stem);
         input.select_all();
         input.touch(now_ms);
+        // One question at a time: a rename closes a "Move to Trash?" row.
+        self.trash_confirm = None;
         self.rename = Some(ProjectRenameState {
             path: path.to_string(),
             input,

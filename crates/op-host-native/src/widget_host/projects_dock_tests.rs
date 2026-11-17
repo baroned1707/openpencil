@@ -41,6 +41,8 @@ fn project() -> ProjectView {
             active: false,
             folder: "designs".to_string(),
             kind: op_editor_core::ProjectFileKind::Design,
+            missing: false,
+            removable: false,
         }],
         ..ProjectView::default()
     }

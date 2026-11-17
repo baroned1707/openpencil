@@ -506,8 +506,17 @@ impl ApplicationHandler<DesktopEvent> for DesktopApp {
                 button: MouseButton::Left,
                 ..
             } => self.on_left_release(),
-            WindowEvent::Focused(false) => self.on_focus_lost(),
-            WindowEvent::Focused(true) | WindowEvent::Occluded(false) => {
+            WindowEvent::Focused(false) => {
+                self.on_focus_lost();
+                self.on_window_focus_changed(false);
+            }
+            WindowEvent::Focused(true) => {
+                self.refresh_reduced_motion();
+                self.on_window_shown();
+                // The user may have changed files elsewhere: rescan the dock.
+                self.on_window_focus_changed(true);
+            }
+            WindowEvent::Occluded(false) => {
                 self.refresh_reduced_motion();
                 self.on_window_shown();
             }

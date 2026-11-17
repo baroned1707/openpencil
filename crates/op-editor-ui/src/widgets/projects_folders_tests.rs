@@ -41,6 +41,11 @@ const TEXT: ProjectsPanelText<'static> = ProjectsPanelText {
     rename_placeholder: "Name",
     rename_invalid: "This name can't be used",
     rename_exists: "A file with that name already exists",
+    trash: "Move to Trash",
+    trash_confirm: "Move to Trash?",
+    cancel: "Cancel",
+    new_here: "New design here",
+    not_on_disk: "not on disk",
 };
 
 fn in_folder(label: &str, folder: &str) -> op_editor_core::ProjectFileView {
@@ -256,6 +261,7 @@ fn paint_list(projects: &[ProjectView], hover: Option<ProjectRowTarget>) -> Capt
         projects,
         hover,
         rename: None,
+        trash_confirm: None,
         now_ms: 0,
         text: &TEXT,
     }
@@ -444,6 +450,7 @@ fn the_dock_paints_the_folder_plus_glyph_where_it_offers_open_project() {
                 projects,
                 hover: None,
                 rename: None,
+                trash_confirm: None,
                 now_ms: 0,
                 text: &TEXT,
             },

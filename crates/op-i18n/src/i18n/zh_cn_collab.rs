@@ -590,6 +590,14 @@ pub fn lookup(key: &str) -> Option<&'static str> {
         "projects.renameExists" => "已存在同名文件",
         "projects.renameInvalid" => "无法使用这个名称",
         "projects.renameFailed" => "无法重命名: {{reason}}",
+        "projects.trash" => "移到废纸篓",
+        "projects.trashConfirm" => "移到废纸篓？",
+        "projects.trashFailed" => "无法移到废纸篓：{{reason}}",
+        "projects.trashOpenTab" => "请先关闭标签页，再将文件移到废纸篓",
+        "projects.newDesignHere" => "在此新建设计",
+        "projects.notOnDisk" => "不在磁盘上",
+        "settings.autosaveOnAgentRun" => "智能体完成后自动保存",
+        "settings.autosaveOnAgentRunDesc" => "智能体运行成功结束后，将文档保存到其自身的文件。",
         _ => return None,
     })
 }

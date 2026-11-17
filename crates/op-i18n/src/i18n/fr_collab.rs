@@ -590,6 +590,14 @@ pub fn lookup(key: &str) -> Option<&'static str> {
         "projects.renameExists" => "Un fichier portant ce nom existe déjà",
         "projects.renameInvalid" => "Ce nom ne peut pas être utilisé",
         "projects.renameFailed" => "Impossible de renommer : {{reason}}",
+        "projects.trash" => "Mettre à la corbeille",
+        "projects.trashConfirm" => "Mettre à la corbeille ?",
+        "projects.trashFailed" => "Impossible de mettre à la corbeille : {{reason}}",
+        "projects.trashOpenTab" => "Fermez d’abord l’onglet, puis mettez le fichier à la corbeille",
+        "projects.newDesignHere" => "Nouveau design ici",
+        "projects.notOnDisk" => "absent du disque",
+        "settings.autosaveOnAgentRun" => "Enregistrer automatiquement à la fin d’un agent",
+        "settings.autosaveOnAgentRunDesc" => "Enregistre le document dans son propre fichier quand une exécution d’agent se termine avec succès.",
         _ => return None,
     })
 }

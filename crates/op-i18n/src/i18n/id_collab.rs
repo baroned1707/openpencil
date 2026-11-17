@@ -590,6 +590,14 @@ pub fn lookup(key: &str) -> Option<&'static str> {
         "projects.renameExists" => "Sudah ada file dengan nama itu",
         "projects.renameInvalid" => "Nama ini tidak dapat digunakan",
         "projects.renameFailed" => "Tidak dapat mengganti nama: {{reason}}",
+        "projects.trash" => "Pindahkan ke Sampah",
+        "projects.trashConfirm" => "Pindahkan ke Sampah?",
+        "projects.trashFailed" => "Tidak dapat memindahkan ke Sampah: {{reason}}",
+        "projects.trashOpenTab" => "Tutup tab terlebih dahulu, lalu pindahkan file ke Sampah",
+        "projects.newDesignHere" => "Desain baru di sini",
+        "projects.notOnDisk" => "tidak ada di disk",
+        "settings.autosaveOnAgentRun" => "Simpan otomatis saat agent selesai",
+        "settings.autosaveOnAgentRunDesc" => "Menyimpan dokumen ke file miliknya sendiri saat proses agent berakhir dengan sukses.",
         _ => return None,
     })
 }

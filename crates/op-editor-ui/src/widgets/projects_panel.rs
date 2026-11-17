@@ -35,6 +35,8 @@ mod fig;
 mod rename;
 #[path = "projects_panel_rows.rs"]
 mod rows;
+#[path = "projects_panel_trash.rs"]
+mod trash;
 
 pub(crate) use rename::rename_field_rect;
 
@@ -104,6 +106,16 @@ pub struct ProjectsPanelText<'a> {
     /// The line under the field: a name the rules refuse, or one already taken.
     pub rename_invalid: &'a str,
     pub rename_exists: &'a str,
+    /// Tooltip of a file row's trash button and of the question's confirm button.
+    pub trash: &'a str,
+    /// The question a file row asks before it moves to the Trash.
+    pub trash_confirm: &'a str,
+    /// Tooltip of the question's cancel button.
+    pub cancel: &'a str,
+    /// Tooltip of the "New design here" buttons.
+    pub new_here: &'a str,
+    /// The marker of an open file that is no longer on disk.
+    pub not_on_disk: &'a str,
 }
 
 /// The widget for one frame.
@@ -112,6 +124,8 @@ pub struct ProjectsPanel<'a> {
     pub hover: Option<ProjectRowTarget>,
     /// The file name being edited, when a rename is open.
     pub rename: Option<&'a ProjectRenameState>,
+    /// The path of the file whose row asks "Move to Trash?".
+    pub trash_confirm: Option<&'a str>,
     /// Frame time, for the caret blink.
     pub now_ms: u64,
     pub text: &'a ProjectsPanelText<'a>,
@@ -179,6 +193,7 @@ impl ProjectsPanel<'_> {
                     | ProjectRowTarget::Plus(i)
                     | ProjectRowTarget::Close(i)
                     | ProjectRowTarget::Refresh(i)
+                    | ProjectRowTarget::NewHere(i, None)
             ) if i == index
         );
         if hovered {
@@ -214,6 +229,11 @@ impl ProjectsPanel<'_> {
                     ProjectRowTarget::Refresh(index),
                 ),
                 (row.close, Icon::Close, ProjectRowTarget::Close(index)),
+                (
+                    row.new_here,
+                    Icon::FilePlus,
+                    ProjectRowTarget::NewHere(index, None),
+                ),
                 (row.plus, Icon::Plus, ProjectRowTarget::Plus(index)),
             ];
             for (button, icon, target) in buttons {
@@ -333,18 +353,25 @@ impl ProjectsPanel<'_> {
             self.paint_rename_row(cx, theme, row, file, edit);
             return;
         }
+        if self.trash_confirm == Some(file.path.as_str()) {
+            self.paint_trash_confirm_row(cx, theme, row, project, index);
+            return;
+        }
         let rect = row.rect;
         let hovered = matches!(
             self.hover,
-            Some(ProjectRowTarget::File(p, f) | ProjectRowTarget::RenameFile(p, f))
-                if p == project && f == index
+            Some(
+                ProjectRowTarget::File(p, f)
+                    | ProjectRowTarget::RenameFile(p, f)
+                    | ProjectRowTarget::TrashFile(p, f)
+            ) if p == project && f == index
         );
         if file.active {
             cx.backend.fill_rect(rect, theme.row_selected_primary);
         } else if hovered {
             cx.backend.fill_rect(rect, theme.accent);
         }
-        let text_color = if file.active || hovered || file.open_id.is_some() {
+        let text_color = if file.active || hovered || (file.open_id.is_some() && !file.missing) {
             theme.foreground
         } else {
             theme.muted_foreground
@@ -375,12 +402,17 @@ impl ProjectsPanel<'_> {
         } else {
             0.0
         };
-        // The pencil replaces the right edge of a hovered row, so the label
-        // stops short of it.
+        // The pencil and the trash button replace the right edge of a hovered
+        // row, so the label stops short of the leftmost one; a file that is gone
+        // from disk carries its marker there instead.
         let pencil = row.rename.filter(|_| hovered);
-        let right_limit = pencil.map_or(rect.origin.x + rect.size.x - ROW_PAD_RIGHT, |button| {
-            button.origin.x - NAME_GAP
-        });
+        let trash = row.trash.filter(|_| hovered);
+        let mut right_limit = rect.origin.x + rect.size.x - ROW_PAD_RIGHT;
+        if let Some(button) = trash.or(pencil) {
+            right_limit = button.origin.x - NAME_GAP;
+        } else if file.missing {
+            right_limit = self.paint_not_on_disk(cx, theme, row) - NAME_GAP;
+        }
         let max = (right_limit - label_x - bullet_span).max(0.0);
         let label = text_metrics::fit_chrome(cx.backend, &file.label, max, FILE_FONT);
         let width = text_metrics::measure_chrome(cx.backend, &label, FILE_FONT);
@@ -410,6 +442,10 @@ impl ProjectsPanel<'_> {
         if let Some(button) = pencil {
             let hot = self.hover == Some(ProjectRowTarget::RenameFile(project, index));
             paint_header_button(cx, theme, button, Icon::Pencil, hot);
+        }
+        if let Some(button) = trash {
+            let hot = self.hover == Some(ProjectRowTarget::TrashFile(project, index));
+            paint_header_button(cx, theme, button, Icon::Trash, hot);
         }
     }
 
@@ -460,7 +496,13 @@ impl ProjectsPanel<'_> {
 
 /// One of a header's icon buttons: a flat wash and a glyph that darkens when
 /// the pointer is on it.
-fn paint_header_button(cx: &mut PaintCx<'_>, theme: &Theme, button: Rect, icon: Icon, hot: bool) {
+pub(crate) fn paint_header_button(
+    cx: &mut PaintCx<'_>,
+    theme: &Theme,
+    button: Rect,
+    icon: Icon,
+    hot: bool,
+) {
     if hot {
         cx.backend.fill_rect(button, theme.button_hover);
     }

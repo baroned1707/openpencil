@@ -43,6 +43,21 @@ pub fn rename_recent(host: &mut WidgetHostNative, old: &std::path::Path, new: &s
     }
 }
 
+/// A file left the disk (moved to the Trash): drop its recent-files entry so
+/// File > Open Recent does not offer a path that is gone. Persisted the same way
+/// `touch_recent` is.
+pub fn forget_recent(host: &mut WidgetHostNative, path: &std::path::Path) {
+    let before = fingerprint(host.editor_state());
+    let removed = host
+        .editor_state_mut()
+        .editor_ui
+        .remove_recent_file(&path.to_string_lossy());
+    if removed {
+        host.mark_editor_state_dirty();
+        save_if_changed(host.editor_state(), before);
+    }
+}
+
 #[cfg(test)]
 #[path = "settings_io_tests.rs"]
 mod tests;

@@ -16,11 +16,15 @@
 //!   background when it ages;
 //! * `<root>/designs` and opened folders are listed by a worker thread
 //!   (`projects_host_scheduler.rs`) whose finished result the frame only drains;
+//!   WHEN it runs (focus regained, after an in-app file operation, a background
+//!   tick while focused) is `projects_host_refresh.rs`;
 //! * the tree is rebuilt only when `input_key` (open documents, roots, folds,
-//!   listing version) changes.
+//!   listing version) changes, and a rescan that finds nothing new does not
+//!   change the version.
 //!
-//! Creating a design (`+`) is the one request that writes the disk, and it does
-//! so only when the user clicks.
+//! The requests that write the disk do so only when the user asks: `+` (create
+//! and open), "New design here" (`projects_host_create_here.rs`), rename
+//! (`projects_host_rename.rs`) and move to the Trash (`projects_host_trash.rs`).
 
 use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
 use std::hash::{Hash, Hasher};
@@ -37,6 +41,8 @@ use op_host_services::project_root::ProjectRootCache;
 
 use crate::DesktopApp;
 
+#[path = "projects_host_create_here.rs"]
+mod create_here;
 #[path = "projects_host_fig.rs"]
 mod fig;
 #[path = "projects_host_fig_app.rs"]
@@ -49,6 +55,8 @@ mod fig_process;
 mod new_design;
 #[path = "projects_host_open.rs"]
 mod open;
+#[path = "projects_host_refresh.rs"]
+mod refresh;
 #[path = "projects_host_rename.rs"]
 mod rename;
 #[path = "projects_host_rename_fs.rs"]
@@ -59,6 +67,11 @@ mod scan;
 mod scan_tree;
 #[path = "projects_host_scheduler.rs"]
 mod scheduler;
+#[path = "projects_host_trash.rs"]
+mod trash;
+#[cfg(target_os = "macos")]
+#[path = "projects_host_trash_macos.rs"]
+mod trash_macos;
 
 #[cfg(test)]
 pub(crate) use scan::list_design_files;
@@ -119,6 +132,13 @@ pub(crate) struct ProjectsHostState {
     /// Opened roots rescanned because a conversion finished in them; once that
     /// scan is done their "done" marks are dropped.
     fig_rescans: BTreeSet<PathBuf>,
+    /// Where "Move to Trash" sends a file (`projects_host_trash.rs`).
+    trash: Arc<dyn trash::TrashBackend>,
+    /// A design just created from the dock: its row gets the inline rename as
+    /// soon as the tree that lists it is published.
+    pending_rename: Option<PathBuf>,
+    /// The last focus event; `None` until there is one (then the window is asked).
+    focused: Option<bool>,
 }
 
 impl Default for ProjectsHostState {
@@ -153,6 +173,9 @@ impl ProjectsHostState {
             pending_restore: Vec::new(),
             figs: fig::FigJobs::new(fig_process::default_converter()),
             fig_rescans: BTreeSet::new(),
+            trash: trash::default_backend(),
+            pending_rename: None,
+            focused: None,
         }
     }
 }
@@ -222,6 +245,10 @@ pub(crate) struct TreeInputs<'a> {
     pub collapsed_folders: &'a HashSet<(PathBuf, String)>,
     /// Queued, running and failed `.fig` conversions, by the `.fig` path.
     pub fig_jobs: &'a BTreeMap<PathBuf, fig::JobStatus>,
+    /// Open documents whose file is gone from disk.
+    pub missing: &'a BTreeSet<PathBuf>,
+    /// The platform can move a file to the Trash.
+    pub trash_available: bool,
     pub scan_state: &'a dyn Fn(&Path) -> ProjectScanState,
 }
 
@@ -263,8 +290,18 @@ pub(crate) fn build_projects(
                 .map(|path| {
                     let doc = inputs.open.iter().find(|d| d.path.as_ref() == Some(&path));
                     let kind = file_kind(&path, &paths_set, inputs.fig_jobs);
+                    // Only an open tab is marked: a closed file that vanished is
+                    // simply no longer listed.
+                    let missing = doc.is_some() && inputs.missing.contains(&path);
+                    let removable = inputs.trash_available
+                        && !missing
+                        && path
+                            .extension()
+                            .is_some_and(|extension| extension.eq_ignore_ascii_case("op"));
                     ProjectFileView {
                         kind,
+                        missing,
+                        removable,
                         label: file_label(&path),
                         folder: folder_of(root, &path),
                         path: path.to_string_lossy().into_owned(),
@@ -316,6 +353,13 @@ impl ProjectsHostState {
         self.figs.set_limits(limits);
     }
 
+    /// Replace the Trash backend (tests inject a recording fake, so no test
+    /// ever touches the real Trash).
+    #[cfg(test)]
+    pub(crate) fn set_trash_backend(&mut self, backend: Arc<dyn trash::TrashBackend>) {
+        self.trash = backend;
+    }
+
     /// Forget the cached root of every path a document no longer has (it was
     /// saved elsewhere, renamed or closed). Memory only.
     fn track_document_paths(&mut self, open: &[OpenDoc]) {
@@ -337,7 +381,16 @@ impl ProjectsHostState {
                 self.roots.invalidate(old_path);
             }
         }
+        // A document bound to a path the dock does not list yet (a Save As, or a
+        // file created by an agent) is a file operation of this app: look at
+        // the disk again. A tab opened on a listed file asks for nothing.
+        let unlisted_new_path = current.iter().any(|(id, path)| {
+            self.document_paths.get(id) != Some(path) && !self.scan.is_listed(path)
+        });
         self.document_paths = current;
+        if unlisted_new_path {
+            self.scan.request_rescan_all();
+        }
     }
 
     /// How far a project's scan got, as the dock shows it.
@@ -432,16 +485,19 @@ impl DesktopApp {
     /// whether anything changed. Runs once per frame next to the tab strip.
     pub(crate) fn pump_projects(&mut self) -> bool {
         let mut changed = self.pump_fig_conversions();
-        // An inline rename whose row is gone (or under Home) must not keep the
-        // keyboard.
+        // An inline rename (or a "Move to Trash?" question) whose row is gone
+        // (or under Home) must not keep the keyboard.
         let ui = &mut self.host.editor_state_mut().editor_ui;
         if ui.home.visible {
             changed |= ui.projects_panel.cancel_rename();
+            changed |= ui.projects_panel.cancel_trash_confirm();
         }
         changed |= ui.projects_panel.drop_hidden_rename();
+        changed |= ui.projects_panel.drop_hidden_trash_confirm();
         // A rename the dock confirmed runs before the same frame's request: a
         // click-away commit and the press that caused it arrive together.
         changed |= self.pump_project_rename();
+        changed |= self.pump_project_trash();
         if let Some(request) = self
             .host
             .editor_state_mut()
@@ -453,7 +509,18 @@ impl DesktopApp {
             self.execute_project_request(request);
             changed = true;
         }
-        changed | self.publish_projects()
+        changed |= self.publish_projects();
+        changed | self.start_pending_rename()
+    }
+
+    /// A design was just created from the dock: once its row is published,
+    /// start renaming it. The row is in the listing already (patched in), so a
+    /// miss means the project vanished; the intent is dropped then.
+    fn start_pending_rename(&mut self) -> bool {
+        let Some(path) = self.projects_host.pending_rename.take() else {
+            return false;
+        };
+        self.host.begin_project_rename(&path.to_string_lossy())
     }
 
     fn execute_project_request(&mut self, request: ProjectRequest) {
@@ -474,6 +541,9 @@ impl DesktopApp {
                 }
             }
             ProjectRequest::NewDesignIn(root) => self.create_design_in(Path::new(&root)),
+            ProjectRequest::NewDesignHere(root, folder) => {
+                self.create_design_here(Path::new(&root), &folder);
+            }
             ProjectRequest::OpenProjectPicker => {
                 self.open_project_via_picker();
             }
@@ -526,6 +596,7 @@ impl DesktopApp {
                 if self.documents.explicit_roots().contains(root) {
                     self.refresh_project(root);
                 }
+                self.rescan_after_own_operation();
                 self.open_document_tab(target);
             }
             Err(error) => {
@@ -582,11 +653,11 @@ impl DesktopApp {
         }
         let explicit_roots = explicit.snapshot();
         let shown = self.shown_project_roots();
-        let window = self.window.as_ref();
+        let active = self.projects_background_active();
+        let watched: Vec<PathBuf> = open.iter().filter_map(|doc| doc.path.clone()).collect();
         let state = &mut self.projects_host;
-        state
-            .scan
-            .poll(&shown, || window.is_none_or(|w| w.has_focus()));
+        state.scan.set_watched(watched);
+        state.scan.poll(&shown, || active);
         let completed = state.scan.completed_serial();
         state.awaiting.retain(|_, serial| *serial > completed);
         let scanning = state.scan.in_flight();
@@ -616,6 +687,7 @@ impl DesktopApp {
             .collect();
         let host = &self.projects_host;
         let scan_state = |root: &Path| host.scan_state(root);
+        let trash_available = host.trash.supported();
         let projects = build_projects(
             &TreeInputs {
                 roots: &shown,
@@ -625,6 +697,8 @@ impl DesktopApp {
                 collapsed: &host.collapsed,
                 collapsed_folders: &host.collapsed_folders,
                 fig_jobs: host.figs.status(),
+                missing: host.scan.missing(),
+                trash_available,
                 scan_state: &scan_state,
             },
             &|path| root_by_path.get(path).map(|root| (*root).clone()),

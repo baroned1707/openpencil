@@ -44,6 +44,8 @@ fn file(
         active: open == Some(1),
         folder: folder.to_string(),
         kind: op_editor_core::ProjectFileKind::Design,
+        missing: false,
+        removable: false,
     }
 }
 

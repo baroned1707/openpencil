@@ -8,8 +8,15 @@ use crate::widgets::agent_settings_metrics::CONTENT_TAIL_PAD;
 use crate::widgets::agent_settings_rows::{row_height, tab_intro_height, RowLines, FOOTNOTE_H};
 
 /// Row order and shape on the System tab: Appearance (one line),
-/// Auto-update (two), Experimental (two), Pencil cursor (one).
-const SYSTEM_ROWS: [RowLines; 4] = [RowLines::One, RowLines::Two, RowLines::Two, RowLines::One];
+/// Auto-update (two), Autosave on agent run (two), Experimental (two), Pencil
+/// cursor (one).
+const SYSTEM_ROWS: [RowLines; 5] = [
+    RowLines::One,
+    RowLines::Two,
+    RowLines::Two,
+    RowLines::Two,
+    RowLines::One,
+];
 
 /// Centre-y of System row `index`, below the tab's compact heading.
 fn system_row_mid_y(rect: Rect, index: usize) -> f32 {
@@ -31,7 +38,7 @@ fn system_auto_update_switch_has_click_target() {
     let panel = AgentSettingsPanel::for_editor(&state);
     let rect = panel.rect(1200.0, 800.0);
     let content = crate::widgets::agent_settings_panel::content_viewport(rect);
-    // Row order is Appearance, Auto-update, Experimental, Pencil cursor.
+    // Row order is Appearance, Auto-update, Autosave, Experimental, Pencil cursor.
     let point = crate::Point2D::new(
         content.origin.x + content.size.x - 18.0,
         system_row_mid_y(rect, 1),
@@ -40,6 +47,46 @@ fn system_auto_update_switch_has_click_target() {
     assert_eq!(
         panel.hit_test(rect, point),
         AgentSettingsHit::ToggleAutoUpdate
+    );
+}
+
+#[test]
+fn system_autosave_on_agent_run_switch_has_click_target() {
+    let mut state = EditorState::default();
+    state.editor_ui.agent_settings.tab = AgentSettingsTab::System;
+    let panel = AgentSettingsPanel::for_editor(&state);
+    let rect = panel.rect(1200.0, 800.0);
+    let content = crate::widgets::agent_settings_panel::content_viewport(rect);
+    let point = crate::Point2D::new(
+        content.origin.x + content.size.x - 18.0,
+        system_row_mid_y(rect, 2),
+    );
+
+    assert_eq!(
+        panel.hit_test(rect, point),
+        AgentSettingsHit::ToggleAutosaveOnAgentRun
+    );
+}
+
+#[test]
+fn system_autosave_row_paints_its_label() {
+    let mut state = EditorState::default();
+    state.editor_ui.locale = op_editor_core::Locale::EnUs;
+    state.editor_ui.agent_settings.tab = AgentSettingsTab::System;
+    let panel = AgentSettingsPanel::for_editor(&state);
+    let rect = panel.rect(1200.0, 800.0);
+    let mut backend = CaptureBackend::default();
+    let mut cx = PaintCx {
+        backend: &mut backend,
+    };
+    panel.paint(&mut cx, rect);
+    assert!(
+        backend
+            .text_effective_points
+            .iter()
+            .any(|(text, _)| text.starts_with("Save automatically when an agent finishes")),
+        "the autosave row paints its label: {:?}",
+        backend.text_effective_points
     );
 }
 
@@ -55,8 +102,8 @@ fn system_tab_reserves_space_for_update_status() {
             + SYSTEM_ROWS.iter().copied().map(row_height).sum::<f32>()
             + FOOTNOTE_H
             + CONTENT_TAIL_PAD,
-        "System tab = heading + Appearance/Auto-update/Experimental/Pencil-cursor rows \
-         + version footnote + bottom pad"
+        "System tab = heading + Appearance/Auto-update/Autosave/Experimental/Pencil-cursor \
+         rows + version footnote + bottom pad"
     );
 }
 

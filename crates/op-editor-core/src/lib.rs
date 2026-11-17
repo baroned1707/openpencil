@@ -146,6 +146,7 @@ pub mod pen_node_ext;
 pub mod preview_slideshow;
 pub mod project_rename;
 pub mod project_rename_keyboard;
+pub mod project_trash;
 pub mod project_tree;
 pub mod prompt_center_catalog;
 pub mod prompt_center_keyboard;

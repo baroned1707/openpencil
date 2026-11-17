@@ -319,8 +319,7 @@ pub struct AgentSettings {
     pub mcp_require_token: bool,
     /// Save a document to its own file when an agent run on it ends
     /// successfully (see `autosave::should_autosave_after_run` in the desktop
-    /// host). On by default; read from the settings file only (no UI yet).
-    /// Persisted.
+    /// host). On by default; switched in Settings > System. Persisted.
     pub autosave_on_agent_run_end: bool,
     pub mcp_client_config_copied_at_ms: Option<u64>,
     pub hover_agent_settings_close: bool,

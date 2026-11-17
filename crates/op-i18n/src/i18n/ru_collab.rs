@@ -620,6 +620,14 @@ pub fn lookup(key: &str) -> Option<&'static str> {
         "projects.renameExists" => "Файл с таким именем уже существует",
         "projects.renameInvalid" => "Это имя использовать нельзя",
         "projects.renameFailed" => "Не удалось переименовать: {{reason}}",
+        "projects.trash" => "Переместить в Корзину",
+        "projects.trashConfirm" => "Переместить в Корзину?",
+        "projects.trashFailed" => "Не удалось переместить в Корзину: {{reason}}",
+        "projects.trashOpenTab" => "Сначала закройте вкладку, затем переместите файл в Корзину",
+        "projects.newDesignHere" => "Новый дизайн здесь",
+        "projects.notOnDisk" => "нет на диске",
+        "settings.autosaveOnAgentRun" => "Сохранять автоматически, когда агент закончит",
+        "settings.autosaveOnAgentRunDesc" => "Сохраняет документ в его собственный файл, когда запуск агента успешно завершается.",
         _ => return None,
     })
 }

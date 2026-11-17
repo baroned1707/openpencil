@@ -13,7 +13,7 @@ use op_editor_core::project_rename::{is_renamable, DOUBLE_CLICK_MS};
 use op_editor_core::{EditorState, ProjectFileKind, ProjectRequest, ProjectRowTarget};
 
 use crate::widgets::projects_panel::{rename_field_rect, ProjectsPanel, ProjectsPanelText};
-use crate::widgets::projects_panel_layout::ProjectsPanelLayout;
+use crate::widgets::projects_panel_layout::{ProjectsPanelLayout, RowKind};
 use crate::Point2D;
 
 /// What a press on the list amounted to.
@@ -57,6 +57,11 @@ pub fn text(state: &EditorState) -> ProjectsPanelText<'static> {
         rename_placeholder: translate(ui, "projects.renamePlaceholder"),
         rename_invalid: translate(ui, "projects.renameInvalid"),
         rename_exists: translate(ui, "projects.renameExists"),
+        trash: translate(ui, "projects.trash"),
+        trash_confirm: translate(ui, "projects.trashConfirm"),
+        cancel: translate(ui, "common.cancel"),
+        new_here: translate(ui, "projects.newDesignHere"),
+        not_on_disk: translate(ui, "projects.notOnDisk"),
     }
 }
 
@@ -71,6 +76,7 @@ pub fn widget<'a>(
         projects: &state.editor_ui.projects_panel.projects,
         hover: state.editor_ui.projects_panel.hover,
         rename: state.editor_ui.projects_panel.rename.as_ref(),
+        trash_confirm: state.editor_ui.projects_panel.trash_confirm.as_deref(),
         now_ms,
         text,
     }
@@ -102,8 +108,17 @@ fn request_for(state: &EditorState, target: ProjectRowTarget) -> Option<ProjectR
             ))
         }
         ProjectRowTarget::OpenProject => Some(ProjectRequest::OpenProjectPicker),
-        // Starting a rename is the list's own state, not a host request.
-        ProjectRowTarget::RenameFile(..) => None,
+        // Starting a rename or a "Move to Trash?" question is the list's own
+        // state, not a host request.
+        ProjectRowTarget::RenameFile(..) | ProjectRowTarget::TrashFile(..) => None,
+        ProjectRowTarget::NewHere(project, folder_file) => {
+            let view = projects.get(project)?;
+            let folder = match folder_file {
+                Some(index) => view.files.get(index)?.folder.clone(),
+                None => String::new(),
+            };
+            Some(ProjectRequest::NewDesignHere(view.root.clone(), folder))
+        }
         ProjectRowTarget::ConvertAll(project, first_file) => {
             let view = projects.get(project)?;
             let folder = match first_file {
@@ -173,9 +188,53 @@ pub fn rename_press(
     RenamePress::Left
 }
 
+/// What a press meant to an open "Move to Trash?" question.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum TrashPress {
+    /// No question is open.
+    NotAsking,
+    /// The press is on the question's confirm or cancel button: it is theirs.
+    OnButtons,
+    /// The press was elsewhere and cancelled the question. `on_row` says it
+    /// landed on the asking row itself, so nothing else should act on it.
+    Cancelled { on_row: bool },
+}
+
+/// Settle an open "Move to Trash?" question for a press at `point`. A press on
+/// its two buttons is left to the list; any other press cancels it (never
+/// confirms: a destructive action needs the button).
+pub fn settle_trash_confirm(
+    state: &mut EditorState,
+    layout: Option<&ProjectsPanelLayout>,
+    point: Point2D,
+) -> TrashPress {
+    let panel = &state.editor_ui.projects_panel;
+    let Some(path) = panel.trash_confirm.as_deref() else {
+        return TrashPress::NotAsking;
+    };
+    let row = layout.and_then(|layout| {
+        layout.rows.iter().find(|row| match row.kind {
+            RowKind::File(project, file) => panel
+                .projects
+                .get(project)
+                .and_then(|view| view.files.get(file))
+                .is_some_and(|view| view.path == path),
+            _ => false,
+        })
+    });
+    let on = |button: Option<crate::Rect>| button.is_some_and(|rect| rect.contains(point));
+    if row.is_some_and(|row| on(row.trash) || on(row.rename)) {
+        return TrashPress::OnButtons;
+    }
+    let on_row = row.is_some_and(|row| row.rect.contains(point));
+    state.editor_ui.projects_panel.cancel_trash_confirm();
+    TrashPress::Cancelled { on_row }
+}
+
 /// Route a press at `point` at `now_ms`: record the request the row stands
-/// for, or start a rename (the pencil, or a second press on the same file
-/// within [`DOUBLE_CLICK_MS`]).
+/// for, start a rename (the pencil, or a second press on the same file within
+/// [`DOUBLE_CLICK_MS`]) or a "Move to Trash?" question (the trash button), or
+/// answer that question.
 pub fn press(
     state: &mut EditorState,
     layout: &ProjectsPanelLayout,
@@ -185,6 +244,13 @@ pub fn press(
     let inside = layout.contains_point(point);
     if rename_press(state, inside.then_some(layout), point) == RenamePress::InField {
         return ProjectsPress::Claimed(None);
+    }
+    match settle_trash_confirm(state, inside.then_some(layout), point) {
+        TrashPress::Cancelled { on_row: true } if inside => {
+            return ProjectsPress::Claimed(None);
+        }
+        TrashPress::OnButtons => return answer_trash_question(state, layout, point),
+        _ => {}
     }
     if !inside {
         return ProjectsPress::Missed;
@@ -212,20 +278,43 @@ pub fn press(
             hit = Some(ProjectRowTarget::Header(project));
         }
     }
-    // The same for a file row's pencil.
-    if let Some(ProjectRowTarget::RenameFile(project, file)) = hit {
+    // The same for a file row's pencil and trash button.
+    if let Some(
+        ProjectRowTarget::RenameFile(project, file) | ProjectRowTarget::TrashFile(project, file),
+    ) = hit
+    {
         if !matches!(
             ui.hover,
-            Some(ProjectRowTarget::File(p, f) | ProjectRowTarget::RenameFile(p, f))
-                if (p, f) == (project, file)
+            Some(
+                ProjectRowTarget::File(p, f)
+                    | ProjectRowTarget::RenameFile(p, f)
+                    | ProjectRowTarget::TrashFile(p, f)
+            ) if (p, f) == (project, file)
         ) {
             hit = Some(ProjectRowTarget::File(project, file));
+        }
+    }
+    // And for a "New design here" button.
+    if let Some(ProjectRowTarget::NewHere(project, folder)) = hit {
+        let on_its_row = match (ui.hover, folder) {
+            (Some(ProjectRowTarget::NewHere(p, f)), _) => (p, f) == (project, folder),
+            (Some(ProjectRowTarget::Header(p) | ProjectRowTarget::Plus(p)), None) => p == project,
+            (Some(ProjectRowTarget::Folder(p, f)), Some(first)) => (p, f) == (project, first),
+            _ => false,
+        };
+        if !on_its_row {
+            hit = Some(match folder {
+                Some(first) => ProjectRowTarget::Folder(project, first),
+                None => ProjectRowTarget::Header(project),
+            });
         }
     }
     ui.hover = hit;
     let path = match hit {
         Some(
-            ProjectRowTarget::File(project, file) | ProjectRowTarget::RenameFile(project, file),
+            ProjectRowTarget::File(project, file)
+            | ProjectRowTarget::RenameFile(project, file)
+            | ProjectRowTarget::TrashFile(project, file),
         ) => ui
             .projects
             .get(project)
@@ -234,6 +323,10 @@ pub fn press(
         _ => None,
     };
     match (hit, path) {
+        (Some(ProjectRowTarget::TrashFile(..)), Some((path, _))) => {
+            ui.last_file_press = None;
+            ui.begin_trash_confirm(&path);
+        }
         (Some(ProjectRowTarget::RenameFile(..)), Some((path, true))) => {
             ui.last_file_press = None;
             ui.begin_rename(&path, now_ms);
@@ -256,6 +349,57 @@ pub fn press(
         (None, _) => ui.last_file_press = None,
     }
     ProjectsPress::Claimed(hit)
+}
+
+/// A press on the asking row's confirm (trash slot) or cancel (pencil slot)
+/// button.
+fn answer_trash_question(
+    state: &mut EditorState,
+    layout: &ProjectsPanelLayout,
+    point: Point2D,
+) -> ProjectsPress {
+    let hit = layout.hit(point);
+    let ui = &mut state.editor_ui.projects_panel;
+    match hit {
+        Some(ProjectRowTarget::TrashFile(..)) => {
+            ui.confirm_trash();
+        }
+        _ => {
+            ui.cancel_trash_confirm();
+        }
+    }
+    ui.hover = hit;
+    ProjectsPress::Claimed(hit)
+}
+
+/// Scroll the list just enough to bring the row of the file at `path` fully
+/// into view. `false` when the file has no row in `layout` (a folded folder,
+/// a collapsed project) or it is already visible.
+pub fn reveal_file(state: &mut EditorState, layout: &ProjectsPanelLayout, path: &str) -> bool {
+    let panel = &state.editor_ui.projects_panel;
+    let Some(row) = layout.rows.iter().find(|row| match row.kind {
+        RowKind::File(project, file) => panel
+            .projects
+            .get(project)
+            .and_then(|view| view.files.get(file))
+            .is_some_and(|view| view.path == path),
+        _ => false,
+    }) else {
+        return false;
+    };
+    let top = layout.panel.origin.y;
+    let bottom = top + layout.panel.size.y;
+    let (row_top, row_bottom) = (row.rect.origin.y, row.rect.origin.y + row.rect.size.y);
+    let delta = if row_top < top {
+        row_top - top
+    } else if row_bottom > bottom {
+        row_bottom - bottom
+    } else {
+        return false;
+    };
+    let scroll = &mut state.editor_ui.projects_panel.scroll;
+    scroll.offset = (layout.offset + delta).clamp(0.0, layout.max_scroll());
+    true
 }
 
 /// Track the cursor. Returns whether the hover changed (the repaint signal).
@@ -300,3 +444,6 @@ pub(crate) mod projects_panel_flow_tests;
 #[cfg(test)]
 #[path = "projects_rename_tests.rs"]
 mod projects_rename_tests;
+#[cfg(test)]
+#[path = "projects_trash_tests.rs"]
+mod projects_trash_tests;

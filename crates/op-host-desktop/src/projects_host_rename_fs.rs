@@ -79,15 +79,24 @@ pub(crate) struct RenamePlan {
     pub case_only: bool,
 }
 
-/// Check a rename of `source` to `raw_stem` against `roots` (the project roots
-/// the dock shows) and the disk. `Ok(None)` means the name is the file's own:
-/// nothing to do.
-pub(crate) fn plan_rename(
+/// A design file that passed the checks every action on a listed row needs.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) struct DesignLocation {
+    /// The file's folder, canonical.
+    pub real_parent: PathBuf,
+    /// The file's own extension (`op` in any case).
+    pub extension: String,
+}
+
+/// The checks shared by every action on a listed `.op` row (rename, move to the
+/// Trash): `source` exists, is a regular file (not a link of any kind, so it
+/// cannot point out of the project), has the `.op` extension, and its real
+/// folder lies inside one of `roots` (the project roots the dock shows). The
+/// widget's own checks are never trusted.
+pub(crate) fn locate_design_file(
     roots: &[PathBuf],
     source: &Path,
-    raw_stem: &str,
-) -> Result<Option<RenamePlan>, RenameRefusal> {
-    let stem = normalized_stem(raw_stem).map_err(RenameRefusal::InvalidName)?;
+) -> Result<DesignLocation, RenameRefusal> {
     let meta = std::fs::symlink_metadata(source).map_err(|error| match error.kind() {
         io::ErrorKind::NotFound => RenameRefusal::SourceGone,
         _ => RenameRefusal::Io(error.to_string()),
@@ -99,7 +108,7 @@ pub(crate) fn plan_rename(
         Some(extension) if extension.eq_ignore_ascii_case("op") => extension.to_string(),
         _ => return Err(RenameRefusal::NotADesignFile),
     };
-    let (Some(parent), Some(file_name)) = (source.parent(), source.file_name()) else {
+    let Some(parent) = source.parent() else {
         return Err(RenameRefusal::NotADesignFile);
     };
     let real_parent = std::fs::canonicalize(parent).map_err(|error| match error.kind() {
@@ -112,6 +121,28 @@ pub(crate) fn plan_rename(
     if !inside {
         return Err(RenameRefusal::OutsideProjects);
     }
+    Ok(DesignLocation {
+        real_parent,
+        extension,
+    })
+}
+
+/// Check a rename of `source` to `raw_stem` against `roots` (the project roots
+/// the dock shows) and the disk. `Ok(None)` means the name is the file's own:
+/// nothing to do.
+pub(crate) fn plan_rename(
+    roots: &[PathBuf],
+    source: &Path,
+    raw_stem: &str,
+) -> Result<Option<RenamePlan>, RenameRefusal> {
+    let stem = normalized_stem(raw_stem).map_err(RenameRefusal::InvalidName)?;
+    let DesignLocation {
+        real_parent,
+        extension,
+    } = locate_design_file(roots, source)?;
+    let (Some(parent), Some(file_name)) = (source.parent(), source.file_name()) else {
+        return Err(RenameRefusal::NotADesignFile);
+    };
     let current = file_name.to_string_lossy().into_owned();
     let wanted = format!("{stem}.{extension}");
     if wanted == current {

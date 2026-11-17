@@ -590,6 +590,14 @@ pub fn lookup(key: &str) -> Option<&'static str> {
         "projects.renameExists" => "Ya existe un archivo con ese nombre",
         "projects.renameInvalid" => "No se puede usar este nombre",
         "projects.renameFailed" => "No se pudo renombrar: {{reason}}",
+        "projects.trash" => "Mover a la papelera",
+        "projects.trashConfirm" => "¿Mover a la papelera?",
+        "projects.trashFailed" => "No se pudo mover a la papelera: {{reason}}",
+        "projects.trashOpenTab" => "Cierra primero la pestaña y luego mueve el archivo a la papelera",
+        "projects.newDesignHere" => "Nuevo diseño aquí",
+        "projects.notOnDisk" => "no está en el disco",
+        "settings.autosaveOnAgentRun" => "Guardar automáticamente cuando termine un agente",
+        "settings.autosaveOnAgentRunDesc" => "Guarda el documento en su propio archivo cuando una ejecución de agente termina con éxito.",
         _ => return None,
     })
 }

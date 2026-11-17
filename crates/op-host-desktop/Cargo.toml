@@ -329,6 +329,11 @@ objc2-foundation = { version = "0.2", default-features = false, features = [
   "NSData",
   "NSString",
   "NSProcessInfo",
+  # `NSFileManager::trashItemAtURL` — "Move to Trash" in the Projects dock
+  # (`src/projects_host_trash_macos.rs`); a recoverable move, never a delete.
+  "NSFileManager",
+  "NSURL",
+  "NSError",
 ] }
 # Accessibility (#67) — macOS AT-SPI bridge. `SubclassingAdapter`
 # subclasses the window's NSView (raw pointer from

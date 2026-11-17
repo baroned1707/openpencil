@@ -234,6 +234,12 @@ pub fn apply_agent_settings_hit(
             state.editor_ui.agent_settings.auto_update_enabled ^= true;
             SettingsPressOutcome::handled()
         }
+        AgentSettingsHit::ToggleAutosaveOnAgentRun => {
+            // Persisted by the host's per-frame settings save, like every
+            // other switch on this tab.
+            state.editor_ui.agent_settings.autosave_on_agent_run_end ^= true;
+            SettingsPressOutcome::handled()
+        }
         AgentSettingsHit::SelectThemeMode(mode) => {
             state.editor_ui.theme_mode = mode;
             SettingsPressOutcome::handled()

@@ -606,6 +606,14 @@ pub fn lookup(key: &str) -> Option<&'static str> {
         "projects.renameExists" => "同じ名前のファイルがすでにあります",
         "projects.renameInvalid" => "この名前は使用できません",
         "projects.renameFailed" => "名前を変更できませんでした: {{reason}}",
+        "projects.trash" => "ゴミ箱に入れる",
+        "projects.trashConfirm" => "ゴミ箱に入れますか？",
+        "projects.trashFailed" => "ゴミ箱に入れられませんでした: {{reason}}",
+        "projects.trashOpenTab" => "先にタブを閉じてから、ファイルをゴミ箱に入れてください",
+        "projects.newDesignHere" => "ここに新しいデザイン",
+        "projects.notOnDisk" => "ディスク上にありません",
+        "settings.autosaveOnAgentRun" => "エージェントの完了時に自動保存",
+        "settings.autosaveOnAgentRunDesc" => "エージェントの実行が正常に終わると、ドキュメントを自身のファイルに保存します。",
         _ => return None,
     })
 }

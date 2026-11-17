@@ -606,6 +606,14 @@ pub fn lookup(key: &str) -> Option<&'static str> {
         "projects.renameExists" => "같은 이름의 파일이 이미 있습니다",
         "projects.renameInvalid" => "이 이름은 사용할 수 없습니다",
         "projects.renameFailed" => "이름을 바꿀 수 없습니다: {{reason}}",
+        "projects.trash" => "휴지통으로 이동",
+        "projects.trashConfirm" => "휴지통으로 이동할까요?",
+        "projects.trashFailed" => "휴지통으로 이동하지 못했습니다: {{reason}}",
+        "projects.trashOpenTab" => "먼저 탭을 닫은 다음 파일을 휴지통으로 이동하세요",
+        "projects.newDesignHere" => "여기에 새 디자인",
+        "projects.notOnDisk" => "디스크에 없음",
+        "settings.autosaveOnAgentRun" => "에이전트가 끝나면 자동 저장",
+        "settings.autosaveOnAgentRunDesc" => "에이전트 실행이 성공적으로 끝나면 문서를 자신의 파일에 저장합니다.",
         _ => return None,
     })
 }
