@@ -204,6 +204,8 @@ pub enum ProjectRowTarget {
     /// A "Convert all" row: `(project index, index of the first file of the
     /// folder it belongs to)`, or `None` for the whole project.
     ConvertAll(usize, Option<usize>),
+    /// The pencil button of an `.op` file row: `(project index, file index)`.
+    RenameFile(usize, usize),
 }
 
 /// Whether `file_folder` is `folder` or below it; `None` matches everything.

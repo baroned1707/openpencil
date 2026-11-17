@@ -12,6 +12,20 @@ use op_editor_core::{DocumentId, DocumentTabStatus, EditorState};
 
 pub use crate::mcp_serve::document_listing::DocumentListing;
 
+use crate::disk_fingerprint::DiskFingerprint;
+
+/// What the host knows about saving one document to its OWN file.
+#[derive(Debug, Clone, Default)]
+pub struct InPlaceSaveTarget {
+    /// The file the document is bound to; `None` while untitled.
+    pub path: Option<PathBuf>,
+    /// The file as the editor last read or wrote it; `None` when the host has
+    /// no record yet (the save is refused rather than guessed).
+    pub baseline: Option<DiskFingerprint>,
+    /// A Cmd+S / Save As write is still running.
+    pub save_in_flight: bool,
+}
+
 /// Why a resolver could not lend a document.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ResolveError {
@@ -35,6 +49,26 @@ pub trait DocumentResolver {
         id: DocumentId,
         f: &mut dyn FnMut(&mut EditorState, u64),
     ) -> Result<(), ResolveError>;
+
+    /// The in-place save facts of document `id`. The default suits a host that
+    /// does not track the file between saves (every headless mode and test):
+    /// the file as it is now is the baseline. The desktop overrides it with
+    /// the state it recorded when the file was opened or last saved.
+    fn in_place_save_target(&self, id: DocumentId) -> InPlaceSaveTarget {
+        let path = self
+            .documents()
+            .into_iter()
+            .find(|listing| listing.id == id)
+            .and_then(|listing| listing.path);
+        let baseline = path
+            .as_deref()
+            .and_then(|path| DiskFingerprint::capture(path).ok());
+        InPlaceSaveTarget {
+            path,
+            baseline,
+            save_in_flight: false,
+        }
+    }
 
     /// The document on screen.
     fn active_document(&self) -> Option<DocumentId> {

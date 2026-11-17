@@ -43,6 +43,15 @@ impl WidgetHostNative {
             }
             return true;
         }
+        // The Projects dock's file rename owns every key while it is open.
+        if let Some(changed) =
+            op_editor_core::project_rename_keyboard::text(&mut self.editor_state, c, self.now_ms)
+        {
+            if changed {
+                self.mark_dirty();
+            }
+            return true;
+        }
         if let Some(changed) = shared::prompt_center_text(&mut self.editor_state, c, self.now_ms) {
             if changed {
                 self.mark_dirty();

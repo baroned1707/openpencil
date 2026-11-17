@@ -117,6 +117,24 @@ impl EditorUiState {
         self.recent_files.truncate(RECENT_FILE_CAP);
     }
 
+    /// A file was renamed on disk: keep its place in the recent list under the
+    /// new path. An entry already stored under the new path is dropped (it is
+    /// the same file). `false` when `old` was not listed.
+    pub fn rename_recent_file(&mut self, old: &str, new: &str) -> bool {
+        if !self.recent_files.iter().any(|recent| recent.path == old) {
+            return false;
+        }
+        self.recent_files.retain(|recent| recent.path != new);
+        if let Some(recent) = self
+            .recent_files
+            .iter_mut()
+            .find(|recent| recent.path == old)
+        {
+            recent.path = new.to_string();
+        }
+        true
+    }
+
     pub fn remove_recent_file(&mut self, path: &str) -> bool {
         let before = self.recent_files.len();
         self.recent_files.retain(|recent| recent.path != path);

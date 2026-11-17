@@ -408,6 +408,8 @@ fn empty_state_proof() {
             ProjectsPanel {
                 projects: &[],
                 hover: None,
+                rename: None,
+                now_ms: 0,
                 text: &text,
             }
             .paint(&mut cx, &layout, &theme);

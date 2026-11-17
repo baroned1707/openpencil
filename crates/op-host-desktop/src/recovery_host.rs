@@ -501,6 +501,27 @@ impl DesktopApp {
         }
     }
 
+    /// The file `id` is bound to was renamed. A snapshot stores the file's path,
+    /// so an unsaved document's entry is written again at once with the new one
+    /// (otherwise recovery after a crash would offer the old, gone name); the
+    /// entry of a saved document is not needed any more.
+    pub(crate) fn recovery_follow_renamed_path(&mut self, id: DocumentId) {
+        let dirty = self
+            .slot_views()
+            .iter()
+            .any(|view| view.id == id && view.dirty);
+        if !dirty {
+            self.recovery_clear(id);
+            return;
+        }
+        if let Some(track) = self.recovery.tracks.get_mut(&id) {
+            // The entry on disk is for the old path: it no longer counts as
+            // current for this revision.
+            track.snapshotted = None;
+        }
+        self.snapshot_document_now(id, SnapshotReason::Autosnapshot);
+    }
+
     /// The document is gone (its tab closed on purpose): delete its entry and
     /// forget it.
     pub(crate) fn recovery_forget(&mut self, id: DocumentId) {

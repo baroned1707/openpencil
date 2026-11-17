@@ -229,6 +229,7 @@ fn process_message_with_auto_finalize(
     // given a first one.
     if let Some(response) = create_document::refuse_in_headless(line, path, profile)
         .or_else(|| list_documents_tool::answer_in_headless(line, path, profile))
+        .or_else(|| save_in_place_headless::answer_in_headless(line, path, state, profile))
     {
         return Ok(Some(response));
     }
@@ -719,6 +720,7 @@ mod registry;
 use registry::rebuild_registry;
 
 mod call_gate;
+mod save_in_place_headless;
 mod server_instructions;
 mod tool_annotations;
 mod wire;

@@ -5,6 +5,7 @@
 //! offset. Paint, hit-test and scroll all read the same [`ProjectsPanelLayout`],
 //! so a painted row and its click target can never drift apart.
 
+use op_editor_core::project_rename::is_renamable;
 use op_editor_core::{ProjectRowTarget, ProjectScanState, ProjectView};
 
 use crate::{Point2D, Rect};
@@ -74,6 +75,8 @@ pub struct ProjectRow {
     pub refresh: Option<Rect>,
     /// A header's close button: explicit projects only.
     pub close: Option<Rect>,
+    /// The pencil button of an `.op` file row; `None` on every other row.
+    pub rename: Option<Rect>,
 }
 
 /// Where the Projects dock's rows sit.
@@ -174,13 +177,17 @@ impl ProjectsPanelLayout {
                 y += height;
                 match kind {
                     RowKind::Header(project) => header_row(project, rect, projects.get(project)),
-                    _ => ProjectRow {
-                        kind,
-                        rect,
-                        plus: None,
-                        refresh: None,
-                        close: None,
-                    },
+                    RowKind::File(project, file) => {
+                        let renamable = projects
+                            .get(project)
+                            .and_then(|view| view.files.get(file))
+                            .is_some_and(is_renamable);
+                        ProjectRow {
+                            rename: renamable.then(|| rename_button(rect)),
+                            ..plain_row(kind, rect)
+                        }
+                    }
+                    _ => plain_row(kind, rect),
                 }
             })
             .collect();
@@ -246,7 +253,13 @@ impl ProjectsPanelLayout {
                     }
                 }
                 RowKind::Folder(project, file) => ProjectRowTarget::Folder(project, file),
-                RowKind::File(project, file) => ProjectRowTarget::File(project, file),
+                RowKind::File(project, file) => {
+                    if row.rename.is_some_and(|button| button.contains(point)) {
+                        ProjectRowTarget::RenameFile(project, file)
+                    } else {
+                        ProjectRowTarget::File(project, file)
+                    }
+                }
                 RowKind::NewDesign(project) => ProjectRowTarget::NewDesignRow(project),
                 RowKind::ConvertAll(project, folder) => {
                     ProjectRowTarget::ConvertAll(project, folder)
@@ -261,6 +274,27 @@ impl ProjectsPanelLayout {
     pub fn row(&self, kind: RowKind) -> Option<&ProjectRow> {
         self.rows.iter().find(|row| row.kind == kind)
     }
+}
+
+fn plain_row(kind: RowKind, rect: Rect) -> ProjectRow {
+    ProjectRow {
+        kind,
+        rect,
+        plus: None,
+        refresh: None,
+        close: None,
+        rename: None,
+    }
+}
+
+/// The pencil button at the right end of an `.op` file row.
+fn rename_button(rect: Rect) -> Rect {
+    Rect::xywh(
+        rect.origin.x + rect.size.x - ROW_PAD_RIGHT / 2.0 - PLUS_SIZE,
+        rect.origin.y + (rect.size.y - PLUS_SIZE) / 2.0,
+        PLUS_SIZE,
+        PLUS_SIZE,
+    )
 }
 
 /// Whether the project-wide "Convert all" row shows: some `.fig` is waiting and
@@ -291,11 +325,10 @@ fn header_row(index: usize, rect: Rect, project: Option<&ProjectView>) -> Projec
         && project.is_some_and(|project| project.scan == ProjectScanState::Idle))
     .then(|| button(plus_x - (BUTTON_GAP + PLUS_SIZE) * 2.0));
     ProjectRow {
-        kind: RowKind::Header(index),
-        rect,
         plus: Some(button(plus_x)),
         refresh,
         close,
+        ..plain_row(RowKind::Header(index), rect)
     }
 }
 

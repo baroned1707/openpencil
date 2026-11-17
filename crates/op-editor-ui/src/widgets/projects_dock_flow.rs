@@ -45,9 +45,10 @@ pub fn widget<'a>(
     state: &'a EditorState,
     text: &'a crate::widgets::ProjectsPanelText<'a>,
     title: &'a str,
+    now_ms: u64,
 ) -> ProjectsDock<'a> {
     ProjectsDock {
-        list: projects_panel_flow::widget(state, text),
+        list: projects_panel_flow::widget(state, text, now_ms),
         title,
         toggle_hover: state.editor_ui.projects_panel.toggle_hover,
         open_project_hover: state.editor_ui.projects_panel.open_project_hover,
@@ -61,18 +62,32 @@ pub fn title(state: &EditorState) -> &'static str {
 }
 
 /// Fold the dock into its strip, or open it again. Drops the hover that
-/// belonged to the layout being replaced.
+/// belonged to the layout being replaced, and a rename whose row is now hidden.
 pub fn toggle(state: &mut EditorState) {
     let panel = &mut state.editor_ui.projects_panel;
     panel.toggle_open();
+    panel.drop_hidden_rename();
     panel.hover = None;
     panel.toggle_hover = false;
     panel.open_project_hover = false;
 }
 
-/// Route a press at `point`: the chevron toggles, a row records the request
-/// it stands for, anything else on the dock is swallowed.
-pub fn press(state: &mut EditorState, layout: &ProjectsDockLayout, point: Point2D) -> DockPress {
+/// Route a press at `point` at `now_ms`: the chevron toggles, a row records the
+/// request it stands for (or starts a rename), anything else on the dock is
+/// swallowed.
+pub fn press(
+    state: &mut EditorState,
+    layout: &ProjectsDockLayout,
+    point: Point2D,
+    now_ms: u64,
+) -> DockPress {
+    // An open rename settles first, whatever the press lands on.
+    let list = layout.list.as_ref();
+    if projects_panel_flow::rename_press(state, list, point)
+        == projects_panel_flow::RenamePress::InField
+    {
+        return DockPress::Claimed;
+    }
     match layout.hit(point) {
         None => DockPress::Missed,
         Some(DockHit::Toggle) => {
@@ -89,7 +104,7 @@ pub fn press(state: &mut EditorState, layout: &ProjectsDockLayout, point: Point2
             if let Some(list) = &layout.list {
                 // The list's verdict is irrelevant: the point is on the dock
                 // either way, so the press is ours.
-                let _: ProjectsPress = projects_panel_flow::press(state, list, point);
+                let _: ProjectsPress = projects_panel_flow::press(state, list, point, now_ms);
             }
             DockPress::Claimed
         }

@@ -334,6 +334,23 @@ impl DocumentRegistry {
         })
     }
 
+    /// Every slot showing `path` (canonical match). One file belongs to one
+    /// tab, so more than one entry means the invariant broke.
+    pub fn indices_of_path(&self, path: &Path) -> Vec<usize> {
+        let wanted = canonical_or_same(path);
+        self.slots
+            .iter()
+            .enumerate()
+            .filter(|(_, slot)| {
+                slot.local
+                    .path
+                    .as_deref()
+                    .is_some_and(|open| canonical_or_same(open) == wanted)
+            })
+            .map(|(index, _)| index)
+            .collect()
+    }
+
     /// Take the parked document of a non-active slot, if it has one.
     pub fn take_parked(&mut self, index: usize) -> Option<ParkedDocument> {
         if index == self.active {

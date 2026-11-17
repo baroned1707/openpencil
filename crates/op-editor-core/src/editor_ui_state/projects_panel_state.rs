@@ -12,6 +12,7 @@
 use jian_core::scroll::ScrollState;
 
 use super::EditorUiState;
+use crate::project_rename::{ProjectRenameRequest, ProjectRenameState};
 use crate::project_tree::{ProjectRequest, ProjectRowTarget, ProjectView};
 
 #[derive(Debug, Clone, PartialEq)]
@@ -36,6 +37,16 @@ pub struct ProjectsPanelState {
     pub toggle_hover: bool,
     /// The cursor is over the dock's "Open project" button.
     pub open_project_hover: bool,
+    /// The inline rename of one design file, keyed by its path. While it is
+    /// set it owns the keyboard (see `project_rename_keyboard`).
+    pub rename: Option<ProjectRenameState>,
+    /// A confirmed rename for the host to execute. Its own slot, so a commit
+    /// and the press that triggered it can never overwrite one another.
+    pub rename_commit: Option<ProjectRenameRequest>,
+    /// The last press on a file row: `(path, ms)`. A second press on the same
+    /// path within `DOUBLE_CLICK_MS` starts a rename. Keyed by path because the
+    /// host rebuilds the rows between the two presses.
+    pub last_file_press: Option<(String, u64)>,
 }
 
 impl Default for ProjectsPanelState {
@@ -49,6 +60,9 @@ impl Default for ProjectsPanelState {
             empty_open: false,
             toggle_hover: false,
             open_project_hover: false,
+            rename: None,
+            rename_commit: None,
+            last_file_press: None,
         }
     }
 }

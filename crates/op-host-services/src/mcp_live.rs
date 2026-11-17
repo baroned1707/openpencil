@@ -31,7 +31,9 @@ pub use design_md_route::{DesignMdResponder, DesignMdResponseError, PendingDesig
 pub use error::McpLiveError;
 pub use live_timing::{Clock, SystemClock};
 pub use path_policy::PathRefusal;
-pub use resolver::{DocumentListing, DocumentResolver, ResolveError, SingleDocumentResolver};
+pub use resolver::{
+    DocumentListing, DocumentResolver, InPlaceSaveTarget, ResolveError, SingleDocumentResolver,
+};
 
 /// Per-request budget for a UI-thread snapshot/apply ack. Sized to cover a
 /// large single editor operation without the connection giving up; the CLI
@@ -160,6 +162,11 @@ pub struct McpPumpOutcome {
     /// document's own — path, tab, window title, recent files — exactly as a
     /// user Save As would.
     pub created: Vec<(DocumentId, std::path::PathBuf)>,
+    /// The documents this pump saved to their own file (`save_document`
+    /// without a `filePath`) and marked saved. The caller MUST record each
+    /// file's new on-disk state as its baseline and clear the document's
+    /// crash-recovery entry, exactly as after a Cmd+S.
+    pub saved_in_place: Vec<(DocumentId, crate::save_in_place::SavedInPlace)>,
 }
 
 enum UiRequest {
@@ -234,6 +241,13 @@ enum UiRequest {
         ticket: Arc<Ticket>,
         ack: SyncSender<CreateAck>,
     },
+    /// `save_document` without a `filePath`: save the document to its own file
+    /// (see `save_in_place_route`).
+    SaveInPlace {
+        document: DocumentId,
+        ticket: Arc<Ticket>,
+        ack: SyncSender<SaveAck>,
+    },
     /// `debug_screenshot` against the LIVE canvas — the connection
     /// thread blocks on `ack` while the UI pump renders the active
     /// page / node through the raster export pipeline
@@ -262,7 +276,8 @@ impl UiRequest {
             | UiRequest::Apply { ticket, .. }
             | UiRequest::ReplaceDocument { ticket, .. }
             | UiRequest::UpdateEditorMeta { ticket, .. }
-            | UiRequest::CreateDocument { ticket, .. } => Some(ticket),
+            | UiRequest::CreateDocument { ticket, .. }
+            | UiRequest::SaveInPlace { ticket, .. } => Some(ticket),
             UiRequest::Documents { .. } | UiRequest::GenerateDesignMd { .. } => None,
             #[cfg(feature = "mcp-debug-tools")]
             UiRequest::Screenshot { .. } => None,
@@ -279,6 +294,7 @@ impl UiRequest {
             UiRequest::UpdateEditorMeta { .. } => "metadata-sync",
             UiRequest::GenerateDesignMd { .. } => "design-md",
             UiRequest::CreateDocument { .. } => "create-document",
+            UiRequest::SaveInPlace { .. } => "save-document",
             #[cfg(feature = "mcp-debug-tools")]
             UiRequest::Screenshot { .. } => "screenshot",
         }
@@ -621,6 +637,7 @@ mod path_policy;
 mod pump;
 mod request_ticket;
 mod resolver;
+mod save_in_place_route;
 /// `pub(crate)` for two consts only: the shared HTTP parser
 /// (`mcp_serve::read_http_request`) has to recognise this route's path to
 /// apply its smaller body cap before reading a body.
@@ -638,6 +655,7 @@ use document_gates::*;
 use document_target::active_document;
 use live_timing::{LiveTiming, UiSender};
 use request_ticket::Ticket;
+use save_in_place_route::SaveAck;
 use ui_requests::*;
 
 #[cfg(test)]
@@ -661,6 +679,9 @@ mod pump_outcome_tests;
 #[cfg(test)]
 #[path = "mcp_live/request_deadline_tests.rs"]
 mod request_deadline_tests;
+#[cfg(test)]
+#[path = "mcp_live/save_in_place_route_tests.rs"]
+mod save_in_place_route_tests;
 #[cfg(test)]
 #[path = "mcp_live_tests.rs"]
 mod tests;

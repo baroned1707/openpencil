@@ -42,7 +42,7 @@ impl WidgetHostNative {
         };
         let text = op_editor_ui::widgets::projects_panel_flow::text(&self.editor_state);
         let title = dock_flow::title(&self.editor_state);
-        let widget = dock_flow::widget(&self.editor_state, &text, title);
+        let widget = dock_flow::widget(&self.editor_state, &text, title, self.now_ms);
         let mut cx = PaintCx { backend: frame };
         widget.paint(&mut cx, &layout, &self.theme);
     }
@@ -62,9 +62,20 @@ impl WidgetHostNative {
             return None;
         }
         let layout = self.projects_dock_layout(ctx.viewport_width, ctx.viewport_height)?;
-        match dock_flow::press(&mut self.editor_state, &layout, Point2D::new(x, y)) {
+        let had_rename = self.project_rename_active();
+        match dock_flow::press(
+            &mut self.editor_state,
+            &layout,
+            Point2D::new(x, y),
+            self.now_ms,
+        ) {
             DockPress::Missed => None,
             DockPress::Claimed => {
+                // A press that just opened a rename (a double click, the
+                // pencil) takes the keyboard from every other input.
+                if !had_rename {
+                    self.blur_inputs_for_project_rename();
+                }
                 self.mark_dirty();
                 Some(true)
             }
@@ -123,6 +134,10 @@ impl WidgetHostNative {
         true
     }
 }
+
+// The inline file rename's platform tail rides with the dock it renames in.
+#[path = "project_rename_input.rs"]
+mod project_rename_input;
 
 #[cfg(test)]
 #[path = "projects_dock_tests.rs"]

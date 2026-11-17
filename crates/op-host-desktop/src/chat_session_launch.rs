@@ -765,10 +765,10 @@ pub(crate) fn active_page_is_blank_starter_frame(state: &EditorState) -> bool {
     op_editor_core::blank_starter::active_page_is_blank_starter(state)
 }
 
-#[path = "chat_session_launch_providers.rs"]
-mod providers;
 #[path = "chat_session_launch_mcp.rs"]
 mod mcp;
+#[path = "chat_session_launch_providers.rs"]
+mod providers;
 pub use providers::ChatLaunchContext;
 pub(crate) use providers::{
     builtin_provider_with_tools, provider_for_selected_model, selected_cli_model_id,

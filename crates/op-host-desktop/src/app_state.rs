@@ -186,6 +186,8 @@ impl DesktopApp {
             },
             pending_session_restore,
             save_session: save_session::SaveSession::new(),
+            disk_baselines: Default::default(),
+            autosave_deferred: Vec::new(),
             collab_fork_saves: Vec::new(),
             error: None,
             runs: Default::default(),

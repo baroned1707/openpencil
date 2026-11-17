@@ -38,6 +38,10 @@ impl DesktopApp {
             panel.search_open || panel.generate_open
         };
         let prompt_center_open = self.host.editor_state().editor_ui.prompt_center.open;
+        // The Projects dock's inline file rename owns the keyboard: typed text,
+        // caret keys and clipboard chords reach it, every other shortcut is
+        // swallowed so none can touch the document behind it.
+        let rename_open = self.host.project_rename_active();
         let home_visible = self.host.home_visible();
         let home_composer_owns_keyboard = self
             .host
@@ -131,6 +135,19 @@ impl DesktopApp {
                 | NamedKey::ArrowUp
                 | NamedKey::ArrowDown,
             ) if prompt_center_open => consumed = true,
+            Key::Named(NamedKey::ArrowLeft | NamedKey::ArrowRight) if rename_open => {
+                let forward = matches!(logical_key, Key::Named(NamedKey::ArrowRight));
+                consumed = if self.zoom_modifier {
+                    self.host
+                        .apply_project_rename_edge(forward, self.shift_modifier)
+                } else {
+                    self.host
+                        .apply_project_rename_caret(forward, self.shift_modifier)
+                };
+            }
+            Key::Named(NamedKey::ArrowUp | NamedKey::ArrowDown) if rename_open => {
+                consumed = true;
+            }
             Key::Named(ref arrow) if self.scene_template_owns_arrow(arrow) => {
                 consumed = self.apply_scene_template_arrow(arrow);
             }
@@ -274,7 +291,7 @@ impl DesktopApp {
                         "x" => consumed = self.handle_cmd_cut(),
                         "v" => consumed = self.handle_cmd_paste(),
                         "a" => consumed = self.host.apply_select_all(),
-                        _ if image_popover_open => consumed = true,
+                        _ if image_popover_open || rename_open => consumed = true,
                         _ if settings_focused => {}
                         // Cmd+P mirrors the TopBar Preview button.
                         "p" => {
@@ -349,7 +366,7 @@ impl DesktopApp {
                             );
                             consumed = true;
                         }
-                        _ if image_popover_open => consumed = true,
+                        _ if image_popover_open || rename_open => consumed = true,
                         _ if settings_focused => {}
                         "z" => {
                             consumed = self.collab_runtime.reject_redo(&mut self.host)

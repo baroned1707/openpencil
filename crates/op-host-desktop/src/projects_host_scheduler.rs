@@ -105,6 +105,11 @@ pub(crate) struct ScanScheduler {
     status: BTreeMap<PathBuf, ScanStatus>,
     /// Bumped whenever `files` or `status` change, so the frame can tell.
     version: u64,
+    /// Renames made while a scan was already running: `(old, new, serial of
+    /// that scan)`. The running scan read the folder before the rename, so its
+    /// result still lists the old name; applying it must not bring the old row
+    /// back.
+    renamed: Vec<(PathBuf, PathBuf, u64)>,
 }
 
 impl ScanScheduler {
@@ -129,6 +134,7 @@ impl ScanScheduler {
             files: BTreeMap::new(),
             status: BTreeMap::new(),
             version: 0,
+            renamed: Vec::new(),
         }
     }
 
@@ -163,6 +169,24 @@ impl ScanScheduler {
         let had_listing = self.files.remove(root).is_some();
         let had_status = self.status.remove(root).is_some();
         if had_listing || had_status {
+            self.version += 1;
+        }
+    }
+
+    /// A listed file was renamed on disk: show the new name at once, in every
+    /// listing that holds the old one, instead of waiting for the next scan.
+    /// A scan already running read the folder before the rename, so its result
+    /// is patched the same way when it lands.
+    pub(crate) fn rename_listed(&mut self, old: &Path, new: &Path) {
+        let mut changed = false;
+        for files in self.files.values_mut() {
+            changed |= swap_listed(files, old, new);
+        }
+        if let Some(flight) = self.in_flight.as_ref() {
+            self.renamed
+                .push((old.to_path_buf(), new.to_path_buf(), flight.serial));
+        }
+        if changed {
             self.version += 1;
         }
     }
@@ -242,13 +266,21 @@ impl ScanScheduler {
         };
         match flight.results.try_recv() {
             Ok(results) => {
-                self.completed_serial = flight.serial;
+                let serial = flight.serial;
+                self.completed_serial = serial;
                 self.in_flight = None;
                 self.last_finished = Some(Instant::now());
-                for (root, listing) in results {
+                for (root, mut listing) in results {
+                    // A rename made after this scan started is not in what it read.
+                    for (old, new, after) in &self.renamed {
+                        if *after >= serial {
+                            swap_listed(&mut listing.files, old, new);
+                        }
+                    }
                     self.status.insert(root.clone(), listing.status);
                     self.files.insert(root, listing.files);
                 }
+                self.renamed.retain(|(_, _, after)| *after > serial);
                 self.version += 1;
                 true
             }
@@ -329,6 +361,20 @@ impl ScanScheduler {
         }
         self.version += 1;
     }
+}
+
+/// Replace `old` with `new` in a listing, unless `new` is already there.
+/// Returns whether the listing changed.
+fn swap_listed(files: &mut Vec<PathBuf>, old: &Path, new: &Path) -> bool {
+    let Some(at) = files.iter().position(|path| path == old) else {
+        return false;
+    };
+    if files.iter().any(|path| path == new) {
+        files.remove(at);
+    } else {
+        files[at] = new.to_path_buf();
+    }
+    true
 }
 
 #[cfg(test)]

@@ -585,6 +585,11 @@ pub fn lookup(key: &str) -> Option<&'static str> {
         "project.figConvertedTip" => "Buka file .op hasil konversi",
         "project.figFailedTip" => "Konversi gagal: {{reason}}. Klik untuk mencoba lagi.",
         "project.figConvertAllTip" => "Konversi setiap file .fig di sini ke .op di sampingnya",
+        "projects.rename" => "Ganti nama",
+        "projects.renamePlaceholder" => "Nama",
+        "projects.renameExists" => "Sudah ada file dengan nama itu",
+        "projects.renameInvalid" => "Nama ini tidak dapat digunakan",
+        "projects.renameFailed" => "Tidak dapat mengganti nama: {{reason}}",
         _ => return None,
     })
 }

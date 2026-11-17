@@ -49,6 +49,10 @@ mod fig_process;
 mod new_design;
 #[path = "projects_host_open.rs"]
 mod open;
+#[path = "projects_host_rename.rs"]
+mod rename;
+#[path = "projects_host_rename_fs.rs"]
+mod rename_fs;
 #[path = "projects_host_scan.rs"]
 mod scan;
 #[path = "projects_host_scan_tree.rs"]
@@ -428,6 +432,16 @@ impl DesktopApp {
     /// whether anything changed. Runs once per frame next to the tab strip.
     pub(crate) fn pump_projects(&mut self) -> bool {
         let mut changed = self.pump_fig_conversions();
+        // An inline rename whose row is gone (or under Home) must not keep the
+        // keyboard.
+        let ui = &mut self.host.editor_state_mut().editor_ui;
+        if ui.home.visible {
+            changed |= ui.projects_panel.cancel_rename();
+        }
+        changed |= ui.projects_panel.drop_hidden_rename();
+        // A rename the dock confirmed runs before the same frame's request: a
+        // click-away commit and the press that caused it arrive together.
+        changed |= self.pump_project_rename();
         if let Some(request) = self
             .host
             .editor_state_mut()
@@ -529,6 +543,21 @@ impl DesktopApp {
         }
     }
 
+    /// The project roots the dock lists. An inferred project inside an opened
+    /// folder is part of that folder, so it is not listed on its own.
+    pub(crate) fn shown_project_roots(&self) -> BTreeSet<PathBuf> {
+        let explicit_roots = self.documents.explicit_roots().snapshot();
+        self.projects_host
+            .known
+            .iter()
+            .filter(|root| {
+                explicit_roots.contains(root)
+                    || !explicit_roots.iter().any(|other| root.starts_with(other))
+            })
+            .cloned()
+            .collect()
+    }
+
     /// Mirror open documents and the disk into `editor_ui.projects_panel`.
     pub(crate) fn publish_projects(&mut self) -> bool {
         let open = self.open_docs();
@@ -552,17 +581,7 @@ impl DesktopApp {
             }
         }
         let explicit_roots = explicit.snapshot();
-        // An inferred project inside an opened folder is part of that folder.
-        let shown: BTreeSet<PathBuf> = self
-            .projects_host
-            .known
-            .iter()
-            .filter(|root| {
-                explicit_roots.contains(root)
-                    || !explicit_roots.iter().any(|other| root.starts_with(other))
-            })
-            .cloned()
-            .collect();
+        let shown = self.shown_project_roots();
         let window = self.window.as_ref();
         let state = &mut self.projects_host;
         state

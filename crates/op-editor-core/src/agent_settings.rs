@@ -317,6 +317,11 @@ pub struct AgentSettings {
     /// default so existing integrations keep working; turning it on stops the
     /// CLIs and agents whose configuration cannot carry a header. Persisted.
     pub mcp_require_token: bool,
+    /// Save a document to its own file when an agent run on it ends
+    /// successfully (see `autosave::should_autosave_after_run` in the desktop
+    /// host). On by default; read from the settings file only (no UI yet).
+    /// Persisted.
+    pub autosave_on_agent_run_end: bool,
     pub mcp_client_config_copied_at_ms: Option<u64>,
     pub hover_agent_settings_close: bool,
     pub hover_mcp_server_button: bool,
@@ -412,6 +417,7 @@ impl Default for AgentSettings {
             mcp_cli_enabled: [false; 13],
             mcp_lean_profile: false,
             mcp_require_token: false,
+            autosave_on_agent_run_end: true,
             mcp_client_config_copied_at_ms: None,
             hover_agent_settings_close: false,
             hover_mcp_server_button: false,

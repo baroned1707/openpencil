@@ -29,6 +29,10 @@ const TEXT: ProjectsPanelText<'static> = ProjectsPanelText {
     fig_converted_tip: "Open the converted .op file",
     fig_failed_tip: "Conversion failed: {{reason}}. Click to retry.",
     fig_convert_all_tip: "Convert every .fig file here to .op next to it",
+    rename: "Rename",
+    rename_placeholder: "Name",
+    rename_invalid: "This name can't be used",
+    rename_exists: "A file with that name already exists",
 };
 
 fn paint(
@@ -45,6 +49,8 @@ fn paint(
     ProjectsPanel {
         projects,
         hover,
+        rename: None,
+        now_ms: 0,
         text: &TEXT,
     }
     .paint(&mut cx, &layout, theme);
@@ -296,6 +302,8 @@ fn rows_scrolled_out_of_view_paint_nothing() {
     ProjectsPanel {
         projects: &projects,
         hover: None,
+        rename: None,
+        now_ms: 0,
         text: &TEXT,
     }
     .paint(&mut cx, &layout, &theme);

@@ -615,6 +615,9 @@ impl crate::DesktopApp {
             );
             return false;
         }
+        // The editor wrote this file: its state is the baseline the next
+        // in-place save (agent / autosave) is checked against.
+        self.disk_baselines.record_from_disk(&path);
 
         let live_epoch = self.host.document_epoch();
         let live_generation = self.host.editor_state().document_generation();

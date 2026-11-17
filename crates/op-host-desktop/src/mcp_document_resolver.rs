@@ -7,10 +7,13 @@
 //! lens (`with_parked_document`), so an agent can edit a document that is not on
 //! screen without touching the one that is.
 
+use crate::disk_baseline_host::DiskBaselines;
 use crate::document_registry::DocumentRegistry;
 use op_editor_core::{agent_indicators, DocumentId, EditorState};
 use op_host_native::WidgetHostNative;
-use op_host_services::mcp_live::{DocumentListing, DocumentResolver, ResolveError};
+use op_host_services::mcp_live::{
+    DocumentListing, DocumentResolver, InPlaceSaveTarget, ResolveError,
+};
 
 /// One pump's view of the desktop: the host showing the on-screen document,
 /// the registry holding every other open document, and a listing taken at the
@@ -19,6 +22,10 @@ pub(crate) struct DesktopDocumentResolver<'a> {
     host: &'a mut WidgetHostNative,
     documents: &'a mut DocumentRegistry,
     listings: Vec<DocumentListing>,
+    /// What the editor recorded of each open file, and whether a Cmd+S write is
+    /// still running. Absent (a test's bare resolver), the trait default
+    /// applies: the file as it is now is the baseline.
+    save_context: Option<(&'a DiskBaselines, bool)>,
 }
 
 impl<'a> DesktopDocumentResolver<'a> {
@@ -31,7 +38,18 @@ impl<'a> DesktopDocumentResolver<'a> {
             host,
             documents,
             listings,
+            save_context: None,
         }
+    }
+
+    /// Answer in-place save questions from the editor's own records.
+    pub(crate) fn with_save_context(
+        mut self,
+        baselines: &'a DiskBaselines,
+        save_in_flight: bool,
+    ) -> Self {
+        self.save_context = Some((baselines, save_in_flight));
+        self
     }
 }
 
@@ -48,6 +66,28 @@ fn lookup(listings: &[DocumentListing], id: DocumentId) -> Result<bool, ResolveE
 impl DocumentResolver for DesktopDocumentResolver<'_> {
     fn documents(&self) -> Vec<DocumentListing> {
         self.listings.clone()
+    }
+
+    fn in_place_save_target(&self, id: DocumentId) -> InPlaceSaveTarget {
+        let path = self
+            .listings
+            .iter()
+            .find(|listing| listing.id == id)
+            .and_then(|listing| listing.path.clone());
+        let (baseline, save_in_flight) = match (&self.save_context, path.as_deref()) {
+            (Some((baselines, in_flight)), Some(path)) => (baselines.get(path), *in_flight),
+            (Some((_, in_flight)), None) => (None, *in_flight),
+            (None, Some(path)) => (
+                op_host_services::disk_fingerprint::DiskFingerprint::capture(path).ok(),
+                false,
+            ),
+            (None, None) => (None, false),
+        };
+        InPlaceSaveTarget {
+            path,
+            baseline,
+            save_in_flight,
+        }
     }
 
     fn with_document(

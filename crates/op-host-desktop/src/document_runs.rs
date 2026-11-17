@@ -9,6 +9,7 @@
 //! frame ([`pump_runs`]), reaching a parked document through
 //! `WidgetHostNative::with_parked_document`.
 
+use crate::agent_run_autosave::RunEnd;
 use crate::chat_session;
 use crate::design_loop_indicator::{
     pump_design_session_indicator, pump_indicator, DesignLoopIndicator,
@@ -51,12 +52,20 @@ pub(crate) struct DocumentRuns {
     /// Edit > Revert Last Agent Run. Survives the run (and a Stop); see
     /// `run_checkpoint`.
     pub checkpoint: Option<crate::run_checkpoint::RunCheckpoint>,
+    /// How the last run ended, until the host takes it (once per frame) to
+    /// decide on an autosave (`agent_run_autosave`).
+    pub run_end: Option<RunEnd>,
 }
 
 impl DocumentRuns {
     /// Whether any session of this document is still running.
     pub fn is_live(&self) -> bool {
         self.current_chat.is_some() || self.current_design.is_some() || !self.sub_agents.is_empty()
+    }
+
+    /// How the run that just ended finished, once.
+    pub fn take_run_end(&mut self) -> Option<RunEnd> {
+        self.run_end.take()
     }
 
     /// The user has looked at the document: a finished run no longer asks for
@@ -128,6 +137,8 @@ impl DocumentRuns {
         }
         host.mark_editor_state_dirty();
         self.status = DocumentTabStatus::Idle;
+        // Partial work: never saved on the strength of this run.
+        self.run_end = Some(RunEnd::Cancelled);
     }
 }
 
@@ -193,6 +204,13 @@ pub(crate) fn pump_runs(
     // flight the tab binding is stale (a fresh turn captures the active tab).
     let finished = was_live && !runs.is_live();
     let failed = finished && run_tab_failed(host.editor_state(), runs.chat_running_tab);
+    if finished {
+        runs.run_end = Some(if failed {
+            RunEnd::Failed
+        } else {
+            RunEnd::Succeeded
+        });
+    }
     if !runs.is_live() {
         runs.chat_running_tab = None;
     }

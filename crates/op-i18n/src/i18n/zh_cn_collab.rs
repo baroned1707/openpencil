@@ -585,6 +585,11 @@ pub fn lookup(key: &str) -> Option<&'static str> {
         "project.figConvertedTip" => "打开已转换的 .op 文件",
         "project.figFailedTip" => "转换失败：{{reason}}。点击重试。",
         "project.figConvertAllTip" => "将这里的每个 .fig 文件转换为其旁边的 .op",
+        "projects.rename" => "重命名",
+        "projects.renamePlaceholder" => "名称",
+        "projects.renameExists" => "已存在同名文件",
+        "projects.renameInvalid" => "无法使用这个名称",
+        "projects.renameFailed" => "无法重命名: {{reason}}",
         _ => return None,
     })
 }

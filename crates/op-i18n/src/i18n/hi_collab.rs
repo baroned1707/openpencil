@@ -589,6 +589,11 @@ pub fn lookup(key: &str) -> Option<&'static str> {
         "project.figConvertedTip" => "बदली गई .op फ़ाइल खोलें",
         "project.figFailedTip" => "रूपांतरण विफल: {{reason}}। दोबारा कोशिश करने के लिए क्लिक करें।",
         "project.figConvertAllTip" => "यहाँ की हर .fig फ़ाइल को उसके बगल में .op में बदलें",
+        "projects.rename" => "नाम बदलें",
+        "projects.renamePlaceholder" => "नाम",
+        "projects.renameExists" => "इस नाम की फ़ाइल पहले से मौजूद है",
+        "projects.renameInvalid" => "इस नाम का उपयोग नहीं किया जा सकता",
+        "projects.renameFailed" => "नाम नहीं बदला जा सका: {{reason}}",
         _ => return None,
     })
 }

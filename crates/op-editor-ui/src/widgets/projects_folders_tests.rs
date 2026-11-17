@@ -37,6 +37,10 @@ const TEXT: ProjectsPanelText<'static> = ProjectsPanelText {
     fig_converted_tip: "Open the converted .op file",
     fig_failed_tip: "Conversion failed: {{reason}}. Click to retry.",
     fig_convert_all_tip: "Convert every .fig file here to .op next to it",
+    rename: "Rename",
+    rename_placeholder: "Name",
+    rename_invalid: "This name can't be used",
+    rename_exists: "A file with that name already exists",
 };
 
 fn in_folder(label: &str, folder: &str) -> op_editor_core::ProjectFileView {
@@ -116,7 +120,7 @@ fn pressing_a_folder_header_asks_the_host_to_fold_it() {
     let at = Point2D::new(rect.origin.x + 40.0, rect.origin.y + rect.size.y / 2.0);
     projects_panel_flow::cursor_move(&mut state, &layout, at);
     assert_eq!(
-        projects_panel_flow::press(&mut state, &layout, at),
+        projects_panel_flow::press(&mut state, &layout, at, 0),
         ProjectsPress::Claimed(Some(ProjectRowTarget::Folder(0, 3)))
     );
     assert_eq!(
@@ -174,13 +178,13 @@ fn close_and_refresh_buttons_hit_test_and_record_their_requests() {
     );
 
     projects_panel_flow::cursor_move(&mut state, &layout, centre(close));
-    projects_panel_flow::press(&mut state, &layout, centre(close));
+    projects_panel_flow::press(&mut state, &layout, centre(close), 0);
     assert_eq!(
         state.editor_ui.projects_panel.pending_request,
         Some(ProjectRequest::CloseProject("/work/repo".into()))
     );
     projects_panel_flow::cursor_move(&mut state, &layout, centre(refresh));
-    projects_panel_flow::press(&mut state, &layout, centre(refresh));
+    projects_panel_flow::press(&mut state, &layout, centre(refresh), 0);
     assert_eq!(
         state.editor_ui.projects_panel.pending_request,
         Some(ProjectRequest::RefreshProject("/work/repo".into()))
@@ -194,7 +198,7 @@ fn a_press_that_never_saw_the_header_hovered_is_a_header_press_not_a_close() {
     let close = layout.row(RowKind::Header(0)).unwrap().close.unwrap();
     let at = Point2D::new(close.origin.x + 5.0, close.origin.y + 5.0);
     // No hover first: a synthesized click must not close a project.
-    projects_panel_flow::press(&mut state, &layout, at);
+    projects_panel_flow::press(&mut state, &layout, at, 0);
     assert_eq!(
         state.editor_ui.projects_panel.pending_request,
         Some(ProjectRequest::ToggleProject("/work/repo".into()))
@@ -251,6 +255,8 @@ fn paint_list(projects: &[ProjectView], hover: Option<ProjectRowTarget>) -> Capt
     ProjectsPanel {
         projects,
         hover,
+        rename: None,
+        now_ms: 0,
         text: &TEXT,
     }
     .paint(&mut cx, &layout, &Theme::dark());
@@ -330,7 +336,7 @@ fn the_empty_list_has_one_open_project_button_that_requests_the_picker() {
     let button = layout.empty_button.expect("the empty list has a button");
     let at = Point2D::new(button.origin.x + 10.0, button.origin.y + 10.0);
     assert_eq!(layout.hit(at), Some(ProjectRowTarget::OpenProject));
-    projects_panel_flow::press(&mut state, &layout, at);
+    projects_panel_flow::press(&mut state, &layout, at, 0);
     assert_eq!(
         state.editor_ui.projects_panel.pending_request,
         Some(ProjectRequest::OpenProjectPicker)
@@ -375,7 +381,7 @@ fn clicking_the_empty_strips_folder_plus_opens_the_picker_and_its_chevron_unfold
     dock_flow::cursor_move(&mut state, &layout, at);
     assert!(state.editor_ui.projects_panel.open_project_hover);
     assert_eq!(
-        dock_flow::press(&mut state, &layout, at),
+        dock_flow::press(&mut state, &layout, at, 0),
         DockPress::Claimed
     );
     assert_eq!(
@@ -388,7 +394,7 @@ fn clicking_the_empty_strips_folder_plus_opens_the_picker_and_its_chevron_unfold
     );
 
     let chevron = Point2D::new(layout.toggle.origin.x + 5.0, layout.toggle.origin.y + 5.0);
-    dock_flow::press(&mut state, &layout, chevron);
+    dock_flow::press(&mut state, &layout, chevron, 0);
     assert!(
         state.editor_ui.projects_panel.is_open(),
         "the chevron unfolds the empty dock"
@@ -415,7 +421,7 @@ fn the_open_dock_header_has_an_open_project_button_beside_the_chevron() {
     let at = Point2D::new(open.origin.x + 4.0, open.origin.y + 4.0);
     assert_eq!(layout.hit(at), Some(DockHit::OpenProject));
     assert_eq!(
-        dock_flow::press(&mut state, &layout, at),
+        dock_flow::press(&mut state, &layout, at, 0),
         DockPress::Claimed
     );
     assert_eq!(
@@ -437,6 +443,8 @@ fn the_dock_paints_the_folder_plus_glyph_where_it_offers_open_project() {
             list: ProjectsPanel {
                 projects,
                 hover: None,
+                rename: None,
+                now_ms: 0,
                 text: &TEXT,
             },
             title: "Projects",

@@ -49,7 +49,7 @@ fn dock_click_on_file_requests_switch_or_open() {
     // `checkout.op` is open in document 7; `cart.op` is only on disk.
     let open_file = row_point(&layout, RowKind::File(0, 0));
     cursor_move(&mut state, &layout, open_file);
-    assert_eq!(press(&mut state, &layout, open_file), DockPress::Claimed);
+    assert_eq!(press(&mut state, &layout, open_file, 0), DockPress::Claimed);
     assert_eq!(
         state.editor_ui.projects_panel.pending_request,
         Some(ProjectRequest::SwitchTo(op_editor_core::DocumentId(7)))
@@ -57,7 +57,7 @@ fn dock_click_on_file_requests_switch_or_open() {
 
     let disk_file = row_point(&layout, RowKind::File(0, 1));
     cursor_move(&mut state, &layout, disk_file);
-    assert_eq!(press(&mut state, &layout, disk_file), DockPress::Claimed);
+    assert_eq!(press(&mut state, &layout, disk_file, 0), DockPress::Claimed);
     assert_eq!(
         state.editor_ui.projects_panel.pending_request,
         Some(ProjectRequest::OpenFile(
@@ -73,7 +73,7 @@ fn collapse_chevron_toggles_dock_open() {
     let layout = dock(&state);
     let chevron = center(layout.toggle);
     assert_eq!(layout.hit(chevron), Some(DockHit::Toggle));
-    assert_eq!(press(&mut state, &layout, chevron), DockPress::Claimed);
+    assert_eq!(press(&mut state, &layout, chevron, 0), DockPress::Claimed);
     assert!(
         !state.editor_ui.projects_panel.dock_open,
         "chevron folds it"
@@ -87,7 +87,7 @@ fn collapse_chevron_toggles_dock_open() {
         strip.rect.origin.x + 3.0,
         strip.rect.origin.y + strip.rect.size.y - 40.0,
     );
-    assert_eq!(press(&mut state, &strip, anywhere), DockPress::Claimed);
+    assert_eq!(press(&mut state, &strip, anywhere, 0), DockPress::Claimed);
     assert!(
         state.editor_ui.projects_panel.dock_open,
         "strip re-opens it"
@@ -100,17 +100,17 @@ fn a_press_on_the_header_or_bare_dock_is_swallowed_without_a_request() {
     let layout = dock(&state);
     let header = Point2D::new(layout.rect.origin.x + 20.0, layout.rect.origin.y + 4.0);
     assert_eq!(layout.hit(header), Some(DockHit::Header));
-    assert_eq!(press(&mut state, &layout, header), DockPress::Claimed);
+    assert_eq!(press(&mut state, &layout, header, 0), DockPress::Claimed);
     let bare = Point2D::new(
         layout.rect.origin.x + 20.0,
         layout.rect.origin.y + layout.rect.size.y - 8.0,
     );
-    assert_eq!(press(&mut state, &layout, bare), DockPress::Claimed);
+    assert_eq!(press(&mut state, &layout, bare, 0), DockPress::Claimed);
     assert_eq!(state.editor_ui.projects_panel.pending_request, None);
     assert!(state.editor_ui.projects_panel.dock_open);
 
     let off = Point2D::new(layout.rect.origin.x - 1.0, 300.0);
-    assert_eq!(press(&mut state, &layout, off), DockPress::Missed);
+    assert_eq!(press(&mut state, &layout, off, 0), DockPress::Missed);
 }
 
 fn many_projects() -> Vec<ProjectView> {

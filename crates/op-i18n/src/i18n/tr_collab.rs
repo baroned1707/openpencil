@@ -585,6 +585,11 @@ pub fn lookup(key: &str) -> Option<&'static str> {
         "project.figConvertedTip" => "Dönüştürülen .op dosyasını aç",
         "project.figFailedTip" => "Dönüştürme başarısız: {{reason}}. Yeniden denemek için tıkla.",
         "project.figConvertAllTip" => "Buradaki her .fig dosyasını yanına .op olarak dönüştür",
+        "projects.rename" => "Yeniden adlandır",
+        "projects.renamePlaceholder" => "Ad",
+        "projects.renameExists" => "Bu ada sahip bir dosya zaten var",
+        "projects.renameInvalid" => "Bu ad kullanılamaz",
+        "projects.renameFailed" => "Yeniden adlandırılamadı: {{reason}}",
         _ => return None,
     })
 }

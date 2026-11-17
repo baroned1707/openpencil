@@ -73,6 +73,7 @@ pub mod design_md_llm;
 pub mod design_md_llm_error;
 pub mod design_session;
 pub mod design_variants;
+pub mod disk_fingerprint;
 pub mod doc_io;
 pub mod export;
 pub mod export_batch;
@@ -124,6 +125,7 @@ pub mod reference_context_error;
 #[cfg(all(test, not(target_os = "windows")))]
 mod retained_mobile_detail_flow_tests;
 pub mod run_quality;
+pub mod save_in_place;
 pub mod site_import;
 pub mod site_import_error;
 pub mod site_import_route;

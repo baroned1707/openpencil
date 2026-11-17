@@ -16,8 +16,8 @@
 //! `ProjectView` rows.
 
 use op_editor_core::{
-    DocumentTabStatus, ProjectFileKind, ProjectFileView, ProjectRowTarget, ProjectScanState,
-    ProjectView,
+    DocumentTabStatus, ProjectFileKind, ProjectFileView, ProjectRenameState, ProjectRowTarget,
+    ProjectScanState, ProjectView,
 };
 
 use crate::theme::Theme;
@@ -31,8 +31,12 @@ use crate::{Color, Point2D, Rect, TextLayout};
 
 #[path = "projects_panel_fig.rs"]
 mod fig;
+#[path = "projects_panel_rename.rs"]
+mod rename;
 #[path = "projects_panel_rows.rs"]
 mod rows;
+
+pub(crate) use rename::rename_field_rect;
 
 const CHEVRON_SIZE: f32 = 14.0;
 const CHEVRON_PAD_LEFT: f32 = 6.0;
@@ -47,10 +51,10 @@ const HINT_MIN_WIDTH: f32 = 48.0;
 /// header's name, past the chevron.
 pub(crate) const FILE_INDENT: f32 = CHEVRON_PAD_LEFT + CHEVRON_SIZE + 6.0;
 /// Extra indent of the files under a folder sub-header.
-const FOLDER_FILE_INDENT: f32 = 14.0;
+pub(crate) const FOLDER_FILE_INDENT: f32 = 14.0;
 /// Width of the leading slot that holds a file's status dot, so labels line
 /// up whether or not a file has one.
-const STATUS_SLOT: f32 = 14.0;
+pub(crate) const STATUS_SLOT: f32 = 14.0;
 const STATUS_DOT: f32 = 6.0;
 const DIRTY_DOT: f32 = 5.0;
 const DIRTY_GAP: f32 = 6.0;
@@ -93,12 +97,23 @@ pub struct ProjectsPanelText<'a> {
     pub fig_converted_tip: &'a str,
     pub fig_failed_tip: &'a str,
     pub fig_convert_all_tip: &'a str,
+    /// Tooltip of a file row's pencil button.
+    pub rename: &'a str,
+    /// Shown in the rename field while it is empty.
+    pub rename_placeholder: &'a str,
+    /// The line under the field: a name the rules refuse, or one already taken.
+    pub rename_invalid: &'a str,
+    pub rename_exists: &'a str,
 }
 
 /// The widget for one frame.
 pub struct ProjectsPanel<'a> {
     pub projects: &'a [ProjectView],
     pub hover: Option<ProjectRowTarget>,
+    /// The file name being edited, when a rename is open.
+    pub rename: Option<&'a ProjectRenameState>,
+    /// Frame time, for the caret blink.
+    pub now_ms: u64,
     pub text: &'a ProjectsPanelText<'a>,
 }
 
@@ -147,6 +162,7 @@ impl ProjectsPanel<'_> {
                 }
             }
         }
+        self.paint_rename_error(cx, theme, layout, surface);
         cx.backend.restore();
         self.paint_button_tooltip(cx, theme, layout);
         self.paint_fig_tooltip(cx, theme, layout);
@@ -313,8 +329,16 @@ impl ProjectsPanel<'_> {
             self.paint_fig_file(cx, theme, row, file, project, index);
             return;
         }
+        if let Some(edit) = self.rename.filter(|edit| edit.path == file.path) {
+            self.paint_rename_row(cx, theme, row, file, edit);
+            return;
+        }
         let rect = row.rect;
-        let hovered = self.hover == Some(ProjectRowTarget::File(project, index));
+        let hovered = matches!(
+            self.hover,
+            Some(ProjectRowTarget::File(p, f) | ProjectRowTarget::RenameFile(p, f))
+                if p == project && f == index
+        );
         if file.active {
             cx.backend.fill_rect(rect, theme.row_selected_primary);
         } else if hovered {
@@ -351,7 +375,13 @@ impl ProjectsPanel<'_> {
         } else {
             0.0
         };
-        let max = (rect.origin.x + rect.size.x - ROW_PAD_RIGHT - label_x - bullet_span).max(0.0);
+        // The pencil replaces the right edge of a hovered row, so the label
+        // stops short of it.
+        let pencil = row.rename.filter(|_| hovered);
+        let right_limit = pencil.map_or(rect.origin.x + rect.size.x - ROW_PAD_RIGHT, |button| {
+            button.origin.x - NAME_GAP
+        });
+        let max = (right_limit - label_x - bullet_span).max(0.0);
         let label = text_metrics::fit_chrome(cx.backend, &file.label, max, FILE_FONT);
         let width = text_metrics::measure_chrome(cx.backend, &label, FILE_FONT);
         draw_label(
@@ -376,6 +406,10 @@ impl ProjectsPanel<'_> {
                 DIRTY_DOT / 2.0,
                 text_color,
             );
+        }
+        if let Some(button) = pencil {
+            let hot = self.hover == Some(ProjectRowTarget::RenameFile(project, index));
+            paint_header_button(cx, theme, button, Icon::Pencil, hot);
         }
     }
 

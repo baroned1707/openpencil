@@ -601,6 +601,11 @@ pub fn lookup(key: &str) -> Option<&'static str> {
         "project.figConvertedTip" => "変換した .op ファイルを開く",
         "project.figFailedTip" => "変換に失敗しました: {{reason}}。クリックで再試行します。",
         "project.figConvertAllTip" => "ここにあるすべての .fig を隣の .op に変換",
+        "projects.rename" => "名前を変更",
+        "projects.renamePlaceholder" => "名前",
+        "projects.renameExists" => "同じ名前のファイルがすでにあります",
+        "projects.renameInvalid" => "この名前は使用できません",
+        "projects.renameFailed" => "名前を変更できませんでした: {{reason}}",
         _ => return None,
     })
 }

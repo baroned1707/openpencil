@@ -587,6 +587,11 @@ pub fn lookup(key: &str) -> Option<&'static str> {
         "project.figConvertedTip" => "เปิดไฟล์ .op ที่แปลงแล้ว",
         "project.figFailedTip" => "แปลงไม่สำเร็จ: {{reason}} คลิกเพื่อลองอีกครั้ง",
         "project.figConvertAllTip" => "แปลงทุกไฟล์ .fig ที่นี่เป็น .op ไว้ข้างไฟล์",
+        "projects.rename" => "เปลี่ยนชื่อ",
+        "projects.renamePlaceholder" => "ชื่อ",
+        "projects.renameExists" => "มีไฟล์ชื่อนี้อยู่แล้ว",
+        "projects.renameInvalid" => "ไม่สามารถใช้ชื่อนี้ได้",
+        "projects.renameFailed" => "เปลี่ยนชื่อไม่สำเร็จ: {{reason}}",
         _ => return None,
     })
 }

@@ -174,6 +174,12 @@ impl FigJobs {
         true
     }
 
+    /// Whether a running conversion is writing `path` (its `.op` output), so
+    /// the file must not be renamed or touched until it ends.
+    pub(crate) fn is_writing(&self, path: &Path) -> bool {
+        self.running.iter().any(|active| active.output == path)
+    }
+
     /// Whether anything is queued or running (the host keeps waking while so).
     pub(crate) fn has_work(&self) -> bool {
         !self.queue.is_empty() || !self.running.is_empty()

@@ -615,6 +615,11 @@ pub fn lookup(key: &str) -> Option<&'static str> {
         "project.figConvertedTip" => "Открыть сконвертированный файл .op",
         "project.figFailedTip" => "Не удалось конвертировать: {{reason}}. Нажмите, чтобы повторить.",
         "project.figConvertAllTip" => "Конвертировать каждый файл .fig здесь в .op рядом с ним",
+        "projects.rename" => "Переименовать",
+        "projects.renamePlaceholder" => "Имя",
+        "projects.renameExists" => "Файл с таким именем уже существует",
+        "projects.renameInvalid" => "Это имя использовать нельзя",
+        "projects.renameFailed" => "Не удалось переименовать: {{reason}}",
         _ => return None,
     })
 }

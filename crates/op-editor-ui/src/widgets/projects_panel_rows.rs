@@ -259,16 +259,22 @@ impl ProjectsPanel<'_> {
         theme: &Theme,
         layout: &ProjectsPanelLayout,
     ) {
-        let (project, label) = match self.hover {
-            Some(ProjectRowTarget::Close(project)) => (project, self.text.close),
-            Some(ProjectRowTarget::Refresh(project)) => (project, self.text.refresh),
+        let (kind, label) = match self.hover {
+            Some(ProjectRowTarget::Close(project)) => (RowKind::Header(project), self.text.close),
+            Some(ProjectRowTarget::Refresh(project)) => {
+                (RowKind::Header(project), self.text.refresh)
+            }
+            Some(ProjectRowTarget::RenameFile(project, file)) => {
+                (RowKind::File(project, file), self.text.rename)
+            }
             _ => return,
         };
-        let Some(row) = layout.row(RowKind::Header(project)) else {
+        let Some(row) = layout.row(kind) else {
             return;
         };
         let anchor = match self.hover {
             Some(ProjectRowTarget::Close(_)) => row.close,
+            Some(ProjectRowTarget::RenameFile(..)) => row.rename,
             _ => row.refresh,
         };
         let Some(anchor) = anchor else { return };

@@ -13,6 +13,7 @@
 mod a11y;
 mod acp_agent_probe_host;
 mod agent_connect_store;
+mod agent_run_autosave;
 mod app_handler;
 mod app_poll;
 mod app_state;
@@ -39,6 +40,7 @@ mod design_loop_indicator;
 mod design_md_error;
 mod design_md_host;
 mod design_session;
+mod disk_baseline_host;
 mod document_registry;
 mod document_runs;
 mod document_runs_host;
@@ -70,6 +72,7 @@ mod image_panel_host;
 mod image_search_session;
 mod ime_window;
 mod import_target_host;
+mod in_place_save_host;
 mod keyboard_chat_tabs;
 mod keyboard_clipboard_payload;
 mod keyboard_input;
@@ -270,6 +273,12 @@ struct DesktopApp {
     /// saves serialized prevents an older snapshot from committing after a
     /// newer Save request to the same path.
     save_session: save_session::SaveSession,
+    /// The on-disk state of every open tab's file when the editor last read or
+    /// wrote it; what an agent's in-place save is checked against.
+    disk_baselines: disk_baseline_host::DiskBaselines,
+    /// Documents whose last agent run ended successfully but whose autosave is
+    /// waiting for the editor to be free (`agent_run_autosave`).
+    autosave_deferred: Vec<agent_run_autosave::PendingAutosave>,
     /// Generation-scoped Save-As requests started while collaboration was
     /// bound. A successful live acknowledgement detaches into the saved fork.
     collab_fork_saves: Vec<(u64, u64, u64, PathBuf)>,

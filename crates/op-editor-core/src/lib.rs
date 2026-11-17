@@ -144,6 +144,8 @@ pub mod path_edit;
 pub mod pen;
 pub mod pen_node_ext;
 pub mod preview_slideshow;
+pub mod project_rename;
+pub mod project_rename_keyboard;
 pub mod project_tree;
 pub mod prompt_center_catalog;
 pub mod prompt_center_keyboard;
@@ -167,6 +169,9 @@ pub mod share_routes;
 pub mod square_chrome;
 pub use document_scope::{DocumentScope, SessionDocument};
 pub use document_tabs::{DocumentId, DocumentTabRequest, DocumentTabStatus, DocumentTabView};
+pub use project_rename::{
+    ProjectRenameRequest, ProjectRenameState, RenameConfirm, RenameNameError,
+};
 pub use project_tree::{
     in_folder_tree, FigStatus, ProjectFileKind, ProjectFileView, ProjectRequest, ProjectRowTarget,
     ProjectScanState, ProjectView,

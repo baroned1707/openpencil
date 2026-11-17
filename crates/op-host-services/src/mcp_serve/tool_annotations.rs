@@ -123,6 +123,13 @@ const IDEMPOTENT_WRITES: &[&str] = &[
     "upsert_variables",
 ];
 
+/// Tools the table calls `Read` that write a file and whose repetition with
+/// the same arguments leaves the same file (`save_document`: a copy to the
+/// same `filePath`, or the document saved to its own file, twice). Beyond
+/// [`READ_BUT_WRITES_ELSEWHERE`] they are advertised idempotent; they are not
+/// in [`IDEMPOTENT_WRITES`] because that list is checked against `Write` rows.
+const IDEMPOTENT_FILE_WRITES: &[&str] = &["save_document"];
+
 /// Tools whose result can be large on purpose (whole subtrees, generated
 /// source, the design.md), so Claude Code should not persist it to a file
 /// at its 50,000-character default. The documented ceiling is 500,000.
@@ -166,7 +173,9 @@ pub(super) fn hints_for(name: &str) -> ToolHints {
             && (profile.surface == ToolSurface::InMemory
                 || READS_THAT_ONLY_READ_OUTSIDE_THE_DOCUMENT.contains(&name)),
         destructive: DESTRUCTIVE_WRITES.contains(&name),
-        idempotent: name.starts_with("set_") || IDEMPOTENT_WRITES.contains(&name),
+        idempotent: name.starts_with("set_")
+            || IDEMPOTENT_WRITES.contains(&name)
+            || IDEMPOTENT_FILE_WRITES.contains(&name),
         open_world: profile.surface == ToolSurface::OutboundNetwork,
     }
 }

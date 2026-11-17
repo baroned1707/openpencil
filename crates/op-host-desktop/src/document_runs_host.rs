@@ -62,21 +62,42 @@ impl DesktopApp {
     /// others through the lens. Returns whether the screen needs a repaint: a
     /// parked document's streaming does not, only a change of its status does.
     pub(crate) fn pump_document_runs(&mut self) -> bool {
+        // Every open file has its recorded state before any run can change a
+        // document, so an autosave at a run's end is checked against it.
+        self.sweep_disk_baselines();
         let viewport = (self.viewport_width, self.viewport_height);
         let active = self.documents.active_index();
+        let mut ended = Vec::new();
         let mut changed = self
-            .with_slot_runs(active, |host, runs| pump_runs(host, runs, viewport, true))
+            .with_slot_runs(active, |host, runs| {
+                let changed = pump_runs(host, runs, viewport, true);
+                (changed, runs.take_run_end())
+            })
+            .map(|(changed, end)| {
+                ended.extend(end.map(|end| (self.documents.active_id(), end)));
+                changed
+            })
             .unwrap_or(false);
         for index in self.documents.parked_with_live_runs() {
-            let status = self
-                .with_slot_runs(index, |host, runs| {
-                    pump_runs(host, runs, viewport, false);
-                    runs.status
-                })
-                .unwrap_or(DocumentTabStatus::Running);
+            let result = self.with_slot_runs(index, |host, runs| {
+                pump_runs(host, runs, viewport, false);
+                (runs.status, runs.take_run_end())
+            });
+            let status = match result {
+                Some((status, end)) => {
+                    if let (Some(end), Some(id)) = (end, self.documents.id_at(index)) {
+                        ended.push((id, end));
+                    }
+                    status
+                }
+                None => DocumentTabStatus::Running,
+            };
             changed |= status != DocumentTabStatus::Running;
         }
         self.sync_active_slot();
+        // Finished agent work is saved to its file; a document whose save had
+        // to wait is retried here too.
+        changed |= self.autosave_after_runs(ended);
         changed
     }
 

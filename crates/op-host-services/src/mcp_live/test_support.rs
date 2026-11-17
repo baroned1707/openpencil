@@ -3,6 +3,8 @@
 //! that posts one request through the real `serve_connection` router.
 
 use super::*;
+use crate::disk_fingerprint::DiskFingerprint;
+use crate::save_in_place::SavedInPlace;
 use std::path::PathBuf;
 
 pub(super) const TEST_PORT: u16 = 51240;
@@ -71,6 +73,12 @@ pub(super) struct TestDocument {
 pub(super) struct TestResolver {
     pub(super) documents: Vec<TestDocument>,
     pub(super) lend_parked: bool,
+    /// The files as the host last read or wrote them. `None` keeps the trait
+    /// default (the file as it is now is the baseline), so a test that wants
+    /// the disk-change guard calls [`TestResolver::track_baselines`].
+    pub(super) baselines: Option<std::collections::HashMap<PathBuf, DiskFingerprint>>,
+    /// A Cmd+S write is still running, as the host reports it.
+    pub(super) save_in_flight: bool,
 }
 
 impl TestResolver {
@@ -87,6 +95,8 @@ impl TestResolver {
                 status: op_editor_core::DocumentTabStatus::Idle,
             }],
             lend_parked: false,
+            baselines: None,
+            save_in_flight: false,
         }
     }
 
@@ -106,6 +116,8 @@ impl TestResolver {
                 })
                 .collect(),
             lend_parked: false,
+            baselines: None,
+            save_in_flight: false,
         }
     }
 
@@ -114,6 +126,18 @@ impl TestResolver {
             .iter_mut()
             .find(|document| document.id == DocumentId(id))
             .expect("test document")
+    }
+
+    /// Record the file of every bound document as it is now, and from here on
+    /// report that record (updated by each in-place save), like the desktop.
+    pub(super) fn track_baselines(&mut self) {
+        let map = self
+            .documents
+            .iter()
+            .filter_map(|document| document.path.clone())
+            .filter_map(|path| Some((path.clone(), DiskFingerprint::capture(&path).ok()?)))
+            .collect();
+        self.baselines = Some(map);
     }
 
     /// What the desktop does after a pump that created a file: bind the path
@@ -144,6 +168,25 @@ impl DocumentResolver for TestResolver {
                 nonce: None,
             })
             .collect()
+    }
+
+    fn in_place_save_target(&self, id: DocumentId) -> InPlaceSaveTarget {
+        let path = self
+            .documents
+            .iter()
+            .find(|document| document.id == id)
+            .and_then(|document| document.path.clone());
+        let baseline = match &self.baselines {
+            Some(map) => path.as_ref().and_then(|path| map.get(path).copied()),
+            None => path
+                .as_deref()
+                .and_then(|path| DiskFingerprint::capture(path).ok()),
+        };
+        InPlaceSaveTarget {
+            path,
+            baseline,
+            save_in_flight: self.save_in_flight,
+        }
     }
 
     fn with_document(
@@ -197,6 +240,8 @@ pub(super) type AfterSnapshot = Box<dyn FnOnce(&mut TestResolver) + Send>;
 pub(super) struct UiRun {
     pub(super) resolver: TestResolver,
     pub(super) created: Vec<PathBuf>,
+    /// Every in-place save the pump reported, in order.
+    pub(super) saved: Vec<(DocumentId, SavedInPlace)>,
     /// The kind of every request the connection made, in order.
     pub(super) seen: Vec<&'static str>,
 }
@@ -211,6 +256,7 @@ fn kind(request: &UiRequest) -> &'static str {
         UiRequest::UpdateEditorMeta { .. } => "meta",
         UiRequest::GenerateDesignMd { .. } => "design_md",
         UiRequest::CreateDocument { .. } => "create",
+        UiRequest::SaveInPlace { .. } => "save",
         #[cfg(feature = "mcp-debug-tools")]
         UiRequest::Screenshot { .. } => "screenshot",
     }
@@ -227,6 +273,7 @@ pub(super) fn spawn_ui(
         let (mut server, server_tx) = server_with_queue();
         let mut hook = after_snapshot;
         let mut created = Vec::new();
+        let mut saved = Vec::new();
         let mut seen = Vec::new();
         while let Ok(request) = conn_rx.recv_timeout(Duration::from_secs(5)) {
             let name = kind(&request);
@@ -237,6 +284,12 @@ pub(super) fn spawn_ui(
                 created.push(path.clone());
                 resolver.bind_created(document, path);
             }
+            for (document, report) in outcome.saved_in_place {
+                if let Some(map) = resolver.baselines.as_mut() {
+                    map.insert(report.path.clone(), report.fingerprint);
+                }
+                saved.push((document, report));
+            }
             if name == "snapshot" {
                 if let Some(hook) = hook.take() {
                     hook(&mut resolver);
@@ -246,6 +299,7 @@ pub(super) fn spawn_ui(
         UiRun {
             resolver,
             created,
+            saved,
             seen,
         }
     })

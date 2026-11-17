@@ -9,9 +9,10 @@
 //! only records a [`ProjectRequest`] on `projects_panel.pending_request`,
 //! which the host drains.
 
+use op_editor_core::project_rename::{is_renamable, DOUBLE_CLICK_MS};
 use op_editor_core::{EditorState, ProjectFileKind, ProjectRequest, ProjectRowTarget};
 
-use crate::widgets::projects_panel::{ProjectsPanel, ProjectsPanelText};
+use crate::widgets::projects_panel::{rename_field_rect, ProjectsPanel, ProjectsPanelText};
 use crate::widgets::projects_panel_layout::ProjectsPanelLayout;
 use crate::Point2D;
 
@@ -52,14 +53,25 @@ pub fn text(state: &EditorState) -> ProjectsPanelText<'static> {
         fig_converted_tip: translate(ui, "project.figConvertedTip"),
         fig_failed_tip: translate(ui, "project.figFailedTip"),
         fig_convert_all_tip: translate(ui, "project.figConvertAllTip"),
+        rename: translate(ui, "projects.rename"),
+        rename_placeholder: translate(ui, "projects.renamePlaceholder"),
+        rename_invalid: translate(ui, "projects.renameInvalid"),
+        rename_exists: translate(ui, "projects.renameExists"),
     }
 }
 
-/// The widget for the current state, ready to paint.
-pub fn widget<'a>(state: &'a EditorState, text: &'a ProjectsPanelText<'a>) -> ProjectsPanel<'a> {
+/// The widget for the current state, ready to paint. `now_ms` drives the
+/// caret blink of an open rename.
+pub fn widget<'a>(
+    state: &'a EditorState,
+    text: &'a ProjectsPanelText<'a>,
+    now_ms: u64,
+) -> ProjectsPanel<'a> {
     ProjectsPanel {
         projects: &state.editor_ui.projects_panel.projects,
         hover: state.editor_ui.projects_panel.hover,
+        rename: state.editor_ui.projects_panel.rename.as_ref(),
+        now_ms,
         text,
     }
 }
@@ -90,6 +102,8 @@ fn request_for(state: &EditorState, target: ProjectRowTarget) -> Option<ProjectR
             ))
         }
         ProjectRowTarget::OpenProject => Some(ProjectRequest::OpenProjectPicker),
+        // Starting a rename is the list's own state, not a host request.
+        ProjectRowTarget::RenameFile(..) => None,
         ProjectRowTarget::ConvertAll(project, first_file) => {
             let view = projects.get(project)?;
             let folder = match first_file {
@@ -114,13 +128,65 @@ fn request_for(state: &EditorState, target: ProjectRowTarget) -> Option<ProjectR
     }
 }
 
-/// Route a press at `point`: record the request the row stands for.
+/// What a press meant to an open rename.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum RenamePress {
+    /// No rename is open.
+    NotEditing,
+    /// The press is inside the field: the field keeps it (and the rename).
+    InField,
+    /// The press was elsewhere: a valid new name was committed, anything else
+    /// cancelled, and the press goes on to whatever it landed on.
+    Left,
+}
+
+/// Settle an open rename for a press at `point`. `layout` is the list's
+/// layout when the dock shows one; without it no point is inside the field.
+pub fn rename_press(
+    state: &mut EditorState,
+    layout: Option<&ProjectsPanelLayout>,
+    point: Point2D,
+) -> RenamePress {
+    let panel = &state.editor_ui.projects_panel;
+    let Some(edit) = panel.rename.as_ref() else {
+        return RenamePress::NotEditing;
+    };
+    let in_field = layout.is_some_and(|layout| {
+        layout.rows.iter().any(|row| {
+            let crate::widgets::projects_panel_layout::RowKind::File(project, file) = row.kind
+            else {
+                return false;
+            };
+            panel
+                .projects
+                .get(project)
+                .and_then(|view| view.files.get(file))
+                .is_some_and(|view| {
+                    view.path == edit.path && rename_field_rect(row, view).contains(point)
+                })
+        })
+    });
+    if in_field {
+        return RenamePress::InField;
+    }
+    state.editor_ui.projects_panel.commit_or_cancel_rename();
+    RenamePress::Left
+}
+
+/// Route a press at `point` at `now_ms`: record the request the row stands
+/// for, or start a rename (the pencil, or a second press on the same file
+/// within [`DOUBLE_CLICK_MS`]).
 pub fn press(
     state: &mut EditorState,
     layout: &ProjectsPanelLayout,
     point: Point2D,
+    now_ms: u64,
 ) -> ProjectsPress {
-    if !layout.contains_point(point) {
+    let inside = layout.contains_point(point);
+    if rename_press(state, inside.then_some(layout), point) == RenamePress::InField {
+        return ProjectsPress::Claimed(None);
+    }
+    if !inside {
         return ProjectsPress::Missed;
     }
     let mut hit = layout.hit(point);
@@ -146,10 +212,48 @@ pub fn press(
             hit = Some(ProjectRowTarget::Header(project));
         }
     }
+    // The same for a file row's pencil.
+    if let Some(ProjectRowTarget::RenameFile(project, file)) = hit {
+        if !matches!(
+            ui.hover,
+            Some(ProjectRowTarget::File(p, f) | ProjectRowTarget::RenameFile(p, f))
+                if (p, f) == (project, file)
+        ) {
+            hit = Some(ProjectRowTarget::File(project, file));
+        }
+    }
     ui.hover = hit;
-    if let Some(target) = hit {
-        let request = request_for(state, target);
-        state.editor_ui.projects_panel.pending_request = request;
+    let path = match hit {
+        Some(
+            ProjectRowTarget::File(project, file) | ProjectRowTarget::RenameFile(project, file),
+        ) => ui
+            .projects
+            .get(project)
+            .and_then(|view| view.files.get(file))
+            .map(|view| (view.path.clone(), is_renamable(view))),
+        _ => None,
+    };
+    match (hit, path) {
+        (Some(ProjectRowTarget::RenameFile(..)), Some((path, true))) => {
+            ui.last_file_press = None;
+            ui.begin_rename(&path, now_ms);
+        }
+        (Some(ProjectRowTarget::File(..)), Some((path, true)))
+            if ui.last_file_press.as_ref().is_some_and(|(last, at)| {
+                *last == path && now_ms.saturating_sub(*at) < DOUBLE_CLICK_MS
+            }) =>
+        {
+            ui.last_file_press = None;
+            ui.begin_rename(&path, now_ms);
+        }
+        (Some(target), path) => {
+            ui.last_file_press = path
+                .filter(|(_, renamable)| *renamable && matches!(target, ProjectRowTarget::File(..)))
+                .map(|(path, _)| (path, now_ms));
+            let request = request_for(state, target);
+            state.editor_ui.projects_panel.pending_request = request;
+        }
+        (None, _) => ui.last_file_press = None,
     }
     ProjectsPress::Claimed(hit)
 }
@@ -193,3 +297,6 @@ pub fn scroll(
 #[cfg(test)]
 #[path = "projects_panel_flow_tests.rs"]
 pub(crate) mod projects_panel_flow_tests;
+#[cfg(test)]
+#[path = "projects_rename_tests.rs"]
+mod projects_rename_tests;

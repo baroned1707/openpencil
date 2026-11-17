@@ -65,6 +65,11 @@ impl WidgetHostNative {
             self.exit_preview();
             return true;
         }
+        // An open file rename: Escape drops it and nothing else.
+        if op_editor_core::project_rename_keyboard::cancel(&mut self.editor_state) {
+            self.mark_dirty();
+            return true;
+        }
         // The save-name dialog is modal: Escape cancels it and nothing else.
         if self.editor_state.editor_ui.save_name_dialog.open {
             self.editor_state.editor_ui.save_name_dialog.close();

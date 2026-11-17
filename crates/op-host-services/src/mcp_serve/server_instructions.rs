@@ -36,6 +36,7 @@ Working loop
 3. Write. batch_design builds new UI or applies many changes at once (script, operations or nodes_json; it is transactional, so a failing line applies nothing and errors[] lists every failure). Keep each call to about 25 operations and build large screens section by section. Use the small writers (set_node_*, update_node, move_node, delete_node) for one-off edits.
 4. Verify. snapshot_layout checks geometry cheaply (overlap, overflow, zero-size nodes); get_screenshot shows how it looks.
 5. Finish. After you build or change a design with batch_design or the design_* tools, call finalize_design last, once, and fix every advisory it reports before you tell the user the design is done.
+6. Save. When save_document is listed, call it without filePath as your last step: it saves the document to its own file (an untitled document needs create_document first). The editor may also save when your run ends.
 
 Units
 - x, y, width, height and corner radius are document pixels. They do not depend on the editor's zoom or on a screenshot's scale.

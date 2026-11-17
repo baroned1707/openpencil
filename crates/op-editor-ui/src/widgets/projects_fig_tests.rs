@@ -44,6 +44,8 @@ fn paint(projects: &[ProjectView], hover: Option<ProjectRowTarget>) -> CaptureBa
     ProjectsPanel {
         projects,
         hover,
+        rename: None,
+        now_ms: 0,
         text: &TEXT,
     }
     .paint(
@@ -139,7 +141,7 @@ fn a_folder_with_figs_to_convert_has_its_own_convert_all_row() {
     let rect = layout.row(RowKind::ConvertAll(0, Some(1))).unwrap().rect;
     let at = Point2D::new(rect.origin.x + 40.0, rect.origin.y + rect.size.y / 2.0);
     assert_eq!(
-        projects_panel_flow::press(&mut state, &layout, at),
+        projects_panel_flow::press(&mut state, &layout, at, 0),
         ProjectsPress::Claimed(Some(ProjectRowTarget::ConvertAll(0, Some(1))))
     );
     assert_eq!(
@@ -193,7 +195,7 @@ fn pressing_a_fig_row_never_opens_it_as_a_document() {
         let layout = ProjectsPanelLayout::new(&state.editor_ui.projects_panel.projects, BODY, 0.0);
         let rect = layout.row(RowKind::File(0, 0)).unwrap().rect;
         let at = Point2D::new(rect.origin.x + 40.0, rect.origin.y + rect.size.y / 2.0);
-        projects_panel_flow::press(&mut state, &layout, at);
+        projects_panel_flow::press(&mut state, &layout, at, 0);
         assert_eq!(
             state.editor_ui.projects_panel.pending_request,
             Some(ProjectRequest::ConvertFig("/work/repo//a.fig".to_string())),
@@ -208,7 +210,7 @@ fn pressing_convert_all_for_the_project_asks_for_the_whole_project() {
     let layout = ProjectsPanelLayout::new(&state.editor_ui.projects_panel.projects, BODY, 0.0);
     let rect = layout.row(RowKind::ConvertAll(0, None)).unwrap().rect;
     let at = Point2D::new(rect.origin.x + 40.0, rect.origin.y + rect.size.y / 2.0);
-    projects_panel_flow::press(&mut state, &layout, at);
+    projects_panel_flow::press(&mut state, &layout, at, 0);
     assert_eq!(
         state.editor_ui.projects_panel.pending_request,
         Some(ProjectRequest::ConvertAllFigs(

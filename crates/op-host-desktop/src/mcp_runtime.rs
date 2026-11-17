@@ -338,13 +338,17 @@ impl DesktopApp {
             return false;
         }
         self.sync_mcp_project_roots();
+        // Every open file needs its recorded state before an in-place save
+        // can be checked against it.
+        self.sweep_disk_baselines();
         let listings = self.mcp_document_listings();
         let (outcome, pending_design_md) = {
             let Some(server) = self.mcp_server.as_mut() else {
                 return false;
             };
             let mut resolver =
-                DesktopDocumentResolver::new(&mut self.host, &mut self.documents, listings);
+                DesktopDocumentResolver::new(&mut self.host, &mut self.documents, listings)
+                    .with_save_context(&self.disk_baselines, self.save_session.is_active());
             let outcome = server.pump(&mut resolver);
             let pending_design_md = server.take_pending_design_md_request();
             (outcome, pending_design_md)
@@ -372,6 +376,9 @@ impl DesktopApp {
             } else {
                 self.bind_created_parked_document(*id, path.clone());
             }
+        }
+        for (id, saved) in &outcome.saved_in_place {
+            self.finish_in_place_save(*id, saved);
         }
         for id in &outcome.replaced {
             if *id == self.documents.active_id() {

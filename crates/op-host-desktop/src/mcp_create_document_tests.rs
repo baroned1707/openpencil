@@ -213,3 +213,6 @@ fn create_document_bind_refuses_a_path_open_in_another_tab() {
     assert_eq!(bound, 1, "only the original tab is bound to the file");
     let _ = std::fs::remove_dir_all(project);
 }
+
+#[path = "mcp_save_in_place_tests.rs"]
+mod save_in_place_tests;

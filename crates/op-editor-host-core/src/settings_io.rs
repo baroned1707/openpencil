@@ -126,6 +126,8 @@ struct SettingsPayload {
     #[serde(default)]
     mcp_require_token: Option<bool>,
     #[serde(default)]
+    autosave_on_agent_run_end: Option<bool>,
+    #[serde(default)]
     images_advanced_open: Option<bool>,
     #[serde(default)]
     openverse_oauth: Option<OpenverseOAuthPayload>,
@@ -232,6 +234,7 @@ fn to_payload(state: &EditorState) -> SettingsPayload {
         mcp_cli_enabled: Some(eui.agent_settings.mcp_cli_enabled.to_vec()),
         mcp_lean_profile: Some(eui.agent_settings.mcp_lean_profile),
         mcp_require_token: Some(eui.agent_settings.mcp_require_token),
+        autosave_on_agent_run_end: Some(eui.agent_settings.autosave_on_agent_run_end),
         images_advanced_open: Some(eui.agent_settings.images_advanced_open),
         openverse_oauth: openverse_oauth_to_payload(&eui.agent_settings),
         openverse_credential_owner: eui.agent_settings.openverse_credential_owner.clone(),
@@ -315,6 +318,10 @@ fn apply_payload_with_options(
     }
     if let Some(require_token) = payload.mcp_require_token {
         eui.agent_settings.mcp_require_token = require_token;
+    }
+    // An absent field keeps the default (on).
+    if let Some(autosave) = payload.autosave_on_agent_run_end {
+        eui.agent_settings.autosave_on_agent_run_end = autosave;
     }
     if let Some(b) = payload.images_advanced_open {
         eui.agent_settings.images_advanced_open = b;

@@ -29,6 +29,20 @@ pub fn touch_recent(host: &mut WidgetHostNative, path: &std::path::Path) {
     save_if_changed(host.editor_state(), before);
 }
 
+/// A file was renamed on disk: its recent-files entry follows it, keeping its
+/// place. Persisted the same way `touch_recent` is.
+pub fn rename_recent(host: &mut WidgetHostNative, old: &std::path::Path, new: &std::path::Path) {
+    let before = fingerprint(host.editor_state());
+    let renamed = host
+        .editor_state_mut()
+        .editor_ui
+        .rename_recent_file(&old.to_string_lossy(), &new.to_string_lossy());
+    if renamed {
+        host.mark_editor_state_dirty();
+        save_if_changed(host.editor_state(), before);
+    }
+}
+
 #[cfg(test)]
 #[path = "settings_io_tests.rs"]
 mod tests;

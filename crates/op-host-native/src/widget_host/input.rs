@@ -31,6 +31,7 @@ impl WidgetHostNative {
         }
         let ui = &self.editor_state.ui;
         self.editor_state.editor_ui.save_name_dialog.open
+            || self.editor_state.editor_ui.projects_panel.rename.is_some()
             || self.editor_state.editor_ui.collab_join_input_active()
             || ui.layer_rename.is_some()
             || ui.text_editing.is_some()

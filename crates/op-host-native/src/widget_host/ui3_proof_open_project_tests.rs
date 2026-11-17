@@ -366,3 +366,112 @@ fn hovering_fig_rows_and_convert_all_shows_the_wash_and_tooltip_proof() {
         host.editor_state_mut().editor_ui.projects_panel.hover = Some(ProjectRowTarget::File(0, 5));
     });
 }
+
+// ---- 94-rename: renaming a design from the dock -----------------------------
+
+const CART: &str = "/Users/me/Work/storefront/designs/cart.op";
+
+/// Open the inline rename on `path` with `draft` typed in.
+fn renaming(host: &mut WidgetHostNative, path: &str, draft: Option<&str>) {
+    let panel = &mut host.editor_state_mut().editor_ui.projects_panel;
+    assert!(panel.begin_rename(path, 0), "{path} is a renamable row");
+    if let Some(draft) = draft {
+        panel.rename.as_mut().unwrap().input.set_text(draft);
+        panel.refresh_rename_error();
+    }
+}
+
+#[test]
+fn rename_edit_mode_with_the_stem_selected_proof() {
+    for (mode, host) in each_theme("94-rename-edit", vec![storefront(), inferred()], |host| {
+        renaming(host, CART, None);
+    }) {
+        let edit = host
+            .editor_state()
+            .editor_ui
+            .projects_panel
+            .rename
+            .as_ref()
+            .unwrap();
+        assert_eq!(
+            edit.input.text(),
+            "cart",
+            "{mode:?}: no extension in the field"
+        );
+        assert_eq!(
+            edit.input.highlight_range(),
+            Some((0, 4)),
+            "{mode:?}: stem selected"
+        );
+    }
+}
+
+#[test]
+fn rename_edit_mode_with_a_collision_message_proof() {
+    for (mode, host) in each_theme(
+        "94-rename-collision",
+        vec![storefront(), inferred()],
+        |host| renaming(host, CART, Some("checkout")),
+    ) {
+        let edit = host
+            .editor_state()
+            .editor_ui
+            .projects_panel
+            .rename
+            .as_ref()
+            .unwrap();
+        assert_eq!(
+            edit.error,
+            Some(op_editor_core::RenameNameError::Taken),
+            "{mode:?}: a sibling is called checkout.op"
+        );
+    }
+}
+
+#[test]
+fn rename_edit_mode_with_an_invalid_name_proof() {
+    each_theme("94-rename-invalid", vec![storefront()], |host| {
+        renaming(host, CART, Some("cart/v2"));
+    });
+}
+
+#[test]
+fn rename_edit_mode_with_a_long_name_clips_inside_the_field_proof() {
+    let long = "an-extremely-long-design-file-name-for-the-checkout-flow-final-v12";
+    for (mode, host) in each_theme("94-rename-long", vec![storefront()], |host| {
+        renaming(host, CART, Some(long));
+    }) {
+        let edit = host
+            .editor_state()
+            .editor_ui
+            .projects_panel
+            .rename
+            .as_ref()
+            .unwrap();
+        assert_eq!(
+            edit.error, None,
+            "{mode:?}: a long name is still a valid name"
+        );
+    }
+}
+
+#[test]
+fn rename_hover_shows_the_pencil_with_its_tooltip_proof() {
+    each_theme("94-rename-hover-pencil", vec![storefront()], |host| {
+        host.editor_state_mut().editor_ui.projects_panel.hover =
+            Some(ProjectRowTarget::RenameFile(0, 2));
+    });
+    each_theme("94-rename-hover-row", vec![storefront()], |host| {
+        host.editor_state_mut().editor_ui.projects_panel.hover = Some(ProjectRowTarget::File(0, 3));
+    });
+}
+
+#[test]
+fn rename_result_row_shows_the_new_name_proof() {
+    let mut renamed = storefront();
+    // What the host publishes after the rename: the label and path changed,
+    // the tab (cart.op was open and is still open) follows.
+    renamed.files[2].label = "cart-v2.op".to_string();
+    renamed.files[2].path = "/Users/me/Work/storefront/designs/cart-v2.op".to_string();
+    each_theme("94-rename-result", vec![renamed], |_| {});
+}

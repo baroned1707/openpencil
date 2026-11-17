@@ -172,7 +172,10 @@ fn run_in_document(context: &CallContext, document: DocumentId) -> Result<String
     let timing = context.req_tx.timing();
     let operation = context
         .tool_call
-        .filter(|call| tool_writes(&call.tool))
+        // `save_document` is classified a Read (it leaves the document
+        // alone), but its in-place form writes the file: a retried
+        // `operationId` must save once.
+        .filter(|call| tool_writes(&call.tool) || crate::save_in_place::is_in_place_save_call(call))
         .zip(context.address.operation_id.as_deref())
         .map(|(call, operation_id)| {
             (
@@ -262,6 +265,10 @@ fn dispatch(context: &CallContext, document: DocumentId) -> Result<String, McpLi
     // refusal.
     if let Some(response) = create_document_route::serve(body, profile, document, req_tx, wake_ui)?
     {
+        return Ok(response);
+    }
+    // `save_document` without a `filePath` saves the document to its own file.
+    if let Some(response) = save_in_place_route::serve(body, profile, document, req_tx, wake_ui)? {
         return Ok(response);
     }
     let (mut state, epoch) = match request_snapshot(req_tx, wake_ui, document) {

@@ -41,6 +41,11 @@ impl EditorState {
                 crate::PromptCenterFocus::SaveTitle => &self.editor_ui.prompt_center.save_title,
             });
         }
+        // The Projects dock's inline file rename is started by a deliberate
+        // click and blurs every other input, so it is the newest focus.
+        if let Some(rename) = &self.editor_ui.projects_panel.rename {
+            return Some(&rename.input);
+        }
         if self.ui.text_editing.is_some() {
             return Some(&self.ui.text_edit_input);
         }
@@ -144,6 +149,14 @@ impl EditorState {
         }
         if self.editor_ui.prompt_center.open {
             return Some(self.editor_ui.prompt_center.focused_input_mut());
+        }
+        if self.editor_ui.projects_panel.rename.is_some() {
+            return self
+                .editor_ui
+                .projects_panel
+                .rename
+                .as_mut()
+                .map(|rename| &mut rename.input);
         }
         if self.ui.text_editing.is_some() {
             return Some(&mut self.ui.text_edit_input);

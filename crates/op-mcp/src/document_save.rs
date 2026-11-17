@@ -34,7 +34,9 @@ impl McpTool for SaveDocument {
         let Some(path) = args.get("filePath").filter(|path| !path.trim().is_empty()) else {
             return ToolOutcome::Err(
                 ToolErrorCode::MissingArgument,
-                "filePath is required".into(),
+                "filePath is required here: only the live editor and a headless --mcp file \
+                 server save the document to its own file when filePath is omitted"
+                    .into(),
             );
         };
         let path = resolve_path(path);

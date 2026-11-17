@@ -43,6 +43,10 @@ pub(crate) const TEXT: crate::widgets::projects_panel::ProjectsPanelText<'static
         fig_converted_tip: "Open the converted .op file",
         fig_failed_tip: "Conversion failed: {{reason}}. Click to retry.",
         fig_convert_all_tip: "Convert every .fig file here to .op next to it",
+        rename: "Rename",
+        rename_placeholder: "Name",
+        rename_invalid: "This name can't be used",
+        rename_exists: "A file with that name already exists",
     };
 
 pub(crate) fn file(label: &str, open: Option<u64>) -> ProjectFileView {
@@ -103,7 +107,7 @@ fn centre(layout: &ProjectsPanelLayout, kind: RowKind) -> Point2D {
 /// Move onto `point` first, as a real pointer always does, then press.
 fn click(state: &mut EditorState, layout: &ProjectsPanelLayout, point: Point2D) -> ProjectsPress {
     cursor_move(state, layout, point);
-    press(state, layout, point)
+    press(state, layout, point, 0)
 }
 
 #[test]
@@ -171,7 +175,7 @@ fn a_press_with_no_prior_hover_never_hits_the_hidden_plus() {
     let layout = laid_out(&state);
     let plus = layout.row(RowKind::Header(0)).unwrap().plus.unwrap();
     let at = Point2D::new(plus.origin.x + 4.0, plus.origin.y + 4.0);
-    press(&mut state, &layout, at);
+    press(&mut state, &layout, at, 0);
     assert_eq!(
         state.editor_ui.projects_panel.pending_request,
         Some(ProjectRequest::ToggleProject("/work/shop".to_string())),
@@ -216,7 +220,7 @@ fn a_press_on_bare_body_is_claimed_without_a_request() {
     assert_eq!(state.editor_ui.projects_panel.pending_request, None);
     let outside = Point2D::new(500.0, 100.0);
     assert_eq!(
-        press(&mut state, &layout, outside),
+        press(&mut state, &layout, outside, 0),
         ProjectsPress::Missed,
         "points off the list fall through"
     );

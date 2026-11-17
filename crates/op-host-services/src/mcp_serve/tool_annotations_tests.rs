@@ -135,6 +135,7 @@ fn every_name_in_the_hint_lists_is_a_classified_tool() {
         ),
         ("DESTRUCTIVE_WRITES", DESTRUCTIVE_WRITES),
         ("IDEMPOTENT_WRITES", IDEMPOTENT_WRITES),
+        ("IDEMPOTENT_FILE_WRITES", IDEMPOTENT_FILE_WRITES),
         ("LARGE_RESULT_TOOLS", LARGE_RESULT_TOOLS),
     ] {
         for name in names {
@@ -147,6 +148,12 @@ fn every_name_in_the_hint_lists_is_a_classified_tool() {
                 "{list}: {name} is not in the catalog"
             );
         }
+    }
+    for name in IDEMPOTENT_FILE_WRITES {
+        assert!(
+            READ_BUT_WRITES_ELSEWHERE.contains(name),
+            "{name} is an idempotent file write, so it must also be a read-that-writes"
+        );
     }
     for name in READ_BUT_WRITES_ELSEWHERE {
         assert_eq!(
@@ -310,5 +317,22 @@ fn decorate_entry_leaves_a_non_object_untouched() {
     assert_eq!(
         decorate_entry(r#"{"description":"x"}"#),
         r#"{"description":"x"}"#
+    );
+}
+
+/// Invariant: `save_document` writes a file (never read-only), saving the same
+/// document twice leaves the same file (idempotent) and it replaces nothing the
+/// editor does not own (not destructive): the hints an agent's client uses to
+/// decide whether to ask the user first.
+#[test]
+fn save_document_is_advertised_as_a_non_destructive_idempotent_write() {
+    let hints = hints_for("save_document");
+    assert!(!hints.read_only);
+    assert!(hints.idempotent);
+    assert!(!hints.destructive);
+    assert!(!hints.open_world);
+    assert_eq!(
+        annotations_json("save_document"),
+        r#"{"destructiveHint":false,"idempotentHint":true,"openWorldHint":false}"#
     );
 }

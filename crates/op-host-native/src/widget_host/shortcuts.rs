@@ -20,6 +20,7 @@ impl WidgetHostNative {
             || self.variables_search_active()
             || editor_ui.preset_name_input_active()
             || editor_ui.icon_picker.open
+            || editor_ui.projects_panel.rename.is_some()
             || editor_ui.prompt_center.open
             || editor_ui.scene_template_center.input_active()
             || editor_ui.component_browser_open
@@ -189,6 +190,11 @@ impl WidgetHostNative {
             self.mark_dirty();
             return true;
         }
+        if op_editor_core::project_rename_keyboard::select_all(&mut self.editor_state, self.now_ms)
+        {
+            self.mark_dirty();
+            return true;
+        }
         if self.editor_state.editor_ui.collab_join_input_active() {
             if op_editor_ui::widgets::collab_ui::join_address_select_all(
                 &mut self.editor_state.editor_ui,
@@ -296,7 +302,10 @@ impl WidgetHostNative {
             return false;
         }
         self.commit_variable_row_focus_if_any();
-        if self.editor_state.ui.layer_rename.is_some() || self.editor_state.chat.focused {
+        if self.editor_state.ui.layer_rename.is_some()
+            || self.editor_state.chat.focused
+            || self.editor_state.editor_ui.projects_panel.rename.is_some()
+        {
             return false;
         }
         if !self.collab_allows_user_action(op_editor_core::CollabGateAction::GlobalUndo) {
@@ -334,7 +343,10 @@ impl WidgetHostNative {
             return false;
         }
         self.commit_variable_row_focus_if_any();
-        if self.editor_state.ui.layer_rename.is_some() || self.editor_state.chat.focused {
+        if self.editor_state.ui.layer_rename.is_some()
+            || self.editor_state.chat.focused
+            || self.editor_state.editor_ui.projects_panel.rename.is_some()
+        {
             return false;
         }
         if !self.collab_allows_user_action(op_editor_core::CollabGateAction::GlobalRedo) {
@@ -367,7 +379,10 @@ impl WidgetHostNative {
             return false;
         }
         self.commit_variable_row_focus_if_any();
-        if self.editor_state.ui.layer_rename.is_some() || self.editor_state.chat.focused {
+        if self.editor_state.ui.layer_rename.is_some()
+            || self.editor_state.chat.focused
+            || self.editor_state.editor_ui.projects_panel.rename.is_some()
+        {
             return false;
         }
         if self.editor_state.selection.is_empty() {
@@ -405,7 +420,10 @@ impl WidgetHostNative {
             return false;
         }
         self.commit_variable_row_focus_if_any();
-        if self.editor_state.ui.layer_rename.is_some() || self.editor_state.chat.focused {
+        if self.editor_state.ui.layer_rename.is_some()
+            || self.editor_state.chat.focused
+            || self.editor_state.editor_ui.projects_panel.rename.is_some()
+        {
             return false;
         }
         if self.editor_state.selection.is_empty() {

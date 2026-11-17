@@ -637,3 +637,67 @@ fn parked_chat_messages(app: &mut DesktopApp, index: usize) -> Vec<String> {
         .map(|message| message.content.clone())
         .collect()
 }
+
+/// A run belongs to its document by id, not by file name: renaming the file
+/// from the Projects dock, while the document is on screen or parked, neither
+/// stops the run nor loses what it writes.
+#[test]
+fn agent_run_survives_the_rename() {
+    let _guard = agent_indicators::test_guard();
+    let dir = temp_dir("rename").canonicalize().unwrap();
+    // A project marker, so the dock lists (and may rename) these files.
+    std::fs::write(dir.join("package.json"), "{}").unwrap();
+    let mut app = DesktopApp::new(None);
+    let paths: Vec<PathBuf> = ["a.op", "b.op"]
+        .iter()
+        .map(|name| write_document(&dir, name))
+        .collect();
+    for path in &paths {
+        assert!(app.open_document_tab(path.clone()));
+    }
+    app.pump_projects();
+    let run = start_run(&mut app); // in B, on screen
+    let id = app.documents.active_id();
+
+    // On screen: rename B's own file.
+    assert_eq!(
+        app.rename_design_file(&paths[1], "renamed"),
+        Ok(()),
+        "a live run is no reason to refuse"
+    );
+    let renamed = dir.join("renamed.op");
+    assert_eq!(app.current_path.as_deref(), Some(renamed.as_path()));
+    assert_eq!(app.documents.active_id(), id, "the same document");
+    assert!(app.runs.is_live(), "the run did not stop");
+    let ack = run.insert("AfterRename");
+    run.say("still working");
+    app.pump_document_runs();
+    assert!(!ack.try_recv().expect("the tool call ran").is_error);
+    assert!(names_in(app.host.editor_state()).contains(&"AfterRename".to_string()));
+    assert_eq!(active_assistant_text(&app), "still working");
+
+    // Parked: A is on screen, B (with its run) in the background.
+    assert!(app.activate_document_slot(0));
+    assert!(app.slot_has_live_run(1));
+    assert_eq!(app.rename_design_file(&renamed, "again"), Ok(()));
+    assert_eq!(
+        app.documents.slot_paths()[1].as_deref(),
+        Some(dir.join("again.op").as_path())
+    );
+    assert!(app.slot_has_live_run(1), "the parked run did not stop");
+    let ack = run.insert("WhileParked");
+    app.pump_document_runs();
+    assert!(
+        !ack.try_recv()
+            .expect("the background tool call ran")
+            .is_error
+    );
+    assert!(parked_names(&mut app, 1).contains(&"WhileParked".to_string()));
+    run.finish();
+    app.pump_document_runs();
+    assert!(!app.any_run_live());
+    let _ = std::fs::remove_dir_all(dir);
+}
+
+#[path = "agent_run_autosave_tests.rs"]
+mod autosave_tests;

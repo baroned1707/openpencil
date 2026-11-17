@@ -597,6 +597,11 @@ pub fn lookup(key: &str) -> Option<&'static str> {
         "project.figConvertedTip" => "Mở tệp .op đã chuyển đổi",
         "project.figFailedTip" => "Chuyển đổi thất bại: {{reason}}. Nhấp để thử lại.",
         "project.figConvertAllTip" => "Chuyển mọi tệp .fig ở đây thành .op cạnh tệp đó",
+        "projects.rename" => "Đổi tên",
+        "projects.renamePlaceholder" => "Tên",
+        "projects.renameExists" => "Đã có tệp trùng tên này",
+        "projects.renameInvalid" => "Không thể dùng tên này",
+        "projects.renameFailed" => "Không thể đổi tên: {{reason}}",
         _ => return None,
     })
 }

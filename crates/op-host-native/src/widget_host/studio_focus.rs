@@ -52,6 +52,7 @@ impl WidgetHostNative {
             || ui.account_menu_open
             || ui.export_dialog_open
             || ui.save_name_dialog.open
+            || ui.projects_panel.rename.is_some()
             || ui.scene_template_center.open
             || ui.prompt_center.open
             || ui.chat_model_picker.open

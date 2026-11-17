@@ -601,6 +601,11 @@ pub fn lookup(key: &str) -> Option<&'static str> {
         "project.figConvertedTip" => "변환된 .op 파일 열기",
         "project.figFailedTip" => "변환 실패: {{reason}}. 클릭하여 다시 시도하세요.",
         "project.figConvertAllTip" => "여기 있는 모든 .fig 파일을 옆에 .op로 변환",
+        "projects.rename" => "이름 바꾸기",
+        "projects.renamePlaceholder" => "이름",
+        "projects.renameExists" => "같은 이름의 파일이 이미 있습니다",
+        "projects.renameInvalid" => "이 이름은 사용할 수 없습니다",
+        "projects.renameFailed" => "이름을 바꿀 수 없습니다: {{reason}}",
         _ => return None,
     })
 }

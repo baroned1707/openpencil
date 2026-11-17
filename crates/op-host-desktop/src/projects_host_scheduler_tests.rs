@@ -251,3 +251,54 @@ fn a_scan_that_panics_is_reported_unreadable() {
         scheduler.status(Path::new("/p/shop")) == Some(ScanStatus::Unreadable(ErrorKind::Other))
     });
 }
+
+#[test]
+fn a_rename_is_shown_at_once_and_a_scan_that_started_before_it_cannot_undo_it() {
+    let old = PathBuf::from("/p/shop/designs/card.op");
+    let new = PathBuf::from("/p/shop/designs/hero.op");
+    let other = PathBuf::from("/p/shop/designs/other.op");
+    // Both scans read the folder as it was BEFORE the rename.
+    let script = ScriptedJob::new(vec![vec![old.clone(), other.clone()]]);
+    script.hold.store(true, Ordering::SeqCst);
+    let mut scheduler = ScanScheduler::with_timing(script.job(), RESCAN_EVERY, SLOW_AFTER);
+    scheduler.poll(&roots(), || true);
+    assert!(scheduler.in_flight());
+
+    // The rename lands while that scan is still reading.
+    scheduler.rename_listed(&old, &new);
+    script.hold.store(false, Ordering::SeqCst);
+    wait_until(|| {
+        scheduler.poll(&roots(), || false);
+        !scheduler.in_flight()
+    });
+    let listed = &scheduler.files()[&PathBuf::from("/p/shop")];
+    assert!(listed.contains(&new), "{listed:?}");
+    assert!(
+        !listed.contains(&old),
+        "the old row did not come back: {listed:?}"
+    );
+    assert!(listed.contains(&other));
+}
+
+#[test]
+fn a_rename_updates_the_cached_listing_and_its_version() {
+    let old = PathBuf::from("/p/shop/designs/card.op");
+    let new = PathBuf::from("/p/shop/designs/hero.op");
+    let script = ScriptedJob::new(vec![vec![old.clone()]]);
+    let mut scheduler = ScanScheduler::with_timing(script.job(), RESCAN_EVERY, SLOW_AFTER);
+    wait_until(|| {
+        scheduler.poll(&roots(), || true);
+        !scheduler.files().is_empty()
+    });
+    let version = scheduler.version();
+    scheduler.rename_listed(&old, &new);
+    assert_eq!(
+        scheduler.files()[&PathBuf::from("/p/shop")],
+        vec![new.clone()]
+    );
+    assert!(scheduler.version() > version, "the tree rebuilds");
+    // Renaming a file nobody listed changes nothing.
+    let version = scheduler.version();
+    scheduler.rename_listed(&PathBuf::from("/elsewhere/x.op"), &new);
+    assert_eq!(scheduler.version(), version);
+}

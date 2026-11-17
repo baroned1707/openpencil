@@ -221,6 +221,28 @@ impl McpLiveServer {
                         stop_after = true;
                     }
                 }
+                UiRequest::SaveInPlace { document, ack, .. } => {
+                    let target = resolver.in_place_save_target(document);
+                    let mut answer = None;
+                    let resolved = resolver.with_document(document, &mut |state, _| {
+                        answer = Some(save_in_place_route::save_on_ui_thread(state, &target));
+                    });
+                    let saved = answer.as_ref().and_then(|result| result.as_ref().ok());
+                    if let Some(saved) = saved {
+                        outcome.saved_in_place.push((document, saved.clone()));
+                        outcome.repaint = true;
+                    }
+                    // The host records the new on-disk baseline right after
+                    // this pump returns. A second save queued behind this one
+                    // would compare against the stale one and be refused as a
+                    // conflict, so stop here.
+                    stop_after = saved.is_some();
+                    let _ = ack.send(match (resolved, answer) {
+                        (Err(error), _) => SaveAck::Unresolved(error),
+                        (Ok(()), Some(result)) => SaveAck::Done(result),
+                        (Ok(()), None) => SaveAck::Unresolved(ResolveError::NotReachable),
+                    });
+                }
                 #[cfg(feature = "mcp-debug-tools")]
                 UiRequest::Screenshot {
                     document,

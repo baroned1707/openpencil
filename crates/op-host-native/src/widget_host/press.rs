@@ -252,6 +252,9 @@ impl WidgetHostNative {
         {
             return true;
         }
+        // An open file rename in the Projects dock: a press outside its field
+        // commits a valid name (anything else is dropped) and goes on.
+        self.settle_project_rename_for_press(x, y, viewport_width, viewport_height);
         // Blur-commit rename + text-edit; track to repaint on click.
         let rename_mutation =
             self.editor_state

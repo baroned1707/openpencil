@@ -43,6 +43,12 @@ impl WidgetHostNative {
                 return sent;
             }
         }
+        // Enter in an open file rename confirms the draft: a valid new name
+        // goes to the host, an unusable one stays open with its message.
+        if op_editor_core::project_rename_keyboard::confirm(&mut self.editor_state).is_some() {
+            self.mark_dirty();
+            return true;
+        }
         // Enter in the save-name dialog confirms (mobile keyboards send it
         // as the "done" action); a blank name swallows the key instead.
         if self.editor_state.editor_ui.save_name_dialog.open {
