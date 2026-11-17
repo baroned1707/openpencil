@@ -109,6 +109,22 @@ pub fn load_editor_state(path: &Path) -> Result<EditorState, McpServeError> {
         .map_err(|error| McpServeError::Document(format!("load {}: {error}", path.display())))
 }
 
+/// [`load_editor_state`] for a file this server is about to serve and edit
+/// (the headless `--mcp` / `--mcp-http` document and a per-call `filePath`): an
+/// empty `.op` file opens as the blank starter document and is formatted on
+/// disk, exactly as the desktop does. Every other file loads as before.
+pub fn load_or_initialize_editor_state(path: &Path) -> Result<EditorState, McpServeError> {
+    let opened = crate::doc_io::load_initializing_empty_op_file(path, op_editor_core::Locale::EnUs)
+        .map_err(|error| McpServeError::Document(format!("load {}: {error}", path.display())))?;
+    if opened.empty_file.is_some() {
+        eprintln!(
+            "openpencil-desktop mcp: {} was empty; opened as a blank document",
+            path.display()
+        );
+    }
+    Ok(opened.loaded.state)
+}
+
 /// Serialize through the same streaming, atomic path as desktop Save.
 fn save_editor_state(state: &EditorState, path: &Path) -> Result<(), McpServeError> {
     crate::doc_io::save_to_path(state, path)
@@ -762,6 +778,9 @@ mod codegen_wire_tests;
 mod conversion_flow_tests;
 #[cfg(test)]
 mod design_agent_run_tool_tests;
+#[cfg(test)]
+#[path = "mcp_serve/empty_file_tests.rs"]
+mod empty_file_tests;
 #[cfg(test)]
 mod enrich_images_tool_tests;
 #[cfg(test)]

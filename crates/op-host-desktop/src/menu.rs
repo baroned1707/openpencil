@@ -25,6 +25,8 @@ pub enum MenuAction {
     Home,
     New,
     Open,
+    /// Pick a folder and open it as a project (File ▸ Open Project…).
+    OpenProject,
     /// Open the recent-file at this index into `editor_ui.recent_files`
     /// (the File ▸ Open Recent submenu is rebuilt in sync with that list,
     /// so the index is valid at click time).
@@ -86,6 +88,7 @@ mod backend {
     const ID_NEW: &str = "new";
     const ID_HOME: &str = "home";
     const ID_OPEN: &str = "open";
+    const ID_OPEN_PROJECT: &str = "open-project";
     const ID_SAVE: &str = "save";
     const ID_SAVE_AS: &str = "save-as";
     const ID_SAVE_AS_TEMPLATE: &str = "save-as-template";
@@ -122,6 +125,7 @@ mod backend {
             ID_HOME => MenuAction::Home,
             ID_NEW => MenuAction::New,
             ID_OPEN => MenuAction::Open,
+            ID_OPEN_PROJECT => MenuAction::OpenProject,
             ID_SAVE => MenuAction::Save,
             ID_SAVE_AS => MenuAction::SaveAs,
             ID_SAVE_AS_TEMPLATE => MenuAction::SaveAsTemplate,
@@ -228,6 +232,11 @@ mod backend {
                 &item(ID_HOME, tr(locale, "fileMenu.home"), None),
                 &item(ID_NEW, tr(locale, "menu.new"), Some(accel(Code::KeyN))),
                 &item(ID_OPEN, tr(locale, "menu.open"), Some(accel(Code::KeyO))),
+                &item(
+                    ID_OPEN_PROJECT,
+                    tr(locale, "project.open"),
+                    Some(accel_shift(Code::KeyO)),
+                ),
                 &recent_submenu,
                 &PredefinedMenuItem::separator(),
                 &item(ID_SAVE, tr(locale, "common.save"), Some(accel(Code::KeyS))),
@@ -406,6 +415,7 @@ mod backend {
                 ID_GIT_PANEL,
                 ID_DESIGN_MD,
                 ID_COMPONENT_BROWSER,
+                ID_OPEN_PROJECT,
                 ID_QUIT,
                 ID_CHECK_UPDATES,
                 ID_GITHUB,

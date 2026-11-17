@@ -41,6 +41,13 @@ impl WidgetHost {
                     self.mark_dirty();
                     return;
                 }
+                // The web host has no Projects dock, so never offers the row.
+                if choice == FileMenuChoice::OpenProject {
+                    self.editor_state.editor_ui.file_menu_open = false;
+                    self.editor_state.editor_ui.file_menu.hover = None;
+                    self.mark_dirty();
+                    return;
+                }
                 if choice == FileMenuChoice::SaveAsTemplate {
                     self.editor_state.editor_ui.file_menu_open = false;
                     self.editor_state.editor_ui.file_menu.hover = None;
@@ -61,7 +68,9 @@ impl WidgetHost {
                     FileMenuChoice::OpenRecent(i) => FileAction::OpenRecent(i),
                     FileMenuChoice::ClearRecent => FileAction::ClearRecent,
                     // Handled above — it opens a panel, not a file action.
-                    FileMenuChoice::NewFromTemplate | FileMenuChoice::SaveAsTemplate => return,
+                    FileMenuChoice::NewFromTemplate
+                    | FileMenuChoice::SaveAsTemplate
+                    | FileMenuChoice::OpenProject => return,
                 });
                 self.editor_state.editor_ui.file_menu_open = false;
                 self.editor_state.editor_ui.file_menu.hover = None;

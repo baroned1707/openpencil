@@ -114,6 +114,7 @@ impl DesktopApp {
     fn live_options(&self) -> op_host_services::mcp_live::LiveOptions {
         op_host_services::mcp_live::LiveOptions {
             bearer_token: self.required_bearer(),
+            extra_roots: self.documents.explicit_roots().snapshot(),
             ..Default::default()
         }
     }
@@ -336,6 +337,7 @@ impl DesktopApp {
         if self.mcp_server.is_none() {
             return false;
         }
+        self.sync_mcp_project_roots();
         let listings = self.mcp_document_listings();
         let (outcome, pending_design_md) = {
             let Some(server) = self.mcp_server.as_mut() else {

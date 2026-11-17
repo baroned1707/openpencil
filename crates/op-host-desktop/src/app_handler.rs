@@ -334,6 +334,9 @@ impl ApplicationHandler<DesktopEvent> for DesktopApp {
 
         // Unsaved documents a previous run left behind come back first, so a
         // session file they were bound to opens onto the recovered tab.
+        // Opened project folders first, so every restored or recovered tab
+        // groups under the project it belongs to.
+        self.restore_open_projects();
         self.offer_recovery_at_startup();
 
         // File-association launch path: open the document handed in

@@ -76,6 +76,34 @@ fn cmd_shift_import_shortcuts_select_their_source() {
 }
 
 #[test]
+fn cmd_shift_o_opens_the_project_picker() {
+    let root = std::env::temp_dir().join(format!(
+        "openpencil-shortcut-project-{}",
+        std::process::id()
+    ));
+    std::fs::create_dir_all(&root).unwrap();
+    let root = root.canonicalize().unwrap();
+    let mut app = DesktopApp::new(None);
+    let asked = std::rc::Rc::new(std::cell::Cell::new(0));
+    let counter = std::rc::Rc::clone(&asked);
+    let chosen = root.clone();
+    app.projects_host.set_folder_picker(Box::new(move |_| {
+        counter.set(counter.get() + 1);
+        Some(chosen.clone())
+    }));
+    app.zoom_modifier = true;
+    app.shift_modifier = true;
+    app.handle_key_pressed(&Key::Character("O".into()), Some("O"));
+    assert_eq!(asked.get(), 1, "Cmd+Shift+O asks for a folder");
+    assert_eq!(
+        app.documents.explicit_roots().snapshot(),
+        std::slice::from_ref(&root)
+    );
+
+    let _ = std::fs::remove_dir_all(root);
+}
+
+#[test]
 fn cmd_shift_alt_does_not_open_an_import_modal() {
     let mut app = DesktopApp::new(None);
     app.zoom_modifier = true;

@@ -6,7 +6,7 @@
 //! projects_dock_rect` — the same rect the canvas and the property panel
 //! subtract — and the list inside it is `projects_panel_flow`'s.
 
-use op_editor_core::EditorState;
+use op_editor_core::{EditorState, ProjectRequest};
 
 use crate::widgets::host_canvas_geometry::{projects_dock_rect, projects_dock_width};
 use crate::widgets::projects_dock::ProjectsDock;
@@ -34,7 +34,7 @@ pub fn layout(state: &EditorState, viewport_w: f32, viewport_h: f32) -> Option<P
     Some(ProjectsDockLayout::new(
         &panel.projects,
         projects_dock_rect(state, viewport_w, viewport_h),
-        panel.dock_open,
+        panel.is_open(),
         panel.scroll.offset,
     ))
 }
@@ -50,6 +50,8 @@ pub fn widget<'a>(
         list: projects_panel_flow::widget(state, text),
         title,
         toggle_hover: state.editor_ui.projects_panel.toggle_hover,
+        open_project_hover: state.editor_ui.projects_panel.open_project_hover,
+        has_projects: !state.editor_ui.projects_panel.projects.is_empty(),
     }
 }
 
@@ -62,9 +64,10 @@ pub fn title(state: &EditorState) -> &'static str {
 /// belonged to the layout being replaced.
 pub fn toggle(state: &mut EditorState) {
     let panel = &mut state.editor_ui.projects_panel;
-    panel.dock_open = !panel.dock_open;
+    panel.toggle_open();
     panel.hover = None;
     panel.toggle_hover = false;
+    panel.open_project_hover = false;
 }
 
 /// Route a press at `point`: the chevron toggles, a row records the request
@@ -74,6 +77,11 @@ pub fn press(state: &mut EditorState, layout: &ProjectsDockLayout, point: Point2
         None => DockPress::Missed,
         Some(DockHit::Toggle) => {
             toggle(state);
+            DockPress::Claimed
+        }
+        Some(DockHit::OpenProject) => {
+            state.editor_ui.projects_panel.pending_request =
+                Some(ProjectRequest::OpenProjectPicker);
             DockPress::Claimed
         }
         Some(DockHit::Header) => DockPress::Claimed,
@@ -91,9 +99,11 @@ pub fn press(state: &mut EditorState, layout: &ProjectsDockLayout, point: Point2
 /// Track the cursor. Returns whether any hover changed (the repaint signal).
 pub fn cursor_move(state: &mut EditorState, layout: &ProjectsDockLayout, point: Point2D) -> bool {
     let over_toggle = matches!(layout.hit(point), Some(DockHit::Toggle));
+    let over_open = matches!(layout.hit(point), Some(DockHit::OpenProject));
     let panel = &mut state.editor_ui.projects_panel;
-    let toggle_changed = panel.toggle_hover != over_toggle;
+    let toggle_changed = panel.toggle_hover != over_toggle || panel.open_project_hover != over_open;
     panel.toggle_hover = over_toggle;
+    panel.open_project_hover = over_open;
     let list_changed = match &layout.list {
         Some(list) => projects_panel_flow::cursor_move(state, list, point),
         None => projects_panel_flow::clear_hover(state),
@@ -106,7 +116,8 @@ pub fn clear_hover(state: &mut EditorState) -> bool {
     let list_cleared = projects_panel_flow::clear_hover(state);
     let panel = &mut state.editor_ui.projects_panel;
     let toggle_cleared = std::mem::take(&mut panel.toggle_hover);
-    list_cleared || toggle_cleared
+    let open_cleared = std::mem::take(&mut panel.open_project_hover);
+    list_cleared || toggle_cleared || open_cleared
 }
 
 /// Scroll the list. `None` when the pointer is not on the dock, so the

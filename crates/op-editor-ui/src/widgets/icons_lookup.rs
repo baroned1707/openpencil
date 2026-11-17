@@ -47,6 +47,7 @@ const FIRST_PARTY_ICONS: &[(&str, Icon)] = &[
     ("hash", Icon::Hash),
     ("panel-left", Icon::PanelLeft),
     ("folder-open", Icon::FolderOpen),
+    ("folder-plus", Icon::FolderPlus),
     ("git-branch", Icon::GitBranch),
     ("history", Icon::History),
     ("file-plus", Icon::FilePlus),

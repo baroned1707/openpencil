@@ -580,6 +580,18 @@ pub fn lookup(key: &str) -> Option<&'static str> {
         "dialog.collabGuestLeaveBody" => "「{{name}}」のアクティブなセッションに参加しています。\n\nセッションを退出しますか？\n\nはい = 退出して続ける · いいえ / キャンセル = 留まる。",
         "documents.saveAsAlreadyOpen" => "「{{name}}」はすでに別のタブで開かれています。そのタブに切り替えるか、別の名前を選んでください。",
         "documents.collabSessionLostParked" => "「{{name}}」の共同作業セッションが終了したか、接続が切れました。そのタブに切り替えて理由を確認してください。",
+        "project.open" => "プロジェクトを開く…",
+        "project.close" => "プロジェクトを閉じる",
+        "project.refresh" => "更新",
+        "project.scanning" => "スキャン中…",
+        "project.truncated" => "ほか {{count}} 件は非表示",
+        "project.unsafeRoot" => "このフォルダは広すぎてプロジェクトにできません。1つのプロジェクトのフォルダを選んでください。",
+        "project.noDesigns" => "このフォルダにはまだ .op ファイルがありません",
+        "project.openFolderHint" => "フォルダを選ぶか、ここにドロップしてください",
+        "project.slow" => "フォルダの読み込みが遅いため、見つかった分のみ表示しています",
+        "project.unreadable" => "このフォルダを読み取れません",
+        "documents.emptyFileInitialized" => "「{{name}}」は空だったため、空白のデザインとして初期化しました。",
+        "documents.emptyFileNotWritable" => "「{{name}}」は空でしたが、書き込めませんでした。未保存の状態で開いています。作業を残すには保存してください。",
         _ => return None,
     })
 }

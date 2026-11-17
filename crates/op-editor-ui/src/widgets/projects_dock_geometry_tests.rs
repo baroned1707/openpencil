@@ -16,8 +16,7 @@ fn project() -> ProjectView {
     ProjectView {
         root: "/work/shop".to_string(),
         name: "shop".to_string(),
-        files: Vec::new(),
-        expanded: true,
+        ..ProjectView::default()
     }
 }
 
@@ -75,11 +74,17 @@ fn property_panel_sits_left_of_the_dock() {
     assert_eq!(right(panel), dock.origin.x, "flush against the dock");
     assert_eq!(panel.size.x, state.editor_ui.property_panel_width);
 
-    // And back at the window edge when there is no dock.
+    // And back at the window edge when the host has no dock at all.
     let mut bare = with_selection(docked());
-    bare.editor_ui.projects_panel.projects.clear();
+    bare.editor_ui.document_tabs_supported = false;
     let panel = property_panel_rect(&bare, VIEWPORT_W, VIEWPORT_H);
     assert_eq!(right(panel), VIEWPORT_W);
+
+    // An empty dock is the slim strip: the panel still clears it.
+    let mut empty = with_selection(docked());
+    empty.editor_ui.projects_panel.projects.clear();
+    let panel = property_panel_rect(&empty, VIEWPORT_W, VIEWPORT_H);
+    assert_eq!(right(panel), VIEWPORT_W - DOCK_COLLAPSED_WIDTH);
 }
 
 #[test]
@@ -100,7 +105,7 @@ fn status_bar_and_chat_anchor_clear_the_dock() {
 }
 
 #[test]
-fn dock_hidden_when_unsupported_or_touch_or_empty() {
+fn dock_hidden_when_unsupported_or_touch_and_a_strip_when_empty() {
     let shown = |state: &EditorState| projects_dock_width(state) > 0.0;
     assert!(shown(&docked()));
 
@@ -108,9 +113,17 @@ fn dock_hidden_when_unsupported_or_touch_or_empty() {
     state.editor_ui.document_tabs_supported = false;
     assert!(!shown(&state), "a single-document host has no dock");
 
+    // With no project the dock is still on offer, as the slim strip that
+    // holds "Open project".
     let mut state = docked();
     state.editor_ui.projects_panel.projects.clear();
-    assert!(!shown(&state), "no projects, nothing to dock");
+    assert_eq!(projects_dock_width(&state), DOCK_COLLAPSED_WIDTH);
+    state.editor_ui.projects_panel.empty_open = true;
+    assert_eq!(
+        projects_dock_width(&state),
+        DOCK_WIDTH,
+        "unfolded by choice"
+    );
 
     let mut state = docked();
     state.editor_ui.touch = true;

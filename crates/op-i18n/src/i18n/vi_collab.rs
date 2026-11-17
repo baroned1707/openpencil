@@ -576,6 +576,18 @@ pub fn lookup(key: &str) -> Option<&'static str> {
         "dialog.collabGuestLeaveBody" => "Bạn đang ở trong một phiên đang chạy tại “{{name}}”.\n\nRời khỏi phiên?\n\nCó = Rời và tiếp tục · Không hoặc Hủy = ở lại.",
         "documents.saveAsAlreadyOpen" => "“{{name}}” đã được mở ở tab khác — hãy chuyển sang tab đó hoặc chọn tên khác.",
         "documents.collabSessionLostParked" => "Phiên cộng tác trong “{{name}}” đã kết thúc hoặc mất kết nối. Hãy chuyển sang tab đó để xem lý do.",
+        "project.open" => "Mở dự án…",
+        "project.close" => "Đóng dự án",
+        "project.refresh" => "Làm mới",
+        "project.scanning" => "Đang quét…",
+        "project.truncated" => "Còn {{count}} mục chưa hiển thị",
+        "project.unsafeRoot" => "Thư mục này quá rộng để làm dự án. Hãy chọn thư mục của một dự án.",
+        "project.noDesigns" => "Chưa có tệp .op nào trong thư mục này",
+        "project.openFolderHint" => "Chọn một thư mục hoặc thả vào đây",
+        "project.slow" => "Thư mục chậm: đang hiển thị những gì đã tìm thấy",
+        "project.unreadable" => "Không thể đọc thư mục này",
+        "documents.emptyFileInitialized" => "“{{name}}” trống nên đã được khởi tạo thành một thiết kế trắng.",
+        "documents.emptyFileNotWritable" => "“{{name}}” trống nhưng không ghi được. Tệp đang mở ở trạng thái chưa lưu: hãy lưu để giữ lại công việc của bạn.",
         _ => return None,
     })
 }

@@ -564,6 +564,18 @@ pub fn lookup(key: &str) -> Option<&'static str> {
         "dialog.collabGuestLeaveBody" => "Anda berada dalam sesi yang sedang berjalan di “{{name}}”.\n\nKeluar dari sesi?\n\nYa = Keluar dan lanjutkan · Tidak atau Batal = tetap di sini.",
         "documents.saveAsAlreadyOpen" => "“{{name}}” sudah terbuka di tab lain — beralihlah ke tab itu atau pilih nama lain.",
         "documents.collabSessionLostParked" => "Sesi kolaborasi di “{{name}}” berakhir atau kehilangan koneksi. Beralihlah ke tab itu untuk melihat alasannya.",
+        "project.open" => "Buka proyek…",
+        "project.close" => "Tutup proyek",
+        "project.refresh" => "Muat ulang",
+        "project.scanning" => "Memindai…",
+        "project.truncated" => "{{count}} lagi tidak ditampilkan",
+        "project.unsafeRoot" => "Folder itu terlalu luas untuk menjadi proyek. Pilih folder satu proyek saja.",
+        "project.noDesigns" => "Belum ada file .op di folder ini",
+        "project.openFolderHint" => "Pilih folder, atau jatuhkan di sini",
+        "project.slow" => "Folder lambat: menampilkan yang ditemukan",
+        "project.unreadable" => "Folder ini tidak dapat dibaca",
+        "documents.emptyFileInitialized" => "“{{name}}” kosong, jadi disiapkan sebagai desain kosong.",
+        "documents.emptyFileNotWritable" => "“{{name}}” kosong tetapi tidak dapat ditulis. File terbuka tanpa tersimpan: simpan untuk mempertahankan pekerjaan Anda.",
         _ => return None,
     })
 }

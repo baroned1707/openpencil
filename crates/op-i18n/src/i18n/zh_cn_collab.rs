@@ -564,6 +564,18 @@ pub fn lookup(key: &str) -> Option<&'static str> {
         "dialog.collabGuestLeaveBody" => "你正在“{{name}}”的会话中。\n\n要退出该会话吗？\n\n是 = 退出并继续 · 否或取消 = 留下。",
         "documents.saveAsAlreadyOpen" => "“{{name}}”已在另一个标签页中打开——请切换到该标签页，或选择其他名称。",
         "documents.collabSessionLostParked" => "“{{name}}”中的协作会话已结束或连接中断。请切换到该标签页查看原因。",
+        "project.open" => "打开项目…",
+        "project.close" => "关闭项目",
+        "project.refresh" => "刷新",
+        "project.scanning" => "正在扫描…",
+        "project.truncated" => "还有 {{count}} 个未显示",
+        "project.unsafeRoot" => "该文件夹范围太大，无法作为项目。请选择某个项目的文件夹。",
+        "project.noDesigns" => "此文件夹中还没有 .op 文件",
+        "project.openFolderHint" => "选择一个文件夹，或将其拖放到此处",
+        "project.slow" => "文件夹较慢：仅显示已找到的内容",
+        "project.unreadable" => "无法读取此文件夹",
+        "documents.emptyFileInitialized" => "“{{name}}”是空文件，已初始化为空白设计。",
+        "documents.emptyFileNotWritable" => "“{{name}}”是空文件，但无法写入。它已作为未保存的文档打开：请保存以保留你的工作。",
         _ => return None,
     })
 }

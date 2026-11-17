@@ -39,8 +39,9 @@ fn project() -> ProjectView {
             dirty: false,
             status: op_editor_core::DocumentTabStatus::Idle,
             active: false,
+            folder: "designs".to_string(),
         }],
-        expanded: true,
+        ..ProjectView::default()
     }
 }
 
@@ -283,4 +284,43 @@ fn the_chat_card_and_zoom_controls_stay_left_of_the_dock() {
             .expect("the bar fits");
         assert!(bar.origin.x + bar.size.x <= dock(&host).origin.x);
     }
+}
+
+#[test]
+fn empty_dock_is_a_collapsed_strip_that_opens_the_picker() {
+    let mut host = host();
+    host.editor_state.editor_ui.projects_panel.projects.clear();
+    host.mark_dirty();
+    let strip = dock(&host);
+    assert_eq!(
+        strip.size.x,
+        op_editor_ui::widgets::projects_dock_layout::DOCK_COLLAPSED_WIDTH,
+        "no project: a slim strip, not the open column"
+    );
+    let canvas = geometry::canvas_rect(&host.editor_state, VW, VH);
+    assert_eq!(
+        canvas.origin.x + canvas.size.x,
+        strip.origin.x,
+        "the canvas stops short of the strip like it does of the column"
+    );
+
+    let layout = host
+        .projects_dock_layout(VW, VH)
+        .expect("the empty dock is laid out");
+    let button = layout.open_project.expect("the strip offers Open project");
+    let at = Point2D::new(button.origin.x + 4.0, button.origin.y + 4.0);
+    assert!(
+        host.apply_press(at.x, at.y, VW, VH),
+        "the strip owns the press"
+    );
+    host.apply_release_with_viewport(VW, VH);
+    assert_eq!(
+        host.editor_state.editor_ui.projects_panel.pending_request,
+        Some(op_editor_core::ProjectRequest::OpenProjectPicker),
+        "the host's pump will show the picker"
+    );
+    assert!(
+        !host.editor_state.editor_ui.projects_panel.is_open(),
+        "asking for the picker does not unfold the strip"
+    );
 }

@@ -4,7 +4,9 @@
 //! carries a chevron, the project name in semibold, a muted folder hint and
 //! an aggregate chip on the right (`n need review` / `n running`, else the
 //! file count); hovering it swaps the chip for a `+` that starts a new
-//! design in that project. File rows hang indented below, with the agent
+//! design in that project (and, on a project the user opened, a refresh and a
+//! close button). File rows hang indented below, grouped under a muted folder
+//! sub-header per directory (`projects_panel_rows.rs`), with the agent
 //! status as a leading dot, an unsaved bullet after the label, the active
 //! document filled with `row_selected_primary` and files that are not open
 //! in the muted tone.
@@ -13,21 +15,26 @@
 //! press means is `projects_panel_flow`, and the data is the host's
 //! `ProjectView` rows.
 
-use op_editor_core::{DocumentTabStatus, ProjectFileView, ProjectRowTarget, ProjectView};
+use op_editor_core::{
+    DocumentTabStatus, ProjectFileView, ProjectRowTarget, ProjectScanState, ProjectView,
+};
 
 use crate::theme::Theme;
 use crate::widgets::icons::{draw_icon, Icon};
 use crate::widgets::projects_panel_layout::{
-    ProjectRow, ProjectsPanelLayout, RowKind, ROW_PAD_RIGHT,
+    ProjectRow, ProjectsPanelLayout, RowKind, PLUS_SIZE, ROW_PAD_RIGHT,
 };
 use crate::widgets::text_metrics;
 use crate::widgets::PaintCx;
 use crate::{Color, Point2D, Rect, TextLayout};
 
+#[path = "projects_panel_rows.rs"]
+mod rows;
+
 const CHEVRON_SIZE: f32 = 14.0;
 const CHEVRON_PAD_LEFT: f32 = 6.0;
 const HEADER_FONT: f32 = 12.0;
-const FILE_FONT: f32 = 12.0;
+pub(crate) const FILE_FONT: f32 = 12.0;
 const HINT_FONT: f32 = 11.0;
 const CHIP_FONT: f32 = 11.0;
 const NAME_GAP: f32 = 6.0;
@@ -35,26 +42,41 @@ const NAME_GAP: f32 = 6.0;
 const HINT_MIN_WIDTH: f32 = 48.0;
 /// Where a file row's content starts, from its row's left edge: under the
 /// header's name, past the chevron.
-const FILE_INDENT: f32 = CHEVRON_PAD_LEFT + CHEVRON_SIZE + 6.0;
+pub(crate) const FILE_INDENT: f32 = CHEVRON_PAD_LEFT + CHEVRON_SIZE + 6.0;
+/// Extra indent of the files under a folder sub-header.
+const FOLDER_FILE_INDENT: f32 = 14.0;
 /// Width of the leading slot that holds a file's status dot, so labels line
 /// up whether or not a file has one.
 const STATUS_SLOT: f32 = 14.0;
 const STATUS_DOT: f32 = 6.0;
 const DIRTY_DOT: f32 = 5.0;
 const DIRTY_GAP: f32 = 6.0;
-const PLUS_GLYPH: f32 = 14.0;
-const EMPTY_FONT: f32 = 12.0;
-const EMPTY_PAD_TOP: f32 = 28.0;
-const SEMIBOLD: u16 = 600;
+pub(crate) const PLUS_GLYPH: f32 = 14.0;
+pub(crate) const SEMIBOLD: u16 = 600;
 
-/// The list's translated strings. `needs_review` and `running` carry a
-/// `{{count}}` placeholder.
+/// The list's translated strings. `needs_review`, `running` and `truncated`
+/// carry a `{{count}}` placeholder.
 #[derive(Debug, Clone, Copy)]
 pub struct ProjectsPanelText<'a> {
+    /// The empty dock's headline.
     pub empty: &'a str,
     pub new_design: &'a str,
     pub needs_review: &'a str,
     pub running: &'a str,
+    /// The empty dock's "Open project" button (also the header button's tip).
+    pub open_project: &'a str,
+    /// The empty dock's one-line hint under the headline.
+    pub open_hint: &'a str,
+    /// Tooltip of a project's close button.
+    pub close: &'a str,
+    /// Tooltip of a project's refresh button.
+    pub refresh: &'a str,
+    pub scanning: &'a str,
+    pub slow: &'a str,
+    pub unreadable: &'a str,
+    pub truncated: &'a str,
+    /// An opened folder with no `.op` file in it.
+    pub no_designs: &'a str,
 }
 
 /// The widget for one frame.
@@ -81,7 +103,7 @@ impl ProjectsPanel<'_> {
     ) {
         cx.backend.fill_rect(layout.panel, surface);
         if layout.empty {
-            self.paint_empty(cx, layout.panel, theme);
+            self.paint_empty(cx, layout, theme);
             return;
         }
         cx.backend.save();
@@ -101,26 +123,13 @@ impl ProjectsPanel<'_> {
                     }
                 }
                 RowKind::NewDesign(project) => self.paint_new_design(cx, theme, row, project),
+                RowKind::Folder(project, file) => self.paint_folder(cx, theme, row, project, file),
+                RowKind::Status(project) => self.paint_status(cx, theme, row, project),
+                RowKind::NoDesigns(_) => self.paint_note(cx, theme, row, self.text.no_designs),
             }
         }
         cx.backend.restore();
-    }
-
-    fn paint_empty(&self, cx: &mut PaintCx<'_>, panel: Rect, theme: &Theme) {
-        let max = (panel.size.x - 32.0).max(0.0);
-        let text = text_metrics::fit_chrome(cx.backend, self.text.empty, max, EMPTY_FONT);
-        let width = text_metrics::measure_chrome(cx.backend, &text, EMPTY_FONT);
-        draw_label(
-            cx,
-            &text,
-            EMPTY_FONT,
-            400,
-            theme.muted_foreground,
-            Point2D::new(
-                panel.origin.x + (panel.size.x - width) / 2.0,
-                panel.origin.y + EMPTY_PAD_TOP,
-            ),
-        );
+        self.paint_button_tooltip(cx, theme, layout);
     }
 
     fn paint_header(&self, cx: &mut PaintCx<'_>, theme: &Theme, row: &ProjectRow, index: usize) {
@@ -129,7 +138,12 @@ impl ProjectsPanel<'_> {
         };
         let hovered = matches!(
             self.hover,
-            Some(ProjectRowTarget::Header(i) | ProjectRowTarget::Plus(i)) if i == index
+            Some(
+                ProjectRowTarget::Header(i)
+                    | ProjectRowTarget::Plus(i)
+                    | ProjectRowTarget::Close(i)
+                    | ProjectRowTarget::Refresh(i)
+            ) if i == index
         );
         if hovered {
             cx.backend.fill_rect(row.rect, theme.accent);
@@ -153,31 +167,24 @@ impl ProjectsPanel<'_> {
             1.6,
         );
 
-        // Trailing slot: the `+` while hovered, else the aggregate chip.
+        // Trailing slot: the buttons while hovered, else the aggregate chip.
         let right_edge = rect.origin.x + rect.size.x - ROW_PAD_RIGHT;
         let mut trailing_left = right_edge;
         if hovered {
-            if let Some(plus) = row.plus {
-                let plus_hot = self.hover == Some(ProjectRowTarget::Plus(index));
-                if plus_hot {
-                    cx.backend.fill_rect(plus, theme.button_hover);
-                }
-                draw_icon(
-                    cx.backend,
-                    Icon::Plus,
-                    Point2D::new(
-                        plus.origin.x + (plus.size.x - PLUS_GLYPH) / 2.0,
-                        plus.origin.y + (plus.size.y - PLUS_GLYPH) / 2.0,
-                    ),
-                    PLUS_GLYPH,
-                    if plus_hot {
-                        theme.foreground
-                    } else {
-                        theme.muted_foreground
-                    },
-                    1.6,
-                );
-                trailing_left = plus.origin.x;
+            let buttons = [
+                (
+                    row.refresh,
+                    Icon::RotateCw,
+                    ProjectRowTarget::Refresh(index),
+                ),
+                (row.close, Icon::Close, ProjectRowTarget::Close(index)),
+                (row.plus, Icon::Plus, ProjectRowTarget::Plus(index)),
+            ];
+            for (button, icon, target) in buttons {
+                let Some(button) = button else { continue };
+                let hot = self.hover == Some(target);
+                paint_header_button(cx, theme, button, icon, hot);
+                trailing_left = trailing_left.min(button.origin.x);
             }
         } else {
             let (label, color) = self.chip(theme, project);
@@ -266,6 +273,10 @@ impl ProjectsPanel<'_> {
                 theme.primary,
             );
         }
+        // While the first scan runs the count would read as "0 designs".
+        if project.scan == ProjectScanState::Scanning {
+            return (String::new(), theme.muted_foreground);
+        }
         (project.files.len().to_string(), theme.muted_foreground)
     }
 
@@ -291,7 +302,13 @@ impl ProjectsPanel<'_> {
             theme.muted_foreground
         };
 
-        let slot_x = rect.origin.x + FILE_INDENT;
+        let slot_x = rect.origin.x
+            + FILE_INDENT
+            + if file.folder.is_empty() {
+                0.0
+            } else {
+                FOLDER_FILE_INDENT
+            };
         if let Some(color) = status_color(theme, file.status) {
             cx.backend.fill_round_rect(
                 Rect::xywh(
@@ -381,6 +398,29 @@ impl ProjectsPanel<'_> {
             ),
         );
     }
+}
+
+/// One of a header's icon buttons: a flat wash and a glyph that darkens when
+/// the pointer is on it.
+fn paint_header_button(cx: &mut PaintCx<'_>, theme: &Theme, button: Rect, icon: Icon, hot: bool) {
+    if hot {
+        cx.backend.fill_rect(button, theme.button_hover);
+    }
+    draw_icon(
+        cx.backend,
+        icon,
+        Point2D::new(
+            button.origin.x + (PLUS_SIZE - PLUS_GLYPH) / 2.0,
+            button.origin.y + (button.size.y - PLUS_GLYPH) / 2.0,
+        ),
+        PLUS_GLYPH,
+        if hot {
+            theme.foreground
+        } else {
+            theme.muted_foreground
+        },
+        1.6,
+    );
 }
 
 pub(crate) fn draw_label(

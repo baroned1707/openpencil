@@ -8,6 +8,8 @@ mod frame;
 mod home;
 #[path = "ui3_proof_menus_tests.rs"]
 mod menus;
+#[path = "ui3_proof_open_project_tests.rs"]
+mod open_project;
 #[path = "ui3_proof_panels_tests.rs"]
 mod panels;
 #[path = "ui3_proof_projects_tests.rs"]

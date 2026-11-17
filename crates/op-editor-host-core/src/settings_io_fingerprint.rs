@@ -15,6 +15,7 @@ use op_i18n::Locale;
 pub struct Fingerprint {
     recent_files: Vec<RecentFile>,
     session_documents: Vec<SessionDocument>,
+    open_projects: Vec<String>,
     theme: ThemeMode,
     locale: Locale,
     port: u16,
@@ -44,6 +45,7 @@ pub fn fingerprint(state: &EditorState) -> Fingerprint {
     Fingerprint {
         recent_files: eui.recent_files.clone(),
         session_documents: eui.session_documents.clone(),
+        open_projects: eui.open_projects.clone(),
         theme: eui.theme_mode,
         locale: eui.locale,
         port: eui.agent_settings.mcp_server.port,

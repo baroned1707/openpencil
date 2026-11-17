@@ -568,6 +568,18 @@ pub fn lookup(key: &str) -> Option<&'static str> {
         "dialog.collabGuestLeaveBody" => "आप “{{name}}” में एक चालू सत्र में हैं।\n\nसत्र छोड़ें?\n\nहाँ = छोड़ें और जारी रखें · नहीं या रद्द करें = रुकें।",
         "documents.saveAsAlreadyOpen" => "“{{name}}” पहले से किसी दूसरे टैब में खुला है — उस टैब पर जाएँ या कोई दूसरा नाम चुनें।",
         "documents.collabSessionLostParked" => "“{{name}}” में सहयोग सत्र समाप्त हो गया या उसका कनेक्शन टूट गया। कारण देखने के लिए उस टैब पर जाएँ।",
+        "project.open" => "प्रोजेक्ट खोलें…",
+        "project.close" => "प्रोजेक्ट बंद करें",
+        "project.refresh" => "रीफ़्रेश करें",
+        "project.scanning" => "स्कैन हो रहा है…",
+        "project.truncated" => "{{count}} और नहीं दिखाए गए",
+        "project.unsafeRoot" => "यह फ़ोल्डर प्रोजेक्ट के लिए बहुत बड़ा है। किसी एक प्रोजेक्ट का फ़ोल्डर चुनें।",
+        "project.noDesigns" => "इस फ़ोल्डर में अभी कोई .op फ़ाइल नहीं है",
+        "project.openFolderHint" => "कोई फ़ोल्डर चुनें, या उसे यहाँ छोड़ें",
+        "project.slow" => "धीमा फ़ोल्डर: जो मिला वही दिखाया जा रहा है",
+        "project.unreadable" => "यह फ़ोल्डर पढ़ा नहीं जा सका",
+        "documents.emptyFileInitialized" => "“{{name}}” खाली था, इसलिए उसे खाली डिज़ाइन के रूप में तैयार किया गया।",
+        "documents.emptyFileNotWritable" => "“{{name}}” खाली था, लेकिन उसमें लिखा नहीं जा सका। यह बिना सहेजे खुला है: अपना काम बचाने के लिए इसे सहेजें।",
         _ => return None,
     })
 }

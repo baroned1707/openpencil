@@ -16,7 +16,8 @@ use crate::backend::NativeFrameBackend;
 
 impl WidgetHostNative {
     /// The dock's layout, or `None` while it is not shown (unsupported host,
-    /// touch chrome, no projects, or a presentation owning the window).
+    /// touch chrome, or a presentation owning the window). With no project it
+    /// is the slim strip that holds "Open project".
     pub(in crate::widget_host) fn projects_dock_layout(
         &self,
         viewport_w: f32,

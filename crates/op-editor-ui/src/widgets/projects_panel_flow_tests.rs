@@ -26,6 +26,7 @@ pub(crate) fn file(label: &str, open: Option<u64>) -> ProjectFileView {
         dirty: false,
         status: DocumentTabStatus::Idle,
         active: false,
+        folder: String::new(),
     }
 }
 
@@ -35,6 +36,7 @@ pub(crate) fn project(name: &str, files: Vec<ProjectFileView>, expanded: bool) -
         name: name.to_string(),
         files,
         expanded,
+        ..ProjectView::default()
     }
 }
 

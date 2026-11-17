@@ -564,6 +564,18 @@ pub fn lookup(key: &str) -> Option<&'static str> {
         "dialog.collabGuestLeaveBody" => "Estás en una sesión en curso en «{{name}}».\n\n¿Salir de la sesión?\n\nSí = Salir y continuar · No o Cancelar = quedarse.",
         "documents.saveAsAlreadyOpen" => "«{{name}}» ya está abierto en otra pestaña: cambia a ella o elige otro nombre.",
         "documents.collabSessionLostParked" => "La sesión de colaboración de «{{name}}» terminó o perdió la conexión. Cambia a esa pestaña para ver el motivo.",
+        "project.open" => "Abrir proyecto…",
+        "project.close" => "Cerrar proyecto",
+        "project.refresh" => "Actualizar",
+        "project.scanning" => "Analizando…",
+        "project.truncated" => "{{count}} más sin mostrar",
+        "project.unsafeRoot" => "Esa carpeta es demasiado amplia para ser un proyecto. Elige la carpeta de un solo proyecto.",
+        "project.noDesigns" => "Aún no hay archivos .op en esta carpeta",
+        "project.openFolderHint" => "Elige una carpeta o suéltala aquí",
+        "project.slow" => "Carpeta lenta: se muestra lo encontrado",
+        "project.unreadable" => "No se puede leer esta carpeta",
+        "documents.emptyFileInitialized" => "«{{name}}» estaba vacío, así que se inicializó como un diseño en blanco.",
+        "documents.emptyFileNotWritable" => "«{{name}}» estaba vacío pero no se pudo escribir. Está abierto sin guardar: guárdalo para conservar tu trabajo.",
         _ => return None,
     })
 }

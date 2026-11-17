@@ -122,6 +122,11 @@ impl DesktopApp {
         self.host.editor_state_mut().editor_ui.file_drop_active = false;
         self.host.mark_editor_state_dirty();
         self.request_redraw(true);
+        // A folder opens as a project; everything below is about files.
+        if path.is_dir() {
+            self.open_project(&path);
+            return;
+        }
         if image_drop_host::is_supported_image_drop(&path) {
             let outcome = image_drop_host::apply_image_drop(
                 &mut self.host,

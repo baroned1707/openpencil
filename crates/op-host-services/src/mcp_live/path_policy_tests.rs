@@ -361,3 +361,41 @@ fn the_path_is_vetted_as_written_not_as_trimmed() {
     let blank = call("save_document", &[("filePath", Path::new("   "))]);
     assert_eq!(refusal(&blank, &open), None, "a blank value names nothing");
 }
+
+#[test]
+fn mcp_path_policy_allows_files_inside_an_opened_project_but_not_over_open_tabs() {
+    let tree = Tree::new("opened-project");
+    // The user opened `outside` as a project: it arrives as an extra root,
+    // although no open document lives in it.
+    let opened = [tree.outside("")];
+    let new_file = call(
+        "save_document",
+        &[("filePath", &tree.outside("screens/new.op"))],
+    );
+    assert!(
+        vet_call(&new_file, &tree.open(), &[]).is_err(),
+        "closed: refused"
+    );
+    assert!(
+        vet_call(&new_file, &tree.open(), &opened).is_ok(),
+        "opened: allowed"
+    );
+
+    // A `.op` inside it that is open in a tab is still not a write target.
+    std::fs::write(tree.outside("held.op"), "{}").unwrap();
+    let mut open = tree.open();
+    open.push(listing(3, Some(tree.outside("held.op"))));
+    let onto_held = call("save_document", &[("filePath", &tree.outside("held.op"))]);
+    match vet_call(&onto_held, &open, &opened) {
+        Err(McpLiveError::PathNotAllowed { reason, .. }) => {
+            assert_eq!(reason, PathRefusal::OpenInEditor)
+        }
+        other => panic!("expected an OpenInEditor refusal, got {other:?}"),
+    }
+    // Hidden folders stay off limits inside an opened project too.
+    let hidden = call(
+        "save_document",
+        &[("filePath", &tree.outside(".secret/x.op"))],
+    );
+    assert!(vet_call(&hidden, &tree.open(), &opened).is_err());
+}

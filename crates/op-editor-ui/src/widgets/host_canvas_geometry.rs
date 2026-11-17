@@ -491,7 +491,7 @@ fn projects_dock_shown(state: &EditorState) -> bool {
 pub fn projects_dock_width(state: &EditorState) -> f32 {
     if !projects_dock_shown(state) {
         0.0
-    } else if state.editor_ui.projects_panel.dock_open {
+    } else if state.editor_ui.projects_panel.is_open() {
         DOCK_WIDTH
     } else {
         DOCK_COLLAPSED_WIDTH

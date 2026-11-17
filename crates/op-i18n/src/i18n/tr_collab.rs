@@ -564,6 +564,18 @@ pub fn lookup(key: &str) -> Option<&'static str> {
         "dialog.collabGuestLeaveBody" => "“{{name}}” içinde etkin bir oturumdasınız.\n\nOturumdan ayrılınsın mı?\n\nEvet = Ayrıl ve devam et · Hayır veya İptal = kal.",
         "documents.saveAsAlreadyOpen" => "“{{name}}” zaten başka bir sekmede açık — o sekmeye geçin veya başka bir ad seçin.",
         "documents.collabSessionLostParked" => "“{{name}}” içindeki iş birliği oturumu sona erdi veya bağlantısını kaybetti. Nedenini görmek için o sekmeye geçin.",
+        "project.open" => "Projeyi aç…",
+        "project.close" => "Projeyi kapat",
+        "project.refresh" => "Yenile",
+        "project.scanning" => "Taranıyor…",
+        "project.truncated" => "{{count}} tane daha gösterilmiyor",
+        "project.unsafeRoot" => "Bu klasör proje olmak için çok geniş. Tek bir projenin klasörünü seçin.",
+        "project.noDesigns" => "Bu klasörde henüz .op dosyası yok",
+        "project.openFolderHint" => "Bir klasör seçin veya buraya bırakın",
+        "project.slow" => "Yavaş klasör: bulunanlar gösteriliyor",
+        "project.unreadable" => "Bu klasör okunamıyor",
+        "documents.emptyFileInitialized" => "“{{name}}” boştu, bu yüzden boş bir tasarım olarak hazırlandı.",
+        "documents.emptyFileNotWritable" => "“{{name}}” boştu ancak yazılamadı. Kaydedilmemiş olarak açıldı: çalışmanızı korumak için kaydedin.",
         _ => return None,
     })
 }

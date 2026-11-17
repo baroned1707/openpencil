@@ -90,6 +90,20 @@ impl<'a> Widget for FileMenu<'a> {
             h(3),
         );
         y += ROW_HEIGHT;
+        let shift = self.top_shift();
+        if self.has_open_project_row() {
+            paint_row(
+                cx,
+                &self.theme,
+                rect.origin.x,
+                y,
+                Icon::FolderPlus,
+                t(self.ui, "openProject"),
+                "⌘⇧O",
+                h(4),
+            );
+            y += ROW_HEIGHT;
+        }
         y = paint_divider(cx, &self.theme, rect, y);
         paint_row(
             cx,
@@ -99,7 +113,7 @@ impl<'a> Widget for FileMenu<'a> {
             Icon::Save,
             t(self.ui, "save"),
             "⌘S",
-            h(4),
+            h(4 + shift),
         );
         y += ROW_HEIGHT;
         paint_row(
@@ -110,7 +124,7 @@ impl<'a> Widget for FileMenu<'a> {
             Icon::Save,
             t(self.ui, "saveAs"),
             "⌘⇧S",
-            h(5),
+            h(5 + shift),
         );
         y += ROW_HEIGHT;
         if self.has_save_as_template_row() {
@@ -122,12 +136,12 @@ impl<'a> Widget for FileMenu<'a> {
                 Icon::Package,
                 t(self.ui, "saveAsTemplate"),
                 "",
-                h(6),
+                h(6 + shift),
             );
             y += ROW_HEIGHT;
         }
         y = paint_divider(cx, &self.theme, rect, y);
-        let export_image_row = 6 + usize::from(self.has_save_as_template_row());
+        let export_image_row = 6 + shift + usize::from(self.has_save_as_template_row());
         paint_row(
             cx,
             &self.theme,

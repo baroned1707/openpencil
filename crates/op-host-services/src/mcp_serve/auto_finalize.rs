@@ -131,7 +131,7 @@ impl AutoFinalize {
 }
 
 pub(super) fn run(path: PathBuf, profile: McpAccessProfile) -> Result<(), McpServeError> {
-    let mut state = super::load_editor_state(&path)?;
+    let mut state = super::load_or_initialize_editor_state(&path)?;
     let signals = install_shutdown_signals()?;
     let mut auto_finalize = AutoFinalize::from_env();
     let stdin = std::io::stdin();
@@ -202,7 +202,7 @@ pub(super) fn run_http(
     profile: McpAccessProfile,
 ) -> Result<(), McpServeError> {
     const HTTP_IO_TIMEOUT: Duration = Duration::from_secs(30);
-    let mut state = super::load_editor_state(&path)?;
+    let mut state = super::load_or_initialize_editor_state(&path)?;
     let signals = install_shutdown_signals()?;
     let mut auto_finalize = AutoFinalize::from_env();
     let listener = std::net::TcpListener::bind(("127.0.0.1", port))

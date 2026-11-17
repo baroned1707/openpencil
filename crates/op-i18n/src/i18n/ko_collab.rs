@@ -580,6 +580,18 @@ pub fn lookup(key: &str) -> Option<&'static str> {
         "dialog.collabGuestLeaveBody" => "“{{name}}”의 진행 중인 세션에 참여하고 있습니다.\n\n세션을 나가시겠습니까?\n\n예 = 나가고 계속 · 아니요 / 취소 = 머무르기.",
         "documents.saveAsAlreadyOpen" => "“{{name}}”은(는) 이미 다른 탭에서 열려 있습니다. 해당 탭으로 전환하거나 다른 이름을 선택하세요.",
         "documents.collabSessionLostParked" => "“{{name}}”의 협업 세션이 종료되었거나 연결이 끊겼습니다. 해당 탭으로 전환해 이유를 확인하세요.",
+        "project.open" => "프로젝트 열기…",
+        "project.close" => "프로젝트 닫기",
+        "project.refresh" => "새로고침",
+        "project.scanning" => "검색 중…",
+        "project.truncated" => "{{count}}개 더 표시되지 않음",
+        "project.unsafeRoot" => "이 폴더는 너무 넓어 프로젝트로 열 수 없습니다. 프로젝트 하나의 폴더를 선택하세요.",
+        "project.noDesigns" => "이 폴더에는 아직 .op 파일이 없습니다",
+        "project.openFolderHint" => "폴더를 선택하거나 여기에 끌어다 놓으세요",
+        "project.slow" => "폴더가 느립니다: 찾은 항목만 표시합니다",
+        "project.unreadable" => "이 폴더를 읽을 수 없습니다",
+        "documents.emptyFileInitialized" => "“{{name}}” 파일이 비어 있어 빈 디자인으로 초기화했습니다.",
+        "documents.emptyFileNotWritable" => "“{{name}}” 파일이 비어 있었지만 쓸 수 없습니다. 저장되지 않은 상태로 열렸으니 작업을 보존하려면 저장하세요.",
         _ => return None,
     })
 }

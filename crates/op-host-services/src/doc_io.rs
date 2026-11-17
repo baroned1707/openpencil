@@ -42,6 +42,7 @@ mod clean_copy;
 mod create_new;
 #[cfg(test)]
 mod editor_meta_roundtrip_tests;
+mod empty_file;
 mod error;
 #[cfg(test)]
 mod hosted_catalog_tests;
@@ -61,6 +62,10 @@ pub use clean_copy::{
     copy_clean_document_with_editor_meta_to_path, copy_document_to_current_schema_path,
 };
 pub use create_new::{save_new_to_path, SaveNewError};
+pub use empty_file::{
+    bytes_are_blank, is_empty_op_file, load_initializing_empty_op_file, EmptyFileOutcome,
+    OpenedEditorState,
+};
 pub use error::DocIoError;
 #[cfg(test)]
 use load::looks_like_legacy_doc_payload;

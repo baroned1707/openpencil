@@ -20,7 +20,10 @@ use crate::settings_payload::{
     theme_to_str, BuiltinAgentPayload, ImageGenProfilePayload, OpenDocumentPayload,
     OpenverseOAuthPayload, RecentFilePayload,
 };
-use crate::settings_payload::{open_documents_from_payload, open_documents_to_payload};
+use crate::settings_payload::{
+    open_documents_from_payload, open_documents_to_payload, open_projects_from_payload,
+    open_projects_to_payload,
+};
 use op_i18n::Locale;
 use serde::{Deserialize, Serialize};
 
@@ -153,6 +156,10 @@ struct SettingsPayload {
     /// files omit it, which restores nothing.
     #[serde(default)]
     open_documents: Option<Vec<OpenDocumentPayload>>,
+    /// Folders opened as projects, restored at launch before the documents.
+    /// Older files omit it, which restores none.
+    #[serde(default)]
+    open_projects: Option<Vec<String>>,
     /// User's last-set ⚡Nx parallel-agents team size — seeds tab 0's
     /// `ChatState::agent_team_size` on load. Absent in settings files
     /// predating this field; `#[serde(default)]` + the `unwrap_or(1)` at
@@ -269,6 +276,7 @@ fn to_payload(state: &EditorState) -> SettingsPayload {
                 .collect(),
         ),
         open_documents: Some(open_documents_to_payload(&eui.session_documents)),
+        open_projects: Some(open_projects_to_payload(&eui.open_projects)),
         preferred_agent_team_size: Some(eui.preferred_agent_team_size),
         entry_surface: Some(eui.entry_surface.as_str().into()),
         chat_agent: Some(selected_chat_agent_name(eui)),
@@ -391,6 +399,9 @@ fn apply_payload_with_options(
     }
     if let Some(list) = payload.open_documents {
         eui.session_documents = open_documents_from_payload(list);
+    }
+    if let Some(list) = payload.open_projects {
+        eui.open_projects = open_projects_from_payload(list);
     }
     if let Some(size) = payload.preferred_agent_team_size {
         eui.preferred_agent_team_size = size.clamp(1, 6);
@@ -763,3 +774,6 @@ mod settings_io_chat_model_tests;
 #[cfg(test)]
 #[path = "settings_io_open_documents_tests.rs"]
 mod settings_io_open_documents_tests;
+#[cfg(test)]
+#[path = "settings_io_open_projects_tests.rs"]
+mod settings_io_open_projects_tests;

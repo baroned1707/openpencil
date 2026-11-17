@@ -564,6 +564,18 @@ pub fn lookup(key: &str) -> Option<&'static str> {
         "dialog.collabGuestLeaveBody" => "Du bist in „{{name}}“ in einer laufenden Sitzung.\n\nSitzung verlassen?\n\nJa = Verlassen und fortfahren · Nein oder Abbrechen = bleiben.",
         "documents.saveAsAlreadyOpen" => "„{{name}}“ ist bereits in einem anderen Tab geöffnet – wechsle zu diesem Tab oder wähle einen anderen Namen.",
         "documents.collabSessionLostParked" => "Die Zusammenarbeitssitzung in „{{name}}“ wurde beendet oder hat die Verbindung verloren. Wechsle zu diesem Tab, um den Grund zu sehen.",
+        "project.open" => "Projekt öffnen…",
+        "project.close" => "Projekt schließen",
+        "project.refresh" => "Aktualisieren",
+        "project.scanning" => "Wird durchsucht…",
+        "project.truncated" => "{{count}} weitere nicht angezeigt",
+        "project.unsafeRoot" => "Dieser Ordner ist zu umfangreich für ein Projekt. Wähle den Ordner eines einzelnen Projekts.",
+        "project.noDesigns" => "Noch keine .op-Dateien in diesem Ordner",
+        "project.openFolderHint" => "Wähle einen Ordner oder ziehe ihn hierher",
+        "project.slow" => "Langsamer Ordner: Gefundenes wird angezeigt",
+        "project.unreadable" => "Dieser Ordner kann nicht gelesen werden",
+        "documents.emptyFileInitialized" => "„{{name}}“ war leer und wurde als leeres Design eingerichtet.",
+        "documents.emptyFileNotWritable" => "„{{name}}“ war leer, konnte aber nicht beschrieben werden. Es ist ungespeichert geöffnet – speichere es, um deine Arbeit zu behalten.",
         _ => return None,
     })
 }

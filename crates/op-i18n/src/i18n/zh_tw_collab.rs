@@ -564,6 +564,18 @@ pub fn lookup(key: &str) -> Option<&'static str> {
         "dialog.collabGuestLeaveBody" => "你正在「{{name}}」的工作階段中。\n\n要離開該工作階段嗎？\n\n是 = 離開並繼續 · 否或取消 = 留下。",
         "documents.saveAsAlreadyOpen" => "「{{name}}」已在另一個分頁中開啟——請切換到該分頁，或選擇其他名稱。",
         "documents.collabSessionLostParked" => "「{{name}}」中的協作工作階段已結束或連線中斷。請切換到該分頁查看原因。",
+        "project.open" => "開啟專案…",
+        "project.close" => "關閉專案",
+        "project.refresh" => "重新整理",
+        "project.scanning" => "正在掃描…",
+        "project.truncated" => "另有 {{count}} 個未顯示",
+        "project.unsafeRoot" => "此資料夾範圍太大，無法作為專案。請選擇單一專案的資料夾。",
+        "project.noDesigns" => "此資料夾中還沒有 .op 檔案",
+        "project.openFolderHint" => "選擇資料夾，或將其拖放到此處",
+        "project.slow" => "資料夾較慢：僅顯示已找到的內容",
+        "project.unreadable" => "無法讀取此資料夾",
+        "documents.emptyFileInitialized" => "「{{name}}」是空檔案，已初始化為空白設計。",
+        "documents.emptyFileNotWritable" => "「{{name}}」是空檔案，但無法寫入。它已作為未儲存的文件開啟：請儲存以保留你的工作。",
         _ => return None,
     })
 }

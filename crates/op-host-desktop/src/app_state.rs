@@ -77,6 +77,9 @@ impl DesktopApp {
         // with this launch's single blank tab first.
         let pending_session_restore =
             std::mem::take(&mut host.editor_state_mut().editor_ui.session_documents);
+        // Likewise the opened project folders, restored BEFORE the documents.
+        let pending_open_projects =
+            std::mem::take(&mut host.editor_state_mut().editor_ui.open_projects);
         // Same rationale for the File-menu batch-export row: desktop
         // owns the directory picker + offscreen exporter it needs.
         host.editor_state_mut()
@@ -171,7 +174,9 @@ impl DesktopApp {
             rotate_cursor: None,
             current_path: None,
             documents: crate::document_registry::DocumentRegistry::new(),
-            projects_host: Default::default(),
+            projects_host: crate::projects_host::ProjectsHostState::restoring(
+                pending_open_projects,
+            ),
             // Unit tests must not write into the user's config directory: they
             // install a store over a temp directory when they need one.
             recovery: if cfg!(test) {

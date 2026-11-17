@@ -14,7 +14,7 @@ use crate::DesktopApp;
 use op_editor_core::editor_toast::EditorToastLevel;
 use op_editor_core::{DocumentTabRequest, EditorState, FileAction};
 use op_host_native::widget_host::ParkedDocument;
-use op_host_services::doc_io::{ActionOutcome, ErrorKind};
+use op_host_services::doc_io::{ActionOutcome, EmptyFileOutcome, ErrorKind};
 use std::path::PathBuf;
 
 /// Locale key of the notice shown when a switch is refused.
@@ -305,7 +305,7 @@ impl DesktopApp {
             return false;
         }
         let replaces_blank = self.active_document_is_pristine_untitled();
-        let loaded = match persistence::load_document(&mut self.host, &path, false) {
+        let loaded = match persistence::load_document(&mut self.host, &path, false, true) {
             Ok(Some(loaded)) => loaded,
             Ok(None) => return false,
             Err(error) => {
@@ -324,6 +324,7 @@ impl DesktopApp {
             bound_path,
             thumbs,
             open_in_normal_mode,
+            empty_file,
         } = loaded;
         // A legacy-schema upgrade can bind the document to a different file.
         if let Some(index) = self.documents.index_of_path(&bound_path) {
@@ -338,7 +339,10 @@ impl DesktopApp {
         if open_in_normal_mode {
             persistence::open_loaded_normal_workspace(&mut self.host);
         }
-        self.host.editor_state_mut().mark_saved_revision();
+        // A blank that could not be written to its file stays unsaved.
+        if !matches!(empty_file, Some(EmptyFileOutcome::NotWritable(_))) {
+            self.host.editor_state_mut().mark_saved_revision();
+        }
         self.host.arm_missing_fonts_detection();
         persistence::fit_loaded_document(&mut self.host, self.window.as_ref());
         if record_recent {
@@ -347,6 +351,9 @@ impl DesktopApp {
         if replaces_blank {
             self.remove_slot(blank_index);
             self.publish_document_tabs();
+        }
+        if let Some(outcome) = &empty_file {
+            self.announce_empty_file_open(&bound_path, outcome);
         }
         true
     }

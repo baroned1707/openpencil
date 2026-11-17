@@ -80,6 +80,8 @@ pub enum Icon {
     PanelLeft,
     /// FolderOpen — TopBar folder.
     FolderOpen,
+    /// FolderPlus — Projects dock "Open project".
+    FolderPlus,
     /// GitBranch — TopBar git-panel toggle next to the file name.
     GitBranch,
     /// History — git empty-state clock glyph.
@@ -317,6 +319,7 @@ impl Icon {
             Icon::Hash => HASH,
             Icon::PanelLeft => PANEL_LEFT,
             Icon::FolderOpen => FOLDER_OPEN,
+            Icon::FolderPlus => FOLDER_PLUS,
             Icon::GitBranch => GIT_BRANCH,
             Icon::History => HISTORY,
             Icon::FilePlus => FILE_PLUS,
@@ -495,6 +498,7 @@ impl Icon {
             "key" => Icon::Key,
             "log-out" | "logout" => Icon::LogOut,
             "folder-open" | "folder" => Icon::FolderOpen,
+            "folder-plus" => Icon::FolderPlus,
             "git-branch" | "git" => Icon::GitBranch,
             "history" | "clock-history" => Icon::History,
             "file-plus" => Icon::FilePlus,

@@ -4,7 +4,7 @@ use super::*;
 use op_host_services::doc_io::save_to_path;
 use std::sync::atomic::{AtomicUsize, Ordering};
 
-fn temp_dir(tag: &str) -> PathBuf {
+pub(super) fn temp_dir(tag: &str) -> PathBuf {
     let nanos = std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
         .map(|d| d.as_nanos())
@@ -19,7 +19,7 @@ fn temp_dir(tag: &str) -> PathBuf {
     dir.canonicalize().unwrap()
 }
 
-fn write_design(root: &Path, name: &str) -> PathBuf {
+pub(super) fn write_design(root: &Path, name: &str) -> PathBuf {
     let designs = root.join("designs");
     std::fs::create_dir_all(&designs).unwrap();
     let path = designs.join(name);
@@ -29,7 +29,7 @@ fn write_design(root: &Path, name: &str) -> PathBuf {
 
 /// Pump the frame until the scan worker has delivered and nothing is queued.
 /// Returns whether any frame in between changed the published tree.
-fn settle(app: &mut DesktopApp) -> bool {
+pub(super) fn settle(app: &mut DesktopApp) -> bool {
     let started = Instant::now();
     let mut changed = false;
     loop {
@@ -45,8 +45,31 @@ fn settle(app: &mut DesktopApp) -> bool {
     }
 }
 
-fn panel(app: &DesktopApp) -> &Vec<ProjectView> {
+pub(super) fn panel(app: &DesktopApp) -> &Vec<ProjectView> {
     &app.host.editor_state().editor_ui.projects_panel.projects
+}
+
+fn idle(_: &Path) -> ProjectScanState {
+    ProjectScanState::Idle
+}
+
+/// Builder inputs for inferred projects only: nothing opened, nothing folded.
+fn inputs<'a>(
+    roots: &'a BTreeSet<PathBuf>,
+    listing: &'a BTreeMap<PathBuf, Vec<PathBuf>>,
+    open: &'a [OpenDoc],
+    collapsed: &'a HashSet<PathBuf>,
+) -> TreeInputs<'a> {
+    static NO_FOLDERS: std::sync::OnceLock<HashSet<(PathBuf, String)>> = std::sync::OnceLock::new();
+    TreeInputs {
+        roots,
+        explicit: &[],
+        listing,
+        open,
+        collapsed,
+        collapsed_folders: NO_FOLDERS.get_or_init(HashSet::new),
+        scan_state: &idle,
+    }
 }
 
 #[test]
@@ -79,7 +102,7 @@ fn builder_marks_open_files_and_keeps_unopened_ones_listed() {
         active: true,
     }];
     let root_for = |_: &Path| Some(PathBuf::from("/p/shop"));
-    let projects = build_projects(&roots, &listing, &open, &HashSet::new(), &root_for);
+    let projects = build_projects(&inputs(&roots, &listing, &open, &HashSet::new()), &root_for);
     assert_eq!(projects.len(), 1);
     let files = &projects[0].files;
     assert_eq!(files.len(), 2);
@@ -103,7 +126,10 @@ fn an_open_file_outside_designs_still_shows_in_its_project() {
         active: false,
     }];
     let root_for = |_: &Path| Some(PathBuf::from("/p/shop"));
-    let projects = build_projects(&roots, &BTreeMap::new(), &open, &HashSet::new(), &root_for);
+    let projects = build_projects(
+        &inputs(&roots, &BTreeMap::new(), &open, &HashSet::new()),
+        &root_for,
+    );
     assert_eq!(projects[0].files.len(), 1);
     assert_eq!(projects[0].files[0].label, "sketch.op");
 }
@@ -114,7 +140,7 @@ fn collapsed_flag_is_carried_into_the_row() {
     let roots: BTreeSet<PathBuf> = [root.clone()].into();
     let collapsed: HashSet<PathBuf> = [root].into();
     let none = |_: &Path| None;
-    let projects = build_projects(&roots, &BTreeMap::new(), &[], &collapsed, &none);
+    let projects = build_projects(&inputs(&roots, &BTreeMap::new(), &[], &collapsed), &none);
     assert!(!projects[0].expanded);
 }
 
@@ -338,7 +364,7 @@ fn request_new_design(app: &mut DesktopApp, root: &Path) {
     app.pump_projects();
 }
 
-fn toast_key(app: &DesktopApp) -> Option<String> {
+pub(super) fn toast_key(app: &DesktopApp) -> Option<String> {
     app.host
         .editor_state()
         .editor_ui

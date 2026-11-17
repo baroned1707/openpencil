@@ -63,6 +63,30 @@ pub fn open_documents_from_payload(payload: Vec<OpenDocumentPayload>) -> Vec<Ses
         .collect()
 }
 
+/// Most project folders kept across launches.
+pub const MAX_OPEN_PROJECTS: usize = 50;
+
+pub fn open_projects_to_payload(projects: &[String]) -> Vec<String> {
+    open_projects_from_payload(projects.to_vec())
+}
+
+/// Restore the open-project list: blank entries and repeats are dropped (the
+/// first spelling wins) and at most [`MAX_OPEN_PROJECTS`] stay, so a
+/// hand-edited file cannot grow the list without bound.
+pub fn open_projects_from_payload(payload: Vec<String>) -> Vec<String> {
+    let mut kept: Vec<String> = Vec::new();
+    for path in payload {
+        if path.trim().is_empty() || kept.contains(&path) {
+            continue;
+        }
+        kept.push(path);
+        if kept.len() == MAX_OPEN_PROJECTS {
+            break;
+        }
+    }
+    kept
+}
+
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq)]
 pub struct BuiltinAgentPayload {
     pub id: String,

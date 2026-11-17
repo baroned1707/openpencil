@@ -766,8 +766,7 @@ fn left_rail_tabs_are_agent_layers_slides_again() {
     state.editor_ui.projects_panel.projects = vec![ProjectView {
         root: "/work/shop".to_string(),
         name: "shop".to_string(),
-        files: Vec::new(),
-        expanded: true,
+        ..ProjectView::default()
     }];
     assert!(state.editor_ui.projects_dock_available());
     // Exhaustive on purpose: a fourth tab would stop this compiling.

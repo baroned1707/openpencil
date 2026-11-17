@@ -1,0 +1,260 @@
+//! Proof scenes for "Open project" — the Projects dock with a folder the user
+//! opened: the empty dock (slim strip and unfolded), folders grouped under
+//! sub-headers (some folded), the scanning / slow / truncated status lines, the
+//! header's refresh and close buttons, and long folder and file names.
+//!
+//! Writes `.proof-of-work/92-open-project-<scene>-<theme>.png` when
+//! `OP_PROOF_DIR` is set.
+
+use super::super::ui3_proof::{editor_host, render_probes, rgb8, PROOF_H, PROOF_W};
+use crate::widget_host::WidgetHostNative;
+use op_editor_core::{
+    DocumentId, DocumentTabStatus, ProjectFileView, ProjectRowTarget, ProjectScanState,
+    ProjectView, ThemeMode,
+};
+use op_editor_ui::widgets::host_canvas_geometry as canvas_geometry;
+use op_editor_ui::widgets::projects_dock_flow as dock_flow;
+use op_editor_ui::Theme;
+
+const BOTH: [ThemeMode; 2] = [ThemeMode::Dark, ThemeMode::Light];
+
+fn theme_of(mode: ThemeMode) -> Theme {
+    match mode {
+        ThemeMode::Dark => Theme::dark(),
+        ThemeMode::Light => Theme::light(),
+    }
+}
+
+fn file(
+    folder: &str,
+    label: &str,
+    open: Option<u64>,
+    status: DocumentTabStatus,
+) -> ProjectFileView {
+    ProjectFileView {
+        path: format!("/Users/me/Work/storefront/{folder}/{label}"),
+        label: label.to_string(),
+        open_id: open.map(DocumentId),
+        dirty: false,
+        status,
+        active: open == Some(1),
+        folder: folder.to_string(),
+    }
+}
+
+/// A project the user opened: files in the root and in three nested folders.
+fn storefront() -> ProjectView {
+    use DocumentTabStatus::*;
+    ProjectView {
+        root: "/Users/me/Work/storefront".to_string(),
+        name: "storefront".to_string(),
+        files: vec![
+            file("", "brand.op", None, Idle),
+            file("designs", "checkout.op", Some(1), Running),
+            file("designs", "cart.op", Some(2), NeedsReview),
+            file("designs", "thank-you.op", None, Idle),
+            file("screens", "home.op", None, Idle),
+            file("screens", "search.op", None, Idle),
+            file("screens/auth", "login.op", Some(3), Idle),
+            file("screens/auth", "signup.op", None, Idle),
+            file("screens/auth", "reset-password.op", None, Idle),
+            file("screens/auth/legacy", "old-login.op", None, Idle),
+        ],
+        closable: true,
+        collapsed_folders: vec!["screens".to_string(), "screens/auth/legacy".to_string()],
+        ..ProjectView::default()
+    }
+}
+
+/// An inferred project beside it, as the dock lists those.
+fn inferred() -> ProjectView {
+    ProjectView {
+        root: "/Users/me/Work/blog".to_string(),
+        name: "blog".to_string(),
+        files: vec![file("designs", "post.op", None, DocumentTabStatus::Idle)],
+        ..ProjectView::default()
+    }
+}
+
+fn seeded(mode: ThemeMode, projects: Vec<ProjectView>) -> WidgetHostNative {
+    let mut host = editor_host(mode, None);
+    let ui = &mut host.editor_state_mut().editor_ui;
+    ui.document_tabs_supported = true;
+    ui.projects_panel.projects = projects;
+    host.mark_dirty();
+    host.zoom_to_fit(PROOF_W, PROOF_H);
+    host
+}
+
+fn each_theme(
+    name: &str,
+    projects: Vec<ProjectView>,
+    prepare: impl Fn(&mut WidgetHostNative),
+) -> Vec<(ThemeMode, WidgetHostNative)> {
+    BOTH.iter()
+        .map(|&mode| {
+            let mut host = seeded(mode, projects.clone());
+            prepare(&mut host);
+            host.mark_dirty();
+            host.zoom_to_fit(PROOF_W, PROOF_H);
+            let dock = dock_flow::layout(host.editor_state(), PROOF_W, PROOF_H)
+                .expect("the dock is shown")
+                .rect;
+            // One pixel inside the dock's bare lower surface: its own tone.
+            let probe = ((dock.origin.x + 3.0) as i32, (PROOF_H - 6.0) as i32);
+            let pixel = render_probes(&mut host, name, &[probe])[0];
+            assert_eq!(
+                pixel,
+                rgb8(theme_of(mode).muted),
+                "{mode:?}: the dock's tone"
+            );
+            (mode, host)
+        })
+        .collect()
+}
+
+#[test]
+fn empty_dock_collapsed_strip_with_the_folder_plus_icon_proof() {
+    for (mode, host) in each_theme("92-open-project-empty-strip", Vec::new(), |_| {}) {
+        let dock = dock_flow::layout(host.editor_state(), PROOF_W, PROOF_H).unwrap();
+        assert!(!dock.open, "{mode:?}: an empty dock is a strip");
+        assert_eq!(dock.rect.size.x, 28.0);
+        assert!(
+            dock.open_project.is_some(),
+            "{mode:?}: the strip offers Open project"
+        );
+        let canvas = canvas_geometry::canvas_rect(host.editor_state(), PROOF_W, PROOF_H);
+        assert_eq!(canvas.origin.x + canvas.size.x, PROOF_W - 28.0);
+    }
+}
+
+#[test]
+fn empty_dock_unfolded_with_the_open_project_button_proof() {
+    for (mode, host) in each_theme("92-open-project-empty-open", Vec::new(), |host| {
+        host.editor_state_mut().editor_ui.projects_panel.empty_open = true;
+    }) {
+        let dock = dock_flow::layout(host.editor_state(), PROOF_W, PROOF_H).unwrap();
+        assert!(dock.open, "{mode:?}");
+        let button = dock.list.unwrap().empty_button.expect("the big button");
+        assert!(button.size.x > 100.0);
+    }
+}
+
+#[test]
+fn opened_project_with_nested_folders_some_folded_proof() {
+    each_theme(
+        "92-open-project-tree",
+        vec![storefront(), inferred()],
+        |_| {},
+    );
+}
+
+#[test]
+fn a_scanning_project_proof() {
+    let mut scanning = storefront();
+    scanning.files.clear();
+    scanning.scan = ProjectScanState::Scanning;
+    each_theme("92-open-project-scanning", vec![scanning], |_| {});
+    let mut slow = storefront();
+    slow.scan = ProjectScanState::Slow;
+    each_theme("92-open-project-slow", vec![slow], |_| {});
+}
+
+#[test]
+fn a_truncated_project_says_how_many_are_not_shown_proof() {
+    let mut cut = storefront();
+    cut.scan = ProjectScanState::Truncated(1240);
+    cut.collapsed_folders.clear();
+    each_theme("92-open-project-truncated", vec![cut], |_| {});
+}
+
+#[test]
+fn an_empty_opened_folder_offers_new_design_proof() {
+    let mut empty = storefront();
+    empty.files.clear();
+    each_theme("92-open-project-no-designs", vec![empty], |_| {});
+}
+
+#[test]
+fn hovering_the_project_header_shows_refresh_and_close_with_a_tooltip_proof() {
+    each_theme(
+        "92-open-project-hover-header",
+        vec![storefront(), inferred()],
+        |host| {
+            host.editor_state_mut().editor_ui.projects_panel.hover =
+                Some(ProjectRowTarget::Header(0));
+        },
+    );
+    each_theme(
+        "92-open-project-hover-close",
+        vec![storefront(), inferred()],
+        |host| {
+            host.editor_state_mut().editor_ui.projects_panel.hover =
+                Some(ProjectRowTarget::Close(0));
+        },
+    );
+    each_theme(
+        "92-open-project-hover-folder",
+        vec![storefront(), inferred()],
+        |host| {
+            host.editor_state_mut().editor_ui.projects_panel.hover =
+                Some(ProjectRowTarget::Folder(0, 1));
+        },
+    );
+}
+
+#[test]
+fn long_folder_and_file_names_are_ellipsized_proof() {
+    use DocumentTabStatus::*;
+    let long = ProjectView {
+        root: "/Users/me/Work/a-repository-with-a-remarkably-long-name".to_string(),
+        name: "a-repository-with-a-remarkably-long-name".to_string(),
+        files: vec![
+            file(
+                "",
+                "an-extremely-long-design-file-name-for-the-checkout-flow.op",
+                Some(1),
+                NeedsReview,
+            ),
+            file(
+                "packages/storefront/apps/web/src/screens/checkout/payment-methods",
+                "credit-card-form-with-a-very-long-name.op",
+                None,
+                Idle,
+            ),
+            file("设计稿/首页/最终版", "首页-设计稿-请勿删除.op", None, Idle),
+        ],
+        closable: true,
+        ..ProjectView::default()
+    };
+    each_theme("92-open-project-long-names", vec![long], |host| {
+        host.editor_state_mut().editor_ui.projects_panel.hover = Some(ProjectRowTarget::Header(0));
+    });
+}
+
+/// A fresh launch shows Home with no project. The always-present strip must not
+/// paint over Home's surface or take a click meant for it.
+#[test]
+fn home_with_an_empty_dock_keeps_its_clicks_proof() {
+    for mode in BOTH {
+        let mut host = WidgetHostNative::new();
+        host.editor_state_mut().editor_ui.theme_mode = mode;
+        host.editor_state_mut().editor_ui.document_tabs_supported = true;
+        host.editor_state_mut().editor_ui.home.visible = true;
+        assert!(host.home_visible(), "{mode:?}: Home shows");
+        host.mark_dirty();
+        let dock = dock_flow::layout(host.editor_state(), PROOF_W, PROOF_H)
+            .expect("the empty dock is laid out under Home");
+        let button = dock.open_project.expect("the strip's folder-plus");
+        let at = (button.origin.x + 4.0, button.origin.y + 4.0);
+        // Home's own surface at the strip's x: what paints there must be Home's.
+        render_probes(&mut host, "92-open-project-home-empty-dock", &[(0, 0)]);
+        host.apply_press(at.0, at.1, PROOF_W, PROOF_H);
+        host.apply_release_with_viewport(PROOF_W, PROOF_H);
+        assert_eq!(
+            host.editor_state().editor_ui.projects_panel.pending_request,
+            None,
+            "{mode:?}: Home owns the pointer, the strip behind it asks for nothing"
+        );
+    }
+}

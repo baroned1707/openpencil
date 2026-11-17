@@ -25,10 +25,17 @@ pub struct ProjectsPanelState {
     /// Vertical scroll of the project list.
     pub scroll: ScrollState,
     /// Whether the dock shows its list (`true`) or only its slim strip.
-    /// Not persisted across launches: a fresh window always opens it.
+    /// Not persisted across launches: a fresh window always opens it. Only
+    /// read while there is a project; see [`ProjectsPanelState::is_open`].
     pub dock_open: bool,
+    /// The same choice while there is NO project: the empty dock starts as a
+    /// slim strip so it does not claim a column for nothing, and the user can
+    /// unfold it to read the hint.
+    pub empty_open: bool,
     /// The cursor is over the dock's collapse / expand chevron.
     pub toggle_hover: bool,
+    /// The cursor is over the dock's "Open project" button.
+    pub open_project_hover: bool,
 }
 
 impl Default for ProjectsPanelState {
@@ -39,7 +46,31 @@ impl Default for ProjectsPanelState {
             hover: None,
             scroll: ScrollState::default(),
             dock_open: true,
+            empty_open: false,
             toggle_hover: false,
+            open_project_hover: false,
+        }
+    }
+}
+
+impl ProjectsPanelState {
+    /// Whether the dock shows its list. The one answer every consumer (canvas
+    /// geometry, hit-testing, paint) reads: an empty dock is open only when the
+    /// user unfolded it, a dock with projects is open unless they folded it.
+    pub fn is_open(&self) -> bool {
+        if self.projects.is_empty() {
+            self.empty_open
+        } else {
+            self.dock_open
+        }
+    }
+
+    /// Fold or unfold the dock (the choice that applies right now).
+    pub fn toggle_open(&mut self) {
+        if self.projects.is_empty() {
+            self.empty_open = !self.empty_open;
+        } else {
+            self.dock_open = !self.dock_open;
         }
     }
 }
@@ -48,13 +79,11 @@ impl EditorUiState {
     /// Whether the window offers the Projects dock at its right edge.
     ///
     /// Gated exactly like the open-document tab strip: only on a host that
-    /// can hold several documents, never on touch chrome, and only once the
-    /// host has reported at least one project — a dock with nothing to list
-    /// would be an empty column the user could do nothing with.
+    /// can hold several documents, and never on touch chrome. With no project
+    /// the dock is still there as a slim strip, because it is where a new user
+    /// finds "Open project".
     pub fn projects_dock_available(&self) -> bool {
-        self.document_tabs_supported
-            && !self.touch_chrome()
-            && !self.projects_panel.projects.is_empty()
+        self.document_tabs_supported && !self.touch_chrome()
     }
 }
 
@@ -67,8 +96,7 @@ mod tests {
         ProjectView {
             root: "/p".to_string(),
             name: "p".to_string(),
-            files: Vec::new(),
-            expanded: true,
+            ..ProjectView::default()
         }
     }
 
@@ -83,10 +111,27 @@ mod tests {
     }
 
     #[test]
-    fn projects_dock_hidden_without_projects() {
+    fn projects_dock_is_available_without_projects() {
         let mut ui = EditorUiState::default();
         ui.document_tabs_supported = true;
-        assert!(!ui.projects_dock_available());
+        assert!(ui.projects_dock_available());
+    }
+
+    #[test]
+    fn an_empty_dock_starts_folded_and_a_dock_with_projects_starts_open() {
+        let mut ui = EditorUiState::default();
+        assert!(!ui.projects_panel.is_open(), "empty: slim strip");
+        ui.projects_panel.projects = vec![project()];
+        assert!(ui.projects_panel.is_open(), "first project opens the dock");
+        ui.projects_panel.toggle_open();
+        assert!(!ui.projects_panel.is_open());
+        ui.projects_panel.projects.clear();
+        assert!(
+            !ui.projects_panel.is_open(),
+            "the empty dock keeps its own choice"
+        );
+        ui.projects_panel.toggle_open();
+        assert!(ui.projects_panel.is_open());
     }
 
     #[test]

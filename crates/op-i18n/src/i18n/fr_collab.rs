@@ -564,6 +564,18 @@ pub fn lookup(key: &str) -> Option<&'static str> {
         "dialog.collabGuestLeaveBody" => "Vous êtes dans une session en cours dans « {{name}} ».\n\nQuitter la session ?\n\nOui = Quitter et continuer · Non ou Annuler = rester.",
         "documents.saveAsAlreadyOpen" => "« {{name}} » est déjà ouvert dans un autre onglet — passez à cet onglet ou choisissez un autre nom.",
         "documents.collabSessionLostParked" => "La session de collaboration de « {{name}} » s’est terminée ou a perdu sa connexion. Passez à cet onglet pour en voir la raison.",
+        "project.open" => "Ouvrir un projet…",
+        "project.close" => "Fermer le projet",
+        "project.refresh" => "Actualiser",
+        "project.scanning" => "Analyse en cours…",
+        "project.truncated" => "{{count}} de plus non affichés",
+        "project.unsafeRoot" => "Ce dossier est trop large pour être un projet. Choisissez le dossier d'un seul projet.",
+        "project.noDesigns" => "Aucun fichier .op dans ce dossier pour l'instant",
+        "project.openFolderHint" => "Choisissez un dossier ou déposez-le ici",
+        "project.slow" => "Dossier lent : affichage de ce qui a été trouvé",
+        "project.unreadable" => "Impossible de lire ce dossier",
+        "documents.emptyFileInitialized" => "« {{name}} » était vide : il a été initialisé comme un design vierge.",
+        "documents.emptyFileNotWritable" => "« {{name}} » était vide mais n’a pas pu être écrit. Il est ouvert sans enregistrement : enregistrez-le pour conserver votre travail.",
         _ => return None,
     })
 }

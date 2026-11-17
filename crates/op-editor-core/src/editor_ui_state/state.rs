@@ -71,6 +71,9 @@ pub struct EditorUiState {
     pub document_tabs_supported: bool,
     /// Open documents (path + which is active) persisted for session restore.
     pub session_documents: Vec<crate::document_scope::SessionDocument>,
+    /// Folders the user opened as projects (canonical paths), persisted so
+    /// they come back at launch. Mirrored by the host.
+    pub open_projects: Vec<String>,
     /// UI locale — TopBar Globe cycles.
     pub locale: Locale,
     /// A runtime catalog selected in the web picker but not installed yet.

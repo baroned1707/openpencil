@@ -32,6 +32,7 @@ fn t(ui: &EditorUiState, key: &str) -> &'static str {
         "new" => "fileMenu.newFile",
         "newFromTemplate" => "fileMenu.newFromTemplate",
         "open" => "fileMenu.openFile",
+        "openProject" => "project.open",
         "save" => "fileMenu.save",
         "saveAs" => "fileMenu.saveAs",
         "saveAsTemplate" => "menu.saveAsTemplate",
@@ -89,6 +90,9 @@ pub enum FileMenuChoice {
     /// Open the Scene Template Center to start from a finished document.
     NewFromTemplate,
     OpenFile,
+    /// Pick a folder and open it as a project. Only offered by hosts with a
+    /// Projects dock.
+    OpenProject,
     Save,
     SaveAs,
     /// Persist the current document into the desktop user's template library.
@@ -179,6 +183,17 @@ impl<'a> FileMenu<'a> {
         export_menu_rows::batch_frame_export_available(self.ui)
     }
 
+    /// Whether the "Open project" row follows "Open file": the host has a
+    /// Projects dock to show the result in.
+    fn has_open_project_row(&self) -> bool {
+        self.ui.projects_dock_available()
+    }
+
+    /// How far every row after "Open file" moves down for the project row.
+    fn top_shift(&self) -> usize {
+        usize::from(self.has_open_project_row())
+    }
+
     fn has_save_as_template_row(&self) -> bool {
         self.ui.scene_template_center.save_current_supported
     }
@@ -205,14 +220,16 @@ impl<'a> FileMenu<'a> {
     /// Row index of the Share row — the last row of the export section.
     /// Only meaningful when [`FileMenu::has_share_row`] holds.
     fn share_row(&self) -> usize {
-        6 + usize::from(self.has_save_as_template_row()) + self.export_rows() - 1
+        6 + self.top_shift() + usize::from(self.has_save_as_template_row()) + self.export_rows() - 1
     }
 
     /// Row index of the deck-slideshow row — directly under whichever
     /// export rows precede it. Only meaningful when
     /// [`FileMenu::has_deck_export_rows`] holds.
     fn deck_html_row(&self) -> usize {
-        7 + usize::from(self.has_save_as_template_row()) + usize::from(self.has_export_all_row())
+        7 + self.top_shift()
+            + usize::from(self.has_save_as_template_row())
+            + usize::from(self.has_export_all_row())
     }
 
     /// Row index of the PowerPoint row, directly under the slideshow one.
@@ -223,7 +240,7 @@ impl<'a> FileMenu<'a> {
     /// Row index of the first recent-file entry. Everything after the
     /// export section shifts with [`FileMenu::export_rows`].
     fn recent_row_start(&self) -> usize {
-        6 + usize::from(self.has_save_as_template_row()) + self.export_rows()
+        6 + self.top_shift() + usize::from(self.has_save_as_template_row()) + self.export_rows()
     }
 
     /// Label for the batch-export row: naming the selected frames when
@@ -243,7 +260,8 @@ impl<'a> FileMenu<'a> {
     /// empty hint) + clear row + section paddings.
     pub fn height(&self) -> f32 {
         let mut h = PAD_Y;
-        h += ROW_HEIGHT * 4.0; // Home + New + New from template + Open
+        // Home + New + New from template + Open (+ Open project)
+        h += ROW_HEIGHT * (4 + self.top_shift()) as f32;
         h += DIVIDER_GAP * 2.0 + 1.0; // divider
         h += ROW_HEIGHT * (2 + usize::from(self.has_save_as_template_row())) as f32;
         h += DIVIDER_GAP * 2.0 + 1.0;
@@ -278,19 +296,23 @@ impl<'a> FileMenu<'a> {
 
     pub fn choice_for_row(&self, row: usize) -> Option<FileMenuChoice> {
         let recent_start = self.recent_row_start();
+        let shift = self.top_shift();
         match row {
             0 => Some(FileMenuChoice::Home),
             1 => Some(FileMenuChoice::NewFile),
             2 => Some(FileMenuChoice::NewFromTemplate),
             3 => Some(FileMenuChoice::OpenFile),
-            4 => Some(FileMenuChoice::Save),
-            5 => Some(FileMenuChoice::SaveAs),
-            6 if self.has_save_as_template_row() => Some(FileMenuChoice::SaveAsTemplate),
-            row if row == 6 + usize::from(self.has_save_as_template_row()) => {
+            4 if shift == 1 => Some(FileMenuChoice::OpenProject),
+            row if row == 4 + shift => Some(FileMenuChoice::Save),
+            row if row == 5 + shift => Some(FileMenuChoice::SaveAs),
+            row if row == 6 + shift && self.has_save_as_template_row() => {
+                Some(FileMenuChoice::SaveAsTemplate)
+            }
+            row if row == 6 + shift + usize::from(self.has_save_as_template_row()) => {
                 Some(FileMenuChoice::ExportImage)
             }
             row if self.has_export_all_row()
-                && row == 7 + usize::from(self.has_save_as_template_row()) =>
+                && row == 7 + shift + usize::from(self.has_save_as_template_row()) =>
             {
                 Some(FileMenuChoice::ExportAllFrames)
             }
@@ -317,7 +339,7 @@ impl<'a> FileMenu<'a> {
         }
         let mut row = 0usize;
         let mut y = panel.origin.y + PAD_Y;
-        for _ in 0..4 {
+        for _ in 0..4 + self.top_shift() {
             if row_hit(panel.origin.x, y, point) {
                 return MenuHit::Row(row);
             }
@@ -447,3 +469,7 @@ fn format_age(ui: &EditorUiState, elapsed_secs: u64) -> String {
 #[cfg(test)]
 #[path = "file_menu_tests.rs"]
 mod tests;
+
+#[cfg(test)]
+#[path = "file_menu_project_tests.rs"]
+mod project_tests;

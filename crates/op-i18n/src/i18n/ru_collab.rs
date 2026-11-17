@@ -594,6 +594,18 @@ pub fn lookup(key: &str) -> Option<&'static str> {
         "dialog.collabGuestLeaveBody" => "Вы участвуете в активном сеансе в «{{name}}».\n\nВыйти из сеанса?\n\nДа = выйти и продолжить · Нет или Отмена = остаться.",
         "documents.saveAsAlreadyOpen" => "«{{name}}» уже открыт в другой вкладке — перейдите на неё или выберите другое имя.",
         "documents.collabSessionLostParked" => "Сеанс совместной работы в «{{name}}» завершился или потерял соединение. Перейдите на эту вкладку, чтобы узнать причину.",
+        "project.open" => "Открыть проект…",
+        "project.close" => "Закрыть проект",
+        "project.refresh" => "Обновить",
+        "project.scanning" => "Сканирование…",
+        "project.truncated" => "Ещё {{count}} не показано",
+        "project.unsafeRoot" => "Эта папка слишком широкая для проекта. Выберите папку одного проекта.",
+        "project.noDesigns" => "В этой папке пока нет файлов .op",
+        "project.openFolderHint" => "Выберите папку или перетащите её сюда",
+        "project.slow" => "Медленная папка: показано найденное",
+        "project.unreadable" => "Не удаётся прочитать эту папку",
+        "documents.emptyFileInitialized" => "Файл «{{name}}» был пустым и теперь настроен как пустой дизайн.",
+        "documents.emptyFileNotWritable" => "Файл «{{name}}» был пустым, но запись в него невозможна. Он открыт без сохранения: сохраните его, чтобы не потерять работу.",
         _ => return None,
     })
 }

@@ -32,6 +32,7 @@ fn file(
         dirty,
         status,
         active,
+        folder: String::new(),
     }
 }
 
@@ -41,6 +42,7 @@ fn project(name: &str, files: Vec<ProjectFileView>, expanded: bool) -> ProjectVi
         name: name.to_string(),
         files,
         expanded,
+        ..ProjectView::default()
     }
 }
 
@@ -382,21 +384,17 @@ fn scrolled_long_list_proof() {
     assert!(list.max_scroll() > 170.0);
 }
 
-/// The empty list, rendered on its own: the host never shows the dock
-/// without projects, so the widget is painted directly onto a dock-sized
-/// surface.
+/// The empty list, rendered on its own (the widget alone, on a dock-sized
+/// surface). The same state in context is `92-open-project-empty-open`.
 #[test]
 fn empty_state_proof() {
     use op_editor_ui::widgets::projects_panel_layout::ProjectsPanelLayout;
     use op_editor_ui::widgets::{PaintCx, ProjectsPanel, ProjectsPanelText};
     for mode in BOTH {
         let theme = theme_of(mode);
-        let text = ProjectsPanelText {
-            empty: op_editor_ui::i18n::translate(op_editor_core::Locale::EnUs, "projects.empty"),
-            new_design: "New design",
-            needs_review: "{{count}} need review",
-            running: "{{count}} running",
-        };
+        let text: ProjectsPanelText<'static> = op_editor_ui::widgets::projects_panel_flow::text(
+            &op_editor_core::EditorState::default(),
+        );
         let panel = op_editor_ui::Rect::xywh(0.0, 0.0, 280.0, 220.0);
         let layout = ProjectsPanelLayout::new(&[], panel, 0.0);
         let mut backend = crate::backend::NativeBackend::with_dpi(1.0);

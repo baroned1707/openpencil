@@ -1,15 +1,19 @@
 //! Projects dock host side: build the project -> files tree from the open
 //! documents and the disk, and execute what the tab asked for.
 //!
-//! A project is the folder `project_root_for` resolves for a file. Its files
-//! are every `*.op` in `<root>/designs/` plus any other document open from it.
+//! A project is either a folder the user opened (`projects_host_open.rs`;
+//! every `*.op` anywhere inside it, found by a recursive walk) or the folder
+//! `project_root_for` resolves for an open document (its `<root>/designs/*.op`
+//! plus any other document open from it). A document inside an opened folder
+//! belongs to the deepest such folder, so the tab strip, the dock and the agent
+//! agree.
 //!
 //! A frame does no file-system work here:
 //! * the project root of each open document comes from a shared cache
 //!   (`op_host_services::project_root::ProjectRootCache`), refreshed in the
 //!   background when it ages;
-//! * `<root>/designs` is listed by a worker thread (`projects_host_scheduler.rs`)
-//!   whose finished result the frame only drains;
+//! * `<root>/designs` and opened folders are listed by a worker thread
+//!   (`projects_host_scheduler.rs`) whose finished result the frame only drains;
 //! * the tree is rebuilt only when `input_key` (open documents, roots, folds,
 //!   listing version) changes.
 //!
@@ -24,7 +28,8 @@ use std::time::{Duration, Instant};
 
 use op_editor_core::editor_toast::EditorToastLevel;
 use op_editor_core::{
-    DocumentId, DocumentTabStatus, DocumentTabView, ProjectFileView, ProjectRequest, ProjectView,
+    DocumentId, DocumentTabStatus, DocumentTabView, ProjectFileView, ProjectRequest,
+    ProjectScanState, ProjectView,
 };
 use op_host_services::project_root::ProjectRootCache;
 
@@ -32,8 +37,12 @@ use crate::DesktopApp;
 
 #[path = "projects_host_new_design.rs"]
 mod new_design;
+#[path = "projects_host_open.rs"]
+mod open;
 #[path = "projects_host_scan.rs"]
 mod scan;
+#[path = "projects_host_scan_tree.rs"]
+mod scan_tree;
 #[path = "projects_host_scheduler.rs"]
 mod scheduler;
 
@@ -41,6 +50,10 @@ mod scheduler;
 pub(crate) use scan::list_design_files;
 use scan::ScanStatus;
 use scheduler::ScanScheduler;
+
+/// Asks the user for a folder (the argument is the dialog's title); `None` is a
+/// cancel. Replaceable so a headless test never reaches a native dialog.
+pub(crate) type FolderPicker = Box<dyn FnMut(&str) -> Option<PathBuf>>;
 
 /// A second `+` on the same project inside this window is a double click, not a
 /// second design.
@@ -72,12 +85,28 @@ pub(crate) struct ProjectsHostState {
     new_design_debounce: Duration,
     /// Statuses already reported, so a persistent condition is logged once.
     logged_status: BTreeMap<PathBuf, ScanStatus>,
+    /// Folded folders, by `(project root, relative folder)`.
+    collapsed_folders: HashSet<(PathBuf, String)>,
+    /// Opened projects whose walk has not finished: the scan serial that will
+    /// include them. Only these show "Scanning" (the periodic tick does not).
+    awaiting: BTreeMap<PathBuf, u64>,
+    /// The folder dialog.
+    picker: FolderPicker,
+    /// Home directory and system folders the unsafe-root check uses; `None`
+    /// means this machine's.
+    home_override: Option<Option<PathBuf>>,
+    system_dirs: op_host_services::project_root::SystemDirs,
+    /// The opened roots last given to the live MCP server.
+    mcp_roots_sent: Option<Vec<PathBuf>>,
+    /// Opened roots saved by the last run, restored once the window is up.
+    pending_restore: Vec<String>,
 }
 
 impl Default for ProjectsHostState {
     fn default() -> Self {
         let roots = op_host_services::project_root::shared_cache();
-        let scan = ScanScheduler::new(scheduler::disk_scan_job(Arc::clone(&roots)));
+        let scan = ScanScheduler::new(scheduler::disk_scan_job(Arc::clone(&roots)))
+            .with_tree_job(scheduler::tree_scan_job());
         Self::with_parts(roots, scan)
     }
 }
@@ -96,6 +125,13 @@ impl ProjectsHostState {
             last_new_design: None,
             new_design_debounce: NEW_DESIGN_DEBOUNCE,
             logged_status: BTreeMap::new(),
+            collapsed_folders: HashSet::new(),
+            awaiting: BTreeMap::new(),
+            picker: open::native_folder_picker(),
+            home_override: None,
+            system_dirs: op_host_services::project_root::SystemDirs::host(),
+            mcp_roots_sent: None,
+            pending_restore: Vec::new(),
         }
     }
 }
@@ -115,38 +151,76 @@ fn file_label(path: &Path) -> String {
         .unwrap_or_default()
 }
 
+/// The relative directory of `file` inside `root` with `/` separators; empty
+/// for a file directly in the root or outside it.
+fn folder_of(root: &Path, file: &Path) -> String {
+    file.strip_prefix(root)
+        .ok()
+        .and_then(Path::parent)
+        .map(|parent| {
+            parent
+                .components()
+                .map(|part| part.as_os_str().to_string_lossy())
+                .collect::<Vec<_>>()
+                .join("/")
+        })
+        .unwrap_or_default()
+}
+
+/// What the tree builder reads. Plain data, so the builder stays free of the
+/// file system.
+pub(crate) struct TreeInputs<'a> {
+    /// Every project to list.
+    pub roots: &'a BTreeSet<PathBuf>,
+    /// The roots the user opened (a subset of `roots`).
+    pub explicit: &'a [PathBuf],
+    /// The design files found on disk for each project root.
+    pub listing: &'a BTreeMap<PathBuf, Vec<PathBuf>>,
+    pub open: &'a [OpenDoc],
+    pub collapsed: &'a HashSet<PathBuf>,
+    pub collapsed_folders: &'a HashSet<(PathBuf, String)>,
+    pub scan_state: &'a dyn Fn(&Path) -> ProjectScanState,
+}
+
 /// Pure tree builder: no filesystem access, so it is unit-testable.
 ///
-/// `listing` maps each project root to the design files found on disk.
+/// A file found under an opened root that lies inside a DEEPER opened root
+/// belongs to that one only. The files of a project are grouped by folder (the
+/// root's own files first), so the dock can put a sub-header over each group.
 pub(crate) fn build_projects(
-    roots: &BTreeSet<PathBuf>,
-    listing: &BTreeMap<PathBuf, Vec<PathBuf>>,
-    open: &[OpenDoc],
-    collapsed: &HashSet<PathBuf>,
+    inputs: &TreeInputs<'_>,
     root_of: &dyn Fn(&Path) -> Option<PathBuf>,
 ) -> Vec<ProjectView> {
-    roots
+    inputs
+        .roots
         .iter()
         .map(|root| {
-            let mut paths: BTreeSet<PathBuf> = listing
+            let deeper = |path: &Path| {
+                inputs.explicit.iter().any(|other| {
+                    other != root && other.starts_with(root) && path.starts_with(other)
+                })
+            };
+            let mut paths: BTreeSet<PathBuf> = inputs
+                .listing
                 .get(root)
-                .map(|files| files.iter().cloned().collect())
+                .map(|files| files.iter().filter(|path| !deeper(path)).cloned().collect())
                 .unwrap_or_default();
             // A document open from this project shows even when it lives
             // outside `designs/`.
-            for doc in open {
+            for doc in inputs.open {
                 if let Some(path) = doc.path.as_ref() {
                     if root_of(path).as_ref() == Some(root) {
                         paths.insert(path.clone());
                     }
                 }
             }
-            let files = paths
+            let mut files: Vec<ProjectFileView> = paths
                 .into_iter()
                 .map(|path| {
-                    let doc = open.iter().find(|d| d.path.as_ref() == Some(&path));
+                    let doc = inputs.open.iter().find(|d| d.path.as_ref() == Some(&path));
                     ProjectFileView {
                         label: file_label(&path),
+                        folder: folder_of(root, &path),
                         path: path.to_string_lossy().into_owned(),
                         open_id: doc.map(|d| d.id),
                         dirty: doc.is_some_and(|d| d.dirty),
@@ -155,11 +229,23 @@ pub(crate) fn build_projects(
                     }
                 })
                 .collect();
+            // Stable: within a folder the sorted-by-path order stays.
+            files.sort_by(|a, b| a.folder.cmp(&b.folder));
             ProjectView {
                 root: root.to_string_lossy().into_owned(),
                 name: file_label(root),
                 files,
-                expanded: !collapsed.contains(root),
+                expanded: !inputs.collapsed.contains(root),
+                closable: inputs.explicit.contains(root),
+                scan: (inputs.scan_state)(root),
+                collapsed_folders: inputs
+                    .collapsed_folders
+                    .iter()
+                    .filter(|(project, _)| project == root)
+                    .map(|(_, folder)| folder.clone())
+                    .collect::<BTreeSet<_>>()
+                    .into_iter()
+                    .collect(),
             }
         })
         .collect()
@@ -190,8 +276,29 @@ impl ProjectsHostState {
         self.document_paths = current;
     }
 
+    /// How far a project's scan got, as the dock shows it.
+    fn scan_state(&self, root: &Path) -> ProjectScanState {
+        let status = self.scan.status(root).unwrap_or(ScanStatus::Ok);
+        let waiting = self
+            .awaiting
+            .get(root)
+            .is_some_and(|serial| *serial > self.scan.completed_serial());
+        match status {
+            ScanStatus::Slow => ProjectScanState::Slow,
+            _ if waiting => ProjectScanState::Scanning,
+            ScanStatus::Ok => ProjectScanState::Idle,
+            ScanStatus::Unreadable(_) => ProjectScanState::Unreadable,
+            ScanStatus::Truncated(omitted) => ProjectScanState::Truncated(omitted),
+        }
+    }
+
     /// Everything the published tree depends on, as one number.
-    fn input_key(&self, open: &[OpenDoc], doc_roots: &[Option<PathBuf>]) -> u64 {
+    fn input_key(
+        &self,
+        open: &[OpenDoc],
+        doc_roots: &[Option<PathBuf>],
+        explicit_generation: u64,
+    ) -> u64 {
         let mut hasher = std::collections::hash_map::DefaultHasher::new();
         for (doc, root) in open.iter().zip(doc_roots) {
             doc.id.hash(&mut hasher);
@@ -206,7 +313,16 @@ impl ProjectsHostState {
         let mut collapsed: Vec<&PathBuf> = self.collapsed.iter().collect();
         collapsed.sort();
         collapsed.hash(&mut hasher);
+        let mut folders: Vec<&(PathBuf, String)> = self.collapsed_folders.iter().collect();
+        folders.sort();
+        folders.hash(&mut hasher);
+        explicit_generation.hash(&mut hasher);
         self.scan.version().hash(&mut hasher);
+        // Whether each opened walk is still pending changes what the dock says.
+        let completed = self.scan.completed_serial();
+        for (root, serial) in &self.awaiting {
+            (root, *serial > completed).hash(&mut hasher);
+        }
         hasher.finish()
     }
 
@@ -283,6 +399,17 @@ impl DesktopApp {
                 }
             }
             ProjectRequest::NewDesignIn(root) => self.create_design_in(Path::new(&root)),
+            ProjectRequest::OpenProjectPicker => {
+                self.open_project_via_picker();
+            }
+            ProjectRequest::CloseProject(root) => self.close_project(Path::new(&root)),
+            ProjectRequest::RefreshProject(root) => self.refresh_project(Path::new(&root)),
+            ProjectRequest::ToggleFolder(root, folder) => {
+                let key = (PathBuf::from(root), folder);
+                if !self.projects_host.collapsed_folders.remove(&key) {
+                    self.projects_host.collapsed_folders.insert(key);
+                }
+            }
         }
         // A request can change what is open or folded.
         self.projects_host.published_key = None;
@@ -315,6 +442,11 @@ impl DesktopApp {
                 // The target's folder may not have existed when its root was
                 // last resolved.
                 self.projects_host.roots.invalidate(&target);
+                // An opened project is walked on request only, so ask: the
+                // file must stay listed after its tab closes.
+                if self.documents.explicit_roots().contains(root) {
+                    self.refresh_project(root);
+                }
                 self.open_document_tab(target);
             }
             Err(error) => {
@@ -336,13 +468,17 @@ impl DesktopApp {
     pub(crate) fn publish_projects(&mut self) -> bool {
         let open = self.open_docs();
         self.projects_host.track_document_paths(&open);
+        let explicit = Arc::clone(self.documents.explicit_roots());
         let doc_roots: Vec<Option<PathBuf>> = open
             .iter()
             .map(|doc| {
-                doc.path
-                    .as_deref()
-                    .and_then(|path| self.projects_host.roots.get(path))
-                    .map(|project| project.root)
+                let path = doc.path.as_deref()?;
+                explicit.root_for(path).or_else(|| {
+                    self.projects_host
+                        .roots
+                        .get(path)
+                        .map(|project| project.root)
+                })
             })
             .collect();
         for root in doc_roots.iter().flatten() {
@@ -350,11 +486,25 @@ impl DesktopApp {
                 self.projects_host.scan.request_now();
             }
         }
+        let explicit_roots = explicit.snapshot();
+        // An inferred project inside an opened folder is part of that folder.
+        let shown: BTreeSet<PathBuf> = self
+            .projects_host
+            .known
+            .iter()
+            .filter(|root| {
+                explicit_roots.contains(root)
+                    || !explicit_roots.iter().any(|other| root.starts_with(other))
+            })
+            .cloned()
+            .collect();
         let window = self.window.as_ref();
         let state = &mut self.projects_host;
         state
             .scan
-            .poll(&state.known, || window.is_none_or(|w| w.has_focus()));
+            .poll(&shown, || window.is_none_or(|w| w.has_focus()));
+        let completed = state.scan.completed_serial();
+        state.awaiting.retain(|_, serial| *serial > completed);
         let scanning = state.scan.in_flight();
         state.log_scan_status_changes();
         if scanning {
@@ -362,7 +512,9 @@ impl DesktopApp {
             // until its result is drained.
             self.request_redraw(false);
         }
-        let key = self.projects_host.input_key(&open, &doc_roots);
+        let key = self
+            .projects_host
+            .input_key(&open, &doc_roots, explicit.generation());
         let panel_rows = self
             .host
             .editor_state()
@@ -370,9 +522,7 @@ impl DesktopApp {
             .projects_panel
             .projects
             .len();
-        if self.projects_host.published_key == Some(key)
-            && panel_rows == self.projects_host.known.len()
-        {
+        if self.projects_host.published_key == Some(key) && panel_rows == shown.len() {
             return false;
         }
         let root_by_path: HashMap<&Path, &PathBuf> = open
@@ -380,11 +530,18 @@ impl DesktopApp {
             .zip(&doc_roots)
             .filter_map(|(doc, root)| Some((doc.path.as_deref()?, root.as_ref()?)))
             .collect();
+        let host = &self.projects_host;
+        let scan_state = |root: &Path| host.scan_state(root);
         let projects = build_projects(
-            &self.projects_host.known,
-            self.projects_host.scan.files(),
-            &open,
-            &self.projects_host.collapsed,
+            &TreeInputs {
+                roots: &shown,
+                explicit: &explicit_roots,
+                listing: host.scan.files(),
+                open: &open,
+                collapsed: &host.collapsed,
+                collapsed_folders: &host.collapsed_folders,
+                scan_state: &scan_state,
+            },
             &|path| root_by_path.get(path).map(|root| (*root).clone()),
         );
         self.projects_host.published_key = Some(key);
@@ -398,6 +555,9 @@ impl DesktopApp {
     }
 }
 
+#[cfg(test)]
+#[path = "projects_host_open_tests.rs"]
+mod open_tests;
 #[cfg(test)]
 #[path = "projects_host_tests.rs"]
 mod tests;

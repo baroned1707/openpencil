@@ -22,12 +22,20 @@ pub const DOCK_HEADER_HEIGHT: f32 = 36.0;
 pub const DOCK_TOGGLE_SIZE: f32 = 24.0;
 /// Gap between the chevron button and the dock's right edge.
 const TOGGLE_MARGIN_RIGHT: f32 = 8.0;
+/// Gap between the "Open project" button and the chevron beside it.
+const OPEN_BUTTON_GAP: f32 = 2.0;
+/// Height of each of the two targets (fold chevron, "Open project") the empty
+/// dock's slim strip stacks.
+pub const STRIP_TARGET_HEIGHT: f32 = 36.0;
 
 /// What a point on the dock lands on.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum DockHit {
     /// The collapse chevron (open dock) or anywhere on the strip (collapsed).
     Toggle,
+    /// The "Open project" button: in the open header, or the folder-plus glyph
+    /// of the empty dock's strip.
+    OpenProject,
     /// The open dock's header, off the chevron.
     Header,
     /// The list body; `Some` when it landed on a row.
@@ -44,6 +52,9 @@ pub struct ProjectsDockLayout {
     pub header: Rect,
     /// The chevron's hit rect.
     pub toggle: Rect,
+    /// The "Open project" button; `None` on a strip that has projects (it
+    /// folds out first).
+    pub open_project: Option<Rect>,
     /// The project list; `None` when collapsed.
     pub list: Option<ProjectsPanelLayout>,
 }
@@ -52,14 +63,35 @@ impl ProjectsDockLayout {
     /// Split `rect` for the dock in the given open state, with its project
     /// list scrolled by `scroll_offset`.
     pub fn new(projects: &[ProjectView], rect: Rect, open: bool, scroll_offset: f32) -> Self {
+        let header_origin = Rect::xywh(rect.origin.x, rect.origin.y, 0.0, 0.0);
+        if !open && projects.is_empty() {
+            // Nothing to unfold yet: the strip is the place to start, so it
+            // stacks the fold chevron over an "Open project" button.
+            let target_height = STRIP_TARGET_HEIGHT.min(rect.size.y.max(0.0));
+            let below = (rect.size.y - target_height).max(0.0).min(target_height);
+            return Self {
+                rect,
+                open,
+                header: header_origin,
+                toggle: Rect::xywh(rect.origin.x, rect.origin.y, rect.size.x, target_height),
+                open_project: Some(Rect::xywh(
+                    rect.origin.x,
+                    rect.origin.y + target_height,
+                    rect.size.x,
+                    below,
+                )),
+                list: None,
+            };
+        }
         if !open {
             return Self {
                 rect,
                 open,
-                header: Rect::xywh(rect.origin.x, rect.origin.y, 0.0, 0.0),
+                header: header_origin,
                 // The whole strip is the target: 28 px is too slim to aim
                 // a chevron-sized button at.
                 toggle: rect,
+                open_project: None,
                 list: None,
             };
         }
@@ -68,6 +100,12 @@ impl ProjectsDockLayout {
         let toggle = Rect::xywh(
             rect.origin.x + rect.size.x - TOGGLE_MARGIN_RIGHT - DOCK_TOGGLE_SIZE,
             rect.origin.y + (header_height - DOCK_TOGGLE_SIZE) / 2.0,
+            DOCK_TOGGLE_SIZE,
+            DOCK_TOGGLE_SIZE,
+        );
+        let open_project = Rect::xywh(
+            toggle.origin.x - OPEN_BUTTON_GAP - DOCK_TOGGLE_SIZE,
+            toggle.origin.y,
             DOCK_TOGGLE_SIZE,
             DOCK_TOGGLE_SIZE,
         );
@@ -82,6 +120,7 @@ impl ProjectsDockLayout {
             open,
             header,
             toggle,
+            open_project: Some(open_project),
             list: Some(ProjectsPanelLayout::new(projects, body, scroll_offset)),
         }
     }
@@ -95,6 +134,12 @@ impl ProjectsDockLayout {
     pub fn hit(&self, point: Point2D) -> Option<DockHit> {
         if !self.contains_point(point) {
             return None;
+        }
+        if self
+            .open_project
+            .is_some_and(|button| button.contains(point))
+        {
+            return Some(DockHit::OpenProject);
         }
         if self.toggle.contains(point) {
             return Some(DockHit::Toggle);

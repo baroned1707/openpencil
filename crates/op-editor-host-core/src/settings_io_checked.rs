@@ -32,6 +32,7 @@ pub(super) fn validate_payload_fields(raw: &serde_json::Value) -> Result<()> {
             "image_gen_enabled",
             "recent_files",
             "open_documents",
+            "open_projects",
             "preferred_agent_team_size",
             "entry_surface",
             "chat_agent",

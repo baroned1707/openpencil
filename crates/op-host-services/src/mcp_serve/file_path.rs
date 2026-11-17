@@ -52,7 +52,7 @@ pub fn process_message_for_file_path_arg(
     if target.tool == "open_document" && !target.path.exists() {
         create_empty_document(&target.path)?;
     }
-    let mut target_state = super::load_editor_state(&target.path)?;
+    let mut target_state = super::load_or_initialize_editor_state(&target.path)?;
     let mut applier_failed: Option<String> = None;
     let response = super::process_message_with_applier_profiled(
         &mut target_state,

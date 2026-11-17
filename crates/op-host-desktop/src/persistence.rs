@@ -9,8 +9,9 @@ use op_host_native::WidgetHostNative;
 #[cfg(test)]
 use op_host_services::doc_io::active_page_bbox;
 use op_host_services::doc_io::{
-    load_editor_state_with_report, preserve_app_preferences, save_to_path, set_file_name_display,
-    ActionOutcome, DocIoError, ErrorKind,
+    load_editor_state_with_report, load_initializing_empty_op_file, preserve_app_preferences,
+    save_to_path, set_file_name_display, ActionOutcome, DocIoError, EmptyFileOutcome, ErrorKind,
+    OpenedEditorState,
 };
 
 use crate::persistence_error::DocumentOpenError;
@@ -209,6 +210,27 @@ pub(crate) struct LoadedDocument {
     /// Home or an ordinary workspace was showing when the open began, so the
     /// document should open in the simple reading view.
     pub(crate) open_in_normal_mode: bool,
+    /// `Some` when the file was empty and opened as a blank document (see
+    /// `doc_io::empty_file`): it is already formatted on disk, or could not
+    /// be and is unsaved.
+    pub(crate) empty_file: Option<EmptyFileOutcome>,
+}
+
+/// Read `path` for an open. `initialize_empty` is the user-facing open path's
+/// opt-in to format an empty `.op` file; replacements that only re-read a
+/// file (Git reloads) never write to it.
+fn read_for_open(
+    path: &std::path::Path,
+    locale: op_editor_core::Locale,
+    initialize_empty: bool,
+) -> Result<OpenedEditorState, DocIoError> {
+    if initialize_empty {
+        return load_initializing_empty_op_file(path, locale);
+    }
+    load_editor_state_with_report(path, locale).map(|loaded| OpenedEditorState {
+        loaded,
+        empty_file: None,
+    })
 }
 
 /// Read and prepare a document file without touching the live editor: gate,
@@ -216,11 +238,14 @@ pub(crate) struct LoadedDocument {
 /// session refused the open. `carry_app_preferences` copies the live app
 /// preferences onto the loaded state, which an in-place replacement needs
 /// because it swaps the whole state; a new tab keeps the live app state and
-/// takes only the document, so it passes `false`.
+/// takes only the document, so it passes `false`. `initialize_empty` lets an
+/// empty `.op` file open as a blank document and be formatted on disk; callers
+/// run it only after every guard (path already open, switch blocked) passed.
 pub(crate) fn load_document(
     host: &mut WidgetHostNative,
     path: &std::path::Path,
     carry_app_preferences: bool,
+    initialize_empty: bool,
 ) -> Result<Option<LoadedDocument>, DocumentOpenError> {
     if !host.gate_collaboration_action(
         op_editor_core::CollabGateAction::ReplaceDocument,
@@ -236,11 +261,11 @@ pub(crate) fn load_document(
     let locale = host.editor_state().editor_ui.locale;
     // Loading activates the file's thumbnails process-wide; bracket it so the
     // document on screen keeps its own until this one is installed.
-    let (loaded, thumbs) = op_host_native::widget_host::capture_loaded_thumbnails(|| {
-        load_editor_state_with_report(path, locale)
+    let (opened, thumbs) = op_host_native::widget_host::capture_loaded_thumbnails(|| {
+        read_for_open(path, locale, initialize_empty)
     });
     crate::heap_pressure::schedule_relief("document load parse");
-    let loaded = loaded?;
+    let OpenedEditorState { loaded, empty_file } = opened?;
     let mut state = loaded.state;
     if carry_app_preferences {
         preserve_app_preferences(host.editor_state(), &mut state);
@@ -254,6 +279,10 @@ pub(crate) fn load_document(
     )?;
     set_file_name_display(&mut state, Some(&bound_path));
     state.clear_selection();
+    if matches!(empty_file, Some(EmptyFileOutcome::NotWritable(_))) {
+        // The blank is not on disk, so the tab starts unsaved and Save retries.
+        state.mark_document_changed();
+    }
     eprintln!(
         "[open] {} active-page top-level nodes",
         state.active_children().len()
@@ -263,6 +292,7 @@ pub(crate) fn load_document(
         bound_path,
         thumbs,
         open_in_normal_mode,
+        empty_file,
     }))
 }
 
@@ -272,7 +302,7 @@ fn load_into_host(
     host: &mut WidgetHostNative,
     path: &std::path::Path,
 ) -> Result<Option<PathBuf>, DocumentOpenError> {
-    let Some(loaded) = load_document(host, path, true)? else {
+    let Some(loaded) = load_document(host, path, true, false)? else {
         return Ok(None);
     };
     let LoadedDocument {
@@ -280,6 +310,7 @@ fn load_into_host(
         bound_path,
         thumbs,
         open_in_normal_mode,
+        empty_file: _,
     } = loaded;
     if !host.replace_editor_state(state) {
         return Ok(None);

@@ -49,12 +49,16 @@ pub(crate) struct SlotLocalState {
     pub collab_loss_announced: bool,
 }
 
+/// `(path, explicit-roots generation, name)`: valid while both keys match.
+type ProjectNameMemo = (PathBuf, u64, String);
+
 /// One open document.
 pub(crate) struct DocumentSlot {
     pub id: DocumentId,
-    /// The project name last resolved for a path, so a frame does not walk the
-    /// file system again for every tab (`project_name`).
-    project_memo: std::sync::Mutex<Option<(PathBuf, String)>>,
+    /// The project name last resolved for a path and an explicit-roots
+    /// generation, so a frame does not walk the file system again for every tab
+    /// (`project_name`).
+    project_memo: std::sync::Mutex<Option<ProjectNameMemo>>,
     pub local: SlotLocalState,
     /// The document itself while it is not on screen; `None` for the active slot.
     pub parked: Option<ParkedDocument>,
@@ -63,9 +67,11 @@ pub(crate) struct DocumentSlot {
 impl DocumentSlot {
     /// The project the tab groups under: the name of the project root the file
     /// belongs to (the same root the Projects dock and the agent's working
-    /// directory use), or the file's own folder when no root is found. Empty for
-    /// an untitled document. Memoized per path: resolving it reads the disk.
-    fn project_name(&self) -> String {
+    /// directory use), or the file's own folder when no root is found. A folder
+    /// the user opened as a project (`explicit`, deepest first) wins over
+    /// inference. Empty for an untitled document. Memoized per path and per
+    /// explicit-roots generation: resolving it reads the disk.
+    fn project_name(&self, explicit: &op_host_services::project_root::ExplicitRoots) -> String {
         let Some(path) = self.local.path.as_deref() else {
             return String::new();
         };
@@ -73,20 +79,29 @@ impl DocumentSlot {
             .project_memo
             .lock()
             .unwrap_or_else(|poisoned| poisoned.into_inner());
-        if let Some((cached_path, name)) = memo.as_ref() {
-            if cached_path == path {
+        let generation = explicit.generation();
+        if let Some((cached_path, cached_generation, name)) = memo.as_ref() {
+            if cached_path == path && *cached_generation == generation {
                 return name.clone();
             }
         }
-        let name = op_host_services::project_root::cached_project_root_for(path)
-            .map(|project| project.name)
+        let name = explicit
+            .root_for(path)
+            .and_then(|root| {
+                root.file_name()
+                    .map(|name| name.to_string_lossy().into_owned())
+            })
+            .or_else(|| {
+                op_host_services::project_root::cached_project_root_for(path)
+                    .map(|project| project.name)
+            })
             .or_else(|| {
                 path.parent()
                     .and_then(Path::file_name)
                     .map(|name| name.to_string_lossy().into_owned())
             })
             .unwrap_or_default();
-        *memo = Some((path.to_path_buf(), name.clone()));
+        *memo = Some((path.to_path_buf(), generation, name.clone()));
         name
     }
 
@@ -119,6 +134,9 @@ static NEXT_DOCUMENT_ID: std::sync::atomic::AtomicU64 = std::sync::atomic::Atomi
 pub(crate) struct DocumentRegistry {
     slots: Vec<DocumentSlot>,
     active: usize,
+    /// The folders the user opened as projects. Owned here because the registry
+    /// is what names a tab's project; the Projects dock host mutates it.
+    explicit: std::sync::Arc<op_host_services::project_root::ExplicitRoots>,
 }
 
 impl DocumentRegistry {
@@ -127,6 +145,7 @@ impl DocumentRegistry {
         let mut registry = Self {
             slots: Vec::new(),
             active: 0,
+            explicit: Default::default(),
         };
         let first = registry.new_slot();
         registry.slots.push(first);
@@ -142,6 +161,11 @@ impl DocumentRegistry {
             local: SlotLocalState::default(),
             parked: None,
         }
+    }
+
+    /// The folders opened as projects (see `projects_host_open.rs`).
+    pub fn explicit_roots(&self) -> &std::sync::Arc<op_host_services::project_root::ExplicitRoots> {
+        &self.explicit
     }
 
     pub fn len(&self) -> usize {
@@ -419,7 +443,7 @@ impl DocumentRegistry {
             .map(|(index, slot)| DocumentTabView {
                 id: slot.id,
                 label: slot.label(untitled_label),
-                project: slot.project_name(),
+                project: slot.project_name(&self.explicit),
                 dirty: self.is_dirty(index, live_dirty),
                 status: self.tab_status(index, slot),
                 active: index == self.active,

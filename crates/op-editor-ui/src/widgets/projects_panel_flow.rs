@@ -34,6 +34,15 @@ pub fn text(state: &EditorState) -> ProjectsPanelText<'static> {
         new_design: translate(ui, "projects.newDesign"),
         needs_review: translate(ui, "projects.needsReview"),
         running: translate(ui, "projects.running"),
+        open_project: translate(ui, "project.open"),
+        open_hint: translate(ui, "project.openFolderHint"),
+        close: translate(ui, "project.close"),
+        refresh: translate(ui, "project.refresh"),
+        scanning: translate(ui, "project.scanning"),
+        slow: translate(ui, "project.slow"),
+        unreadable: translate(ui, "project.unreadable"),
+        truncated: translate(ui, "project.truncated"),
+        no_designs: translate(ui, "project.noDesigns"),
     }
 }
 
@@ -58,6 +67,20 @@ fn request_for(state: &EditorState, target: ProjectRowTarget) -> Option<ProjectR
         ProjectRowTarget::Plus(project) | ProjectRowTarget::NewDesignRow(project) => Some(
             ProjectRequest::NewDesignIn(projects.get(project)?.root.clone()),
         ),
+        ProjectRowTarget::Close(project) => Some(ProjectRequest::CloseProject(
+            projects.get(project)?.root.clone(),
+        )),
+        ProjectRowTarget::Refresh(project) => Some(ProjectRequest::RefreshProject(
+            projects.get(project)?.root.clone(),
+        )),
+        ProjectRowTarget::Folder(project, file) => {
+            let view = projects.get(project)?;
+            Some(ProjectRequest::ToggleFolder(
+                view.root.clone(),
+                view.files.get(file)?.folder.clone(),
+            ))
+        }
+        ProjectRowTarget::OpenProject => Some(ProjectRequest::OpenProjectPicker),
         ProjectRowTarget::File(project, file) => {
             let file = projects.get(project)?.files.get(file)?;
             Some(match file.open_id {
@@ -79,13 +102,23 @@ pub fn press(
     }
     let mut hit = layout.hit(point);
     let ui = &mut state.editor_ui.projects_panel;
-    // The `+` only shows while its header is hovered. A press that never
-    // saw a move first (a synthesized click) cannot have aimed at a button
-    // the user could not see, so it counts as a press on the header.
-    if let Some(ProjectRowTarget::Plus(project)) = hit {
+    // A header's buttons only show while its header is hovered. A press that
+    // never saw a move first (a synthesized click) cannot have aimed at a
+    // button the user could not see, so it counts as a press on the header.
+    if let Some(
+        ProjectRowTarget::Plus(project)
+        | ProjectRowTarget::Close(project)
+        | ProjectRowTarget::Refresh(project),
+    ) = hit
+    {
         if !matches!(
             ui.hover,
-            Some(ProjectRowTarget::Header(p) | ProjectRowTarget::Plus(p)) if p == project
+            Some(
+                ProjectRowTarget::Header(p)
+                    | ProjectRowTarget::Plus(p)
+                    | ProjectRowTarget::Close(p)
+                    | ProjectRowTarget::Refresh(p)
+            ) if p == project
         ) {
             hit = Some(ProjectRowTarget::Header(project));
         }

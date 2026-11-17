@@ -24,6 +24,27 @@ pub struct ProjectFileView {
     pub status: DocumentTabStatus,
     /// Whether this is the document the editor is showing right now.
     pub active: bool,
+    /// The directory of the file inside the project, relative to the project
+    /// root with `/` separators; empty for a file directly in the root. The
+    /// dock groups rows under this.
+    pub folder: String,
+}
+
+/// How far the last disk scan of a project got; the dock shows a status line
+/// for everything but [`ProjectScanState::Idle`].
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub enum ProjectScanState {
+    /// The listing is complete and no scan is running.
+    #[default]
+    Idle,
+    /// The first scan (or a requested refresh) has not finished yet.
+    Scanning,
+    /// The scan ran out of time; the listing is what was found until then.
+    Slow,
+    /// More files than fit; this many were left out of the listing.
+    Truncated(usize),
+    /// The folder could not be read.
+    Unreadable,
 }
 
 /// One project: a root folder and the design files found under it.
@@ -32,8 +53,31 @@ pub struct ProjectView {
     /// Project root folder; the stable key of the project.
     pub root: String,
     pub name: String,
+    /// Grouped by folder: the files of one folder are contiguous, the files
+    /// directly in the root first.
     pub files: Vec<ProjectFileView>,
     pub expanded: bool,
+    /// The user opened this folder explicitly, so the dock offers to close it.
+    pub closable: bool,
+    pub scan: ProjectScanState,
+    /// Relative folders (`ProjectFileView::folder`) the user folded; their
+    /// files stay in `files` but the dock hides them.
+    pub collapsed_folders: Vec<String>,
+}
+
+impl Default for ProjectView {
+    /// An empty, expanded, inferred project; callers fill in what they know.
+    fn default() -> Self {
+        Self {
+            root: String::new(),
+            name: String::new(),
+            files: Vec::new(),
+            expanded: true,
+            closable: false,
+            scan: ProjectScanState::Idle,
+            collapsed_folders: Vec::new(),
+        }
+    }
 }
 
 impl ProjectView {
@@ -45,6 +89,11 @@ impl ProjectView {
     /// Files an agent is working in right now.
     pub fn running_count(&self) -> usize {
         self.count_status(DocumentTabStatus::Running)
+    }
+
+    /// Whether the dock hides the files of `folder`.
+    pub fn is_folder_collapsed(&self, folder: &str) -> bool {
+        self.collapsed_folders.iter().any(|name| name == folder)
     }
 
     /// Whether any file has unsaved changes.
@@ -72,6 +121,14 @@ pub enum ProjectRequest {
     ToggleProject(String),
     /// Create a new design inside the project with this root.
     NewDesignIn(String),
+    /// Pick a folder and open it as a project.
+    OpenProjectPicker,
+    /// Stop treating the explicitly opened project with this root as one.
+    CloseProject(String),
+    /// Scan the project with this root again.
+    RefreshProject(String),
+    /// Fold or unfold a folder: `(project root, relative folder)`.
+    ToggleFolder(String, String),
 }
 
 /// What the cursor is over in the Projects dock. Indices point into
@@ -86,6 +143,14 @@ pub enum ProjectRowTarget {
     File(usize, usize),
     /// The "New design" row an empty project shows in place of files.
     NewDesignRow(usize),
+    /// A folder sub-header: `(project index, index of the folder's first file)`.
+    Folder(usize, usize),
+    /// The header's refresh button (explicit projects, while idle).
+    Refresh(usize),
+    /// The header's close button (explicit projects).
+    Close(usize),
+    /// The empty dock's "Open project" button.
+    OpenProject,
 }
 
 #[cfg(test)]
@@ -100,6 +165,7 @@ mod tests {
             dirty,
             status,
             active: false,
+            folder: String::new(),
         }
     }
 
@@ -108,7 +174,7 @@ mod tests {
             root: "/p".to_string(),
             name: "p".to_string(),
             files,
-            expanded: true,
+            ..ProjectView::default()
         }
     }
 

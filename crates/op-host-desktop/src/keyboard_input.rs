@@ -330,6 +330,10 @@ impl DesktopApp {
                         {
                             consumed = self.host.apply_document_tab_shortcut(bracket, true);
                         }
+                        // Cmd+Shift+O = Open Project (a folder of `.op` files).
+                        "o" if !settings_focused && !image_popover_open => {
+                            consumed = self.open_project_via_picker();
+                        }
                         // Cmd+Shift+S = Save As; always allowed.
                         "s" => {
                             self.host.commit_variable_row_focus_if_any_pub();

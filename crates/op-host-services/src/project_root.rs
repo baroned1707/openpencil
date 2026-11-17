@@ -16,10 +16,13 @@ use std::path::{Path, PathBuf};
 
 #[path = "project_root_cache.rs"]
 mod cache;
+#[path = "project_root_explicit.rs"]
+mod explicit;
 pub use cache::{
     cached_project_root_for, invalidate_cached_project_root, shared as shared_cache,
     ProjectRootCache,
 };
+pub use explicit::{check_project_root, deepest_containing, ExplicitRoots, SystemDirs, UnsafeRoot};
 
 /// Entries whose presence marks a directory as a project root. `.git` may be a
 /// directory or a file (worktrees and submodules use a `.git` file), so every
@@ -36,6 +39,8 @@ const PROJECT_MARKERS: [&str; 6] = [
 /// How a [`ProjectRoot`] was found.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ProjectRootSource {
+    /// The user opened this folder as a project (`ExplicitRoots`).
+    Explicit,
     /// An ancestor directory held this project marker.
     Marker(&'static str),
     /// No ancestor held a marker; the document's own directory is the root.
@@ -65,7 +70,7 @@ pub fn project_root_for(path: &Path) -> Option<ProjectRoot> {
 
 /// The user's home directory in canonical form, or `None` when it cannot be
 /// determined. Canonical so it compares equal to a canonicalized candidate.
-pub(crate) fn canonical_home() -> Option<PathBuf> {
+pub fn canonical_home() -> Option<PathBuf> {
     dirs::home_dir().and_then(|home| std::fs::canonicalize(home).ok())
 }
 

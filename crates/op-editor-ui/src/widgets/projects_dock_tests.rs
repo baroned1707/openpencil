@@ -12,6 +12,15 @@ const TEXT: ProjectsPanelText<'static> = ProjectsPanelText {
     new_design: "New design",
     needs_review: "{{count}} need review",
     running: "{{count}} running",
+    open_project: "Open Project…",
+    open_hint: "Choose a folder, or drop one here",
+    close: "Close project",
+    refresh: "Refresh",
+    scanning: "Scanning…",
+    slow: "Slow folder: showing what was found",
+    unreadable: "Cannot read this folder",
+    truncated: "{{count}} more not shown",
+    no_designs: "No .op files here yet",
 };
 
 fn paint(
@@ -34,6 +43,8 @@ fn paint(
         },
         title: "Projects",
         toggle_hover,
+        open_project_hover: false,
+        has_projects: !projects.is_empty(),
     }
     .paint(&mut cx, &layout, theme);
     backend

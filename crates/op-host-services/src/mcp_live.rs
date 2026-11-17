@@ -428,6 +428,12 @@ impl McpLiveServer {
         self.admission.bearer_required()
     }
 
+    /// The extra folders file-touching tools may use besides the open
+    /// documents' project roots.
+    pub fn extra_roots(&self) -> Vec<PathBuf> {
+        self.admission.extra_roots()
+    }
+
     /// Replace the user's extra folders file-touching tools may use.
     pub fn set_extra_roots(&self, roots: Vec<PathBuf>) {
         self.admission.set_extra_roots(roots);
@@ -643,6 +649,9 @@ mod document_addressing_tests;
 #[cfg(test)]
 #[path = "mcp_live/document_nonce_tests.rs"]
 mod document_nonce_tests;
+#[cfg(test)]
+#[path = "mcp_live/empty_file_confinement_tests.rs"]
+mod empty_file_confinement_tests;
 #[cfg(test)]
 #[path = "mcp_live/file_confinement_tests.rs"]
 mod file_confinement_tests;

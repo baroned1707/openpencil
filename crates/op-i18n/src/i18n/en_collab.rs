@@ -604,6 +604,18 @@ pub fn lookup(key: &str) -> Option<&'static str> {
         "dialog.collabGuestLeaveBody" => "You are in a live session in “{{name}}”.\n\nLeave the session?\n\nYes = Leave and continue · No or Cancel = stay.",
         "documents.saveAsAlreadyOpen" => "“{{name}}” is already open in another tab — switch to it or choose another name.",
         "documents.collabSessionLostParked" => "The collaboration session in “{{name}}” ended or lost its connection. Switch to that tab to see why.",
+        "project.open" => "Open Project…",
+        "project.close" => "Close project",
+        "project.refresh" => "Refresh",
+        "project.scanning" => "Scanning…",
+        "project.truncated" => "{{count}} more not shown",
+        "project.unsafeRoot" => "That folder is too broad to be a project. Pick one project's folder.",
+        "project.noDesigns" => "No .op files in this folder yet",
+        "project.openFolderHint" => "Choose a folder, or drop one here",
+        "project.slow" => "Slow folder: partial list",
+        "project.unreadable" => "Cannot read this folder",
+        "documents.emptyFileInitialized" => "“{{name}}” was empty, so it was set up as a blank design.",
+        "documents.emptyFileNotWritable" => "“{{name}}” was empty but could not be written. It is open unsaved: save it to keep your work.",
         _ => return None,
     })
 }

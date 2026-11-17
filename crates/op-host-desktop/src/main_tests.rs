@@ -445,10 +445,11 @@ fn fresh_app_fits_blank_frame_like_ts_canvas_init() {
     assert!(app.host.editor_state().selection.is_empty());
     let v = app.host.editor_state().viewport;
 
-    // No implicit page inspector without a selection: fit uses the full canvas width.
-    assert!((v.zoom - 0.8933333).abs() < 1e-3, "zoom {}", v.zoom);
+    // No implicit page inspector without a selection: fit uses the canvas width
+    // less the Projects dock's 28 px strip (an empty dock is still a strip).
+    assert!((v.zoom - 0.87).abs() < 1e-3, "zoom {}", v.zoom);
     assert!((v.pan_x - 64.0).abs() < 1e-2, "pan_x {}", v.pan_x);
-    assert!((v.pan_y - 72.66669).abs() < 1e-2, "pan_y {}", v.pan_y);
+    assert!((v.pan_y - 82.0).abs() < 1e-2, "pan_y {}", v.pan_y);
 }
 
 #[test]
@@ -459,9 +460,10 @@ fn fresh_app_refits_blank_frame_to_actual_window_size_once() {
 
     assert!(app.fit_initial_blank_frame_to_actual_viewport());
     let v = app.host.editor_state().viewport;
-    assert!((v.zoom - 0.52666664).abs() < 1e-3, "zoom {}", v.zoom);
+    // 28 px narrower than the bare window: the Projects dock's strip.
+    assert!((v.zoom - 0.50333333).abs() < 1e-3, "zoom {}", v.zoom);
     assert!((v.pan_x - 64.0).abs() < 1e-2, "pan_x {}", v.pan_x);
-    assert!((v.pan_y - 119.33334).abs() < 1e-2, "pan_y {}", v.pan_y);
+    assert!((v.pan_y - 128.66667).abs() < 1e-2, "pan_y {}", v.pan_y);
 
     app.viewport_width = 1200.0;
     app.viewport_height = 800.0;

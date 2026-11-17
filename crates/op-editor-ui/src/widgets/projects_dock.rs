@@ -2,9 +2,11 @@
 //! every project and its design files.
 //!
 //! Figma UI3 look — flat, borderless, tone-separated. Open, it is a header
-//! (folder glyph, title, a collapse chevron) over the project list
-//! ([`ProjectsPanel`]); collapsed, it is a slim strip with a chevron that
-//! re-opens it, a folder glyph and the project count.
+//! (folder glyph, title, an "Open project" button, a collapse chevron) over the
+//! project list ([`ProjectsPanel`]); collapsed, it is a slim strip with a
+//! chevron that re-opens it, a folder glyph and the project count. With no
+//! project the strip swaps the count for a folder-plus button that opens the
+//! folder picker, so a new user can find it.
 //!
 //! The widget only paints. Where its parts sit is [`ProjectsDockLayout`],
 //! what a press means is `projects_dock_flow`.
@@ -47,6 +49,11 @@ pub struct ProjectsDock<'a> {
     pub title: &'a str,
     /// The cursor is over the collapse / expand chevron.
     pub toggle_hover: bool,
+    /// The cursor is over the "Open project" button.
+    pub open_project_hover: bool,
+    /// Whether any project is listed; the empty strip carries an "Open
+    /// project" glyph in place of the project count.
+    pub has_projects: bool,
 }
 
 impl ProjectsDock<'_> {
@@ -74,7 +81,10 @@ impl ProjectsDock<'_> {
             1.6,
         );
         let title_x = header.origin.x + HEADER_PAD_LEFT + FOLDER_GLYPH + TITLE_GAP;
-        let title_max = (layout.toggle.origin.x - TITLE_GAP - title_x).max(0.0);
+        let title_right = layout
+            .open_project
+            .map_or(layout.toggle.origin.x, |button| button.origin.x);
+        let title_max = (title_right - TITLE_GAP - title_x).max(0.0);
         let title = crate::util::ellipsize_to_width(self.title, title_max, |candidate| {
             text_metrics::measure_chrome_weighted(cx.backend, candidate, TITLE_FONT, TITLE_WEIGHT)
         });
@@ -89,6 +99,9 @@ impl ProjectsDock<'_> {
                 jian_widgets::centered_text_baseline_y(header, TITLE_FONT),
             ),
         );
+        if let Some(button) = layout.open_project {
+            self.paint_open_project(cx, button, theme);
+        }
         // The chevron points at the edge the dock folds into.
         self.paint_toggle(cx, layout.toggle, Icon::ChevronRight, theme);
         if let Some(list) = &layout.list {
@@ -100,7 +113,7 @@ impl ProjectsDock<'_> {
         let rect = layout.rect;
         cx.backend.fill_rect(rect, surface(theme));
         if self.toggle_hover {
-            cx.backend.fill_rect(rect, theme.button_hover);
+            cx.backend.fill_rect(layout.toggle, theme.button_hover);
         }
         let centre_x = rect.origin.x + rect.size.x / 2.0;
         let mut y = rect.origin.y + STRIP_PAD_TOP;
@@ -118,6 +131,12 @@ impl ProjectsDock<'_> {
             1.6,
         );
         y += TOGGLE_GLYPH + STRIP_GLYPH_GAP;
+        if let Some(button) = layout.open_project.filter(|_| !self.has_projects) {
+            // An empty dock has nothing to count: the strip offers the one
+            // thing there is to do.
+            self.paint_open_project(cx, button, theme);
+            return;
+        }
         draw_icon(
             cx.backend,
             Icon::FolderOpen,
@@ -152,6 +171,27 @@ impl ProjectsDock<'_> {
                 badge.origin.x + (badge.size.x - text_width) / 2.0,
                 jian_widgets::centered_text_baseline_y(badge, BADGE_FONT),
             ),
+        );
+    }
+
+    fn paint_open_project(&self, cx: &mut PaintCx<'_>, button: Rect, theme: &Theme) {
+        if self.open_project_hover {
+            cx.backend.fill_rect(button, theme.button_hover);
+        }
+        draw_icon(
+            cx.backend,
+            Icon::FolderPlus,
+            Point2D::new(
+                button.origin.x + (button.size.x - TOGGLE_GLYPH) / 2.0,
+                button.origin.y + (button.size.y - TOGGLE_GLYPH) / 2.0,
+            ),
+            TOGGLE_GLYPH,
+            if self.open_project_hover {
+                theme.foreground
+            } else {
+                theme.muted_foreground
+            },
+            1.6,
         );
     }
 

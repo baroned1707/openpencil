@@ -209,7 +209,9 @@ impl WidgetHostNative {
                     | FileMenuChoice::ClearRecent
                     // Opening the centre only shows a panel; the document is
                     // replaced later, and that step re-runs the gate itself.
-                    | FileMenuChoice::NewFromTemplate => op_editor_core::CollabGateAction::LocalUi,
+                    | FileMenuChoice::NewFromTemplate
+                    // Opening a project never touches the document on screen.
+                    | FileMenuChoice::OpenProject => op_editor_core::CollabGateAction::LocalUi,
                 };
                 if !self.collab_allows_user_action(gate_action) {
                     self.editor_state.editor_ui.file_menu_open = false;
@@ -220,6 +222,15 @@ impl WidgetHostNative {
                     self.editor_state
                         .editor_ui
                         .open_scene_template_center(self.now_ms);
+                    self.editor_state.editor_ui.file_menu_open = false;
+                    self.editor_state.editor_ui.file_menu.hover = None;
+                    self.mark_dirty();
+                    return;
+                }
+                if choice == FileMenuChoice::OpenProject {
+                    // The Projects dock host owns the folder picker.
+                    self.editor_state.editor_ui.projects_panel.pending_request =
+                        Some(op_editor_core::ProjectRequest::OpenProjectPicker);
                     self.editor_state.editor_ui.file_menu_open = false;
                     self.editor_state.editor_ui.file_menu.hover = None;
                     self.mark_dirty();
@@ -250,7 +261,9 @@ impl WidgetHostNative {
                     FileMenuChoice::ClearRecent => FileAction::ClearRecent,
                     // Handled above — it opens a panel rather than queuing a
                     // file action.
-                    FileMenuChoice::NewFromTemplate | FileMenuChoice::SaveAsTemplate => return,
+                    FileMenuChoice::NewFromTemplate
+                    | FileMenuChoice::SaveAsTemplate
+                    | FileMenuChoice::OpenProject => return,
                 });
                 self.editor_state.editor_ui.file_menu_open = false;
                 self.editor_state.editor_ui.file_menu.hover = None;

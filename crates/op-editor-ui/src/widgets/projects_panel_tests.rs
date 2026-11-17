@@ -11,6 +11,15 @@ const TEXT: ProjectsPanelText<'static> = ProjectsPanelText {
     new_design: "New design",
     needs_review: "{{count}} need review",
     running: "{{count}} running",
+    open_project: "Open Project…",
+    open_hint: "Choose a folder, or drop one here",
+    close: "Close project",
+    refresh: "Refresh",
+    scanning: "Scanning…",
+    slow: "Slow folder: showing what was found",
+    unreadable: "Cannot read this folder",
+    truncated: "{{count}} more not shown",
+    no_designs: "No .op files here yet",
 };
 
 fn paint(
@@ -240,11 +249,21 @@ fn an_expanded_project_without_files_shows_the_new_design_row() {
 }
 
 #[test]
-fn empty_state_paints_one_muted_line() {
+fn empty_state_paints_a_headline_a_hint_and_the_open_project_button() {
     let theme = Theme::dark();
     let backend = paint(&[], None, body(), &theme);
-    assert_eq!(backend.texts.len(), 1);
+    assert_eq!(backend.texts.len(), 3);
     assert!(painted(&backend, "No projects yet"));
+    assert!(painted(&backend, "Choose a folder, or drop one here"));
+    assert!(
+        painted(&backend, "Open Project"),
+        "the menu ellipsis is trimmed"
+    );
+    assert_eq!(
+        fills_with(&backend, theme.primary),
+        1,
+        "one flat primary button"
+    );
 }
 
 #[test]

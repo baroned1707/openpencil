@@ -103,6 +103,7 @@ impl DesktopApp {
                 true
             }
             A::Open => self.open_document_via_picker(),
+            A::OpenProject => self.open_project_via_picker(),
             A::OpenRecent(i) => self.open_recent_document(i),
             A::Save => {
                 self.host.commit_variable_row_focus_if_any_pub();

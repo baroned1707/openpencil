@@ -566,6 +566,18 @@ pub fn lookup(key: &str) -> Option<&'static str> {
         "dialog.collabGuestLeaveBody" => "คุณอยู่ในเซสชันที่ทำงานอยู่ใน “{{name}}”\n\nออกจากเซสชันหรือไม่?\n\nใช่ = ออกและดำเนินการต่อ · ไม่ หรือ ยกเลิก = อยู่ต่อ",
         "documents.saveAsAlreadyOpen" => "“{{name}}” เปิดอยู่ในแท็บอื่นแล้ว — สลับไปยังแท็บนั้นหรือเลือกชื่ออื่น",
         "documents.collabSessionLostParked" => "เซสชันการทำงานร่วมกันใน “{{name}}” สิ้นสุดลงหรือขาดการเชื่อมต่อ สลับไปยังแท็บนั้นเพื่อดูสาเหตุ",
+        "project.open" => "เปิดโปรเจกต์…",
+        "project.close" => "ปิดโปรเจกต์",
+        "project.refresh" => "รีเฟรช",
+        "project.scanning" => "กำลังสแกน…",
+        "project.truncated" => "ยังมีอีก {{count}} รายการที่ไม่แสดง",
+        "project.unsafeRoot" => "โฟลเดอร์นี้กว้างเกินกว่าจะเป็นโปรเจกต์ โปรดเลือกโฟลเดอร์ของโปรเจกต์เดียว",
+        "project.noDesigns" => "ยังไม่มีไฟล์ .op ในโฟลเดอร์นี้",
+        "project.openFolderHint" => "เลือกโฟลเดอร์ หรือลากมาวางที่นี่",
+        "project.slow" => "โฟลเดอร์ช้า: แสดงเฉพาะที่พบ",
+        "project.unreadable" => "อ่านโฟลเดอร์นี้ไม่ได้",
+        "documents.emptyFileInitialized" => "“{{name}}” เป็นไฟล์ว่าง จึงตั้งค่าเป็นดีไซน์เปล่าให้แล้ว",
+        "documents.emptyFileNotWritable" => "“{{name}}” เป็นไฟล์ว่างแต่เขียนข้อมูลลงไม่ได้ ไฟล์เปิดอยู่โดยยังไม่ได้บันทึก: บันทึกเพื่อเก็บงานของคุณไว้",
         _ => return None,
     })
 }
