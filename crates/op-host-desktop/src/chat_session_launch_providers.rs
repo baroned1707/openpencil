@@ -35,6 +35,15 @@ pub struct ChatLaunchContext {
     /// editing it after the user switches tabs. `None` keeps the generic
     /// endpoint (the document on screen).
     pub document: Option<op_editor_core::DocumentId>,
+    /// Port of the live MCP server while it is running, else `None`. Together
+    /// with `document` it lets the Claude Code chat turn reach THIS document
+    /// (`claude_mcp_endpoint`). Never holds a token: that is read only when the
+    /// provider is built.
+    pub mcp_port: Option<u16>,
+    /// `mcp_lean_profile`: the six-tool route instead of the full catalog.
+    pub mcp_lean: bool,
+    /// `mcp_require_token`: the endpoint needs the `Authorization` header.
+    pub mcp_require_token: bool,
 }
 
 impl ChatLaunchContext {
@@ -43,8 +52,18 @@ impl ChatLaunchContext {
         Self {
             project_cwd: op_host_services::project_root::project_root_for_document(path)
                 .map(|project| project.root),
-            document: None,
+            ..Self::default()
         }
+    }
+
+    /// The same context with the working directory forced to `root`: a folder
+    /// the user opened as a project is the agent's directory for every document
+    /// inside it, whatever markers sit nearer the file.
+    pub fn with_explicit_root(mut self, root: Option<PathBuf>) -> Self {
+        if root.is_some() {
+            self.project_cwd = root;
+        }
+        self
     }
 
     /// The same context, bound to document `document`.
@@ -74,21 +93,30 @@ impl ChatLaunchContext {
 /// the process cwd honour it (Claude Code, Codex); Antigravity / Grok Build keep
 /// their isolated temp dir, and Copilot / OpenCode / DeepSeek / Kimi are
 /// unchanged.
+///
+/// `mcp_context` is the launch context of a chat TURN, `None` for every other
+/// consumer. Only Claude Code uses it: its subprocess is handed the launching
+/// document's MCP endpoint (see `chat_session_launch_mcp.rs`).
 fn provider_for_agent(
     agent_idx: usize,
     chat_session: bool,
     project_cwd: Option<&Path>,
+    mcp_context: Option<&ChatLaunchContext>,
 ) -> Option<Box<dyn ChatProvider>> {
     let project_cwd = project_cwd.map(Path::to_path_buf);
     match agent_idx {
-        0 => Some(Box::new(
-            if chat_session {
+        0 => {
+            let provider = if chat_session {
                 ClaudeCodeProvider::for_chat()
             } else {
                 ClaudeCodeProvider::new()
             }
-            .with_project_cwd(project_cwd),
-        )),
+            .with_project_cwd(project_cwd)
+            .with_document_mcp(mcp_context.and_then(ChatLaunchContext::claude_mcp_endpoint));
+            #[cfg(test)]
+            super::mcp::record_claude_binding(&provider);
+            Some(Box::new(provider))
+        }
         1 => SubprocessProvider::for_cli(CliName::Codex)
             .map(|p| Box::new(p.with_project_cwd(project_cwd)) as Box<dyn ChatProvider>),
         2 => Some(Box::new(OpenCodeProvider::new())),
@@ -121,7 +149,7 @@ fn subprocess_provider(cli: CliName, chat: bool) -> Option<Box<dyn ChatProvider>
 pub(crate) fn provider_for_selected_model(
     host: &WidgetHostNative,
 ) -> Option<Box<dyn ChatProvider>> {
-    provider_for_selected_model_impl(host, false, None, None)
+    provider_for_selected_model_impl(host, false, None)
 }
 
 /// Provider for the chat panel's own turns. Claude Code and Copilot both keep
@@ -134,15 +162,18 @@ pub(super) fn chat_provider_for_selected_model(
     host: &WidgetHostNative,
     context: &ChatLaunchContext,
 ) -> Option<Box<dyn ChatProvider>> {
-    provider_for_selected_model_impl(host, true, context.project_cwd.as_deref(), context.document)
+    provider_for_selected_model_impl(host, true, Some(context))
 }
 
+/// `context` is `Some` only for the chat turn itself: it carries the project
+/// root, the document and the MCP facts. Everything else passes `None`.
 fn provider_for_selected_model_impl(
     host: &WidgetHostNative,
     chat_session: bool,
-    project_cwd: Option<&Path>,
-    document: Option<op_editor_core::DocumentId>,
+    context: Option<&ChatLaunchContext>,
 ) -> Option<Box<dyn ChatProvider>> {
+    let project_cwd = context.and_then(|context| context.project_cwd.as_deref());
+    let document = context.and_then(|context| context.document);
     if let Some(entry) = host.editor_state().chat.selected_model_entry() {
         if entry.hosted_route_id().is_some() {
             return provider_for_hosted_selection_with(host.editor_state(), entry, |route_id| {
@@ -160,6 +191,7 @@ fn provider_for_selected_model_impl(
         host.editor_state().editor_ui.chat_selected_agent,
         chat_session,
         project_cwd,
+        context,
     )
 }
 
@@ -388,14 +420,14 @@ mod routing_tests {
             op_editor_core::AgentProvider::ALL[6],
             op_editor_core::AgentProvider::DeepSeekHarness
         );
-        let design = provider_for_agent(6, false, None).expect("DSH routes to a provider");
+        let design = provider_for_agent(6, false, None, None).expect("DSH routes to a provider");
         assert_eq!(design.provider_label(), "DeepSeek Harness");
         // The chat-session path routes the same CLI (single-shot
         // subprocess — there is no session-resume slot to join).
-        let chat = provider_for_agent(6, true, None).expect("chat DSH routes too");
+        let chat = provider_for_agent(6, true, None, None).expect("chat DSH routes too");
         assert_eq!(chat.provider_label(), "DeepSeek Harness");
         // Out-of-range agent indices stay unrouted (fail-closed).
-        assert!(provider_for_agent(8, false, None).is_none());
+        assert!(provider_for_agent(8, false, None, None).is_none());
     }
 
     #[test]
@@ -409,7 +441,7 @@ mod routing_tests {
         // generation transport as the orchestrator instead of no route.
         for chat_session in [false, true] {
             let provider =
-                provider_for_agent(7, chat_session, None).expect("Kimi routes to a provider");
+                provider_for_agent(7, chat_session, None, None).expect("Kimi routes to a provider");
             assert_eq!(provider.provider_label(), "Kimi Code");
         }
     }
@@ -420,7 +452,7 @@ mod routing_tests {
         // it: a new tail entry with no route arm would silently fall
         // through to `None` and strand the user's agent picker.
         for index in 0..op_editor_core::AgentProvider::ALL.len() {
-            let provider = provider_for_agent(index, false, None);
+            let provider = provider_for_agent(index, false, None, None);
             assert!(
                 provider.is_some(),
                 "AgentProvider::ALL index {index} has no provider route"

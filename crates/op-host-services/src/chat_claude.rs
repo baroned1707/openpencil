@@ -70,6 +70,8 @@ pub struct ClaudeCodeProvider {
     /// Working directory for the `claude` subprocess (the document's project
     /// root). `None` keeps the process's own cwd. See `with_project_cwd`.
     project_cwd: Option<std::path::PathBuf>,
+    /// The launching document's MCP endpoint, fixed at build time.
+    document_mcp: Option<McpEndpoint>,
 }
 
 impl ClaudeCodeProvider {
@@ -82,6 +84,7 @@ impl ClaudeCodeProvider {
             options: None,
             label: "Claude Code".into(),
             project_cwd: None,
+            document_mcp: None,
         }
     }
 
@@ -105,8 +108,7 @@ impl ClaudeCodeProvider {
     pub fn with_options(options: ClaudeAgentOptions) -> Self {
         Self {
             options: Some(options),
-            label: "Claude Code".into(),
-            project_cwd: None,
+            ..Self::new()
         }
     }
 }
@@ -133,6 +135,7 @@ impl ClaudeCodeProvider {
         }
         let mut options = effective_options(self.options.as_ref(), &request);
         provider_impl::apply_project_cwd(&mut options, self.project_cwd.as_deref());
+        let mcp_guard = document_mcp::apply_document_mcp(&mut options, self.document_mcp.as_ref());
         let options = Some(options);
         // Claude Code's `query` String API can't carry image content
         // blocks, so attachments spill to temp files and the prompt
@@ -151,7 +154,7 @@ impl ClaudeCodeProvider {
         prompt = prompt_with_request_history(&request, prompt);
         let (tx, rx) = mpsc::channel::<ChatDelta>(64);
         let task = shared_runtime().spawn(async move {
-            let _guard = guard;
+            let _guard = (guard, mcp_guard);
             let stream = match anthropic_agent_sdk::query(prompt, options).await {
                 Ok(s) => s,
                 Err(e) => {
@@ -253,8 +256,11 @@ impl ClaudeCodeProvider {
     }
 }
 
+#[path = "chat_claude_mcp.rs"]
+mod document_mcp;
 #[path = "chat_claude_provider.rs"]
 mod provider_impl;
+pub use document_mcp::{bound_tool_prefix, McpEndpoint, BOUND_SERVER_NAME};
 
 /// Build the per-turn SDK options bundle from the configured base:
 ///

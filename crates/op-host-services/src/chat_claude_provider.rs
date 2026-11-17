@@ -21,6 +21,20 @@ impl ClaudeCodeProvider {
     }
 }
 
+impl ClaudeCodeProvider {
+    /// Bind this provider's turns to one document's MCP endpoint. `None` (no
+    /// document, or the server is stopped) keeps today's behaviour.
+    pub fn with_document_mcp(mut self, endpoint: Option<McpEndpoint>) -> Self {
+        self.document_mcp = endpoint;
+        self
+    }
+
+    /// The endpoint this provider's turns are bound to, if any.
+    pub fn document_mcp(&self) -> Option<&McpEndpoint> {
+        self.document_mcp.as_ref()
+    }
+}
+
 /// Point the SDK at `cwd` only when one is given; `None` must not clobber a
 /// `cwd` already carried by caller-supplied options.
 pub(super) fn apply_project_cwd(options: &mut ClaudeAgentOptions, cwd: Option<&std::path::Path>) {

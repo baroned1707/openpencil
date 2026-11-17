@@ -221,7 +221,13 @@ impl DesktopApp {
     /// reach the canvas through ITS MCP endpoint so a tab switch cannot
     /// redirect them.
     pub(crate) fn launch_context(&self) -> ChatLaunchContext {
+        let explicit_root = self
+            .current_path
+            .as_deref()
+            .and_then(|path| self.documents.explicit_roots().root_for(path));
         ChatLaunchContext::for_document(self.current_path.as_deref())
+            .with_explicit_root(explicit_root)
             .with_document(Some(self.documents.active_id()))
+            .with_mcp_settings(&self.host.editor_state().editor_ui.agent_settings)
     }
 }

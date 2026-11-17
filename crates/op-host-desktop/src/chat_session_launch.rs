@@ -767,6 +767,8 @@ pub(crate) fn active_page_is_blank_starter_frame(state: &EditorState) -> bool {
 
 #[path = "chat_session_launch_providers.rs"]
 mod providers;
+#[path = "chat_session_launch_mcp.rs"]
+mod mcp;
 pub use providers::ChatLaunchContext;
 pub(crate) use providers::{
     builtin_provider_with_tools, provider_for_selected_model, selected_cli_model_id,
@@ -784,3 +786,7 @@ mod selection_tests;
 #[cfg(test)]
 #[path = "chat_session_launch_hosted_tests.rs"]
 mod hosted_tests;
+
+#[cfg(test)]
+#[path = "chat_session_launch_mcp_tests.rs"]
+mod mcp_tests;
