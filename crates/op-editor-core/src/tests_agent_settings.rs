@@ -21,7 +21,7 @@ fn default_settings_are_quiescent() {
     assert!(s.openverse_client_secret.is_empty());
     assert_eq!(s.images_search_test_status, ImageTestStatus::Idle);
     assert_eq!(s.mcp_server.port, 3100);
-    assert!(s.auto_update_enabled);
+    assert!(!s.auto_update_enabled, "update check is opt-in");
     assert!(s.focus.is_none());
     assert_eq!(s.hover_provider, usize::MAX);
     assert_eq!(s.hover_builtin_agent, usize::MAX);

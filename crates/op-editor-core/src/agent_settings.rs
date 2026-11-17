@@ -441,7 +441,9 @@ impl Default for AgentSettings {
             hover_image_gen_profile_provider: None,
             hover_image_gen_profile_test: None,
             next_image_gen_profile_id: 1,
-            auto_update_enabled: true,
+            // Off by default: this build is a local-first fork, and the check
+            // contacts api.github.com on every launch. A saved choice is kept.
+            auto_update_enabled: false,
             experimental_features_enabled: false,
             focus: None,
             hover_provider: usize::MAX,
