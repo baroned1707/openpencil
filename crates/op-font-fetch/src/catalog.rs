@@ -122,6 +122,11 @@ impl Catalog {
         self.by_family.get(&key).map(|&index| &self.entries[index])
     }
 
+    /// Every family name as the catalog spells it, in catalog order.
+    pub fn families(&self) -> impl Iterator<Item = &str> {
+        self.entries.iter().map(|entry| entry.family.as_str())
+    }
+
     pub fn len(&self) -> usize {
         self.entries.len()
     }

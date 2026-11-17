@@ -86,7 +86,7 @@ fn glyph_distance(query: &str, candidate: &str) -> usize {
 }
 
 /// Levenshtein distance over chars (two-row dynamic programme).
-fn edit_distance(a: &str, b: &str) -> usize {
+pub(super) fn edit_distance(a: &str, b: &str) -> usize {
     let b: Vec<char> = b.chars().collect();
     let mut previous: Vec<usize> = (0..=b.len()).collect();
     for (row, ca) in a.chars().enumerate() {

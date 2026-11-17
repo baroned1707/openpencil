@@ -2,8 +2,8 @@
 //!
 //! One function, [`post_write_diagnostics`], turns the detect-only quality scans
 //! into the JSON keys the in-app design agent has always received after a
-//! `batch_design` (`layoutIssues`, `iconIssues`, `structureIssues`,
-//! `contrastIssues`, `shellsRemaining`, `intentQuestions`, `variableIssues`,
+//! `batch_design` (`layoutIssues`, `iconIssues`, `fontIssues`,
+//! `structureIssues`, `contrastIssues`, `shellsRemaining`, `intentQuestions`, `variableIssues`,
 //! `imageSlots`, `navIssues`, plus the `*Hint` sentences). The in-app wrapper
 //! (`execute_design_tool_with_root_seed_guard`) and the MCP write path
 //! (`op-host-services/src/mcp_serve/write_diagnostics.rs`) both call it, so an
@@ -16,6 +16,7 @@
 
 use serde_json::{json, Map, Value};
 
+use super::font_issues::{scan_font_issues, FontKnowledge};
 use super::quality_scans::{contrast_hint, ContrastIssue};
 use super::*;
 
@@ -48,9 +49,10 @@ pub const MCP_FEEDBACK_CAPS: FeedbackCaps = FeedbackCaps {
 };
 
 /// Keys whose value is a list of items, in the order the envelope lists them.
-const LIST_KEYS: [&str; 8] = [
+const LIST_KEYS: [&str; 9] = [
     "layoutIssues",
     "iconIssues",
+    "fontIssues",
     "structureIssues",
     "intentQuestions",
     "variableIssues",
@@ -78,6 +80,8 @@ pub fn post_write_diagnostics(
     let mut structure_issues = report.structure_issues;
     structure_issues.extend(extras.structure_notes);
     let mut icon_issues = report.icon_issues;
+    let mut font_issues =
+        scan_font_issues(state.active_children(), &FontKnowledge::from_state(state));
     let mut intent_questions = report.intent_questions;
     let mut variable_issues = report.variable_issues;
     let mut image_slots = report.image_slots;
@@ -91,6 +95,7 @@ pub fn post_write_diagnostics(
         && structure_issues.is_empty()
         && contrast_issues.is_empty()
         && icon_issues.is_empty()
+        && font_issues.is_empty()
         && empty_shells.is_empty()
         && intent_questions.is_empty()
         && variable_issues.is_empty()
@@ -119,6 +124,7 @@ pub fn post_write_diagnostics(
         for list in [
             &mut layout_issues,
             &mut icon_issues,
+            &mut font_issues,
             &mut structure_issues,
             &mut intent_questions,
             &mut variable_issues,
@@ -140,6 +146,7 @@ pub fn post_write_diagnostics(
     };
     insert_list("layoutIssues", layout_issues);
     insert_list("iconIssues", icon_issues);
+    insert_list("fontIssues", font_issues);
     insert_list("structureIssues", structure_issues);
     insert_list("intentQuestions", intent_questions);
     insert_list("variableIssues", variable_issues);

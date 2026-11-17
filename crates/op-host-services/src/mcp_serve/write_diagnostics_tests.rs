@@ -320,3 +320,76 @@ fn update_node_skips_feedback_only_on_a_large_page() {
         &state
     ));
 }
+
+/// A page with one text node in `family` (a defect-free card otherwise).
+fn text_script(family: &str) -> String {
+    format!(
+        r##"I(null, {{"type":"frame","id":"card","name":"Card","width":294,"height":236,
+  "layout":"none","fill":[{{"type":"solid","color":"#FFFFFF"}}],
+  "children":[{{"type":"text","id":"label","content":"Hello","fontFamily":"{family}",
+    "fontSize":16,"x":10,"y":10,"width":120,"height":24}}]}});"##
+    )
+}
+
+/// Invariant: an unresolvable `fontFamily` is reported under `fontIssues`,
+/// with the same line, by the in-app wrapper and by the MCP write path (both
+/// call `post_write_diagnostics`). No catalog file is involved: the lookup is
+/// pointed at "no file" so the test never reads the developer's config root.
+#[test]
+fn font_issues_ride_the_shared_diagnostics_in_app_and_mcp() {
+    let script = text_script("Zzyzx Display");
+    let args = json!({ "script": script }).to_string();
+    op_chat_agent::design_agent_tools::with_font_catalog_file(None, || {
+        let mut in_app_state = EditorState::new();
+        in_app_state.editor_ui.system_fonts_loaded = true;
+        let (in_app, mutated) = crate::design_agent_tools::execute_design_tool_with_root_seed_guard(
+            &mut in_app_state,
+            "batch_design",
+            &args,
+            None,
+            None,
+        );
+        assert!(mutated && !in_app.is_error, "{}", in_app.content);
+        let in_app: Value = serde_json::from_str(&in_app.content).expect("in-app envelope");
+
+        let mut mcp_state = EditorState::new();
+        mcp_state.editor_ui.system_fonts_loaded = true;
+        let mcp = result_json(&run(
+            &mut mcp_state,
+            &line("batch_design", json!({ "script": script })),
+        ));
+        let lines = mcp["fontIssues"].as_array().expect("MCP fontIssues");
+        assert_eq!(lines.len(), 1, "{mcp}");
+        assert!(lines[0]
+            .as_str()
+            .expect("line")
+            .starts_with("font 'Zzyzx Display': not installed"));
+        assert_eq!(in_app["fontIssues"], mcp["fontIssues"]);
+
+        // A headless process (system fonts unknown, no catalog) cannot judge a
+        // name, so it says nothing rather than guessing.
+        let mut headless = EditorState::new();
+        let quiet = result_json(&run(
+            &mut headless,
+            &line("batch_design", json!({ "script": script })),
+        ));
+        assert!(quiet.get("fontIssues").is_none(), "{quiet}");
+    });
+}
+
+/// Invariant: a write whose fonts all resolve (a bundled family) returns the
+/// exact bytes of the pre-feature path.
+#[test]
+fn clean_write_result_is_still_byte_identical() {
+    let call = line("batch_design", json!({ "script": text_script("Inter") }));
+    op_chat_agent::design_agent_tools::with_font_catalog_file(None, || {
+        let mut with = EditorState::new();
+        with.editor_ui.system_fonts_loaded = true;
+        let mut without = EditorState::new();
+        without.editor_ui.system_fonts_loaded = true;
+        let with_feedback = run(&mut with, &call);
+        let baseline = run_without_feedback(&mut without, &call);
+        assert_eq!(with_feedback, baseline);
+        assert!(!with_feedback.contains("fontIssues"), "{with_feedback}");
+    });
+}

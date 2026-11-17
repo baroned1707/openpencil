@@ -87,6 +87,18 @@ fn add_missing_stack(
 /// normal text nodes. Keeping the scanner shared with missing-font detection
 /// prevents an override from being declared available without being loaded.
 pub fn component_override_font_family_stacks(state: &EditorState) -> Vec<String> {
+    let mut stacks = component_override_font_family_stacks_in(&state.doc.children);
+    if let Some(pages) = &state.doc.pages {
+        for page in pages {
+            stacks.extend(component_override_font_family_stacks_in(&page.children));
+        }
+    }
+    stacks
+}
+
+/// [`component_override_font_family_stacks`] for one node list (for example the
+/// active page's roots), so a scan can stay scoped to the page it reports on.
+pub fn component_override_font_family_stacks_in(nodes: &[PenNode]) -> Vec<String> {
     fn scan_json(value: &serde_json::Value, stacks: &mut Vec<String>) {
         match value {
             serde_json::Value::Object(object) => {
@@ -125,12 +137,7 @@ pub fn component_override_font_family_stacks(state: &EditorState) -> Vec<String>
     }
 
     let mut stacks = Vec::new();
-    scan_nodes(&state.doc.children, &mut stacks);
-    if let Some(pages) = &state.doc.pages {
-        for page in pages {
-            scan_nodes(&page.children, &mut stacks);
-        }
-    }
+    scan_nodes(nodes, &mut stacks);
     stacks
 }
 

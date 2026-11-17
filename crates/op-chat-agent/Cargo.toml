@@ -46,6 +46,10 @@ op-pen-loader = { path = "../op-pen-loader" }
 # Contrast scanning (quality_scans) + skill lookups.
 op-ai-skills = { path = "../op-ai-skills" }
 op-design-lint = { path = "../op-design-lint" }
+# Font-family feedback on design writes: the Fontsource catalog parser (no
+# skia, no network) and the per-user config root its on-disk cache lives under.
+op-font-fetch = { path = "../op-font-fetch" }
+op-config-store = { path = "../op-config-store" }
 
 serde = { workspace = true }
 serde_json = { workspace = true }

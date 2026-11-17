@@ -497,11 +497,14 @@ fn extract_from_schema_entry(entry: &str) -> Option<(String, String)> {
     Some((description, input_schema.to_string()))
 }
 
+mod font_catalog_file;
+mod font_issues;
 mod icon_names;
 mod post_write_diagnostics;
 mod quality_scans;
 mod root_seed;
 
+pub use font_catalog_file::with_font_catalog_file;
 pub use post_write_diagnostics::*;
 pub use quality_scans::*;
 pub use root_seed::*;
@@ -529,3 +532,7 @@ mod mobile_normalize_tests;
 #[cfg(test)]
 #[path = "design_agent_tools_feedback_tests.rs"]
 mod feedback_tests;
+
+#[cfg(test)]
+#[path = "design_agent_tools_font_tests.rs"]
+mod font_tests;
