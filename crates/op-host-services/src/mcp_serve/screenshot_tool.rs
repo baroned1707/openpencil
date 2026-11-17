@@ -21,6 +21,31 @@ use op_mcp::{McpTool, ToolErrorCode, ToolOutcome};
 
 use crate::export::{render_node_raster_bytes, RasterFormat};
 
+/// Allowed range of the optional `scale` argument. Below the floor the image
+/// is too small to read; above the ceiling a large frame costs far more
+/// pixels than a visual check needs.
+pub(crate) const MIN_SCALE: f32 = 0.25;
+pub(crate) const MAX_SCALE: f32 = 2.0;
+
+/// Parse the optional `scale` argument: absent or blank is 1.0; anything
+/// else must be a finite number in `MIN_SCALE..=MAX_SCALE`.
+fn parse_scale(args: &BTreeMap<String, String>) -> Result<f32, String> {
+    let Some(raw) = args
+        .get("scale")
+        .map(|value| value.trim())
+        .filter(|value| !value.is_empty())
+    else {
+        return Ok(1.0);
+    };
+    match raw.parse::<f32>() {
+        Ok(scale) if scale.is_finite() && (MIN_SCALE..=MAX_SCALE).contains(&scale) => Ok(scale),
+        _ => Err(format!(
+            "scale must be a number from {MIN_SCALE} to {MAX_SCALE} (got '{raw}'); \
+             omit it for 1.0"
+        )),
+    }
+}
+
 /// MCP tool struct — stores the layout-resolved scene (derived at
 /// registration time) and the first top-level node id on the active page
 /// for resolving the `"root"` alias at call time.
@@ -55,6 +80,11 @@ impl McpTool for GetScreenshot {
             }
         };
 
+        let scale = match parse_scale(args) {
+            Ok(scale) => scale,
+            Err(message) => return ToolOutcome::Err(ToolErrorCode::InvalidArgument, message),
+        };
+
         // Resolve "root" alias to the first top-level node on the active page.
         let node_id: &str = if raw_id == "root" {
             match &self.root_node_id {
@@ -71,7 +101,7 @@ impl McpTool for GetScreenshot {
         };
 
         // Render to PNG bytes via the shared raster pipeline.
-        let bytes = match render_node_raster_bytes(&self.scene, node_id, RasterFormat::Png, 1.0) {
+        let bytes = match render_node_raster_bytes(&self.scene, node_id, RasterFormat::Png, scale) {
             Ok(b) => b,
             Err(e) => return ToolOutcome::Err(ToolErrorCode::ToolFailed, e.to_string()),
         };
@@ -83,8 +113,11 @@ impl McpTool for GetScreenshot {
         let metadata = serde_json::json!({
             "nodeId": node_id,
             "format": "png",
-            // include image_base64 in metadata for the in-app chat agent path —
-            // the MCP path uses the `image` field on ToolResponse::Ok separately
+            "scale": scale,
+            // The in-app chat agent reads the PNG from this metadata (it never
+            // sees the image block). `op_mcp::tool_response_to_json` drops the
+            // field from the wire text block when the image block carries the
+            // same bytes, so an MCP client is not sent the PNG twice.
             "image_base64": image_base64,
         });
         ToolOutcome::OkImageContent {
@@ -292,6 +325,113 @@ mod tests {
             }
             other => panic!("expected Err, got {other:?}"),
         }
+    }
+
+    fn call_with_scale(tool: &GetScreenshot, scale: &str) -> ToolOutcome {
+        let mut args = BTreeMap::new();
+        args.insert("nodeId".into(), "n1".into());
+        args.insert("scale".into(), scale.into());
+        tool.call(&args)
+    }
+
+    fn png_width(outcome: ToolOutcome) -> u32 {
+        let ToolOutcome::OkImageContent { image_base64, .. } = outcome else {
+            panic!("expected a screenshot, got {outcome:?}");
+        };
+        let bytes = decode_base64(&image_base64);
+        // PNG IHDR: width is the big-endian u32 at byte 16.
+        u32::from_be_bytes([bytes[16], bytes[17], bytes[18], bytes[19]])
+    }
+
+    fn square_tool() -> GetScreenshot {
+        tool_from_scene(scene_with(vec![filled_rect(
+            "n1",
+            0.0,
+            0.0,
+            80.0,
+            80.0,
+            Color::BLACK,
+        )]))
+    }
+
+    /// Invariant: `scale` sizes the image (default 1.0 when absent or blank).
+    #[test]
+    fn scale_sizes_the_image_and_defaults_to_one() {
+        let tool = square_tool();
+        let base = png_width(call(&tool, "n1"));
+        assert_eq!(png_width(call_with_scale(&tool, "1")), base);
+        assert_eq!(png_width(call_with_scale(&tool, "  ")), base);
+        assert_eq!(png_width(call_with_scale(&tool, "2")), base * 2);
+        assert_eq!(png_width(call_with_scale(&tool, "0.5")), base / 2);
+    }
+
+    /// Invariant: a `scale` outside 0.25..=2.0, or not a number, is refused
+    /// before any rendering, and the error text states the allowed range.
+    #[test]
+    fn scale_outside_the_allowed_range_is_refused_with_the_range_in_the_message() {
+        let tool = square_tool();
+        for bad in ["0.1", "0", "-1", "2.5", "abc", "NaN", "inf"] {
+            match call_with_scale(&tool, bad) {
+                ToolOutcome::Err(code, message) => {
+                    assert_eq!(code, ToolErrorCode::InvalidArgument, "{bad}");
+                    assert!(
+                        message.contains("0.25") && message.contains('2'),
+                        "{message}"
+                    );
+                    assert!(message.contains(bad), "{message}");
+                }
+                other => panic!("scale {bad:?} must be refused, got {other:?}"),
+            }
+        }
+        for good in ["0.25", "2", "2.0", "1.5"] {
+            assert!(
+                matches!(
+                    call_with_scale(&tool, good),
+                    ToolOutcome::OkImageContent { .. }
+                ),
+                "scale {good} is allowed"
+            );
+        }
+    }
+
+    /// Invariant: on the MCP wire the PNG travels once, in the image block;
+    /// the text block keeps the metadata but not a second copy of the pixels.
+    #[test]
+    fn mcp_wire_response_does_not_repeat_the_png_in_the_text_block() {
+        let tool = square_tool();
+        let mut registry = op_mcp::ToolRegistry::default();
+        registry.register(Box::new(tool));
+        let mut arguments = BTreeMap::new();
+        arguments.insert("nodeId".to_string(), "n1".to_string());
+        let response = registry.dispatch(op_mcp::ToolCall {
+            id: op_mcp::RequestId::Num(1),
+            tool: "get_screenshot".into(),
+            arguments,
+        });
+        let op_mcp::ToolResponse::Ok { json, image, .. } = &response else {
+            panic!("expected Ok, got {response:?}");
+        };
+        let png = image.as_ref().expect("image block").data.clone();
+        // The chat agent's path reads the metadata JSON, which keeps the PNG.
+        let metadata: serde_json::Value =
+            serde_json::from_str(json.as_deref().expect("metadata")).expect("json");
+        assert_eq!(metadata["image_base64"], png.as_str());
+
+        let wire_text = op_mcp::tool_response_to_json(&response);
+        let wire: serde_json::Value = serde_json::from_str(&wire_text).expect("wire json");
+        let blocks = wire["result"]["content"].as_array().expect("content");
+        assert_eq!(blocks[0]["type"], "image");
+        assert_eq!(blocks[0]["data"], png.as_str());
+        let text: serde_json::Value =
+            serde_json::from_str(blocks[1]["text"].as_str().expect("text")).expect("text json");
+        assert!(text.get("image_base64").is_none(), "{text}");
+        assert_eq!(text["format"], "png");
+        assert_eq!(text["nodeId"], "n1");
+        assert_eq!(
+            wire_text.matches(&png).count(),
+            1,
+            "the PNG appears exactly once on the wire"
+        );
     }
 
     /// Missing nodeId argument returns MissingArgument.

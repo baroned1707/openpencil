@@ -142,3 +142,64 @@ fn initialize_response_includes_protocol_and_capabilities() {
     assert!(r.contains(r#""name":"openpencil-mcp""#));
     assert!(r.contains(&format!(r#""version":"{}""#, env!("CARGO_PKG_VERSION"))));
 }
+
+/// Invariant: `initialize` carries the agent-facing `instructions`, unescaped
+/// intact through JSON, without touching the negotiated protocol version.
+#[test]
+fn initialize_response_carries_the_server_instructions_and_keeps_the_protocol_version() {
+    let r = initialize_response("7");
+    let value: serde_json::Value = serde_json::from_str(&r).expect("initialize is valid JSON");
+    let result = &value["result"];
+    assert_eq!(result["protocolVersion"], "2024-11-05");
+    assert_eq!(
+        result["instructions"].as_str(),
+        Some(super::server_instructions::SERVER_INSTRUCTIONS)
+    );
+    assert_eq!(result["capabilities"]["tools"]["listChanged"], false);
+}
+
+/// Invariant: Claude Code cuts server instructions at 4,096 characters, so
+/// the text must keep headroom under that.
+#[test]
+fn server_instructions_fit_under_the_client_truncation_limit() {
+    let length = super::server_instructions::SERVER_INSTRUCTIONS
+        .chars()
+        .count();
+    assert!(
+        length <= super::server_instructions::MAX_INSTRUCTIONS_CHARS,
+        "instructions are {length} chars"
+    );
+}
+
+/// Invariant: the instructions never name a tool the catalog does not have,
+/// so an agent is not told to call something that is not there.
+#[test]
+fn server_instructions_name_only_tools_that_exist() {
+    let text = super::server_instructions::SERVER_INSTRUCTIONS;
+    let catalog = super::tool_profile::catalog_tool_names();
+    for tool in [
+        "list_documents",
+        "get_editor_state",
+        "get_guidelines",
+        "batch_design",
+        "snapshot_layout",
+        "get_screenshot",
+        "finalize_design",
+        "read_nodes",
+        "find_node_by_name",
+        "update_node",
+        "move_node",
+        "delete_node",
+        "ToolSearch",
+    ] {
+        assert!(text.contains(tool), "instructions no longer mention {tool}");
+        assert!(
+            catalog.iter().any(|name| name == tool),
+            "{tool} is not in the tool catalog"
+        );
+    }
+    // The six lean tools are listed by name; each must be a real tool too.
+    for lean in super::tool_catalog::LEAN_TOOLS {
+        assert!(text.contains(lean), "lean tool {lean} is not mentioned");
+    }
+}

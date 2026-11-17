@@ -61,8 +61,9 @@ fn lean_description(tool: &str) -> String {
         }
         "get_screenshot" => {
             "STEP 4b · VERIFY VISUALLY. Render nodeId (or \"root\", the page's first top-level \
-             frame) to an inline PNG image. Pass format (png|jpeg|webp|pdf) and optional scale \
-             to EXPORT instead: returns base64 file bytes rather than an image."
+             frame) to an inline PNG image; scale (0.25 to 2.0, default 1) sizes it. Pass format \
+             (png|jpeg|webp|pdf) to EXPORT instead: returns base64 file bytes rather than an \
+             image."
         }
         "finalize_design" => {
             "STEP 5 · FINISH. Run OpenPencil's deterministic post-generation repair passes \
@@ -105,7 +106,7 @@ fn extra_properties(tool: &str) -> Option<Value> {
             },
             "scale": {
                 "type": "number",
-                "description": "Export scale factor (default 1)"
+                "description": "Pixel scale, default 1. Without format (inline image): 0.25 to 2.0. With format (export): the export scale factor."
             }
         })),
         _ => None,

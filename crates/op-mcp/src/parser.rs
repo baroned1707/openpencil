@@ -501,41 +501,122 @@ fn parse_flat_object_body(body: &str, tool: &str) -> Option<BTreeMap<String, Str
     Some(out)
 }
 
+/// The `(tool, key)` pairs whose value may be a JSON array/object on the wire.
+/// Every other argument is a scalar: an array or object there rejects the
+/// parse (see the wire-format hardening notes in `crates/CLAUDE.md`). A key
+/// the schema advertises as array/object (or `oneOf` with one) MUST be here, or
+/// a call that follows the schema cannot parse; a test over `TOOL_SCHEMAS`
+/// pins that. `add_*` tools accept any key.
+const STRUCTURED_ARGS: &[(&str, &str)] = &[
+    ("set_variables", "variables"),
+    ("upsert_variables", "variables"),
+    ("upsert_component", "node_json"),
+    ("upsert_screen", "node_json"),
+    ("set_themes", "themes"),
+    ("read_nodes", "nodeIds"),
+    ("export_nodes", "nodeIds"),
+    // The lean MCP profile's get_editor_state forwards nodeIds to
+    // read_nodes; the full-catalog tool ignores arguments.
+    ("get_editor_state", "nodeIds"),
+    ("batch_get", "patterns"),
+    ("batch_get", "nodeIds"),
+    ("search_all_unique_properties", "parents"),
+    ("search_all_unique_properties", "properties"),
+    ("replace_all_matching_properties", "parents"),
+    ("replace_all_matching_properties", "properties"),
+    ("codegen_plan", "plan"),
+    ("codegen_submit_chunk", "result"),
+    ("copy_node", "overrides"),
+    ("insert_node", "data"),
+    ("update_node", "data"),
+    ("replace_node", "data"),
+    ("design_skeleton", "rootFrame"),
+    ("design_skeleton", "sections"),
+    ("design_skeleton", "styleGuide"),
+    ("design_content", "children"),
+    ("get_style_guide", "tags"),
+    ("finalize_design", "root_ids"),
+    ("enrich_images", "root_ids"),
+    // Schema-advertised as array / object / oneOf: the tools parse the raw
+    // JSON text, so accepting the structured form is all that was missing.
+    ("spawn_agents", "config"),
+    ("create_generator", "params"),
+    ("create_generator", "frame"),
+    ("update_generator_params", "params"),
+];
+
 fn structured_arg_allowed(tool: &str, key: &str) -> bool {
     if tool.starts_with("add_") {
         return !key.is_empty();
     }
-    matches!(
-        (tool, key),
-        ("set_variables", "variables")
-            | ("upsert_variables", "variables")
-            | ("upsert_component", "node_json")
-            | ("upsert_screen", "node_json")
-            | ("set_themes", "themes")
-            | ("read_nodes", "nodeIds")
-            | ("export_nodes", "nodeIds")
-            // The lean MCP profile's get_editor_state forwards nodeIds to
-            // read_nodes; the full-catalog tool ignores arguments.
-            | ("get_editor_state", "nodeIds")
-            | ("batch_get", "patterns")
-            | ("batch_get", "nodeIds")
-            | ("search_all_unique_properties", "parents")
-            | ("search_all_unique_properties", "properties")
-            | ("replace_all_matching_properties", "parents")
-            | ("replace_all_matching_properties", "properties")
-            | ("codegen_plan", "plan")
-            | ("codegen_submit_chunk", "result")
-            | ("copy_node", "overrides")
-            | ("insert_node", "data")
-            | ("update_node", "data")
-            | ("replace_node", "data")
-            | ("design_skeleton", "rootFrame")
-            | ("design_skeleton", "sections")
-            | ("design_skeleton", "styleGuide")
-            | ("design_content", "children")
-            | ("get_style_guide", "tags")
-            | ("finalize_design", "root_ids")
-            | ("enrich_images", "root_ids")
+    STRUCTURED_ARGS.contains(&(tool, key))
+}
+
+/// Why `line` is not a parseable tool call, in words an agent can act on.
+///
+/// Call this only after [`parse_tool_call`] returned `None`: it re-reads the
+/// request to name the tool and the offending argument. The text always
+/// starts with `malformed tool call`.
+pub fn explain_unparseable_call(line: &str) -> String {
+    const PREFIX: &str = "malformed tool call";
+    let Ok(request) = serde_json::from_str::<serde_json::Value>(line) else {
+        return format!("{PREFIX}: the request is not valid JSON");
+    };
+    let method = request.get("method").and_then(serde_json::Value::as_str);
+    let (tool, arguments) = if method == Some("tools/call") {
+        let params = request.get("params");
+        (
+            params
+                .and_then(|params| params.get("name"))
+                .and_then(serde_json::Value::as_str),
+            params.and_then(|params| params.get("arguments")),
+        )
+    } else {
+        (method, request.get("params"))
+    };
+    let Some(tool) = tool else {
+        return format!("{PREFIX}: params.name (the tool name) is missing or not a string");
+    };
+    let Some(arguments) = arguments else {
+        return format!("{PREFIX} for '{tool}': the request could not be parsed");
+    };
+    let Some(arguments) = arguments.as_object() else {
+        return format!("{PREFIX} for '{tool}': `arguments` must be a JSON object");
+    };
+    let offending: Vec<&str> = arguments
+        .iter()
+        .filter(|(key, value)| {
+            (value.is_object() || value.is_array()) && !structured_arg_allowed(tool, key)
+        })
+        .map(|(key, _)| key.as_str())
+        .collect();
+    if offending.is_empty() {
+        return format!(
+            "{PREFIX} for '{tool}': the arguments could not be parsed; check for truncated JSON \
+             or an unescaped quote inside a string value"
+        );
+    }
+    let accepted: Vec<&str> = STRUCTURED_ARGS
+        .iter()
+        .filter(|(name, _)| *name == tool)
+        .map(|(_, key)| *key)
+        .collect();
+    let accepts = if tool.starts_with("add_") {
+        "every argument of this tool may be an array or object".to_string()
+    } else if accepted.is_empty() {
+        format!("'{tool}' takes no array or object arguments")
+    } else {
+        format!(
+            "'{tool}' accepts arrays/objects only for: {}",
+            accepted.join(", ")
+        )
+    };
+    let named: Vec<String> = offending.iter().map(|key| format!("'{key}'")).collect();
+    format!(
+        "{PREFIX} for '{tool}': argument {} is a JSON array or object but must be a scalar; \
+         pass structured data as a JSON-encoded string, e.g. \"{}\":\"[1,2]\". {accepts}",
+        named.join(", "),
+        offending[0]
     )
 }
 

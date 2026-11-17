@@ -30,13 +30,21 @@ fn is_error(response: &str) -> bool {
     json_body(response)["result"]["isError"] == serde_json::json!(true)
 }
 
-/// The tool error's message, without the envelope's `Error: ` prefix.
+/// The tool error's message, without the envelope's `Error: ` prefix or the
+/// `[ErrorCode]` that follows it.
 fn error_text(response: &str) -> String {
     let text = json_body(response)["result"]["content"][0]["text"]
         .as_str()
         .unwrap_or_default()
         .to_string();
-    text.strip_prefix("Error: ").unwrap_or(&text).to_string()
+    let text = text.strip_prefix("Error: ").unwrap_or(&text);
+    match text
+        .strip_prefix('[')
+        .and_then(|rest| rest.split_once("] "))
+    {
+        Some((_code, message)) => message.to_string(),
+        None => text.to_string(),
+    }
 }
 
 fn add_page_call(id: i64, document: u64, operation: &str, name: &str) -> String {

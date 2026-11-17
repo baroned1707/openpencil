@@ -63,8 +63,11 @@ pub fn tool_response_to_json(r: &ToolResponse) -> String {
                     json_escape(&img.mime_type),
                 ));
             }
-            // Text block: nested JSON or flat string-map.
+            // Text block: nested JSON or flat string-map. When the image block
+            // already carries the pixels, the inline copy is dropped so the
+            // payload is not sent twice.
             let text = match json {
+                Some(raw) if image.is_some() => json_escape(&without_inline_image(raw)),
                 Some(raw) => json_escape(raw),
                 None => json_escape(&btree_to_json(result)),
             };
@@ -74,15 +77,32 @@ pub fn tool_response_to_json(r: &ToolResponse) -> String {
                 format!(r#""result":{{"content":[{}]}}"#, content_blocks.join(",")),
             )
         }
-        ToolResponse::Err { id, message, .. } => (
+        ToolResponse::Err { id, code, message } => (
             id_to_json(id),
             format!(
                 r#""result":{{"content":[{{"type":"text","text":{}}}],"isError":true}}"#,
-                json_escape(&format!("Error: {message}")),
+                json_escape(&format!("Error: [{}] {message}", code.name())),
             ),
         ),
     };
     format!(r#"{{"jsonrpc":"2.0","id":{},{}}}"#, id_repr, body)
+}
+
+/// `raw` (a JSON object) without its `image_base64` member. The chat agent
+/// reads that member from the registry response, so it stays in the tool's
+/// outcome; only the wire copy next to an `image` content block is dropped.
+/// Anything that is not a JSON object with that member is returned as is.
+fn without_inline_image(raw: &str) -> String {
+    match serde_json::from_str::<serde_json::Value>(raw) {
+        Ok(serde_json::Value::Object(mut object)) => {
+            if object.remove("image_base64").is_some() {
+                serde_json::Value::Object(object).to_string()
+            } else {
+                raw.to_string()
+            }
+        }
+        _ => raw.to_string(),
+    }
 }
 
 pub(super) fn id_to_json(id: &RequestId) -> String {

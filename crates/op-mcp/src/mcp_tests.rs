@@ -232,7 +232,71 @@ fn tool_response_to_json_marks_tool_error_with_iserror() {
         !j.contains(r#""error":"#),
         "tool error must not be JSON-RPC error: {j}"
     );
-    assert!(tool_text(&j).contains("Error: boom"), "{j}");
+    assert_eq!(tool_text(&j), "Error: [ToolFailed] boom", "{j}");
+}
+
+/// Invariant: every tool error leads its text with the `ToolErrorCode` name,
+/// so a client can branch on the failure kind, while `isError` stays true.
+#[test]
+fn tool_error_text_leads_with_the_error_code_name() {
+    for (code, name) in [
+        (ToolErrorCode::MissingArgument, "MissingArgument"),
+        (ToolErrorCode::InvalidArgument, "InvalidArgument"),
+        (ToolErrorCode::ToolFailed, "ToolFailed"),
+        (ToolErrorCode::UnknownTool, "UnknownTool"),
+        (ToolErrorCode::Internal, "Internal"),
+    ] {
+        let reply = tool_response_to_json(&ToolResponse::Err {
+            id: RequestId::Num(1),
+            code,
+            message: "nope".into(),
+        });
+        assert_eq!(tool_text(&reply), format!("Error: [{name}] nope"));
+        assert!(reply.contains(r#""isError":true"#), "{reply}");
+    }
+}
+
+/// Invariant: the PNG next to an `image` block is not repeated in the text
+/// block, and a result with no image block keeps every field verbatim.
+#[test]
+fn inline_image_is_dropped_from_the_text_block_only_when_an_image_block_carries_it() {
+    let ok = |json: &str, image: Option<Box<ImageContent>>| ToolResponse::Ok {
+        id: RequestId::Num(1),
+        result: Default::default(),
+        command: None,
+        json: Some(json.to_string()),
+        image,
+    };
+    let png = || {
+        Some(Box::new(ImageContent {
+            data: "AAAA".into(),
+            mime_type: "image/png".into(),
+        }))
+    };
+    let with_image = tool_response_to_json(&ok(r#"{"format":"png","image_base64":"AAAA"}"#, png()));
+    let value: serde_json::Value = serde_json::from_str(&with_image).unwrap();
+    assert_eq!(value["result"]["content"][0]["data"], "AAAA");
+    assert_eq!(
+        value["result"]["content"][1]["text"], r#"{"format":"png"}"#,
+        "{with_image}"
+    );
+    assert_eq!(with_image.matches("AAAA").count(), 1, "{with_image}");
+
+    // No image block: the field is data the caller asked for, so it stays.
+    let no_image = tool_response_to_json(&ok(r#"{"format":"png","image_base64":"AAAA"}"#, None));
+    assert!(tool_text(&no_image).contains("image_base64"), "{no_image}");
+    // An image block with metadata that has no such field, or is not an
+    // object, passes the metadata through untouched.
+    let plain = tool_response_to_json(&ok(r#"{"format":"png"}"#, png()));
+    assert_eq!(
+        serde_json::from_str::<serde_json::Value>(&plain).unwrap()["result"]["content"][1]["text"],
+        r#"{"format":"png"}"#
+    );
+    let array = tool_response_to_json(&ok(r#"["image_base64"]"#, png()));
+    assert_eq!(
+        serde_json::from_str::<serde_json::Value>(&array).unwrap()["result"]["content"][1]["text"],
+        r#"["image_base64"]"#
+    );
 }
 
 #[test]
@@ -311,6 +375,55 @@ fn run_stdio_emits_error_when_parse_fails_so_clients_dont_hang() {
         out.contains("malformed tool call"),
         "error message names the cause: {out}"
     );
+    // ... and names the tool, the offending key, the fix and what the tool
+    // does accept, so the agent can correct the very next call.
+    for needle in [
+        "'replace_node'",
+        "'drop_children'",
+        "JSON-encoded string",
+        "accepts arrays/objects only for: data",
+    ] {
+        assert!(out.contains(needle), "missing {needle}: {out}");
+    }
+}
+
+/// Invariant: the parse-failure text names the tool and the key, whichever
+/// way the call is malformed, and always keeps the `malformed tool call` lead.
+#[test]
+fn explain_unparseable_call_names_the_tool_and_the_offending_key() {
+    use super::explain_unparseable_call as explain;
+    let mcp = |tool: &str, arguments: &str| {
+        format!(
+            r#"{{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{{"name":"{tool}","arguments":{arguments}}}}}"#
+        )
+    };
+    let nested = explain(&mcp("get_node", r#"{"node_id":["a"],"depth":{"x":1}}"#));
+    assert!(
+        nested.starts_with("malformed tool call for 'get_node'"),
+        "{nested}"
+    );
+    assert!(nested.contains("'node_id', 'depth'") || nested.contains("'depth', 'node_id'"));
+    assert!(
+        nested.contains("'get_node' takes no array or object arguments"),
+        "{nested}"
+    );
+
+    let some = explain(&mcp("read_nodes", r#"{"depth":[1]}"#));
+    assert!(
+        some.contains("'depth'") && some.contains("only for: nodeIds"),
+        "{some}"
+    );
+
+    let add = explain(&mcp("add_widget", r#"{"depth":"1","x":{"y":1}}"#));
+    assert!(
+        add.contains("malformed tool call for 'add_widget'"),
+        "{add}"
+    );
+    assert!(explain(&mcp("get_node", r#""oops""#)).contains("`arguments` must be a JSON object"));
+    assert!(explain("{not json").starts_with("malformed tool call:"));
+    assert!(explain(r#"{"id":1,"method":"tools/call","params":{}}"#).contains("params.name"));
+    let truncated = explain(&mcp("get_node", r#"{"node_id":"a"}"#));
+    assert!(truncated.contains("could not be parsed"), "{truncated}");
 }
 
 #[test]

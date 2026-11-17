@@ -146,7 +146,7 @@ fn codegen_workflow_round_trips_over_the_tools_call_wire() {
     assert!(response.contains(r#""isError":true"#), "{response}");
     assert_eq!(
         crate::mcp_serve::tool_text(&response),
-        format!("Error: codegen_assemble failed: Plan {plan_id} not found")
+        format!("Error: [ToolFailed] codegen_assemble failed: Plan {plan_id} not found")
     );
 
     // --- codegen_clean: idempotent ---
@@ -173,7 +173,7 @@ fn codegen_plan_validation_failure_uses_ts_error_envelope() {
     assert!(response.contains(r#""isError":true"#), "{response}");
     assert_eq!(
         crate::mcp_serve::tool_text(&response),
-        "Error: codegen_plan failed: Chunk a: node ghost not found in document"
+        "Error: [ToolFailed] codegen_plan failed: Chunk a: node ghost not found in document"
     );
 }
 

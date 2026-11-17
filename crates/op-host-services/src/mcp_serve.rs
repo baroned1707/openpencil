@@ -349,21 +349,15 @@ where
     // registry snapshots `state` at build time, so it no longer
     // borrows it once the applier closure mutates it.
     let call = op_mcp::parse_tool_call(trimmed);
-    // Enforcement, ahead of the registry build and therefore ahead of the
-    // tool's own argument parsing: a denied tool never sees the path it was
-    // asked to open.
+    // Enforcement and node-id validation, ahead of the registry build (see
+    // `call_gate`). The answer is the ordinary tools/call error envelope
+    // (`isError:true`) with the originating id, so a client reads it and
+    // keeps the session instead of seeing a transport failure.
     if let Some(call) = call.as_ref() {
-        if let Some(refusal) = profile.refuse_call(&call.tool, &call.arguments) {
-            // The ordinary tools/call error envelope (`isError:true`) with
-            // the originating id, so a client sees a refusal it can read
-            // rather than a transport failure that would drop the session.
-            return Ok(Some(op_mcp::tool_response_to_json(
-                &op_mcp::ToolResponse::Err {
-                    id: call.id.clone(),
-                    code: op_mcp::ToolErrorCode::ToolFailed,
-                    message: refusal.message(&call.tool),
-                },
-            )));
+        if let Some((code, message)) = call_gate::refusal_before_dispatch(state, profile, call) {
+            let id = call.id.clone();
+            let refusal = op_mcp::ToolResponse::Err { id, code, message };
+            return Ok(Some(op_mcp::tool_response_to_json(&refusal)));
         }
     }
     let requested_tool = call.map(|call| call.tool);
@@ -724,6 +718,9 @@ pub(crate) fn write_mcp_http_response_with_origin<S: std::io::Write>(
 mod registry;
 use registry::rebuild_registry;
 
+mod call_gate;
+mod server_instructions;
+mod tool_annotations;
 mod wire;
 pub use wire::*;
 
@@ -769,6 +766,8 @@ pub(crate) mod design_agent_run_error;
 pub(crate) mod design_agent_run_tool;
 use design_agent_run_tool::run_design_agent_snapshot;
 
+#[cfg(test)]
+mod agent_facing_errors_tests;
 #[cfg(test)]
 #[path = "mcp_serve/auto_finalize_stdio_tests.rs"]
 mod auto_finalize_stdio_tests;

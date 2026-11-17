@@ -3,6 +3,7 @@
 //! under the 800-line cap. Re-exported from `mcp_serve` so callers keep
 //! using `crate::mcp_serve::*`.
 
+use super::server_instructions::SERVER_INSTRUCTIONS;
 use super::{sniff_id_raw, sniff_method};
 
 /// Extract `params.clientInfo.name` from an `initialize` request body —
@@ -27,14 +28,16 @@ pub fn parse_client_info_name(body: &str) -> Option<String> {
 
 pub fn initialize_response(id_raw: &str) -> String {
     // Spec: `initialize` returns protocolVersion + capabilities +
-    // serverInfo. We declare only `tools` capabilities — no
-    // resources / prompts / completion are exposed yet. serverInfo.version
-    // sources CARGO_PKG_VERSION (the workspace version) so it matches the TS
-    // pen-mcp serverInfo, which reads package.json — both report the product
-    // version with no hand-maintained drift.
+    // serverInfo (+ optional `instructions`). We declare only `tools`
+    // capabilities — no resources / prompts / completion are exposed yet.
+    // serverInfo.version sources CARGO_PKG_VERSION (the workspace version) so
+    // it matches the TS pen-mcp serverInfo, which reads package.json — both
+    // report the product version with no hand-maintained drift.
+    // `instructions` is JSON-escaped here; `id_raw` is already raw JSON.
     let version = env!("CARGO_PKG_VERSION");
+    let instructions = serde_json::Value::from(SERVER_INSTRUCTIONS).to_string();
     format!(
-        r#"{{"jsonrpc":"2.0","id":{id_raw},"result":{{"protocolVersion":"2024-11-05","capabilities":{{"tools":{{"listChanged":false}}}},"serverInfo":{{"name":"{MCP_SERVER_NAME}","version":"{version}"}}}}}}"#
+        r#"{{"jsonrpc":"2.0","id":{id_raw},"result":{{"protocolVersion":"2024-11-05","capabilities":{{"tools":{{"listChanged":false}}}},"serverInfo":{{"name":"{MCP_SERVER_NAME}","version":"{version}"}},"instructions":{instructions}}}}}"#
     )
 }
 

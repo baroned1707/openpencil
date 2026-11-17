@@ -134,6 +134,7 @@ mod lint_tools_tests;
 pub mod node_attr_tools;
 #[cfg(test)]
 mod node_attr_tools_tests;
+pub mod node_id_check;
 mod node_shape_defaults;
 pub mod open_document;
 #[cfg(test)]
@@ -270,7 +271,7 @@ pub use page_tools::{
     SetNodeHidden, SetNodeLocked, SetSelection, SetSelectionSet, SetViewport, ToggleNodeSelection,
     Undo,
 };
-pub use parser::parse_tool_call;
+pub use parser::{explain_unparseable_call, parse_tool_call};
 pub use read_nodes::{read_nodes_snapshot, ReadNodes};
 pub use reparent_tools::{copy_node_snapshot, move_node_snapshot, CopyNode, MoveNode};
 pub use scalar_vars::{
@@ -396,6 +397,20 @@ pub enum ToolErrorCode {
     ToolFailed,
     UnknownTool,
     Internal,
+}
+
+impl ToolErrorCode {
+    /// The variant name, which leads a tool error's text (`[InvalidArgument]`)
+    /// so a client can branch on the failure kind without parsing prose.
+    pub const fn name(self) -> &'static str {
+        match self {
+            Self::MissingArgument => "MissingArgument",
+            Self::InvalidArgument => "InvalidArgument",
+            Self::ToolFailed => "ToolFailed",
+            Self::UnknownTool => "UnknownTool",
+            Self::Internal => "Internal",
+        }
+    }
 }
 
 /// Result of a tool's work — content + payload only. The
@@ -602,7 +617,7 @@ where
                 let err = ToolResponse::Err {
                     id,
                     code: ToolErrorCode::InvalidArgument,
-                    message: "malformed tool call: unparseable or structured arguments".into(),
+                    message: parser::explain_unparseable_call(trimmed),
                 };
                 writeln!(writer, "{}", response_to_json(&err))?;
                 writer.flush()?;

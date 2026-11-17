@@ -24,8 +24,9 @@ pub struct DocumentListing {
     /// Project folder name used to group documents; empty when unknown.
     pub project: String,
     pub dirty: bool,
-    /// Whether this is the document on screen. Only that one can be edited
-    /// today; the others are parked.
+    /// Whether this is the document on screen. The others are parked and are
+    /// still reachable through the host's lens (not while a collaboration
+    /// session is bound to them).
     pub active: bool,
     pub status: DocumentTabStatus,
     /// The launch nonce the live server stamps on every listing it hands out,
