@@ -54,6 +54,23 @@ pub fn document_tab_shortcut(
     Some(DocumentTabRequest::Switch(ui.document_tabs[target].id))
 }
 
+/// The digit of the Cmd/Ctrl+digit chord that reaches the tab at `index` of
+/// `tab_count` open tabs, or `None` when no digit does (the chord also does
+/// nothing at all below two tabs). The dock paints this as the open mark of a
+/// file, so it mirrors [`document_tab_shortcut`] exactly: `1`..`8` reach
+/// positions 1..8, `9` reaches the LAST tab however many are open, and a tab
+/// in between (position 9 and up, but not the last) has no chord.
+pub fn shortcut_digit_for(tab_count: usize, index: usize) -> Option<u8> {
+    if tab_count < 2 || index >= tab_count {
+        return None;
+    }
+    match index {
+        0..=7 => Some(index as u8 + 1),
+        _ if index == tab_count - 1 => Some(9),
+        _ => None,
+    }
+}
+
 /// The request for Cmd/Ctrl+W: close the document on screen. `None` unless the
 /// host has tabs, more than one is open, and no text input owns the keyboard —
 /// in every other case the chord keeps its ordinary meaning.

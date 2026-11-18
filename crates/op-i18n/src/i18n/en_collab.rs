@@ -680,6 +680,9 @@ pub fn lookup(key: &str) -> Option<&'static str> {
         "ai.styleSuggest.chooseTip" => "Use this style for the next run",
         "ai.styleSuggest.unchooseTip" => "Click again to stop using this style",
         "ai.styleSuggest.dismissTip" => "Hide style suggestions",
+        "projects.openNoProject" => "Open, not in a project",
+        "quickSwitcher.placeholder" => "Go to a file or project",
+        "quickSwitcher.empty" => "No matching files",
         _ => return None,
     })
 }

@@ -20,7 +20,7 @@ impl WidgetHostNative {
             || self.variables_search_active()
             || editor_ui.preset_name_input_active()
             || editor_ui.icon_picker.open
-            || editor_ui.projects_panel.rename.is_some()
+            || editor_ui.projects_panel.owns_keyboard()
             || editor_ui.prompt_center.open
             || editor_ui.scene_template_center.input_active()
             || editor_ui.component_browser_open
@@ -190,6 +190,11 @@ impl WidgetHostNative {
             self.mark_dirty();
             return true;
         }
+        if op_editor_core::quick_switcher_keyboard::select_all(&mut self.editor_state, self.now_ms)
+        {
+            self.mark_dirty();
+            return true;
+        }
         if op_editor_core::project_rename_keyboard::select_all(&mut self.editor_state, self.now_ms)
         {
             self.mark_dirty();
@@ -304,7 +309,7 @@ impl WidgetHostNative {
         self.commit_variable_row_focus_if_any();
         if self.editor_state.ui.layer_rename.is_some()
             || self.editor_state.chat.focused
-            || self.editor_state.editor_ui.projects_panel.rename.is_some()
+            || self.editor_state.editor_ui.projects_panel.owns_keyboard()
         {
             return false;
         }
@@ -345,7 +350,7 @@ impl WidgetHostNative {
         self.commit_variable_row_focus_if_any();
         if self.editor_state.ui.layer_rename.is_some()
             || self.editor_state.chat.focused
-            || self.editor_state.editor_ui.projects_panel.rename.is_some()
+            || self.editor_state.editor_ui.projects_panel.owns_keyboard()
         {
             return false;
         }
@@ -381,7 +386,7 @@ impl WidgetHostNative {
         self.commit_variable_row_focus_if_any();
         if self.editor_state.ui.layer_rename.is_some()
             || self.editor_state.chat.focused
-            || self.editor_state.editor_ui.projects_panel.rename.is_some()
+            || self.editor_state.editor_ui.projects_panel.owns_keyboard()
         {
             return false;
         }
@@ -422,7 +427,7 @@ impl WidgetHostNative {
         self.commit_variable_row_focus_if_any();
         if self.editor_state.ui.layer_rename.is_some()
             || self.editor_state.chat.focused
-            || self.editor_state.editor_ui.projects_panel.rename.is_some()
+            || self.editor_state.editor_ui.projects_panel.owns_keyboard()
         {
             return false;
         }

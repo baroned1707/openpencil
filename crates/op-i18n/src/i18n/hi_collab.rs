@@ -644,6 +644,9 @@ pub fn lookup(key: &str) -> Option<&'static str> {
         "ai.styleSuggest.chooseTip" => "अगली बार इस स्टाइल का उपयोग करें",
         "ai.styleSuggest.unchooseTip" => "इस स्टाइल का उपयोग रोकने के लिए फिर से क्लिक करें",
         "ai.styleSuggest.dismissTip" => "स्टाइल सुझाव छिपाएं",
+        "projects.openNoProject" => "खुले हैं, प्रोजेक्ट में नहीं",
+        "quickSwitcher.placeholder" => "फ़ाइल या प्रोजेक्ट पर जाएँ",
+        "quickSwitcher.empty" => "कोई मेल खाती फ़ाइल नहीं",
         _ => return None,
     })
 }

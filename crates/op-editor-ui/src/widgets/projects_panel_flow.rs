@@ -10,7 +10,9 @@
 //! which the host drains.
 
 use op_editor_core::project_rename::{is_renamable, DOUBLE_CLICK_MS};
-use op_editor_core::{EditorState, ProjectFileKind, ProjectRequest, ProjectRowTarget};
+use op_editor_core::{
+    DocumentId, DocumentTabRequest, EditorState, ProjectFileKind, ProjectRequest, ProjectRowTarget,
+};
 
 use crate::widgets::projects_panel::{rename_field_rect, ProjectsPanel, ProjectsPanelText};
 use crate::widgets::projects_panel_layout::{ProjectsPanelLayout, RowKind};
@@ -62,6 +64,8 @@ pub fn text(state: &EditorState) -> ProjectsPanelText<'static> {
         cancel: translate(ui, "common.cancel"),
         new_here: translate(ui, "projects.newDesignHere"),
         not_on_disk: translate(ui, "projects.notOnDisk"),
+        close_file: translate(ui, "common.close"),
+        open_no_project: translate(ui, "projects.openNoProject"),
     }
 }
 
@@ -74,6 +78,7 @@ pub fn widget<'a>(
 ) -> ProjectsPanel<'a> {
     ProjectsPanel {
         projects: &state.editor_ui.projects_panel.projects,
+        tabs: &state.editor_ui.document_tabs,
         hover: state.editor_ui.projects_panel.hover,
         rename: state.editor_ui.projects_panel.rename.as_ref(),
         trash_confirm: state.editor_ui.projects_panel.trash_confirm.as_deref(),
@@ -111,6 +116,11 @@ fn request_for(state: &EditorState, target: ProjectRowTarget) -> Option<ProjectR
         // Starting a rename or a "Move to Trash?" question is the list's own
         // state, not a host request.
         ProjectRowTarget::RenameFile(..) | ProjectRowTarget::TrashFile(..) => None,
+        // Closing and switching to an open document are document requests
+        // (`document_request_for`), not project requests.
+        ProjectRowTarget::CloseFile(..)
+        | ProjectRowTarget::OpenDocument(_)
+        | ProjectRowTarget::CloseOpenDocument(_) => None,
         ProjectRowTarget::NewHere(project, folder_file) => {
             let view = projects.get(project)?;
             let folder = match folder_file {
@@ -141,6 +151,61 @@ fn request_for(state: &EditorState, target: ProjectRowTarget) -> Option<ProjectR
             })
         }
     }
+}
+
+/// The open document a row or button stands for: an open file's row and its
+/// buttons, or a row of the "Open, not in a project" section.
+fn open_document_at(state: &EditorState, target: ProjectRowTarget) -> Option<DocumentId> {
+    let panel = &state.editor_ui.projects_panel;
+    match target {
+        ProjectRowTarget::File(project, file)
+        | ProjectRowTarget::RenameFile(project, file)
+        | ProjectRowTarget::TrashFile(project, file)
+        | ProjectRowTarget::CloseFile(project, file) => {
+            panel.projects.get(project)?.files.get(file)?.open_id
+        }
+        ProjectRowTarget::OpenDocument(tab) | ProjectRowTarget::CloseOpenDocument(tab) => {
+            state.editor_ui.document_tabs.get(tab).map(|tab| tab.id)
+        }
+        _ => None,
+    }
+}
+
+/// The document request a press on `target` raises: the close (x) of an open
+/// file or of an open-document row closes it (the host runs the same close as
+/// Cmd+W, so unsaved work asks first), and a press on an open-document row
+/// shows it.
+fn document_request_for(
+    state: &EditorState,
+    target: ProjectRowTarget,
+) -> Option<DocumentTabRequest> {
+    let id = open_document_at(state, target)?;
+    match target {
+        ProjectRowTarget::CloseFile(..) | ProjectRowTarget::CloseOpenDocument(_) => {
+            Some(DocumentTabRequest::Close(id))
+        }
+        ProjectRowTarget::OpenDocument(_) => Some(DocumentTabRequest::Switch(id)),
+        _ => None,
+    }
+}
+
+/// A middle press at `point`: on an open file's row or an open-document row it
+/// closes that document, like a browser tab; anywhere else on the list it does
+/// nothing. The list owns the press either way (so it never starts a canvas
+/// pan under the dock), and `Missed` off the list.
+pub fn middle_press(
+    state: &mut EditorState,
+    layout: &ProjectsPanelLayout,
+    point: Point2D,
+) -> ProjectsPress {
+    if !layout.contains_point(point) {
+        return ProjectsPress::Missed;
+    }
+    let hit = layout.hit(point);
+    if let Some(id) = hit.and_then(|target| open_document_at(state, target)) {
+        state.editor_ui.pending_document_request = Some(DocumentTabRequest::Close(id));
+    }
+    ProjectsPress::Claimed(hit)
 }
 
 /// What a press meant to an open rename.
@@ -280,7 +345,9 @@ pub fn press(
     }
     // The same for a file row's pencil and trash button.
     if let Some(
-        ProjectRowTarget::RenameFile(project, file) | ProjectRowTarget::TrashFile(project, file),
+        ProjectRowTarget::RenameFile(project, file)
+        | ProjectRowTarget::TrashFile(project, file)
+        | ProjectRowTarget::CloseFile(project, file),
     ) = hit
     {
         if !matches!(
@@ -289,9 +356,21 @@ pub fn press(
                 ProjectRowTarget::File(p, f)
                     | ProjectRowTarget::RenameFile(p, f)
                     | ProjectRowTarget::TrashFile(p, f)
+                    | ProjectRowTarget::CloseFile(p, f)
             ) if (p, f) == (project, file)
         ) {
             hit = Some(ProjectRowTarget::File(project, file));
+        }
+    }
+    // And for the close button of an open-document row.
+    if let Some(ProjectRowTarget::CloseOpenDocument(tab)) = hit {
+        if !matches!(
+            ui.hover,
+            Some(
+                ProjectRowTarget::OpenDocument(t) | ProjectRowTarget::CloseOpenDocument(t)
+            ) if t == tab
+        ) {
+            hit = Some(ProjectRowTarget::OpenDocument(tab));
         }
     }
     // And for a "New design here" button.
@@ -343,8 +422,12 @@ pub fn press(
             ui.last_file_press = path
                 .filter(|(_, renamable)| *renamable && matches!(target, ProjectRowTarget::File(..)))
                 .map(|(path, _)| (path, now_ms));
-            let request = request_for(state, target);
-            state.editor_ui.projects_panel.pending_request = request;
+            if let Some(request) = document_request_for(state, target) {
+                state.editor_ui.pending_document_request = Some(request);
+            } else {
+                let request = request_for(state, target);
+                state.editor_ui.projects_panel.pending_request = request;
+            }
         }
         (None, _) => ui.last_file_press = None,
     }
@@ -438,6 +521,12 @@ pub fn scroll(
     Some(scroll.offset != before)
 }
 
+#[cfg(test)]
+#[path = "projects_open_tests.rs"]
+mod projects_open_tests;
+#[cfg(test)]
+#[path = "projects_loose_tests.rs"]
+mod projects_loose_tests;
 #[cfg(test)]
 #[path = "projects_panel_flow_tests.rs"]
 pub(crate) mod projects_panel_flow_tests;

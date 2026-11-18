@@ -130,7 +130,7 @@ impl WidgetHostNative {
     /// ladder (`press_overlay_tiers`, `press_chrome_tiers`). A middle-click
     /// must not reach a tab those surfaces cover. Deliberately conservative:
     /// any open modal or top-bar dropdown blocks, wherever the cursor is.
-    fn top_bar_covered_by_overlay(&self, x: f32, y: f32) -> bool {
+    pub(in crate::widget_host) fn top_bar_covered_by_overlay(&self, x: f32, y: f32) -> bool {
         let ui = &self.editor_state.editor_ui;
         let point = Point2D::new(x, y);
         let (w, h) = (self.last_viewport_w, self.last_viewport_h);

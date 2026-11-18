@@ -112,7 +112,7 @@ impl WidgetHostNative {
         // composition updates like the other chrome inputs (text lands on
         // `Ime::Commit`).
         if self.editor_state.editor_ui.save_name_dialog.open
-            || self.editor_state.editor_ui.projects_panel.rename.is_some()
+            || self.editor_state.editor_ui.projects_panel.owns_keyboard()
         {
             if had {
                 self.mark_dirty();
@@ -197,7 +197,7 @@ impl WidgetHostNative {
         // Modal save-name dialog and file rename first — same priority as
         // `apply_text`.
         if self.editor_state.editor_ui.save_name_dialog.open
-            || self.editor_state.editor_ui.projects_panel.rename.is_some()
+            || self.editor_state.editor_ui.projects_panel.owns_keyboard()
         {
             let mut consumed = false;
             for ch in text.chars() {

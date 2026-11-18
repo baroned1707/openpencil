@@ -481,6 +481,10 @@ impl WidgetHostNative {
         viewport_height: f32,
         zoom_intent: bool,
     ) -> bool {
+        // The open quick switcher swallows the wheel (and scrolls its list).
+        if let Some(handled) = self.scroll_quick_switcher(delta_y) {
+            return handled;
+        }
         if let Some(scrolled) =
             self.scroll_home_surface(x, y, delta_y, viewport_width, viewport_height)
         {

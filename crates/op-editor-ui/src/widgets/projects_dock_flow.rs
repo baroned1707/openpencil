@@ -31,8 +31,9 @@ pub fn layout(state: &EditorState, viewport_w: f32, viewport_h: f32) -> Option<P
         return None;
     }
     let panel = &state.editor_ui.projects_panel;
-    Some(ProjectsDockLayout::new(
+    Some(ProjectsDockLayout::with_tabs(
         &panel.projects,
+        &state.editor_ui.document_tabs,
         projects_dock_rect(state, viewport_w, viewport_h),
         panel.is_open(),
         panel.scroll.offset,
@@ -113,6 +114,26 @@ pub fn press(
             }
             DockPress::Claimed
         }
+    }
+}
+
+/// Route a middle press at `point`: it closes the open document under it (an
+/// open file's row, or a row of the open-document section); anywhere else on
+/// the dock it is swallowed, so it never starts a canvas pan beneath the dock.
+pub fn middle_press(
+    state: &mut EditorState,
+    layout: &ProjectsDockLayout,
+    point: Point2D,
+) -> DockPress {
+    match layout.hit(point) {
+        None => DockPress::Missed,
+        Some(DockHit::Body(_)) => {
+            if let Some(list) = &layout.list {
+                let _: ProjectsPress = projects_panel_flow::middle_press(state, list, point);
+            }
+            DockPress::Claimed
+        }
+        Some(_) => DockPress::Claimed,
     }
 }
 

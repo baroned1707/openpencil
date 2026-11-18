@@ -12,6 +12,8 @@ mod home;
 mod images;
 #[path = "ui3_proof_menus_tests.rs"]
 mod menus;
+#[path = "ui3_proof_open_marks_tests.rs"]
+mod open_marks;
 #[path = "ui3_proof_open_project_tests.rs"]
 mod open_project;
 #[path = "ui3_proof_open_project_actions_tests.rs"]
@@ -20,12 +22,14 @@ mod open_project_actions;
 mod panels;
 #[path = "ui3_proof_projects_tests.rs"]
 mod projects;
+#[path = "ui3_proof_quick_switcher_tests.rs"]
+mod quick_switcher;
 #[path = "ui3_proof_settings_tests.rs"]
 mod settings;
-#[path = "document_swap_render_tests.rs"]
-mod swap_render;
 #[path = "ui3_proof_style_suggest_tests.rs"]
 mod style_suggest;
+#[path = "document_swap_render_tests.rs"]
+mod swap_render;
 #[path = "ui3_proof_tabs_tests.rs"]
 mod tabs;
 #[path = "ui3_proof_usage_tests.rs"]

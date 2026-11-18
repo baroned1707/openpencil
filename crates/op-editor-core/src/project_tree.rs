@@ -8,7 +8,7 @@
 //! which the host drains. Neither side reaches into the other's types, and
 //! everything here is wasm32-clean.
 
-use crate::document_tabs::{DocumentId, DocumentTabStatus};
+use crate::document_tabs::{DocumentId, DocumentTabStatus, DocumentTabView};
 
 /// Where a Figma `.fig` file stands on its way to an `.op` file next to it.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -223,6 +223,33 @@ pub enum ProjectRowTarget {
     /// A "New design here" button: on a project header (`None`) or on a folder
     /// sub-header (`Some(index of the folder's first file)`).
     NewHere(usize, Option<usize>),
+    /// The close (x) button of an OPEN file row: `(project index, file index)`.
+    /// It takes the trash button's place, because an open file cannot be
+    /// trashed.
+    CloseFile(usize, usize),
+    /// A row of the "Open, not in a project" section: the index into
+    /// `EditorUiState.document_tabs` (the Cmd+digit order).
+    OpenDocument(usize),
+    /// The close (x) button of that section's row, by the same tab index.
+    CloseOpenDocument(usize),
+}
+
+/// Indices into `tabs` of the open documents that no project row stands for:
+/// untitled documents and files outside every listed project. The dock lists
+/// them in their own section, so every open document has exactly one row.
+pub fn loose_tab_indices(projects: &[ProjectView], tabs: &[DocumentTabView]) -> Vec<usize> {
+    tabs.iter()
+        .enumerate()
+        .filter(|(_, tab)| {
+            !projects.iter().any(|project| {
+                project
+                    .files
+                    .iter()
+                    .any(|file| file.open_id == Some(tab.id))
+            })
+        })
+        .map(|(index, _)| index)
+        .collect()
 }
 
 /// Whether `file_folder` is `folder` or below it; `None` matches everything.
@@ -300,6 +327,34 @@ mod tests {
         assert_eq!(view.not_converted_count(Some("a")), 2, "a and a/b, not ab");
         assert_eq!(view.not_converted_count(Some("a/b")), 1);
         assert_eq!(view.not_converted_count(Some("zzz")), 0);
+    }
+
+    fn tab(id: u64) -> DocumentTabView {
+        DocumentTabView {
+            id: DocumentId(id),
+            label: format!("t{id}"),
+            project: String::new(),
+            dirty: false,
+            status: DocumentTabStatus::Idle,
+            active: false,
+        }
+    }
+
+    #[test]
+    fn loose_tabs_are_the_open_documents_no_project_row_shows() {
+        let open = |id: u64| ProjectFileView {
+            open_id: Some(DocumentId(id)),
+            ..file(DocumentTabStatus::Idle, false)
+        };
+        let projects = vec![project(vec![open(2), file(DocumentTabStatus::Idle, false)])];
+        let tabs = vec![tab(1), tab(2), tab(3)];
+        assert_eq!(loose_tab_indices(&projects, &tabs), vec![0, 2]);
+        assert_eq!(
+            loose_tab_indices(&[], &tabs),
+            vec![0, 1, 2],
+            "no project at all"
+        );
+        assert!(loose_tab_indices(&projects, &[]).is_empty());
     }
 
     #[test]

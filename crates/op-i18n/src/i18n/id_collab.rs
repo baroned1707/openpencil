@@ -640,6 +640,9 @@ pub fn lookup(key: &str) -> Option<&'static str> {
         "ai.styleSuggest.chooseTip" => "Gunakan gaya ini untuk proses berikutnya",
         "ai.styleSuggest.unchooseTip" => "Klik lagi untuk berhenti memakai gaya ini",
         "ai.styleSuggest.dismissTip" => "Sembunyikan saran gaya",
+        "projects.openNoProject" => "Terbuka, di luar proyek",
+        "quickSwitcher.placeholder" => "Buka file atau proyek",
+        "quickSwitcher.empty" => "Tidak ada file yang cocok",
         _ => return None,
     })
 }

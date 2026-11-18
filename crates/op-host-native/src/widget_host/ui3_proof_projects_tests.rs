@@ -409,6 +409,7 @@ fn empty_state_proof() {
             };
             ProjectsPanel {
                 projects: &[],
+                tabs: &[],
                 hover: None,
                 rename: None,
                 trash_confirm: None,

@@ -43,6 +43,11 @@ impl WidgetHostNative {
             );
         }
 
+        // The Cmd+K quick switcher floats above every panel but under the
+        // toast banner and the missing-font modal (its press tier sits first,
+        // the switcher being modal while open).
+        self.paint_quick_switcher(frame, viewport_width);
+
         // Transient notice banner — painted above every panel and the
         // diagnostics notice, but under the missing-font modal, so its press
         // tier sits in exactly the same place (hit-test is reverse paint

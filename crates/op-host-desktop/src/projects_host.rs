@@ -491,6 +491,9 @@ impl DesktopApp {
         if ui.home.visible {
             changed |= ui.projects_panel.cancel_rename();
             changed |= ui.projects_panel.cancel_trash_confirm();
+            // The quick switcher is modal: it must not outlive the surface
+            // that covers it (a menu action can show Home with no key press).
+            changed |= ui.projects_panel.switcher.close();
         }
         changed |= ui.projects_panel.drop_hidden_rename();
         changed |= ui.projects_panel.drop_hidden_trash_confirm();

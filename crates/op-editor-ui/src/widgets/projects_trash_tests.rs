@@ -83,6 +83,10 @@ fn fig_rows_and_folders_are_not_removable() {
                 assert!(row.trash.is_none(), "a .fig is a source, not removable");
                 assert!(row.rename.is_none());
             }
+            RowKind::File(0, 2) => {
+                assert!(row.trash.is_none(), "an open file is closed, not trashed");
+                assert!(row.close.is_some());
+            }
             RowKind::File(..) => assert!(row.trash.is_some(), "{:?}", row.kind),
             _ => {}
         }
@@ -201,6 +205,7 @@ fn a_file_that_is_gone_shows_its_marker_and_no_actions() {
     };
     ProjectsPanel {
         projects: &panel(&state).projects,
+        tabs: &[],
         hover: Some(ProjectRowTarget::File(0, 2)),
         rename: None,
         trash_confirm: None,
@@ -226,6 +231,7 @@ fn the_asking_row_paints_the_question_and_the_two_buttons() {
     };
     ProjectsPanel {
         projects: &panel(&state).projects,
+        tabs: &[],
         hover: None,
         rename: None,
         trash_confirm: panel(&state).trash_confirm.as_deref(),

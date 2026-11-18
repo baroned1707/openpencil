@@ -656,6 +656,9 @@ pub fn lookup(key: &str) -> Option<&'static str> {
         "ai.styleSuggest.chooseTip" => "다음 생성에 이 스타일 사용",
         "ai.styleSuggest.unchooseTip" => "다시 클릭하면 사용을 취소합니다",
         "ai.styleSuggest.dismissTip" => "스타일 추천 숨기기",
+        "projects.openNoProject" => "열려 있음, 프로젝트 없음",
+        "quickSwitcher.placeholder" => "파일 또는 프로젝트로 이동",
+        "quickSwitcher.empty" => "일치하는 파일이 없습니다",
         _ => return None,
     })
 }

@@ -642,6 +642,9 @@ pub fn lookup(key: &str) -> Option<&'static str> {
         "ai.styleSuggest.chooseTip" => "ใช้สไตล์นี้ในการสร้างครั้งถัดไป",
         "ai.styleSuggest.unchooseTip" => "คลิกอีกครั้งเพื่อเลิกใช้สไตล์นี้",
         "ai.styleSuggest.dismissTip" => "ซ่อนสไตล์ที่แนะนำ",
+        "projects.openNoProject" => "เปิดอยู่ ไม่อยู่ในโปรเจกต์",
+        "quickSwitcher.placeholder" => "ไปที่ไฟล์หรือโปรเจกต์",
+        "quickSwitcher.empty" => "ไม่พบไฟล์ที่ตรงกัน",
         _ => return None,
     })
 }

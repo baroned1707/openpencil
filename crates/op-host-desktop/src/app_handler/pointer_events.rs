@@ -30,7 +30,10 @@ impl DesktopApp {
     pub(super) fn on_cursor_moved(&mut self, position: PhysicalPosition<f64>) -> bool {
         self.cursor_x = position.x as f32 / self.dpi;
         self.cursor_y = position.y as f32 / self.dpi;
-        let model_picker_open = self.host.editor_state().editor_ui.chat_model_picker.open;
+        // The quick switcher, like the model picker, paints over the layer
+        // panel and owns the cursor.
+        let model_picker_open = self.host.editor_state().editor_ui.chat_model_picker.open
+            || self.host.quick_switcher_active();
         let over_layer_panel = !model_picker_open
             && self.host.cursor_over_layer_panel(
                 self.cursor_x,

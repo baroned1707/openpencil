@@ -652,6 +652,9 @@ pub fn lookup(key: &str) -> Option<&'static str> {
         "ai.styleSuggest.chooseTip" => "Dùng phong cách này cho lần tạo tiếp theo",
         "ai.styleSuggest.unchooseTip" => "Nhấp lần nữa để bỏ chọn phong cách này",
         "ai.styleSuggest.dismissTip" => "Ẩn gợi ý phong cách",
+        "projects.openNoProject" => "Đang mở, không thuộc dự án",
+        "quickSwitcher.placeholder" => "Đi tới tệp hoặc dự án",
+        "quickSwitcher.empty" => "Không có tệp phù hợp",
         _ => return None,
     })
 }

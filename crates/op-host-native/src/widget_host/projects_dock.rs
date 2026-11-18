@@ -82,6 +82,30 @@ impl WidgetHostNative {
         }
     }
 
+    /// Middle press on the dock: closes the open document under it (an open
+    /// file's row or a row of the open-document section), like a browser tab.
+    /// `true` when the dock took the press, so it never starts a canvas pan
+    /// beneath the dock. Yields to every surface painted above the dock, as
+    /// the left-press tier does.
+    pub(in crate::widget_host) fn press_middle_projects_dock(&mut self, x: f32, y: f32) -> bool {
+        let (viewport_w, viewport_h) = (self.last_viewport_w, self.last_viewport_h);
+        if self.top_bar_covered_by_overlay(x, y)
+            || self.chat_panel_surface_contains(x, y, viewport_w, viewport_h)
+        {
+            return false;
+        }
+        let Some(layout) = self.projects_dock_layout(viewport_w, viewport_h) else {
+            return false;
+        };
+        match dock_flow::middle_press(&mut self.editor_state, &layout, Point2D::new(x, y)) {
+            DockPress::Missed => false,
+            DockPress::Claimed => {
+                self.mark_dirty();
+                true
+            }
+        }
+    }
+
     /// Hover tier: `Some(repaint)` when the cursor is on the dock and no
     /// higher surface owns the point. Off the dock — or under the chat card —
     /// any hover the dock still holds is dropped and the ladder moves on.
@@ -138,6 +162,12 @@ impl WidgetHostNative {
 // The inline file rename's platform tail rides with the dock it renames in.
 #[path = "project_rename_input.rs"]
 mod project_rename_input;
+// The Cmd+K quick switcher is the dock's keyboard-first twin.
+#[path = "quick_switcher_host.rs"]
+mod quick_switcher_host;
+#[cfg(test)]
+#[path = "quick_switcher_host_tests.rs"]
+mod quick_switcher_host_tests;
 // ... and so does the "Move to Trash?" question's routing test.
 #[cfg(test)]
 #[path = "project_trash_input_tests.rs"]

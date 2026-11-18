@@ -640,6 +640,9 @@ pub fn lookup(key: &str) -> Option<&'static str> {
         "ai.styleSuggest.chooseTip" => "Sonraki çalıştırmada bu stili kullan",
         "ai.styleSuggest.unchooseTip" => "Bu stili kullanmayı bırakmak için tekrar tıklayın",
         "ai.styleSuggest.dismissTip" => "Stil önerilerini gizle",
+        "projects.openNoProject" => "Açık, projede değil",
+        "quickSwitcher.placeholder" => "Bir dosyaya veya projeye git",
+        "quickSwitcher.empty" => "Eşleşen dosya yok",
         _ => return None,
     })
 }

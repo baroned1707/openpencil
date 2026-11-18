@@ -46,6 +46,8 @@ const TEXT: ProjectsPanelText<'static> = ProjectsPanelText {
     cancel: "Cancel",
     new_here: "New design here",
     not_on_disk: "not on disk",
+    close_file: "Close",
+    open_no_project: "Open, not in a project",
 };
 
 fn in_folder(label: &str, folder: &str) -> op_editor_core::ProjectFileView {
@@ -259,6 +261,7 @@ fn paint_list(projects: &[ProjectView], hover: Option<ProjectRowTarget>) -> Capt
     };
     ProjectsPanel {
         projects,
+        tabs: &[],
         hover,
         rename: None,
         trash_confirm: None,
@@ -448,6 +451,7 @@ fn the_dock_paints_the_folder_plus_glyph_where_it_offers_open_project() {
         ProjectsDock {
             list: ProjectsPanel {
                 projects,
+                tabs: &[],
                 hover: None,
                 rename: None,
                 trash_confirm: None,

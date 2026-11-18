@@ -41,6 +41,16 @@ impl WidgetHostNative {
             }
             return true;
         }
+        if let Some(changed) = op_editor_core::quick_switcher_keyboard::paste(
+            &mut self.editor_state,
+            text,
+            self.now_ms,
+        ) {
+            if changed {
+                self.mark_dirty();
+            }
+            return true;
+        }
         if let Some(changed) = op_editor_core::project_rename_keyboard::paste(
             &mut self.editor_state,
             text,

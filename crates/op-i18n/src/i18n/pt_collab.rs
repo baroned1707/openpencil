@@ -640,6 +640,9 @@ pub fn lookup(key: &str) -> Option<&'static str> {
         "ai.styleSuggest.chooseTip" => "Usar este estilo na próxima geração",
         "ai.styleSuggest.unchooseTip" => "Clique novamente para parar de usar este estilo",
         "ai.styleSuggest.dismissTip" => "Ocultar estilos sugeridos",
+        "projects.openNoProject" => "Abertos, fora de um projeto",
+        "quickSwitcher.placeholder" => "Ir para um arquivo ou projeto",
+        "quickSwitcher.empty" => "Nenhum arquivo correspondente",
         _ => return None,
     })
 }

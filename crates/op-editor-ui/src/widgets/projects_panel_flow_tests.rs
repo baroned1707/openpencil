@@ -52,6 +52,8 @@ pub(crate) const TEXT: crate::widgets::projects_panel::ProjectsPanelText<'static
         cancel: "Cancel",
         new_here: "New design here",
         not_on_disk: "not on disk",
+        close_file: "Close",
+        open_no_project: "Open, not in a project",
     };
 
 pub(crate) fn file(label: &str, open: Option<u64>) -> ProjectFileView {

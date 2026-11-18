@@ -43,6 +43,7 @@ fn paint(projects: &[ProjectView], hover: Option<ProjectRowTarget>) -> CaptureBa
     let mut backend = CaptureBackend::default();
     ProjectsPanel {
         projects,
+        tabs: &[],
         hover,
         rename: None,
         trash_confirm: None,

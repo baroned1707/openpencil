@@ -43,7 +43,16 @@ impl WidgetHostNative {
             }
             return true;
         }
-        // The Projects dock's file rename owns every key while it is open.
+        // The quick switcher's query, then the Projects dock's file rename,
+        // own every key while they are open.
+        if let Some(changed) =
+            op_editor_core::quick_switcher_keyboard::text(&mut self.editor_state, c, self.now_ms)
+        {
+            if changed {
+                self.mark_dirty();
+            }
+            return true;
+        }
         if let Some(changed) =
             op_editor_core::project_rename_keyboard::text(&mut self.editor_state, c, self.now_ms)
         {

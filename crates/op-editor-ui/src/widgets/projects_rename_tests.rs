@@ -266,6 +266,7 @@ fn paint(state: &EditorState, hover: Option<ProjectRowTarget>) -> CaptureBackend
     };
     ProjectsPanel {
         projects: &state.editor_ui.projects_panel.projects,
+        tabs: &[],
         hover,
         rename: state.editor_ui.projects_panel.rename.as_ref(),
         trash_confirm: state.editor_ui.projects_panel.trash_confirm.as_deref(),

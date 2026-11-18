@@ -16,8 +16,8 @@
 //! `ProjectView` rows.
 
 use op_editor_core::{
-    DocumentTabStatus, ProjectFileKind, ProjectFileView, ProjectRenameState, ProjectRowTarget,
-    ProjectScanState, ProjectView,
+    DocumentTabStatus, DocumentTabView, ProjectFileKind, ProjectFileView, ProjectRenameState,
+    ProjectRowTarget, ProjectScanState, ProjectView,
 };
 
 use crate::theme::Theme;
@@ -31,6 +31,10 @@ use crate::{Color, Point2D, Rect, TextLayout};
 
 #[path = "projects_panel_fig.rs"]
 mod fig;
+#[path = "projects_panel_loose.rs"]
+mod loose;
+#[path = "projects_panel_open.rs"]
+mod open;
 #[path = "projects_panel_rename.rs"]
 mod rename;
 #[path = "projects_panel_rows.rs"]
@@ -116,11 +120,18 @@ pub struct ProjectsPanelText<'a> {
     pub new_here: &'a str,
     /// The marker of an open file that is no longer on disk.
     pub not_on_disk: &'a str,
+    /// Tooltip of an open file's close (x) button.
+    pub close_file: &'a str,
+    /// The label over the section of open documents no project lists.
+    pub open_no_project: &'a str,
 }
 
 /// The widget for one frame.
 pub struct ProjectsPanel<'a> {
     pub projects: &'a [ProjectView],
+    /// The open documents in Cmd+digit order: the open marks read their digit
+    /// from here and the "Open, not in a project" section is built from it.
+    pub tabs: &'a [DocumentTabView],
     pub hover: Option<ProjectRowTarget>,
     /// The file name being edited, when a rename is open.
     pub rename: Option<&'a ProjectRenameState>,
@@ -174,6 +185,8 @@ impl ProjectsPanel<'_> {
                 RowKind::ConvertAll(project, folder) => {
                     self.paint_convert_all(cx, theme, row, project, folder)
                 }
+                RowKind::LooseHeader => self.paint_loose_header(cx, theme, row),
+                RowKind::LooseDoc(tab) => self.paint_loose_doc(cx, theme, row, tab),
             }
         }
         self.paint_rename_error(cx, theme, layout, surface);
@@ -364,6 +377,7 @@ impl ProjectsPanel<'_> {
                 ProjectRowTarget::File(p, f)
                     | ProjectRowTarget::RenameFile(p, f)
                     | ProjectRowTarget::TrashFile(p, f)
+                    | ProjectRowTarget::CloseFile(p, f)
             ) if p == project && f == index
         );
         if file.active {
@@ -402,16 +416,22 @@ impl ProjectsPanel<'_> {
         } else {
             0.0
         };
-        // The pencil and the trash button replace the right edge of a hovered
-        // row, so the label stops short of the leftmost one; a file that is gone
-        // from disk carries its marker there instead.
+        // The pencil and the trash (or, on an open file, close) button replace
+        // the right edge of a hovered row, so the label stops short of the
+        // leftmost one. At rest an open file carries its Cmd+digit mark there,
+        // and a file that is gone from disk its marker beside it.
         let pencil = row.rename.filter(|_| hovered);
         let trash = row.trash.filter(|_| hovered);
-        let mut right_limit = rect.origin.x + rect.size.x - ROW_PAD_RIGHT;
-        if let Some(button) = trash.or(pencil) {
-            right_limit = button.origin.x - NAME_GAP;
-        } else if file.missing {
-            right_limit = self.paint_not_on_disk(cx, theme, row) - NAME_GAP;
+        let close = row.close.filter(|_| hovered);
+        let mut right_limit = match close.or(trash).or(pencil) {
+            Some(button) => button.origin.x - NAME_GAP,
+            None => match file.open_id {
+                Some(id) => self.paint_open_mark(cx, theme, rect, id) - NAME_GAP,
+                None => rect.origin.x + rect.size.x - ROW_PAD_RIGHT,
+            },
+        };
+        if file.missing {
+            right_limit = self.paint_not_on_disk(cx, theme, row, right_limit) - NAME_GAP;
         }
         let max = (right_limit - label_x - bullet_span).max(0.0);
         let label = text_metrics::fit_chrome(cx.backend, &file.label, max, FILE_FONT);
@@ -446,6 +466,10 @@ impl ProjectsPanel<'_> {
         if let Some(button) = trash {
             let hot = self.hover == Some(ProjectRowTarget::TrashFile(project, index));
             paint_header_button(cx, theme, button, Icon::Trash, hot);
+        }
+        if let Some(button) = close {
+            let hot = self.hover == Some(ProjectRowTarget::CloseFile(project, index));
+            paint_header_button(cx, theme, button, Icon::Close, hot);
         }
     }
 
@@ -559,7 +583,7 @@ pub fn folder_hint(root: &str) -> Option<String> {
 }
 
 /// The dot colour of an agent status; `None` when idle.
-fn status_color(theme: &Theme, status: DocumentTabStatus) -> Option<Color> {
+pub(crate) fn status_color(theme: &Theme, status: DocumentTabStatus) -> Option<Color> {
     match status {
         DocumentTabStatus::Idle => None,
         DocumentTabStatus::Running => Some(theme.primary),

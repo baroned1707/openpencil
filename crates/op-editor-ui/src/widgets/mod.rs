@@ -427,6 +427,8 @@ pub mod projects_panel_layout;
 pub mod property_panel_color_variables;
 #[cfg(test)]
 mod property_panel_color_variables_tests;
+pub mod quick_switcher;
+pub mod quick_switcher_flow;
 pub mod save_name_dialog;
 pub(crate) mod settings_form;
 pub mod shape_picker;

@@ -7,7 +7,7 @@
 //! into the parts paint and hit-test share, so a painted chevron and its
 //! click target can never drift apart.
 
-use op_editor_core::{ProjectRowTarget, ProjectView};
+use op_editor_core::{DocumentTabView, ProjectRowTarget, ProjectView};
 
 use crate::widgets::projects_panel_layout::ProjectsPanelLayout;
 use crate::{Point2D, Rect};
@@ -63,6 +63,18 @@ impl ProjectsDockLayout {
     /// Split `rect` for the dock in the given open state, with its project
     /// list scrolled by `scroll_offset`.
     pub fn new(projects: &[ProjectView], rect: Rect, open: bool, scroll_offset: f32) -> Self {
+        Self::with_tabs(projects, &[], rect, open, scroll_offset)
+    }
+
+    /// [`Self::new`] with the open documents, so the list can show the ones no
+    /// project row stands for (`ProjectsPanelLayout::with_tabs`).
+    pub fn with_tabs(
+        projects: &[ProjectView],
+        tabs: &[DocumentTabView],
+        rect: Rect,
+        open: bool,
+        scroll_offset: f32,
+    ) -> Self {
         let header_origin = Rect::xywh(rect.origin.x, rect.origin.y, 0.0, 0.0);
         if !open && projects.is_empty() {
             // Nothing to unfold yet: the strip is the place to start, so it
@@ -121,7 +133,12 @@ impl ProjectsDockLayout {
             header,
             toggle,
             open_project: Some(open_project),
-            list: Some(ProjectsPanelLayout::new(projects, body, scroll_offset)),
+            list: Some(ProjectsPanelLayout::with_tabs(
+                projects,
+                tabs,
+                body,
+                scroll_offset,
+            )),
         }
     }
 

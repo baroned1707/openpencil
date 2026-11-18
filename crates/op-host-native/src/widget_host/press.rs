@@ -98,7 +98,8 @@ impl WidgetHostNative {
     /// a layer row OR page row.
     pub fn apply_right_press(&mut self, x: f32, y: f32, viewport_w: f32, viewport_h: f32) -> bool {
         let cancelled = self.cancel_native_touch_gestures();
-        if self.editor_state.editor_ui.agent_settings_open {
+        // A right-click under the open quick switcher opens nothing.
+        if self.quick_switcher_active() || self.editor_state.editor_ui.agent_settings_open {
             return true;
         }
         // Codex stop-gate: right-click outside the variables panel
@@ -208,6 +209,10 @@ impl WidgetHostNative {
     ) -> bool {
         self.last_viewport_w = viewport_width;
         self.last_viewport_h = viewport_height;
+        // The quick switcher is modal while open: it takes every press.
+        if let Some(consumed) = self.press_quick_switcher(x, y, viewport_width) {
+            return consumed;
+        }
         // Home is a full-surface first-launch entry and owns every pointer
         // event before document chrome or canvas tiers can see it — but the
         // overlays Home itself opens (agent settings, sign-in modal, the

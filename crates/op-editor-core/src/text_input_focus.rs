@@ -41,8 +41,12 @@ impl EditorState {
                 crate::PromptCenterFocus::SaveTitle => &self.editor_ui.prompt_center.save_title,
             });
         }
-        // The Projects dock's inline file rename is started by a deliberate
-        // click and blurs every other input, so it is the newest focus.
+        // The quick switcher is modal while open, so its query is the newest
+        // focus; the Projects dock's inline file rename (started by a
+        // deliberate click, which blurs every other input) comes next.
+        if self.editor_ui.projects_panel.switcher.open {
+            return Some(&self.editor_ui.projects_panel.switcher.input);
+        }
         if let Some(rename) = &self.editor_ui.projects_panel.rename {
             return Some(&rename.input);
         }
@@ -149,6 +153,9 @@ impl EditorState {
         }
         if self.editor_ui.prompt_center.open {
             return Some(self.editor_ui.prompt_center.focused_input_mut());
+        }
+        if self.editor_ui.projects_panel.switcher.open {
+            return Some(&mut self.editor_ui.projects_panel.switcher.input);
         }
         if self.editor_ui.projects_panel.rename.is_some() {
             return self

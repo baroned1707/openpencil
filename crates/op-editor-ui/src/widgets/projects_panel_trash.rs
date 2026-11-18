@@ -74,16 +74,17 @@ impl ProjectsPanel<'_> {
         }
     }
 
-    /// The muted "not on disk" marker at a row's right edge. Returns the x of
-    /// its left edge, so the label can stop short of it.
+    /// The muted "not on disk" marker ending at `right` (the row's right edge,
+    /// or the left of an open mark beside it). Returns the x of its left edge,
+    /// so the label can stop short of it.
     pub(super) fn paint_not_on_disk(
         &self,
         cx: &mut PaintCx<'_>,
         theme: &Theme,
         row: &ProjectRow,
+        right: f32,
     ) -> f32 {
         let rect = row.rect;
-        let right = rect.origin.x + rect.size.x - ROW_PAD_RIGHT;
         let width = text_metrics::measure_chrome(cx.backend, self.text.not_on_disk, MARKER_FONT);
         let left = right - width;
         draw_label(

@@ -19,9 +19,10 @@ impl ProjectsPanelState {
     /// Ask "Move to Trash?" on the row at `path`. Any rename is dropped first.
     /// `false` when the row is gone or the host did not mark it removable.
     pub fn begin_trash_confirm(&mut self, path: &str) -> bool {
+        // An open file is closed, not trashed (the host refuses it as well).
         let removable = self
             .file_at_path(path)
-            .is_some_and(|(_, file)| file.removable);
+            .is_some_and(|(_, file)| file.removable && file.open_id.is_none());
         if !removable {
             return false;
         }
@@ -60,7 +61,9 @@ impl ProjectsPanelState {
             return false;
         };
         let visible = self.file_at_path(path).is_some_and(|(project, file)| {
+            // An open file cannot be trashed: its row offers close instead.
             file.removable
+                && file.open_id.is_none()
                 && self.is_open()
                 && project.expanded
                 && (file.folder.is_empty() || !project.is_folder_collapsed(&file.folder))

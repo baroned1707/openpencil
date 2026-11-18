@@ -54,6 +54,9 @@ pub struct ProjectsPanelState {
     /// A confirmed move to the Trash for the host to execute. Its own slot, so
     /// a destructive request is never overwritten by another press of the frame.
     pub trash_commit: Option<String>,
+    /// The Cmd+K quick switcher. App-level like the rest of the dock; while it
+    /// is open it owns the keyboard (see `quick_switcher_keyboard`).
+    pub switcher: crate::quick_switcher::QuickSwitcherState,
 }
 
 impl Default for ProjectsPanelState {
@@ -72,6 +75,7 @@ impl Default for ProjectsPanelState {
             last_file_press: None,
             trash_confirm: None,
             trash_commit: None,
+            switcher: crate::quick_switcher::QuickSwitcherState::default(),
         }
     }
 }
@@ -86,6 +90,12 @@ impl ProjectsPanelState {
         } else {
             self.dock_open
         }
+    }
+
+    /// Whether a dock input owns the keyboard: the inline file rename or the
+    /// quick switcher's query.
+    pub fn owns_keyboard(&self) -> bool {
+        self.rename.is_some() || self.switcher.open
     }
 
     /// Fold or unfold the dock (the choice that applies right now).

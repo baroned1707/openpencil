@@ -292,6 +292,12 @@ impl ProjectsPanel<'_> {
             Some(ProjectRowTarget::TrashFile(project, file)) => {
                 (RowKind::File(project, file), self.text.trash)
             }
+            Some(ProjectRowTarget::CloseFile(project, file)) => {
+                (RowKind::File(project, file), self.text.close_file)
+            }
+            Some(ProjectRowTarget::CloseOpenDocument(tab)) => {
+                (RowKind::LooseDoc(tab), self.text.close_file)
+            }
             Some(ProjectRowTarget::NewHere(project, None)) => {
                 (RowKind::Header(project), self.text.new_here)
             }
@@ -304,7 +310,11 @@ impl ProjectsPanel<'_> {
             return;
         };
         let anchor = match self.hover {
-            Some(ProjectRowTarget::Close(_)) => row.close,
+            Some(
+                ProjectRowTarget::Close(_)
+                | ProjectRowTarget::CloseFile(..)
+                | ProjectRowTarget::CloseOpenDocument(_),
+            ) => row.close,
             Some(ProjectRowTarget::RenameFile(..)) => row.rename,
             Some(ProjectRowTarget::TrashFile(..)) => row.trash,
             Some(ProjectRowTarget::NewHere(..)) => row.new_here,

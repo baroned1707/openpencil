@@ -640,6 +640,9 @@ pub fn lookup(key: &str) -> Option<&'static str> {
         "ai.styleSuggest.chooseTip" => "下次生成時使用此風格",
         "ai.styleSuggest.unchooseTip" => "再次點擊取消使用此風格",
         "ai.styleSuggest.dismissTip" => "隱藏風格推薦",
+        "projects.openNoProject" => "已開啟，不屬於任何專案",
+        "quickSwitcher.placeholder" => "前往檔案或專案",
+        "quickSwitcher.empty" => "沒有相符的檔案",
         _ => return None,
     })
 }

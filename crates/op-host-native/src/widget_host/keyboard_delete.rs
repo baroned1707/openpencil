@@ -40,6 +40,14 @@ impl WidgetHostNative {
             return true;
         }
         if let Some(changed) =
+            op_editor_core::quick_switcher_keyboard::backspace(&mut self.editor_state, self.now_ms)
+        {
+            if changed {
+                self.mark_dirty();
+            }
+            return true;
+        }
+        if let Some(changed) =
             op_editor_core::project_rename_keyboard::backspace(&mut self.editor_state, self.now_ms)
         {
             if changed {
@@ -301,6 +309,15 @@ impl WidgetHostNative {
         if let Some(changed) =
             op_editor_core::save_name_keyboard::delete_forward(&mut self.editor_state, self.now_ms)
         {
+            if changed {
+                self.mark_dirty();
+            }
+            return true;
+        }
+        if let Some(changed) = op_editor_core::quick_switcher_keyboard::delete_forward(
+            &mut self.editor_state,
+            self.now_ms,
+        ) {
             if changed {
                 self.mark_dirty();
             }

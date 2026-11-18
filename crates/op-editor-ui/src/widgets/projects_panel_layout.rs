@@ -6,7 +6,9 @@
 //! so a painted row and its click target can never drift apart.
 
 use op_editor_core::project_rename::is_renamable;
-use op_editor_core::{ProjectRowTarget, ProjectScanState, ProjectView};
+use op_editor_core::{
+    loose_tab_indices, DocumentTabView, ProjectRowTarget, ProjectScanState, ProjectView,
+};
 
 use crate::{Point2D, Rect};
 
@@ -61,6 +63,10 @@ pub enum RowKind {
     /// the whole project. A row, not a header button, because the layout cannot
     /// measure text and the label carries a count.
     ConvertAll(usize, Option<usize>),
+    /// The label over the "Open, not in a project" section.
+    LooseHeader,
+    /// An open document no project lists, by its index in the open tabs.
+    LooseDoc(usize),
 }
 
 /// One laid-out row.
@@ -73,7 +79,9 @@ pub struct ProjectRow {
     pub plus: Option<Rect>,
     /// A header's refresh button: explicit projects, only while idle.
     pub refresh: Option<Rect>,
-    /// A header's close button: explicit projects only.
+    /// A header's close button (explicit projects only), or the close (x) of an
+    /// open file row or of an "Open, not in a project" row: it takes the trash
+    /// button's slot, because an open file cannot be trashed.
     pub close: Option<Rect>,
     /// The pencil button of an `.op` file row; `None` on every other row.
     pub rename: Option<Rect>,
@@ -113,6 +121,19 @@ impl ProjectsPanelLayout {
     /// "New design" row instead. A stale offset (the list shrank) is clamped,
     /// so the rows never float above the viewport.
     pub fn new(projects: &[ProjectView], panel: Rect, scroll_offset: f32) -> Self {
+        Self::with_tabs(projects, &[], panel, scroll_offset)
+    }
+
+    /// [`Self::new`] plus the open documents: the ones no project row stands
+    /// for (untitled, or outside every listed project) get an "Open, not in a
+    /// project" section after the last project, so each open document has a row.
+    pub fn with_tabs(
+        projects: &[ProjectView],
+        tabs: &[DocumentTabView],
+        panel: Rect,
+        scroll_offset: f32,
+    ) -> Self {
+        let loose = loose_tab_indices(projects, tabs);
         // `(kind, height, space above)` in paint order.
         let mut specs: Vec<(RowKind, f32, f32)> = Vec::new();
         for (index, project) in projects.iter().enumerate() {
@@ -164,6 +185,19 @@ impl ProjectsPanelLayout {
                 specs.push((RowKind::Status(index), STATUS_HEIGHT, 0.0));
             }
         }
+        if !loose.is_empty() {
+            let gap = if projects.is_empty() {
+                0.0
+            } else {
+                PROJECT_GAP
+            };
+            specs.push((RowKind::LooseHeader, HEADER_HEIGHT, gap));
+            specs.extend(
+                loose
+                    .iter()
+                    .map(|&tab| (RowKind::LooseDoc(tab), FILE_HEIGHT, 0.0)),
+            );
+        }
         let rows_height: f32 = specs.iter().map(|(_, height, gap)| height + gap).sum();
         let content_height = if specs.is_empty() {
             0.0
@@ -190,13 +224,29 @@ impl ProjectsPanelLayout {
                         // trashed: only its marker shows.
                         let live = view.filter(|file| !file.missing);
                         let renamable = live.is_some_and(is_renamable);
-                        let trashable = live.is_some_and(|file| file.removable);
+                        // An open file is closed, never trashed: the close (x)
+                        // takes the trash slot (or the pencil's, when there is
+                        // no pencil), whether or not the file is still on disk.
+                        let open = view.is_some_and(|file| file.open_id.is_some());
+                        let trashable = !open && live.is_some_and(|file| file.removable);
+                        let close = open.then(|| {
+                            if renamable {
+                                trash_button(rect)
+                            } else {
+                                rename_button(rect)
+                            }
+                        });
                         ProjectRow {
                             rename: renamable.then(|| rename_button(rect)),
                             trash: trashable.then(|| trash_button(rect)),
+                            close,
                             ..plain_row(kind, rect)
                         }
                     }
+                    RowKind::LooseDoc(_) => ProjectRow {
+                        close: Some(rename_button(rect)),
+                        ..plain_row(kind, rect)
+                    },
                     RowKind::Folder(project, file) => {
                         let accepts = projects.get(project).is_some_and(|view| {
                             view.files
@@ -212,7 +262,9 @@ impl ProjectsPanelLayout {
                 }
             })
             .collect();
-        let empty = projects.is_empty();
+        // The empty state offers "Open project"; a window with only loose
+        // documents has something to list instead.
+        let empty = projects.is_empty() && loose.is_empty();
         Self {
             panel,
             rows,
@@ -283,7 +335,9 @@ impl ProjectsPanelLayout {
                     }
                 }
                 RowKind::File(project, file) => {
-                    if row.trash.is_some_and(|button| button.contains(point)) {
+                    if row.close.is_some_and(|button| button.contains(point)) {
+                        ProjectRowTarget::CloseFile(project, file)
+                    } else if row.trash.is_some_and(|button| button.contains(point)) {
                         ProjectRowTarget::TrashFile(project, file)
                     } else if row.rename.is_some_and(|button| button.contains(point)) {
                         ProjectRowTarget::RenameFile(project, file)
@@ -291,12 +345,19 @@ impl ProjectsPanelLayout {
                         ProjectRowTarget::File(project, file)
                     }
                 }
+                RowKind::LooseDoc(tab) => {
+                    if row.close.is_some_and(|button| button.contains(point)) {
+                        ProjectRowTarget::CloseOpenDocument(tab)
+                    } else {
+                        ProjectRowTarget::OpenDocument(tab)
+                    }
+                }
                 RowKind::NewDesign(project) => ProjectRowTarget::NewDesignRow(project),
                 RowKind::ConvertAll(project, folder) => {
                     ProjectRowTarget::ConvertAll(project, folder)
                 }
                 // Status lines are text, not targets.
-                RowKind::Status(_) | RowKind::NoDesigns(_) => return None,
+                RowKind::Status(_) | RowKind::NoDesigns(_) | RowKind::LooseHeader => return None,
             })
         })
     }

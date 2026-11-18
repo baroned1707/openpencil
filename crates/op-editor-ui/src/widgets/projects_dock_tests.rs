@@ -39,6 +39,8 @@ const TEXT: ProjectsPanelText<'static> = ProjectsPanelText {
     cancel: "Cancel",
     new_here: "New design here",
     not_on_disk: "not on disk",
+    close_file: "Close",
+    open_no_project: "Open, not in a project",
 };
 
 fn paint(
@@ -56,6 +58,7 @@ fn paint(
     ProjectsDock {
         list: ProjectsPanel {
             projects,
+            tabs: &[],
             hover: None,
             rename: None,
             trash_confirm: None,

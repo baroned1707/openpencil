@@ -152,6 +152,10 @@ pub mod preview_slideshow;
 pub mod project_rename;
 pub mod project_rename_keyboard;
 pub mod project_trash;
+pub mod quick_switcher;
+pub mod quick_switcher_keyboard;
+pub mod quick_switcher_match;
+pub use quick_switcher::{QuickSwitcherRow, QuickSwitcherState, QuickSwitcherTarget};
 pub mod project_tree;
 pub mod prompt_center_catalog;
 pub mod prompt_center_keyboard;
@@ -182,8 +186,8 @@ pub use project_rename::{
     ProjectRenameRequest, ProjectRenameState, RenameConfirm, RenameNameError,
 };
 pub use project_tree::{
-    in_folder_tree, FigStatus, ProjectFileKind, ProjectFileView, ProjectRequest, ProjectRowTarget,
-    ProjectScanState, ProjectView,
+    in_folder_tree, loose_tab_indices, FigStatus, ProjectFileKind, ProjectFileView, ProjectRequest,
+    ProjectRowTarget, ProjectScanState, ProjectView,
 };
 pub mod state;
 pub mod statusbar_state;

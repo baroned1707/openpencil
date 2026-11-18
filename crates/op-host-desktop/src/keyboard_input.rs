@@ -8,6 +8,10 @@ use winit::keyboard::{Key, NamedKey};
 
 pub(crate) use crate::keyboard_clipboard_payload::ClipboardPayload;
 
+// The Cmd+K quick switcher's modal keys.
+#[path = "keyboard_quick_switcher.rs"]
+mod keyboard_quick_switcher;
+
 impl DesktopApp {
     /// Dispatch a pressed key (`logical_key` + its `text`) — the
     /// editor's keyboard-shortcut table. Called from the winit
@@ -20,6 +24,11 @@ impl DesktopApp {
         // `keyboard_presenting`.
         if self.handle_presenting_key(logical_key) {
             self.request_redraw(true);
+            return;
+        }
+        // The Cmd+K quick switcher is modal while open: it takes its own keys
+        // (`keyboard_quick_switcher`) and swallows the other chords.
+        if self.handle_quick_switcher_key(logical_key) {
             return;
         }
         let mut consumed = false;
@@ -293,6 +302,8 @@ impl DesktopApp {
                         "a" => consumed = self.host.apply_select_all(),
                         _ if image_popover_open || rename_open => consumed = true,
                         _ if settings_focused => {}
+                        // Cmd+K opens the quick switcher (file / document search).
+                        "k" => consumed = self.host.apply_toggle_quick_switcher(),
                         // Cmd+P mirrors the TopBar Preview button.
                         "p" => {
                             consumed = self.host.toggle_preview_with_cached_viewport();

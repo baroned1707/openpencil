@@ -31,7 +31,7 @@ impl WidgetHostNative {
         }
         let ui = &self.editor_state.ui;
         self.editor_state.editor_ui.save_name_dialog.open
-            || self.editor_state.editor_ui.projects_panel.rename.is_some()
+            || self.editor_state.editor_ui.projects_panel.owns_keyboard()
             || self.editor_state.editor_ui.collab_join_input_active()
             || ui.layer_rename.is_some()
             || ui.text_editing.is_some()
@@ -580,6 +580,10 @@ impl WidgetHostNative {
     }
 
     fn apply_cursor_move_inner(&mut self, x: f32, y: f32) -> bool {
+        // The open quick switcher owns the cursor.
+        if let Some(changed) = self.cursor_move_quick_switcher(x, y) {
+            return changed;
+        }
         if let Some(changed) = self.update_agent_settings_touch_gesture(x, y) {
             return changed;
         }

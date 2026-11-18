@@ -26,7 +26,9 @@ use crate::walkers::ReorderDirection;
 use crate::Tool;
 
 mod document_tab_shortcuts;
-pub use document_tab_shortcuts::{close_document_tab_shortcut, document_tab_shortcut};
+pub use document_tab_shortcuts::{
+    close_document_tab_shortcut, document_tab_shortcut, shortcut_digit_for,
+};
 
 pub use crate::prompt_center_keyboard::{
     backspace as prompt_center_backspace, delete_forward as prompt_center_delete_forward,
