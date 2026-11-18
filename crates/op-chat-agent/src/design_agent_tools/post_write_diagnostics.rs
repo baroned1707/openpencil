@@ -9,10 +9,14 @@
 //! (`op-host-services/src/mcp_serve/write_diagnostics.rs`) both call it, so an
 //! external agent sees exactly what the built-in one sees.
 //!
-//! The in-app caller passes no caps and gets the full, unabbreviated result.
 //! The MCP caller passes [`MCP_FEEDBACK_CAPS`]: a bounded number of short
 //! lines per key and a byte budget for the whole appendix, because the result
-//! rides inside an external agent's context window.
+//! rides inside an external agent's context window. The in-app loop passes the
+//! looser [`IN_APP_FEEDBACK_CAPS`]: its context window is just as finite (every
+//! batch result is re-sent on every later turn), but it sees more lines per key.
+//! Caps only shape what the MODEL sees: the loop's completion gate
+//! (`loop_blocker_ledger::detect_blockers`) recomputes its blockers from the
+//! live document, never from this feedback.
 
 use serde_json::{json, Map, Value};
 
@@ -39,6 +43,10 @@ pub struct FeedbackCaps {
     pub max_item_chars: usize,
     /// The whole appendix, serialized, stays within this many bytes.
     pub max_total_bytes: usize,
+    /// `contrastIssues` as one short line each (external agents), or as the
+    /// structured objects (nodeId, fg, bg, ratio, target) the in-app loop
+    /// reads, capped in count only.
+    pub contrast_as_lines: bool,
 }
 
 /// The caps every external MCP write result is held to.
@@ -46,10 +54,22 @@ pub const MCP_FEEDBACK_CAPS: FeedbackCaps = FeedbackCaps {
     max_items: 12,
     max_item_chars: 240,
     max_total_bytes: 4096,
+    contrast_as_lines: true,
+};
+
+/// The caps the in-app design loop's write results are held to: looser than
+/// [`MCP_FEEDBACK_CAPS`] (20 lines per key, 8 KB) because the loop repairs
+/// from these lines, but bounded, because every batch result rides in the
+/// conversation of all later turns.
+pub const IN_APP_FEEDBACK_CAPS: FeedbackCaps = FeedbackCaps {
+    max_items: 20,
+    max_item_chars: 400,
+    max_total_bytes: 8192,
+    contrast_as_lines: false,
 };
 
 /// Keys whose value is a list of items, in the order the envelope lists them.
-const LIST_KEYS: [&str; 9] = [
+pub(crate) const LIST_KEYS: [&str; 9] = [
     "layoutIssues",
     "iconIssues",
     "fontIssues",
@@ -134,9 +154,14 @@ pub fn post_write_diagnostics(
         ] {
             truncated |= cap_lines(list, caps);
         }
-        let mut lines: Vec<String> = contrast_issues.iter().map(contrast_line).collect();
-        truncated |= cap_lines(&mut lines, caps);
-        contrast_value = json!(lines);
+        if caps.contrast_as_lines {
+            let mut lines: Vec<String> = contrast_issues.iter().map(contrast_line).collect();
+            truncated |= cap_lines(&mut lines, caps);
+            contrast_value = json!(lines);
+        } else {
+            truncated |= contrast_issues.len() > caps.max_items;
+            contrast_value = json!(&contrast_issues[..contrast_issues.len().min(caps.max_items)]);
+        }
     }
 
     let mut insert_list = |key: &str, items: Vec<String>| {

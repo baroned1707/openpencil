@@ -271,7 +271,7 @@ pub fn execute_design_tool_with_root_seed_guard(
                 structure_notes,
                 root_seed_hint,
             },
-            None,
+            Some(&IN_APP_FEEDBACK_CAPS),
         );
         if !feedback.is_empty() {
             if let Ok(mut envelope) = serde_json::from_str::<serde_json::Value>(&result.content) {
@@ -438,7 +438,8 @@ fn design_tool_registry(state: &EditorState, requested: &str) -> ToolRegistry {
     let mut r = ToolRegistry::default();
     match requested {
         "get_editor_state" => r.register(Box::new(op_mcp::get_editor_state_snapshot(state))),
-        "get_guidelines" => r.register(Box::new(op_mcp::get_guidelines_snapshot())),
+        // The loop has no `finalize_design`; its guideline text must not ask for it.
+        "get_guidelines" => r.register(Box::new(op_mcp::get_guidelines_in_app_snapshot())),
         "get_style_guide_tags" => r.register(Box::new(op_mcp::get_style_guide_tags_snapshot())),
         "get_style_guide" => r.register(Box::new(op_mcp::get_style_guide_snapshot())),
         "get_variables" => r.register(Box::new(op_mcp::get_variables_snapshot(state))),

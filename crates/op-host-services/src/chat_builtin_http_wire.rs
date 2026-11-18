@@ -32,6 +32,17 @@ pub(crate) async fn pump_sse_response(
     tx: &mpsc::Sender<ChatDelta>,
     parse: fn(&str) -> Option<ChatDelta>,
 ) -> Result<bool, BuiltinHttpError> {
+    pump_sse_response_with_usage(resp, tx, parse, None).await
+}
+
+/// [`pump_sse_response`] that also reads Anthropic `usage` from the stream's
+/// `message_start` / `message_delta` payloads into `usage` (when given).
+pub(crate) async fn pump_sse_response_with_usage(
+    resp: reqwest::Response,
+    tx: &mpsc::Sender<ChatDelta>,
+    parse: fn(&str) -> Option<ChatDelta>,
+    mut usage: Option<&mut op_ai::chat_usage::RunUsage>,
+) -> Result<bool, BuiltinHttpError> {
     let mut stream = resp.bytes_stream();
     let mut buf = Vec::<u8>::new();
     let mut event_data = String::new();
@@ -50,7 +61,7 @@ pub(crate) async fn pump_sse_response(
             let line = String::from_utf8_lossy(&line);
             let line = line.trim_end_matches('\n').trim_end_matches('\r');
             if line.is_empty() {
-                if emit_sse_event(&mut event_data, tx, parse).await {
+                if emit_sse_event(&mut event_data, tx, parse, usage.as_deref_mut()).await {
                     emitted_done = true;
                     break;
                 }
@@ -78,7 +89,7 @@ pub(crate) async fn pump_sse_response(
             event_data.push_str(data.trim_start());
         }
     }
-    if !emitted_done && emit_sse_event(&mut event_data, tx, parse).await {
+    if !emitted_done && emit_sse_event(&mut event_data, tx, parse, usage.as_deref_mut()).await {
         emitted_done = true;
     }
 
@@ -89,11 +100,15 @@ async fn emit_sse_event(
     event_data: &mut String,
     tx: &mpsc::Sender<ChatDelta>,
     parse: fn(&str) -> Option<ChatDelta>,
+    usage: Option<&mut op_ai::chat_usage::RunUsage>,
 ) -> bool {
     let data = event_data.trim();
     if data.is_empty() {
         event_data.clear();
         return false;
+    }
+    if let Some(usage) = usage {
+        usage.observe_anthropic_event(data);
     }
     let Some(delta) = parse(data) else {
         event_data.clear();

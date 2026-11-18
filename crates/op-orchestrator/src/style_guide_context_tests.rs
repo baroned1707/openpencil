@@ -519,3 +519,26 @@ fn pinned_mobile_metadata_carries_both_recipe_names() {
         ctx.available_style_guides
     );
 }
+
+/// The design loop's pin block comes from the sub-agent's own builder, is
+/// bounded, and a missing or stale pin yields nothing.
+#[test]
+fn the_loop_gets_the_sub_agents_pin_block_within_its_bound() {
+    assert!(pinned_style_guide_prompt(None, None, 6144).is_none());
+    assert!(pinned_style_guide_prompt(Some("  "), None, 6144).is_none());
+    assert!(pinned_style_guide_prompt(Some("no-such-guide-anywhere"), None, 6144).is_none());
+
+    let full = pinned_style_guide_prompt(Some("dark-bold-mobile"), None, usize::MAX)
+        .expect("a corpus guide resolves");
+    assert_eq!(full.id, "dark-bold-mobile");
+    assert!(full.instruction.starts_with("VISUAL STYLE GUIDE"));
+    // Over the bound: the Standard summary (exact palette kept), never a cut guide.
+    let bounded = pinned_style_guide_prompt(Some("dark-bold-mobile"), None, 3000)
+        .expect("a corpus guide resolves");
+    assert!(bounded.instruction.len() <= 3000);
+    if full.instruction.len() > 3000 {
+        assert!(bounded
+            .instruction
+            .starts_with("VISUAL STYLE GUIDE SUMMARY"));
+    }
+}

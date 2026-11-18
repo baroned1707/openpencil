@@ -14,6 +14,7 @@
 //! and the browser-credential policy (`web_dial_policy_for`) — those stay in
 //! `op-host-services`, which remains the daemon-side owner.
 
+pub mod anthropic_cache;
 pub mod blocking_recv;
 pub mod chat_agent_context;
 pub mod chat_agent_loop;
@@ -25,6 +26,8 @@ pub mod chat_tool_result;
 pub mod design_agent_diagnostics;
 pub mod design_agent_tools;
 pub mod design_context;
+pub mod design_loop_prompt;
+pub mod design_run_executor;
 pub mod ip_screen;
 pub mod loop_blocker_ledger;
 pub mod provider_dial;

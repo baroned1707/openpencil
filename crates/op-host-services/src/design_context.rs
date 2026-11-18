@@ -3,3 +3,4 @@
 //! product-consistency context; existing paths stay valid.
 
 pub use op_chat_agent::design_context::*;
+pub use op_chat_agent::design_loop_prompt::{design_loop_system_prompt, design_user_context_block};

@@ -46,12 +46,19 @@ pub(super) use op_ai::chat_tool_sse::AnthropicToolCollector as AnthropicCollecto
 /// inner normal-exit path already finalized (those paths return `Ok`, so
 /// this wrapper's backstop only fires on the exact paths that skipped it).
 pub async fn run_anthropic_agent_loop(
-    cfg: AgentLoopConfig,
+    mut cfg: AgentLoopConfig,
     tx: &mpsc::Sender<ChatDelta>,
 ) -> Result<bool, BuiltinHttpError> {
+    shape_executor_for_run(&mut cfg);
     let executor = cfg.executor.clone();
     let enabled = cfg.finalize_on_exit;
-    let result = run_anthropic_agent_loop_inner(cfg, tx).await;
+    let mut usage = op_ai::chat_usage::RunUsage::default();
+    let result = run_anthropic_agent_loop_inner(cfg, tx, &mut usage).await;
+    // ONE line per run, on every exit (normal, cap, error): the real token
+    // cost, including the prompt-cache write / read split.
+    if usage.turns > 0 {
+        eprintln!("{}", usage.log_line());
+    }
     if result.is_err() {
         run_loop_finalize(&executor, enabled).await;
         emit_finalize_diagnostic(tx, enabled, "loop-exit").await;
@@ -77,9 +84,51 @@ fn assistant_turn_content(collector: &AnthropicCollector) -> Value {
     }
 }
 
+/// The request body of ONE Anthropic turn. Built from the persistent
+/// `messages` every turn, so cache markers (applied to this copy only) never
+/// accumulate in the conversation. `tools` and `system` come out byte-identical
+/// from turn to turn of a run: nothing volatile may be added to them, because
+/// prompt caching keys on the exact prefix.
+pub(super) fn anthropic_turn_body(
+    cfg: &AgentLoopConfig,
+    tools_json: &[Value],
+    messages: &[Value],
+) -> Value {
+    let mut body = json!({
+        "model": cfg.model,
+        "max_tokens": cfg.max_output_tokens,
+        "stream": true,
+        "messages": messages,
+        "tools": tools_json,
+    });
+    if !cfg.system_prompt.trim().is_empty() {
+        body.as_object_mut()
+            .expect("anthropic request body is object")
+            .insert("system".into(), json!(cfg.system_prompt));
+    }
+    // Turn OFF hidden reasoning for the families that can express it on
+    // this wire — the empty-canvas postmortem: the OpenAI-compat loop
+    // applied this control and the Anthropic loop did not, so a
+    // reasoning model on its Anthropic-compatible endpoint burned the
+    // whole turn budget on thinking and never emitted `batch_design`
+    // (see `apply_reasoning_wire_control_anthropic`'s doc).
+    crate::chat_builtin_http::apply_reasoning_wire_control_anthropic(
+        &mut body,
+        &cfg.model,
+        cfg.disable_thinking,
+    );
+    // Prompt caching: first-party Anthropic only (see `anthropic_cache`).
+    crate::anthropic_cache::apply_anthropic_cache_control(
+        &mut body,
+        crate::anthropic_cache::anthropic_cache_enabled_for_url(&cfg.url),
+    );
+    body
+}
+
 pub(super) async fn run_anthropic_agent_loop_inner(
     cfg: AgentLoopConfig,
     tx: &mpsc::Sender<ChatDelta>,
+    usage: &mut op_ai::chat_usage::RunUsage,
 ) -> Result<bool, BuiltinHttpError> {
     let tools_json: Vec<Value> = cfg
         .tools
@@ -180,29 +229,7 @@ pub(super) async fn run_anthropic_agent_loop_inner(
             // round for the common case.
         }
 
-        let mut body = json!({
-            "model": cfg.model,
-            "max_tokens": cfg.max_output_tokens,
-            "stream": true,
-            "messages": messages,
-            "tools": tools_json,
-        });
-        if !cfg.system_prompt.trim().is_empty() {
-            body.as_object_mut()
-                .expect("anthropic request body is object")
-                .insert("system".into(), json!(cfg.system_prompt));
-        }
-        // Turn OFF hidden reasoning for the families that can express it on
-        // this wire — the empty-canvas postmortem: the OpenAI-compat loop
-        // applied this control and the Anthropic loop did not, so a
-        // reasoning model on its Anthropic-compatible endpoint burned the
-        // whole turn budget on thinking and never emitted `batch_design`
-        // (see `apply_reasoning_wire_control_anthropic`'s doc).
-        crate::chat_builtin_http::apply_reasoning_wire_control_anthropic(
-            &mut body,
-            &cfg.model,
-            cfg.disable_thinking,
-        );
+        let body = anthropic_turn_body(&cfg, &tools_json, &messages);
         let client = crate::provider_dial::client_for(cfg.dial_policy, &cfg.url).await?;
         let (max_retries, min_gap) = crate::chat_builtin_http::default_backoff_knobs();
         let resp = crate::chat_builtin_http::send_with_backoff(
@@ -220,7 +247,12 @@ pub(super) async fn run_anthropic_agent_loop_inner(
         )
         .await?;
         let mut collector = AnthropicCollector::default();
-        pump_sse(resp, tx, &mut collector).await?;
+        let pumped = pump_sse(resp, tx, &mut collector).await;
+        // Count what this response reported even when its stream failed late.
+        let mut turn_usage = collector.usage;
+        turn_usage.turns = 1;
+        usage.add_turn(&turn_usage);
+        pumped?;
         if tx.is_closed() {
             return Ok(true);
         }

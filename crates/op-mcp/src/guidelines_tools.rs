@@ -9,7 +9,7 @@ use std::collections::BTreeMap;
 use op_ai_skills::resolve_style::{
     resolve_style, Fonts, ResolveOutcome, Shadow, StyleGuide, StyleParams, TokenMap,
 };
-use op_ai_skills::{guideline_for, guideline_topics};
+use op_ai_skills::{guideline_for_surface, guideline_topics, PromptSurface};
 
 use super::{McpTool, ToolErrorCode, ToolOutcome};
 
@@ -21,7 +21,15 @@ use super::{McpTool, ToolErrorCode, ToolOutcome};
 /// `guideline_topics_hint`). Unknown topics return the same error envelope
 /// shape as `get_style_guide` on a bad argument — `ToolOutcome::Ok` with an
 /// `"error"` key in the result map (not a JSON-RPC transport error).
-pub struct GetGuidelines;
+///
+/// The same tool serves two audiences. An external MCP agent has
+/// `finalize_design`, so its guideline text ends with the instruction to call
+/// it ([`get_guidelines_snapshot`]); the in-app design loop does not have that
+/// tool (the host finalizes when the loop ends), so its guideline text must not
+/// mention it ([`get_guidelines_in_app_snapshot`]).
+pub struct GetGuidelines {
+    surface: PromptSurface,
+}
 
 impl McpTool for GetGuidelines {
     fn name(&self) -> &str {
@@ -37,7 +45,7 @@ impl McpTool for GetGuidelines {
             .to_ascii_lowercase();
 
         match category.as_str() {
-            "guide" => call_guide(args),
+            "guide" => call_guide(args, self.surface),
             "style" => call_style(args),
             other => ToolOutcome::Err(
                 ToolErrorCode::InvalidArgument,
@@ -56,7 +64,7 @@ fn guideline_topics_hint() -> String {
     guideline_topics().join(", ")
 }
 
-fn call_guide(args: &BTreeMap<String, String>) -> ToolOutcome {
+fn call_guide(args: &BTreeMap<String, String>, surface: PromptSurface) -> ToolOutcome {
     let topic = match args.get("topic").map(String::as_str) {
         Some(t) if !t.trim().is_empty() => t.trim(),
         _ => {
@@ -70,7 +78,7 @@ fn call_guide(args: &BTreeMap<String, String>) -> ToolOutcome {
         }
     };
 
-    match guideline_for(topic) {
+    match guideline_for_surface(topic, surface) {
         Some(content) => {
             let mut out = BTreeMap::new();
             out.insert("topic".into(), topic.to_string());
@@ -262,8 +270,20 @@ fn join_or_none(values: &[String]) -> String {
 }
 
 /// Snapshot constructor — mirrors `get_style_guide_snapshot` convention.
+/// The MCP-facing tool: guideline text tells the agent to call
+/// `finalize_design`.
 pub fn get_guidelines_snapshot() -> GetGuidelines {
-    GetGuidelines
+    GetGuidelines {
+        surface: PromptSurface::Mcp,
+    }
+}
+
+/// The in-app design loop's tool: identical guideline text without the
+/// `finalize_design` instruction (the loop has no such tool).
+pub fn get_guidelines_in_app_snapshot() -> GetGuidelines {
+    GetGuidelines {
+        surface: PromptSurface::InApp,
+    }
 }
 
 #[cfg(test)]
@@ -275,6 +295,36 @@ mod tests {
         let mut args = BTreeMap::new();
         args.insert("topic".into(), topic.into());
         get_guidelines_snapshot().call(&args)
+    }
+
+    fn guide_content(tool: &GetGuidelines, topic: &str) -> String {
+        let args = BTreeMap::from([("topic".to_string(), topic.to_string())]);
+        match tool.call(&args) {
+            ToolOutcome::Ok(out) => out.get("content").cloned().expect("content"),
+            other => panic!("expected Ok, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn mcp_guidelines_still_tell_agents_to_call_finalize_design() {
+        for topic in guideline_topics() {
+            let text = guide_content(&get_guidelines_snapshot(), topic);
+            assert!(
+                text.ends_with("call `finalize_design` once — it runs the same repair passes the built-in pipeline applies."),
+                "MCP guideline {topic:?} lost its finalize_design instruction"
+            );
+        }
+    }
+
+    #[test]
+    fn in_app_guidelines_do_not_mention_finalize_design() {
+        for topic in guideline_topics() {
+            let text = guide_content(&get_guidelines_in_app_snapshot(), topic);
+            assert!(!text.contains("finalize_design"), "in-app {topic:?}");
+            // Same body as MCP up to the appended sentence.
+            let mcp = guide_content(&get_guidelines_snapshot(), topic);
+            assert!(mcp.starts_with(&text), "{topic:?} bodies diverged");
+        }
     }
 
     fn style_args() -> BTreeMap<String, String> {
@@ -366,7 +416,7 @@ mod tests {
                 );
                 assert_eq!(
                     out.get("content"),
-                    op_ai_skills::guideline_for("web-app").as_ref(),
+                    op_ai_skills::guideline_for_surface("web-app", PromptSurface::Mcp).as_ref(),
                     "default guide path should return the same guideline content"
                 );
             }

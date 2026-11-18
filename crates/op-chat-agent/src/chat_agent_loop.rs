@@ -82,6 +82,18 @@ impl AgentLoopConfig {
 // Re-exported unchanged so existing `chat_agent_loop::` paths still resolve.
 pub use op_ai::chat_tool_sse::{normalized_args, tool_card_envelope, PendingToolCall};
 
+/// A design-loop run (`finalize_on_exit`) gets its executor wrapped so what the
+/// model sees stays lean across the run (see
+/// [`crate::design_run_executor::DesignRunExecutor`]). Plain chat is untouched.
+fn shape_executor_for_run(cfg: &mut AgentLoopConfig) {
+    if cfg.finalize_on_exit {
+        cfg.executor = crate::design_run_executor::DesignRunExecutor::wrap(
+            cfg.executor.clone(),
+            &cfg.system_prompt,
+        );
+    }
+}
+
 /// Run one tool call through the executor on a blocking thread (the
 /// executor blocks on the UI ack; never block the runtime directly).
 async fn execute_tool(
@@ -504,3 +516,7 @@ mod zero_write_tests;
 #[cfg(test)]
 #[path = "chat_agent_loop_wire_tests.rs"]
 mod wire_tests;
+
+#[cfg(test)]
+#[path = "chat_agent_loop_cache_tests.rs"]
+mod cache_tests;

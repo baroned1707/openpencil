@@ -180,15 +180,7 @@ pub(super) fn build_subagent_prompt_core_with_outcomes(
     let design_md_content = req
         .design_md
         .as_ref()
-        .map(|spec| {
-            let structured = build_design_md_style_policy(spec);
-            let structured = structured.trim();
-            if structured.is_empty() {
-                spec.raw.trim().to_string()
-            } else {
-                structured.to_string()
-            }
-        })
+        .map(crate::design_md_policy::design_md_prompt_text)
         .unwrap_or_default();
     let has_design_md = !design_md_content.is_empty();
     // Rust `OrchestratorPlan` carries only the style-guide NAME (the TS

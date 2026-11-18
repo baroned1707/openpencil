@@ -6,7 +6,9 @@
 
 use std::collections::BTreeMap;
 
-use op_ai_skills::{design_agent_system_prompt_with_skills_for, DesignVerifyProtocol};
+use op_ai_skills::{
+    design_agent_system_prompt_with_skills_for_surface, DesignVerifyProtocol, PromptSurface,
+};
 
 use super::{McpTool, ToolErrorCode, ToolOutcome};
 
@@ -44,7 +46,12 @@ impl McpTool for GetDesignAgentPrompt {
             }
         };
         let result = serde_json::json!({
-            "prompt": design_agent_system_prompt_with_skills_for(user_message, verify),
+            // An external agent has `finalize_design`; the in-app loop does not.
+            "prompt": design_agent_system_prompt_with_skills_for_surface(
+                user_message,
+                verify,
+                PromptSurface::Mcp,
+            ),
             "verifyProtocol": verify_name,
         });
         ToolOutcome::OkJson(result.to_string())
@@ -92,6 +99,18 @@ mod tests {
         let prompt = value["prompt"].as_str().expect("prompt string");
         assert!(prompt.contains("This host cannot render screenshots"));
         assert!(prompt.contains("THREE-SECTION ARCHITECTURE"));
+    }
+
+    #[test]
+    fn external_agents_are_told_to_call_finalize_design() {
+        let args = BTreeMap::from([("userMessage".to_string(), "Design a page".to_string())]);
+        let ToolOutcome::OkJson(json) = get_design_agent_prompt_snapshot().call(&args) else {
+            panic!("expected nested JSON prompt result");
+        };
+        let value: serde_json::Value = serde_json::from_str(&json).expect("prompt JSON");
+        let prompt = value["prompt"].as_str().expect("prompt string");
+        assert!(prompt.contains("call `finalize_design` once"));
+        assert!(!prompt.contains("The host finalizes the design"));
     }
 
     #[test]

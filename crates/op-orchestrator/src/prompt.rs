@@ -12,7 +12,6 @@
 
 use crate::compact_prompt::build_compact_planning_prompt;
 use crate::compact_skills::{apply_skill_filter, SkillNamed};
-use crate::design_md_policy::build_design_md_style_policy;
 use crate::design_type::{detect_design_type, DesignType};
 use crate::model_profile::{resolve_model_profile, ModelTier};
 use crate::plan::{OrchestratorPlan, Subtask};

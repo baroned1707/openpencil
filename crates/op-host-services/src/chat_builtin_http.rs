@@ -40,7 +40,7 @@ pub use op_chat_agent::chat_builtin_http::BuiltinHttpError;
 
 pub(crate) use crate::chat_builtin_http_wire::{
     normalize_provider_base_url, parse_anthropic_sse_data, parse_openai_sse_data,
-    provider_endpoint, pump_sse_response,
+    provider_endpoint, pump_sse_response, pump_sse_response_with_usage,
 };
 // `apply_reasoning_wire_control` is public so the headless benchmark harness
 // (op-smoke) builds its request body through the SAME entry point the live
@@ -300,7 +300,12 @@ impl ConfiguredBuiltinProvider {
                 .into_iter(),
             );
         }
-        let (mut prompt, guard) = if joined {
+        // A tool-loop turn (executor present) also carries its images natively:
+        // the loop builds the first user message from `AgentLoopConfig::
+        // attachments`. Spilling them to temp files would only add
+        // `[attached image: /tmp/..]` lines a remote model cannot open.
+        let native_attachments = joined || self.executor.is_some();
+        let (mut prompt, guard) = if native_attachments {
             // Native image bytes ride the HTTP body below. A remote vision
             // model cannot inspect a local file path written into text.
             (request.user_message.clone(), None)
@@ -353,6 +358,7 @@ impl ConfiguredBuiltinProvider {
         let provider = self.clone();
         let system_prompt = request.system_prompt;
         let history = request.history;
+        let attachments = request.attachments;
         let max_output_tokens = request.max_output_tokens.max(1);
         // Only force MiniMax thinking off when the CALLER asked for it
         // (the orchestrator sets `Disabled`; normal chat defaults to
@@ -390,7 +396,7 @@ impl ConfiguredBuiltinProvider {
                     system_prompt,
                     history,
                     user_prompt: prompt,
-                    attachments: Vec::new(),
+                    attachments,
                     max_output_tokens,
                     tools: provider.tools.clone(),
                     executor,
@@ -533,6 +539,33 @@ async fn run_openai_chat(
     pump_sse_response(resp, tx, parse_openai_sse_data).await
 }
 
+/// The request body of one non-loop Anthropic turn. Prompt caching applies
+/// only for first-party Anthropic (`url` host exactly `api.anthropic.com`).
+pub(crate) fn anthropic_chat_body(
+    model: &str,
+    max_output_tokens: u32,
+    messages: Vec<Value>,
+    system_prompt: &str,
+    url: &str,
+) -> Value {
+    let mut body = json!({
+        "model": model,
+        "max_tokens": max_output_tokens,
+        "stream": true,
+        "messages": messages,
+    });
+    if !system_prompt.trim().is_empty() {
+        body.as_object_mut()
+            .expect("anthropic request body is object")
+            .insert("system".into(), json!(system_prompt));
+    }
+    op_chat_agent::anthropic_cache::apply_anthropic_cache_control(
+        &mut body,
+        op_chat_agent::anthropic_cache::anthropic_cache_enabled_for_url(url),
+    );
+    body
+}
+
 async fn run_anthropic_chat(
     provider: ConfiguredBuiltinProvider,
     system_prompt: String,
@@ -549,17 +582,13 @@ async fn run_anthropic_chat(
         .map(|(role, text)| json!({ "role": role.as_str(), "content": text }))
         .collect();
     messages.push(json!({ "role": "user", "content": user_content }));
-    let mut body = json!({
-        "model": provider.model,
-        "max_tokens": max_output_tokens,
-        "stream": true,
-        "messages": messages,
-    });
-    if !system_prompt.trim().is_empty() {
-        body.as_object_mut()
-            .expect("anthropic request body is object")
-            .insert("system".into(), json!(system_prompt));
-    }
+    let body = anthropic_chat_body(
+        &provider.model,
+        max_output_tokens,
+        messages,
+        &system_prompt,
+        &url,
+    );
     let client = provider.dial_client(&url).await?;
     let resp = send_with_backoff(
         "anthropic",
@@ -575,7 +604,13 @@ async fn run_anthropic_chat(
         },
     )
     .await?;
-    pump_sse_response(resp, tx, parse_anthropic_sse_data).await
+    let mut usage = op_ai::chat_usage::RunUsage::default();
+    let result =
+        pump_sse_response_with_usage(resp, tx, parse_anthropic_sse_data, Some(&mut usage)).await;
+    if usage.turns > 0 {
+        eprintln!("{}", usage.log_line());
+    }
+    result
 }
 
 #[cfg(test)]
@@ -593,3 +628,11 @@ mod vision_tests;
 #[cfg(test)]
 #[path = "chat_builtin_http_joined_tests.rs"]
 mod joined_tests;
+
+#[cfg(test)]
+#[path = "chat_builtin_http_loop_attachment_tests.rs"]
+mod loop_attachment_tests;
+
+#[cfg(test)]
+#[path = "chat_builtin_http_cache_tests.rs"]
+mod cache_tests;

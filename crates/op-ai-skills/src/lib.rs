@@ -169,14 +169,69 @@ fn compose_skills(names: &[&str]) -> Option<String> {
 ///
 /// Returns `None` for any unrecognised topic so callers can produce a typed
 /// "unknown topic" error without special-casing the string themselves.
+///
+/// This is the IN-APP text (the design loop and its sub-agents): the loop is
+/// not given `finalize_design` — the host finalizes when the loop ends — so
+/// the text never tells the model to call it. External MCP agents do have the
+/// tool; their entry point is [`guideline_for_surface`] with
+/// [`PromptSurface::Mcp`].
 pub fn guideline_for(topic: &str) -> Option<String> {
+    guideline_for_surface(topic, PromptSurface::InApp)
+}
+
+/// Who reads a prompt or guideline text, because the two surfaces own
+/// different tools: the in-app design loop has no `finalize_design` (the host
+/// runs it when the loop ends), an external MCP agent does and must call it.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum PromptSurface {
+    /// The in-app design loop and its sub-agents.
+    InApp,
+    /// An external agent driving the MCP tools.
+    Mcp,
+}
+
+/// The sentence that closes the design protocol / a guideline, per surface.
+const FINALIZE_NOTE_IN_APP: &str =
+    "The host finalizes the design when your loop ends; you do not call a finalize tool.";
+const FINALIZE_NOTE_MCP: &str = "When you are done, call `finalize_design` once — it runs the same repair passes the built-in pipeline applies.";
+
+fn finalize_note(surface: PromptSurface) -> &'static str {
+    match surface {
+        PromptSurface::InApp => FINALIZE_NOTE_IN_APP,
+        PromptSurface::Mcp => FINALIZE_NOTE_MCP,
+    }
+}
+
+/// [`guideline_for`] for an explicit surface. The MCP surface appends the
+/// `finalize_design` instruction; the in-app surface returns the bare text.
+pub fn guideline_for_surface(topic: &str, surface: PromptSurface) -> Option<String> {
     let (_, _, skill_names) = GUIDELINE_TOPICS
         .iter()
         .find(|(name, aliases, _)| *name == topic || aliases.contains(&topic))?;
     compose_skills(skill_names).map(|mut guideline| {
-        guideline.push_str("\n\nWhen you are done, call finalize_design once — it runs the same repair passes the built-in pipeline applies.");
+        if surface == PromptSurface::Mcp {
+            guideline.push_str("\n\n");
+            guideline.push_str(FINALIZE_NOTE_MCP);
+        }
         guideline
     })
+}
+
+/// The skill texts a guideline topic is composed from (aliases resolve), in
+/// composition order. Empty for an unknown topic. Lets a caller that holds
+/// the final system prompt check whether the topic is already in it.
+pub fn guideline_components(topic: &str) -> Vec<String> {
+    let Some((_, _, skill_names)) = GUIDELINE_TOPICS
+        .iter()
+        .find(|(name, aliases, _)| *name == topic || aliases.contains(&topic))
+    else {
+        return Vec::new();
+    };
+    skill_names
+        .iter()
+        .filter_map(|&n| get_skill_by_name(n).map(|s| s.content.trim().to_string()))
+        .filter(|c| !c.is_empty())
+        .collect()
 }
 
 /// The primary name of every topic [`guideline_for`] accepts, in table
@@ -192,6 +247,7 @@ const JIAN_COMPONENTS_PLACEHOLDER: &str = "{{jianComponents}}";
 const TOOL_SELECT_PLACEHOLDER: &str = "{{toolSelect}}";
 const VERIFY_STEP_PLACEHOLDER: &str = "{{verifyStep}}";
 const FINISH_CONDITION_PLACEHOLDER: &str = "{{finishCondition}}";
+const FINALIZE_NOTE_PLACEHOLDER: &str = "{{finalizeNote}}";
 
 /// How the executing host verifies visual output — the one part of the
 /// design-agent protocol that is host-capability-dependent. The empty-canvas
@@ -245,6 +301,7 @@ fn design_agent_template() -> &'static str {
             TOOL_SELECT_PLACEHOLDER,
             VERIFY_STEP_PLACEHOLDER,
             FINISH_CONDITION_PLACEHOLDER,
+            FINALIZE_NOTE_PLACEHOLDER,
         ] {
             assert!(
                 template.contains(placeholder),
@@ -264,6 +321,16 @@ const SCREENSHOT_VERIFY_STEP: &str = include_str!("design_agent_verify_screensho
 /// Return the design-agent tool-loop system prompt for a given host
 /// verification protocol.
 pub fn design_agent_system_prompt_for(verify: DesignVerifyProtocol) -> String {
+    design_agent_system_prompt_for_surface(verify, PromptSurface::InApp)
+}
+
+/// [`design_agent_system_prompt_for`] for an explicit [`PromptSurface`]: the
+/// in-app loop is told the host finalizes; an external MCP agent
+/// (`get_design_agent_prompt`) is told to call `finalize_design`.
+pub fn design_agent_system_prompt_for_surface(
+    verify: DesignVerifyProtocol,
+    surface: PromptSurface,
+) -> String {
     let (tool_select, verify_step, finish) = match verify {
         DesignVerifyProtocol::Screenshot => (
             SCREENSHOT_TOOL_SELECT,
@@ -280,6 +347,7 @@ pub fn design_agent_system_prompt_for(verify: DesignVerifyProtocol) -> String {
         .replace(TOOL_SELECT_PLACEHOLDER, tool_select)
         .replace(VERIFY_STEP_PLACEHOLDER, verify_step)
         .replace(FINISH_CONDITION_PLACEHOLDER, finish)
+        .replace(FINALIZE_NOTE_PLACEHOLDER, finalize_note(surface))
 }
 
 /// Return the system prompt for the design agentic tool-loop (desktop
@@ -333,7 +401,17 @@ pub fn design_agent_system_prompt_with_skills_for(
     user_message: &str,
     verify: DesignVerifyProtocol,
 ) -> String {
-    let base = design_agent_system_prompt_for(verify);
+    design_agent_system_prompt_with_skills_for_surface(user_message, verify, PromptSurface::InApp)
+}
+
+/// [`design_agent_system_prompt_with_skills_for`] for an explicit
+/// [`PromptSurface`]; only the protocol's finalize sentence differs.
+pub fn design_agent_system_prompt_with_skills_for_surface(
+    user_message: &str,
+    verify: DesignVerifyProtocol,
+    surface: PromptSurface,
+) -> String {
+    let base = design_agent_system_prompt_for_surface(verify, surface);
     let ctx = resolve::resolve_skills(
         types::Phase::Generation,
         user_message,

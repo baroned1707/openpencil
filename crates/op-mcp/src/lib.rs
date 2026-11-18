@@ -252,7 +252,9 @@ pub use document_save::{
     save_document_snapshot, save_document_snapshot_with_writer, SaveDocument, SaveWriter,
 };
 pub use extra_read_tools::{get_node_children_snapshot, ChildRecord, GetNodeChildren};
-pub use guidelines_tools::{get_guidelines_snapshot, GetGuidelines};
+pub use guidelines_tools::{
+    get_guidelines_in_app_snapshot, get_guidelines_snapshot, GetGuidelines,
+};
 pub use json_serializer::{response_to_json, tool_response_to_json};
 pub use lint_tools::{lint_document_snapshot, LintDocument};
 pub use node_attr_tools::{

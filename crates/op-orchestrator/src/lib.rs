@@ -232,7 +232,8 @@ mod test_support;
 pub use compact_prompt::{build_compact_planning_prompt, CompactPlanningPrompt};
 pub use deck_echo::DeckEcho;
 pub use design_md_policy::{
-    build_design_md_style_policy, guess_neutral_background_from_theme, infer_design_md_background,
+    build_design_md_style_policy, design_md_prompt_text, guess_neutral_background_from_theme,
+    infer_design_md_background,
 };
 pub use design_system::{
     default_design_system, design_system_to_prompt_context, design_system_to_seed_commands,
@@ -270,6 +271,7 @@ pub use stub_providers::{
     SkippedPreValidator, SkippedScreenshotProvider, SkippedVisionLlmClient,
     SkippedVisualRefProvider,
 };
+pub use style_guide_context::{pinned_style_guide_prompt, PinnedStyleGuidePrompt};
 pub use template_provenance::{template_provenance, TemplateEvidence, TemplateProvenance};
 pub use types::*;
 pub use validation::{run_post_generation_validation, ValidationSummary};

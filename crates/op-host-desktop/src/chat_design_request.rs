@@ -14,7 +14,7 @@ use op_orchestrator::{AppendContext, ContinuationContext, DesignRequest};
 /// tier-gated skill filtering, the element-manifest routing gate, and the M3
 /// thinking policy — and matches the configuration the ab-v9 benchmarks ran
 /// with (op-smoke has always passed `OPENPENCIL_ORCHESTRATOR_MODEL` through).
-fn selected_orchestrator_model(state: &EditorState) -> Option<String> {
+pub(super) fn selected_orchestrator_model(state: &EditorState) -> Option<String> {
     let entry = state.chat.selected_model_entry()?;
     if let Some(route) = entry.hosted.as_ref() {
         return Some(route.model_id().to_string());

@@ -187,6 +187,8 @@ pub struct AnthropicToolCollector {
     pub blocks: BTreeMap<u64, AnthropicBlock>,
     pub stop_reason: Option<String>,
     pub error: Option<String>,
+    /// Token usage this response reported (zero when it reported none).
+    pub usage: crate::chat_usage::RunUsage,
 }
 
 impl AnthropicToolCollector {
@@ -195,6 +197,7 @@ impl AnthropicToolCollector {
         let Ok(value) = serde_json::from_str::<Value>(data) else {
             return Vec::new();
         };
+        self.usage.observe_anthropic_event(data);
         match value.get("type").and_then(Value::as_str).unwrap_or("") {
             "content_block_start" => {
                 let index = value.get("index").and_then(Value::as_u64).unwrap_or(0);
@@ -350,6 +353,23 @@ mod tests {
         let calls = collector.tool_calls();
         assert_eq!(calls.len(), 1);
         assert_eq!(calls[0].name, "update_node");
+    }
+
+    #[test]
+    fn anthropic_collector_records_the_responses_usage() {
+        let mut collector = AnthropicToolCollector::default();
+        collector.handle(
+            r#"{"type":"message_start","message":{"usage":{"input_tokens":5,"cache_read_input_tokens":900,"output_tokens":1}}}"#,
+        );
+        collector.handle(r#"{"type":"message_delta","delta":{"stop_reason":"end_turn"},"usage":{"output_tokens":40}}"#);
+        assert_eq!(collector.usage.input_tokens, 5);
+        assert_eq!(collector.usage.cache_read_input_tokens, 900);
+        assert_eq!(collector.usage.output_tokens, 40);
+        assert_eq!(collector.stop_reason.as_deref(), Some("end_turn"));
+        // A response with no usage at all stays zero.
+        let mut bare = AnthropicToolCollector::default();
+        bare.handle(r#"{"type":"message_delta","delta":{"stop_reason":"end_turn"}}"#);
+        assert_eq!(bare.usage, crate::chat_usage::RunUsage::default());
     }
 
     #[test]

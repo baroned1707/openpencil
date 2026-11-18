@@ -227,6 +227,7 @@ fn long_lines_are_cut_on_a_char_boundary() {
         max_items: 2,
         max_item_chars: 20,
         max_total_bytes: 4096,
+        contrast_as_lines: true,
     };
     let mut lines = vec![
         "\u{2014}".repeat(50),

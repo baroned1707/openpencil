@@ -304,13 +304,15 @@ pub(super) fn launch_design_loop_turn(
     // measured p14-type richness gap). On a non-empty canvas the consistency
     // brief rides along so screen 2+ reads as the same product (shared chrome
     // node ids, palette, typefaces).
-    let mut system_prompt = op_ai_skills::design_agent_system_prompt_with_skills(&user_text);
-    if let Some(brief) = op_host_services::design_context::design_context_brief(host.editor_state())
-    {
-        system_prompt.push_str("\n\n---\n\n");
-        system_prompt.push_str(&brief);
-        op_ai_skills::append_image_self_check_scope(&mut system_prompt);
-    }
+    // The user's own decisions (design.md, the pinned style guide, the
+    // selection) ride after the static skills, before the canvas brief — see
+    // `design_loop_system_prompt`.
+    let prompt_model = super::chat_design_request::selected_orchestrator_model(host.editor_state());
+    let mut system_prompt = op_host_services::design_context::design_loop_system_prompt(
+        host.editor_state(),
+        &user_text,
+        prompt_model.as_deref(),
+    );
     // E-lite: tell the model the ⚡Nx setting it's actually operating under
     // (see `team_size_fact`) — independent of whether a canvas brief exists,
     // so a fresh-canvas multi-screen ask with team_size > 1 still knows it

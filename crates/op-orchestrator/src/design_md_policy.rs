@@ -14,6 +14,22 @@ fn truncate(s: &str, max: usize) -> String {
     }
 }
 
+/// design.md → the text a generation prompt carries for it: the structured
+/// policy summary, or — when the file has no extractable fields (a
+/// bare-minimum, free-form design.md) — its raw markdown, so the model still
+/// sees the spec. The ONE serializer shared by the orchestrator's sub-agent
+/// prompt and the design loop's context block. Port of
+/// orchestrator-sub-agent.ts:379-384.
+pub fn design_md_prompt_text(spec: &DesignMdSpec) -> String {
+    let structured = build_design_md_style_policy(spec);
+    let structured = structured.trim();
+    if structured.is_empty() {
+        spec.raw.trim().to_string()
+    } else {
+        structured.to_string()
+    }
+}
+
 /// design.md → 一段风格 policy 文本(规划 prompt 用)。无可提取字段
 /// → 空串。各块对应 `DesignMdSpec` 字段,缺则跳过。
 pub fn build_design_md_style_policy(spec: &DesignMdSpec) -> String {
@@ -221,5 +237,17 @@ mod tests {
             generation_notes: None,
         };
         assert_eq!(build_design_md_style_policy(&spec), "");
+    }
+
+    #[test]
+    fn prompt_text_falls_back_to_raw_markdown_without_extractable_fields() {
+        let mut spec = spec_with_palette(Vec::new());
+        spec.raw = "  Free-form notes: keep it calm.  ".into();
+        assert_eq!(
+            design_md_prompt_text(&spec),
+            "Free-form notes: keep it calm."
+        );
+        spec.visual_theme = Some("Calm".into());
+        assert!(design_md_prompt_text(&spec).contains("VISUAL THEME: Calm"));
     }
 }

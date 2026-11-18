@@ -28,4 +28,5 @@ pub mod chat_models;
 pub mod chat_provider;
 pub mod chat_sse;
 pub mod chat_tool_sse;
+pub mod chat_usage;
 pub mod design_md;

@@ -19,9 +19,10 @@ pub(super) use op_ai::chat_tool_sse::OpenAiToolCollector as OpenAiCollector;
 /// rationale, as [`run_anthropic_agent_loop`]'s own wrapper above (this
 /// loop's early-return sites mirror the Anthropic loop's exactly).
 pub async fn run_openai_agent_loop(
-    cfg: AgentLoopConfig,
+    mut cfg: AgentLoopConfig,
     tx: &mpsc::Sender<ChatDelta>,
 ) -> Result<bool, BuiltinHttpError> {
+    shape_executor_for_run(&mut cfg);
     let executor = cfg.executor.clone();
     let enabled = cfg.finalize_on_exit;
     let result = run_openai_agent_loop_inner(cfg, tx).await;

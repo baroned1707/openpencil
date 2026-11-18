@@ -342,6 +342,44 @@ pub(crate) fn resolve_pinned_style_guide(pinned: Option<&str>) -> Option<StyleGu
     }
 }
 
+/// The pinned style guide as a prompt block for a caller outside the
+/// orchestrator (the in-app design loop).
+pub struct PinnedStyleGuidePrompt {
+    /// The id the pin resolves to (a corpus name, or a `user:` import id).
+    pub id: String,
+    /// The same instruction block the orchestrator's sub-agents receive.
+    pub instruction: String,
+}
+
+/// Resolve a pin with [`resolve_pinned_style_guide`] and build its block with
+/// the sub-agent's own `build_style_guide_instruction` — no second selector,
+/// no second serializer. The tier follows the selected model like it does for
+/// a sub-agent (Full = the whole guide plus an exact palette appendix). A
+/// Full-tier block above `max_bytes` falls back to the Standard summary,
+/// which carries the same exact palette in a fraction of the size, so the
+/// bound never cuts the palette off the end. `None` for no pin or a stale one.
+pub fn pinned_style_guide_prompt(
+    pinned: Option<&str>,
+    model: Option<&str>,
+    max_bytes: usize,
+) -> Option<PinnedStyleGuidePrompt> {
+    let guide = resolve_pinned_style_guide(pinned)?;
+    let id = guide.id().to_string();
+    let tier = resolve_model_profile(model.unwrap_or("")).tier;
+    let mut instruction = crate::prompt::build_style_guide_instruction(Some(&id), tier)?;
+    if instruction.len() > max_bytes {
+        instruction = crate::prompt::build_style_guide_instruction(Some(&id), ModelTier::Standard)?;
+    }
+    if instruction.len() > max_bytes {
+        let mut end = max_bytes;
+        while !instruction.is_char_boundary(end) {
+            end -= 1;
+        }
+        instruction.truncate(end);
+    }
+    Some(PinnedStyleGuidePrompt { id, instruction })
+}
+
 /// Force a user's pinned style guide onto a finished plan.
 ///
 /// Shrinking the planning menu to one entry only *asks* the model to echo the
