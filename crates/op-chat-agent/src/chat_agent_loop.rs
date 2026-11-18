@@ -520,3 +520,7 @@ mod wire_tests;
 #[cfg(test)]
 #[path = "chat_agent_loop_cache_tests.rs"]
 mod cache_tests;
+
+#[cfg(test)]
+#[path = "chat_agent_loop_usage_tests.rs"]
+mod usage_tests;

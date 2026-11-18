@@ -385,7 +385,7 @@ fn content_height(swatch_rows: usize, description_lines: usize, fonts: bool) -> 
 /// is what makes it work for a CJK description as well as a Latin one. The last
 /// line is ellipsized rather than dropped: a description cut without a mark
 /// reads as a complete but oddly terse sentence.
-fn wrap_lines(
+pub(crate) fn wrap_lines(
     cx: &mut PaintCx<'_>,
     text: &str,
     max_w: f32,
@@ -563,7 +563,7 @@ pub(crate) fn paint_style_card(
 }
 
 /// One run, vertically centred in a `line_h` band starting at `y`.
-fn draw_line(
+pub(crate) fn draw_line(
     cx: &mut PaintCx<'_>,
     text: &str,
     font_size: f32,

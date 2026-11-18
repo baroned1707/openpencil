@@ -631,6 +631,10 @@ pub fn lookup(key: &str) -> Option<&'static str> {
         "settings.images.unsplashToggleHint" => "Standardmäßig aus. Benötigt deinen eigenen Schlüssel; lies zuerst die Unsplash-API-Bedingungen.",
         "settings.images.getKeyLink" => "Kostenlosen Schlüssel holen",
         "settings.images.unsplashTerms" => "Unsplash-API-Bedingungen",
+        "ai.usage.line" => "{input} ein · {cached} % aus dem Cache · {output} aus",
+        "ai.usage.lineNoCache" => "{input} ein · {output} aus",
+        "ai.usage.detail" => "Eingabe {total}: {fresh} neu, {read} aus dem Cache, {write} in den Cache geschrieben. Ausgabe {output}. Antworten: {turns}.",
+        "ai.usage.cacheNote" => "Cache-Treffer kosten nur einen Bruchteil normaler Eingabe-Tokens.",
         _ => return None,
     })
 }

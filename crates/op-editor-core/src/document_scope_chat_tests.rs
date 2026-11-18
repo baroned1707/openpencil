@@ -89,3 +89,39 @@ fn a_scope_with_a_used_chat_is_not_pristine() {
     two_tabs.chat.new_tab();
     assert!(!DocumentScope::from_state(two_tabs).is_pristine());
 }
+
+#[test]
+fn usage_follows_the_document_tab() {
+    // The usage meter belongs to the conversation, so it travels with the
+    // document's chat tab: a run in A is not shown in B, and is found again
+    // when the user comes back.
+    let usage = crate::UsageView {
+        input: 100,
+        cache_read: 900,
+        cache_write: 0,
+        output: 40,
+        turns: 3,
+    };
+    let mut live = EditorState::starter();
+    live.chat.messages.push(ChatMessage::user("design a login"));
+    live.chat.record_run_usage(usage);
+    live.chat.new_tab();
+    assert_eq!(
+        live.chat.last_run_usage, None,
+        "a second tab has its own meter"
+    );
+
+    let mut parked = DocumentScope::from_state(EditorState::starter());
+    live.switch_document_scope(&mut parked);
+    assert_eq!(live.chat.last_run_usage, None, "document B has no run yet");
+    let other = crate::UsageView { output: 7, ..usage };
+    live.chat.record_run_usage(other);
+
+    live.switch_document_scope(&mut parked);
+    assert_eq!(live.chat.tab_count(), 2);
+    assert_eq!(live.chat.tabs()[0].last_run_usage, Some(usage));
+    assert_eq!(live.chat.tabs()[1].last_run_usage, None);
+
+    live.switch_document_scope(&mut parked);
+    assert_eq!(live.chat.last_run_usage, Some(other), "B keeps its own");
+}

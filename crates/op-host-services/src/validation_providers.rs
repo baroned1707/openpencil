@@ -263,6 +263,7 @@ impl ChatVisionLlmClient {
                 // `Done` closes the turn; tool-use is not expected here.
                 ChatDelta::Done { .. } => break,
                 ChatDelta::ToolUse { .. } => {}
+                ChatDelta::Usage(_) => {}
             }
         }
 

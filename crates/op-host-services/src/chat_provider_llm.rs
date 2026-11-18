@@ -146,6 +146,8 @@ impl LlmClient for ChatProviderLlmClient {
                         message: msg,
                         aborted: false,
                     })),
+                    // The orchestrator reports its own progress, not tokens.
+                    ChatDelta::Usage(_) => None,
                     // `Done` closes the stream by exiting the loop; the
                     // orchestrator parses the accumulated text and
                     // decides what to do.

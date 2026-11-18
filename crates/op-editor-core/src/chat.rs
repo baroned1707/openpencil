@@ -21,6 +21,7 @@
 //! - `session` — `impl ChatState` turn lifecycle + input editing
 //! - `messages` — `impl ChatState` per-message card state, per-turn
 //!   selectors and attachments
+//! - [`usage`] — [`UsageView`], the last run's token usage for the meter
 
 mod instance;
 pub mod message;
@@ -29,10 +30,12 @@ pub mod models;
 mod session;
 #[cfg(test)]
 mod tests;
+pub mod usage;
 
 pub use instance::ChatInstanceId;
 pub use message::{ChatImage, ChatMessage, ChatRole, ChatToolCall};
 pub use models::{AgentProvider, ModelEntry};
+pub use usage::{format_token_count, UsageView};
 
 /// Re-export of the chat-request knobs from `op-ai` so callers of
 /// `op-editor-core` get one import path. `ThinkingMode` / `EffortLevel`
@@ -318,6 +321,11 @@ pub struct ChatState {
     ///
     /// [`input_scroll`]: ChatState::input_scroll
     pub input_scroll_caret: usize,
+    /// Real token usage of this tab's last run (the sum over the agents of
+    /// one turn), for the usage meter under the transcript. `None` until a
+    /// run reports any. Cleared when a new run starts. In memory only: it
+    /// moves with the tab (and so with its document) and is never saved.
+    pub last_run_usage: Option<UsageView>,
 }
 
 /// Process-global allocator for [`ChatImage::id`]. A *global* counter
@@ -367,6 +375,7 @@ impl Default for ChatState {
             pending_subtask_retry: None,
             input_scroll: 0.0,
             input_scroll_caret: 0,
+            last_run_usage: None,
         }
     }
 }

@@ -5,7 +5,7 @@ use std::sync::mpsc as std_mpsc;
 use std::sync::Arc;
 use std::time::Duration;
 
-fn read_http_request(stream: &mut TcpStream) -> String {
+pub(super) fn read_http_request(stream: &mut TcpStream) -> String {
     let mut buf = Vec::new();
     let mut chunk = [0_u8; 4096];
     loop {

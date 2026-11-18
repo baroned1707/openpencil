@@ -633,6 +633,10 @@ pub fn lookup(key: &str) -> Option<&'static str> {
         "settings.images.unsplashToggleHint" => "ปิดไว้เป็นค่าเริ่มต้น ต้องใช้คีย์ของคุณเอง โปรดอ่านข้อกำหนด API ของ Unsplash ก่อน",
         "settings.images.getKeyLink" => "รับคีย์ฟรี",
         "settings.images.unsplashTerms" => "ข้อกำหนด API ของ Unsplash",
+        "ai.usage.line" => "{input} เข้า · แคช {cached}% · {output} ออก",
+        "ai.usage.lineNoCache" => "{input} เข้า · {output} ออก",
+        "ai.usage.detail" => "อินพุต {total}: ใหม่ {fresh}, อ่านจากแคช {read}, เขียนลงแคช {write}. เอาต์พุต {output}. จำนวนการตอบกลับ: {turns}.",
+        "ai.usage.cacheNote" => "การเข้าถึงแคชมีค่าใช้จ่ายเพียงเศษเสี้ยวของโทเค็นอินพุตปกติ",
         _ => return None,
     })
 }

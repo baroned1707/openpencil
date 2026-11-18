@@ -631,6 +631,10 @@ pub fn lookup(key: &str) -> Option<&'static str> {
         "settings.images.unsplashToggleHint" => "默认关闭。需要你自己的密钥；请先阅读 Unsplash API 条款。",
         "settings.images.getKeyLink" => "获取免费密钥",
         "settings.images.unsplashTerms" => "Unsplash API 条款",
+        "ai.usage.line" => "{input} 输入 · {cached}% 缓存 · {output} 输出",
+        "ai.usage.lineNoCache" => "{input} 输入 · {output} 输出",
+        "ai.usage.detail" => "输入 {total}：新增 {fresh}，缓存读取 {read}，缓存写入 {write}。输出 {output}。响应次数：{turns}。",
+        "ai.usage.cacheNote" => "缓存命中的费用只是普通输入 token 的一小部分。",
         _ => return None,
     })
 }

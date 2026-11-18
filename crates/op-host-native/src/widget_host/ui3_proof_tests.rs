@@ -26,6 +26,8 @@ mod settings;
 mod swap_render;
 #[path = "ui3_proof_tabs_tests.rs"]
 mod tabs;
+#[path = "ui3_proof_usage_tests.rs"]
+mod usage;
 
 use super::ui3_proof::{editor_host, render_scene};
 use op_editor_core::ThemeMode;

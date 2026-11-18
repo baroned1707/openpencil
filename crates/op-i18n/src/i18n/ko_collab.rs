@@ -647,6 +647,10 @@ pub fn lookup(key: &str) -> Option<&'static str> {
         "settings.images.unsplashToggleHint" => "기본값은 꺼짐입니다. 본인의 키가 필요하며 먼저 Unsplash API 약관을 확인하세요.",
         "settings.images.getKeyLink" => "무료 키 받기",
         "settings.images.unsplashTerms" => "Unsplash API 약관",
+        "ai.usage.line" => "입력 {input} · 캐시 {cached}% · 출력 {output}",
+        "ai.usage.lineNoCache" => "입력 {input} · 출력 {output}",
+        "ai.usage.detail" => "입력 {total}: 새 토큰 {fresh}, 캐시 읽기 {read}, 캐시 쓰기 {write}. 출력 {output}. 응답 수: {turns}.",
+        "ai.usage.cacheNote" => "캐시 적중은 일반 입력 토큰보다 훨씬 적은 비용이 듭니다.",
         _ => return None,
     })
 }

@@ -385,6 +385,8 @@ fn run_pipeline_with_model_and_cancel_token(
                                 ));
                                 break;
                             }
+                            // Code generation does not show token usage.
+                            ChatDelta::Usage(_) => {}
                         }
                     }
                     if cancel.load(Ordering::Relaxed) {

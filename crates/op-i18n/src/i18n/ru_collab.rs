@@ -661,6 +661,10 @@ pub fn lookup(key: &str) -> Option<&'static str> {
         "settings.images.unsplashToggleHint" => "По умолчанию выключено. Нужен ваш собственный ключ; сначала прочитайте условия API Unsplash.",
         "settings.images.getKeyLink" => "Получить бесплатный ключ",
         "settings.images.unsplashTerms" => "Условия API Unsplash",
+        "ai.usage.line" => "{input} вход · {cached}% из кэша · {output} выход",
+        "ai.usage.lineNoCache" => "{input} вход · {output} выход",
+        "ai.usage.detail" => "Вход {total}: {fresh} новых, {read} из кэша, {write} записано в кэш. Выход {output}. Ответов: {turns}.",
+        "ai.usage.cacheNote" => "Попадания в кэш стоят лишь долю обычных входных токенов.",
         _ => return None,
     })
 }

@@ -386,6 +386,8 @@ fn classify_intent_llm_with_timeout_and_cancel(
             Ok(ChatDelta::TextDelta(s)) => out.push_str(&s),
             // TS consumeSSEAsText only accumulates text chunks.
             Ok(ChatDelta::Thinking(_)) | Ok(ChatDelta::ToolUse { .. }) => {}
+            // Intent classification shows no token usage.
+            Ok(ChatDelta::Usage(_)) => {}
             Ok(ChatDelta::Error(_)) => {
                 classify_cancel.store(true, Ordering::Release);
                 return parse_classified(&out);

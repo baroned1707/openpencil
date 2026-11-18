@@ -168,6 +168,15 @@ fn pump_with_channel_interleave(
     between_channel_observations();
     let poll = session.poll();
     let mut changed = false;
+    // Token usage is not transcript content, so `is_idle` does not see it. It
+    // lands on the tab the turn is bound to, summed over the turn's agents.
+    if let Some(usage) = session.take_usage() {
+        host.editor_state_mut()
+            .chat
+            .run_tab_mut(running_tab)
+            .record_run_usage(usage);
+        changed = true;
+    }
     if !poll.is_idle() {
         let messages = &mut host
             .editor_state_mut()
@@ -671,6 +680,10 @@ mod transcript_tests;
 #[cfg(test)]
 #[path = "chat_session_identity_tests.rs"]
 mod identity_tests;
+
+#[cfg(test)]
+#[path = "chat_session_usage_tests.rs"]
+mod usage_tests;
 
 #[cfg(test)]
 #[path = "chat_session_reveal_tests.rs"]

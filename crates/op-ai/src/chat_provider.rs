@@ -161,6 +161,10 @@ pub enum ChatDelta {
     ToolUse { name: String, args: String },
     Done { stop_reason: StopReason },
     Error(String),
+    // Real token usage of the finished run, sent at most ONCE and always
+    // before the terminal `Done`. A run that learned no token counts sends
+    // none. Consumers that do not show usage ignore it.
+    Usage(crate::chat_usage::RunUsage),
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

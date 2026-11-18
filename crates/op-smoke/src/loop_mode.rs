@@ -416,6 +416,7 @@ pub fn run_loop(
             ChatDelta::Error(e) => {
                 eprintln!("\n[LOOP] error delta: {e}");
             }
+            ChatDelta::Usage(run) => eprintln!("[LOOP] {}", run.log_line()),
         }
     }
     eprintln!("[LOOP] loop drained: {tool_calls} tool call(s), {text_chars} text char(s)");

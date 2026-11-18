@@ -631,6 +631,10 @@ pub fn lookup(key: &str) -> Option<&'static str> {
         "settings.images.unsplashToggleHint" => "Desactivado por defecto. Necesita tu propia clave; lee antes los términos de la API de Unsplash.",
         "settings.images.getKeyLink" => "Obtener una clave gratis",
         "settings.images.unsplashTerms" => "Términos de la API de Unsplash",
+        "ai.usage.line" => "{input} de entrada · {cached}% en caché · {output} de salida",
+        "ai.usage.lineNoCache" => "{input} de entrada · {output} de salida",
+        "ai.usage.detail" => "Entrada {total}: {fresh} nuevos, {read} leídos de la caché, {write} escritos en la caché. Salida {output}. Respuestas: {turns}.",
+        "ai.usage.cacheNote" => "Los aciertos de caché cuestan una fracción de los tokens de entrada normales.",
         _ => return None,
     })
 }

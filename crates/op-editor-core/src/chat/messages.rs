@@ -106,6 +106,8 @@ impl ChatState {
             activity.status = ChatActivityStatus::Running;
             activity.detail = None;
         }
+        // A retry is a new run that never passes through `begin_send`.
+        self.last_run_usage = None;
         self.pending_subtask_retry = Some((msg_idx, subtask_id));
     }
 

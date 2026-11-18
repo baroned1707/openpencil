@@ -643,6 +643,10 @@ pub fn lookup(key: &str) -> Option<&'static str> {
         "settings.images.unsplashToggleHint" => "Mặc định tắt. Cần khóa của riêng bạn; hãy đọc điều khoản API của Unsplash trước.",
         "settings.images.getKeyLink" => "Lấy khóa miễn phí",
         "settings.images.unsplashTerms" => "Điều khoản API của Unsplash",
+        "ai.usage.line" => "{input} vào · {cached}% từ bộ nhớ đệm · {output} ra",
+        "ai.usage.lineNoCache" => "{input} vào · {output} ra",
+        "ai.usage.detail" => "Đầu vào {total}: {fresh} mới, {read} đọc từ bộ nhớ đệm, {write} ghi vào bộ nhớ đệm. Đầu ra {output}. Số phản hồi: {turns}.",
+        "ai.usage.cacheNote" => "Lượt trúng bộ nhớ đệm có chi phí chỉ bằng một phần nhỏ token đầu vào thông thường.",
         _ => return None,
     })
 }

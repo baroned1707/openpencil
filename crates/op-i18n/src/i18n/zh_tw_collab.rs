@@ -631,6 +631,10 @@ pub fn lookup(key: &str) -> Option<&'static str> {
         "settings.images.unsplashToggleHint" => "預設關閉。需要你自己的金鑰；請先閱讀 Unsplash API 條款。",
         "settings.images.getKeyLink" => "取得免費金鑰",
         "settings.images.unsplashTerms" => "Unsplash API 條款",
+        "ai.usage.line" => "{input} 輸入 · {cached}% 快取 · {output} 輸出",
+        "ai.usage.lineNoCache" => "{input} 輸入 · {output} 輸出",
+        "ai.usage.detail" => "輸入 {total}：新增 {fresh}，快取讀取 {read}，快取寫入 {write}。輸出 {output}。回應次數：{turns}。",
+        "ai.usage.cacheNote" => "快取命中的費用只是一般輸入 token 的一小部分。",
         _ => return None,
     })
 }

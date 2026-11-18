@@ -43,4 +43,7 @@ pub enum ChatFooterButton {
     Send,
     /// Stop button shown while a response streams.
     Stop,
+    /// The usage line under the transcript. Hover only: it raises the exact
+    /// numbers, takes no click and shows no pointer cursor.
+    UsageMeter,
 }

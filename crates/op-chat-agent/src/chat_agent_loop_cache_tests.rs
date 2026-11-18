@@ -6,7 +6,7 @@ use super::tests::{
 use super::*;
 use serde_json::Value;
 
-fn config(url: &str) -> AgentLoopConfig {
+pub(super) fn config(url: &str) -> AgentLoopConfig {
     AgentLoopConfig {
         url: url.into(),
         api_key: "sk-test".into(),
@@ -130,12 +130,12 @@ fn loop_prefix_is_byte_stable_between_turns() {
     assert_eq!(markers(&bodies[1]), 0);
 }
 
-fn text_turn() -> String {
+pub(super) fn text_turn() -> String {
     turn_with_usage("end_turn", None)
 }
 
 /// A text-only response; `usage` = (input, cache_write, cache_read, output).
-fn turn_with_usage(stop: &str, usage: Option<(u64, u64, u64, u64)>) -> String {
+pub(super) fn turn_with_usage(stop: &str, usage: Option<(u64, u64, u64, u64)>) -> String {
     let mut lines = Vec::new();
     if let Some((input, write, read, _)) = usage {
         lines.push(format!(

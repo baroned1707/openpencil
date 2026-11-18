@@ -636,3 +636,7 @@ mod loop_attachment_tests;
 #[cfg(test)]
 #[path = "chat_builtin_http_cache_tests.rs"]
 mod cache_tests;
+
+#[cfg(test)]
+#[path = "chat_builtin_http_usage_tests.rs"]
+mod usage_tests;

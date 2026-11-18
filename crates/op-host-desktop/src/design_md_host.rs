@@ -135,7 +135,7 @@ fn run_design_md_provider_blocking(
     for delta in provider.send(request) {
         match delta {
             ChatDelta::TextDelta(text) => out.push_str(&text),
-            ChatDelta::Thinking(_) | ChatDelta::ToolUse { .. } => {}
+            ChatDelta::Thinking(_) | ChatDelta::ToolUse { .. } | ChatDelta::Usage(_) => {}
             ChatDelta::Done { .. } => break,
             // `ChatDelta::Error` carries a `String` from a trait this pass
             // does not own; store it verbatim.
@@ -176,7 +176,7 @@ fn run_mcp_design_md_provider_blocking(
                 }
                 out.push_str(&text);
             }
-            ChatDelta::Thinking(_) => {}
+            ChatDelta::Thinking(_) | ChatDelta::Usage(_) => {}
             ChatDelta::ToolUse { .. } => {
                 return Err(McpDesignMdFailure::Provider);
             }

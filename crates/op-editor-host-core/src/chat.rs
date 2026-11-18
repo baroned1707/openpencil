@@ -11,7 +11,7 @@ use op_ai::chat_provider::{
     ChatToolResult, FinalizeReport, QualitySummary, UnfilledScreensReport, CHECK_BLOCKERS_OP,
     LOOP_FINALIZE_OP,
 };
-use op_editor_core::{ChatMessage, ChatRole, ChatToolCall};
+use op_editor_core::{ChatMessage, ChatRole, ChatToolCall, UsageView};
 
 /// One tool call forwarded from an agent-loop worker to a host UI thread.
 pub struct ChatToolRequest {
@@ -242,6 +242,10 @@ pub struct ChatSession {
     loop_finalized: bool,
     viewport_fitted: bool,
     hosted_session_epoch: Option<u64>,
+    /// Token usage reported by this turn's provider, not yet taken by the
+    /// host. Not part of [`ChatPoll`] on purpose: it is not transcript
+    /// content, and the poll is built literally by many callers.
+    usage: Option<UsageView>,
 }
 
 /// Result of a single non-blocking [`ChatSession::poll`].
@@ -479,6 +483,17 @@ fn tool_level_from_args(args: &str) -> Option<String> {
         .map(str::to_string)
 }
 
+/// The provider's run usage as the plain numbers the chat state keeps.
+pub fn usage_view(run: &op_ai::chat_usage::RunUsage) -> UsageView {
+    UsageView {
+        input: run.input_tokens,
+        cache_read: run.cache_read_input_tokens,
+        cache_write: run.cache_creation_input_tokens,
+        output: run.output_tokens,
+        turns: run.turns,
+    }
+}
+
 impl ChatSession {
     /// Spawn a worker that drains an explicitly cancellable provider turn into
     /// a channel. Providers that do not override `send_cancellable` retain
@@ -518,6 +533,7 @@ impl ChatSession {
             loop_finalized: false,
             viewport_fitted: false,
             hosted_session_epoch,
+            usage: None,
         }
     }
 
@@ -603,6 +619,7 @@ impl ChatSession {
             loop_finalized: false,
             viewport_fitted: false,
             hosted_session_epoch: None,
+            usage: None,
         }
     }
 
@@ -632,6 +649,13 @@ impl ChatSession {
                         error = Some(msg);
                     }
                 }
+                Ok(ChatDelta::Usage(run)) => {
+                    let view = usage_view(&run);
+                    match self.usage.as_mut() {
+                        Some(total) => total.add(&view),
+                        None => self.usage = Some(view),
+                    }
+                }
                 Ok(ChatDelta::Done { .. }) => self.finished = true,
                 Err(TryRecvError::Empty) => break,
                 Err(TryRecvError::Disconnected) => {
@@ -647,6 +671,12 @@ impl ChatSession {
             error,
             finished: self.finished,
         }
+    }
+
+    /// Take the token usage the provider reported since the last call. The
+    /// host writes it to the tab this turn is bound to, then it is gone.
+    pub fn take_usage(&mut self) -> Option<UsageView> {
+        self.usage.take()
     }
 
     /// Drain pending host tool requests without blocking.

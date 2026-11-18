@@ -406,6 +406,10 @@ impl<'a> Widget for AIChatPlaceholder<'a> {
             );
         }
 
+        // Usage meter + its hover card: over the transcript's lower edge and
+        // under the style card, which is the only thing allowed above it.
+        self.paint_usage_meter(cx, rect);
+
         // Pinned-style detail card — last of all, so it hangs over the input
         // block, and anchored ABOVE its chip so the ✕ on that row stays both
         // visible and clickable. Present only once the dwell has elapsed; the

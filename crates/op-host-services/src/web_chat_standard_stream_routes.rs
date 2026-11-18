@@ -78,7 +78,7 @@ pub(super) fn stream_modify_route<W: Write>(
     for delta in provider.send(request) {
         match delta {
             ChatDelta::TextDelta(s) => full_response.push_str(&s),
-            ChatDelta::Thinking(_) | ChatDelta::ToolUse { .. } => {}
+            ChatDelta::Thinking(_) | ChatDelta::ToolUse { .. } | ChatDelta::Usage(_) => {}
             ChatDelta::Error(msg) => {
                 stream_error = Some(msg);
                 break;

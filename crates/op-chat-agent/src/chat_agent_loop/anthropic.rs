@@ -15,6 +15,17 @@ use super::*;
 // every existing `AnthropicCollector` path stable.
 pub(super) use op_ai::chat_tool_sse::AnthropicToolCollector as AnthropicCollector;
 
+/// Report the run's token usage to the chat UI, when any was learned.
+///
+/// Called immediately before each terminal `Done` of the loop: the host retires
+/// the turn on `Done`, so a usage delta sent after it would be dropped. Every
+/// call site returns right after its `Done`, so the delta is sent once.
+async fn send_usage_before_done(tx: &mpsc::Sender<ChatDelta>, usage: &op_ai::chat_usage::RunUsage) {
+    if let Some(delta) = usage.to_delta() {
+        let _ = tx.send(delta).await;
+    }
+}
+
 /// Finalize-lifecycle invariant outer wrapper (0718-1-k3-1 postmortem — see
 /// [`run_loop_finalize`]'s doc + `op-host-desktop::chat_session::
 /// finalize_design_session_if_needed`'s doc for the desktop-side half of
@@ -60,6 +71,9 @@ pub async fn run_anthropic_agent_loop(
         eprintln!("{}", usage.log_line());
     }
     if result.is_err() {
+        // The inner loop returned before any `Done`; the caller sends
+        // `Error` + `Done{Aborted}` after this, so usage still lands first.
+        send_usage_before_done(tx, &usage).await;
         run_loop_finalize(&executor, enabled).await;
         emit_finalize_diagnostic(tx, enabled, "loop-exit").await;
     }
@@ -192,6 +206,7 @@ pub(super) async fn run_anthropic_agent_loop_inner(
             if salvage_rounds_used >= SALVAGE_MAX_ROUNDS {
                 let zero = zero_write_detail(cfg.finalize_on_exit, wrote, "turn budget exhausted");
                 finalize_and_report(tx, &cfg.executor, cfg.finalize_on_exit, zero.as_deref()).await;
+                send_usage_before_done(tx, usage).await;
                 let _ = tx
                     .send(ChatDelta::Done {
                         stop_reason: StopReason::MaxTokens,
@@ -209,6 +224,7 @@ pub(super) async fn run_anthropic_agent_loop_inner(
                 // run assembled, and report unconditionally.
                 let zero = zero_write_detail(cfg.finalize_on_exit, wrote, "turn budget exhausted");
                 finalize_and_report(tx, &cfg.executor, cfg.finalize_on_exit, zero.as_deref()).await;
+                send_usage_before_done(tx, usage).await;
                 let _ = tx
                     .send(ChatDelta::Done {
                         stop_reason: StopReason::MaxTokens,
@@ -348,6 +364,7 @@ pub(super) async fn run_anthropic_agent_loop_inner(
                 .unwrap_or_else(|| "end_turn".into());
             let zero = zero_write_detail(cfg.finalize_on_exit, wrote, &stop_detail);
             finalize_and_report(tx, &cfg.executor, cfg.finalize_on_exit, zero.as_deref()).await;
+            send_usage_before_done(tx, usage).await;
             let _ = tx
                 .send(ChatDelta::Done {
                     stop_reason: reason,

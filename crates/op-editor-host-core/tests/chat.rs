@@ -549,3 +549,45 @@ fn tool_executor_forwards_request_and_waits_for_ack() {
     assert_eq!(result.content, r#"{"success":true}"#);
     assert!(!result.is_error);
 }
+
+#[test]
+fn session_hands_usage_to_the_host_apart_from_the_poll() {
+    let usage = op_ai::chat_usage::RunUsage {
+        input_tokens: 10,
+        cache_creation_input_tokens: 20,
+        cache_read_input_tokens: 30,
+        output_tokens: 40,
+        turns: 2,
+    };
+    let provider = Box::new(EchoProvider {
+        script: vec![
+            ChatDelta::TextDelta("ok".into()),
+            ChatDelta::Usage(usage),
+            ChatDelta::Done {
+                stop_reason: StopReason::EndTurn,
+            },
+        ],
+    });
+    let mut session = ChatSession::start(
+        provider,
+        ChatRequest {
+            user_message: "hi".into(),
+            max_output_tokens: 256,
+            ..Default::default()
+        },
+    );
+    let (text, _, _, error) = drain_session(&mut session);
+    assert_eq!((text.as_str(), error), ("ok", None));
+    let view = session.take_usage().expect("usage was reported");
+    assert_eq!(
+        (
+            view.input,
+            view.cache_write,
+            view.cache_read,
+            view.output,
+            view.turns
+        ),
+        (10, 20, 30, 40, 2)
+    );
+    assert_eq!(session.take_usage(), None, "taken once");
+}

@@ -376,6 +376,8 @@ fn stream_and_parse_modify_turn_inner(
             // TS: thinking chunks are ignored for modification — the
             // caller already shows progress.
             ChatDelta::Thinking(_) | ChatDelta::ToolUse { .. } => {}
+            // The modification turn shows no token usage.
+            ChatDelta::Usage(_) => {}
             ChatDelta::Error(msg) => {
                 stream_error = Some(msg);
                 break;

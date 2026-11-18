@@ -596,6 +596,11 @@ impl<'a> AIChatPlaceholder<'a> {
         if self.state.is_minimized() || self.model_picker.open {
             return None;
         }
+        // The usage line sits in the gap above the input block, so it is
+        // resolved before the block's own bounds rule the point out.
+        if let Some(hover) = self.usage_meter_hover_at(rect, point) {
+            return Some(hover);
+        }
         let input_rect = self.input_rect(rect);
         if !(input_rect).contains(point) {
             return None;

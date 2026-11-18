@@ -631,6 +631,10 @@ pub fn lookup(key: &str) -> Option<&'static str> {
         "settings.images.unsplashToggleHint" => "Nonaktif secara default. Memerlukan kunci Anda sendiri; baca dulu ketentuan API Unsplash.",
         "settings.images.getKeyLink" => "Dapatkan kunci gratis",
         "settings.images.unsplashTerms" => "Ketentuan API Unsplash",
+        "ai.usage.line" => "{input} masuk · {cached}% dari cache · {output} keluar",
+        "ai.usage.lineNoCache" => "{input} masuk · {output} keluar",
+        "ai.usage.detail" => "Input {total}: {fresh} baru, {read} dibaca dari cache, {write} ditulis ke cache. Output {output}. Respons: {turns}.",
+        "ai.usage.cacheNote" => "Cache hit berbiaya hanya sebagian kecil dari token input biasa.",
         _ => return None,
     })
 }

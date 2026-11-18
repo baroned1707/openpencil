@@ -370,6 +370,8 @@ fn drain_with_deadline(
         match rx.recv_timeout(remaining) {
             Ok(ChatDelta::TextDelta(text)) => stats.text_chars += text.len(),
             Ok(ChatDelta::Thinking(_)) => {}
+            // The MCP result reports calls and text, not token usage.
+            Ok(ChatDelta::Usage(_)) => {}
             Ok(ChatDelta::ToolUse { .. }) => stats.tool_calls += 1,
             Ok(ChatDelta::Error(message)) => stats.last_error = Some(message),
             Ok(ChatDelta::Done { stop_reason }) => stats.stop_reason = Some(stop_reason),

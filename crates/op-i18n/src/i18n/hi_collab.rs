@@ -635,6 +635,10 @@ pub fn lookup(key: &str) -> Option<&'static str> {
         "settings.images.unsplashToggleHint" => "डिफ़ॉल्ट रूप से बंद। आपकी अपनी कुंजी चाहिए; पहले Unsplash API की शर्तें पढ़ें।",
         "settings.images.getKeyLink" => "मुफ़्त कुंजी पाएँ",
         "settings.images.unsplashTerms" => "Unsplash API की शर्तें",
+        "ai.usage.line" => "{input} इनपुट · {cached}% कैश · {output} आउटपुट",
+        "ai.usage.lineNoCache" => "{input} इनपुट · {output} आउटपुट",
+        "ai.usage.detail" => "इनपुट {total}: {fresh} नए, {read} कैश से पढ़े, {write} कैश में लिखे। आउटपुट {output}। उत्तर: {turns}।",
+        "ai.usage.cacheNote" => "कैश हिट की लागत सामान्य इनपुट टोकन का एक छोटा हिस्सा होती है।",
         _ => return None,
     })
 }

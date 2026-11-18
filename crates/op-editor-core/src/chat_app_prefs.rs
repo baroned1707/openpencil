@@ -71,6 +71,8 @@ impl ChatAppPrefs {
             pending_subtask_retry: _,
             input_scroll: _,
             input_scroll_caret: _,
+            // Per conversation: it describes this tab's last run.
+            last_run_usage: _,
         } = tab;
         Self {
             discovered_models: discovered_models.clone(),
@@ -122,6 +124,8 @@ impl ChatAppPrefs {
             pending_subtask_retry: _,
             input_scroll: _,
             input_scroll_caret: _,
+            // Per conversation: it describes this tab's last run.
+            last_run_usage: _,
         } = tab;
         discovered_models.clone_from(&self.discovered_models);
         available_models.clone_from(&self.available_models);

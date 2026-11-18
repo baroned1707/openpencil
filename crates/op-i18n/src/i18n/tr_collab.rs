@@ -631,6 +631,10 @@ pub fn lookup(key: &str) -> Option<&'static str> {
         "settings.images.unsplashToggleHint" => "Varsayılan olarak kapalı. Kendi anahtarınız gerekir; önce Unsplash API şartlarını okuyun.",
         "settings.images.getKeyLink" => "Ücretsiz anahtar al",
         "settings.images.unsplashTerms" => "Unsplash API şartları",
+        "ai.usage.line" => "{input} giriş · %{cached} önbellekten · {output} çıkış",
+        "ai.usage.lineNoCache" => "{input} giriş · {output} çıkış",
+        "ai.usage.detail" => "Giriş {total}: {fresh} yeni, {read} önbellekten okunan, {write} önbelleğe yazılan. Çıkış {output}. Yanıt sayısı: {turns}.",
+        "ai.usage.cacheNote" => "Önbellek isabetleri normal giriş token'larının çok küçük bir kısmına mal olur.",
         _ => return None,
     })
 }

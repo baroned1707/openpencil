@@ -294,7 +294,10 @@ fn paint_footer_neutral_hovers_use_visible_feedback() {
             op_editor_core::ChatFooterButton::AgentTeam => footer.agent_team,
             op_editor_core::ChatFooterButton::AddAttachment => footer.attach,
             op_editor_core::ChatFooterButton::Send => footer.send,
-            op_editor_core::ChatFooterButton::Stop => unreachable!(),
+            op_editor_core::ChatFooterButton::Stop
+            | op_editor_core::ChatFooterButton::UsageMeter => {
+                unreachable!()
+            }
         };
         let mut backend = PanelPaintBackend::default();
         let mut cx = PaintCx {

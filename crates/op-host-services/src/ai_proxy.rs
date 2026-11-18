@@ -161,6 +161,17 @@ pub fn delta_to_sse(delta: &ChatDelta) -> String {
         ChatDelta::ToolUse { name, args } => json!({ "tool": name, "args": args }),
         ChatDelta::Done { .. } => json!({ "done": true }),
         ChatDelta::Error(s) => json!({ "error": s }),
+        // The web client reads only delta / thinking / done / error and
+        // drops a frame it does not know, so this one is informational.
+        ChatDelta::Usage(run) => json!({
+            "usage": {
+                "input": run.input_tokens,
+                "cacheWrite": run.cache_creation_input_tokens,
+                "cacheRead": run.cache_read_input_tokens,
+                "output": run.output_tokens,
+                "turns": run.turns,
+            }
+        }),
     };
     format!("data: {payload}\n\n")
 }

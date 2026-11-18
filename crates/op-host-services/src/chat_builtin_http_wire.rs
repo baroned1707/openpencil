@@ -36,12 +36,32 @@ pub(crate) async fn pump_sse_response(
 }
 
 /// [`pump_sse_response`] that also reads Anthropic `usage` from the stream's
-/// `message_start` / `message_delta` payloads into `usage` (when given).
+/// `message_start` / `message_delta` payloads into `usage` (when given), and
+/// reports it to the UI as ONE `ChatDelta::Usage` just before the terminal
+/// `Done` (or `Error`) -- or, when the stream ends or fails without either,
+/// right after the pump, so the caller's own `Done` still follows it.
 pub(crate) async fn pump_sse_response_with_usage(
     resp: reqwest::Response,
     tx: &mpsc::Sender<ChatDelta>,
     parse: fn(&str) -> Option<ChatDelta>,
     mut usage: Option<&mut op_ai::chat_usage::RunUsage>,
+) -> Result<bool, BuiltinHttpError> {
+    let mut usage_sent = false;
+    let result = pump_sse_stream(resp, tx, parse, usage.as_deref_mut(), &mut usage_sent).await;
+    if !usage_sent {
+        if let Some(delta) = usage.and_then(|usage| usage.to_delta()) {
+            let _ = tx.send(delta).await;
+        }
+    }
+    result
+}
+
+async fn pump_sse_stream(
+    resp: reqwest::Response,
+    tx: &mpsc::Sender<ChatDelta>,
+    parse: fn(&str) -> Option<ChatDelta>,
+    mut usage: Option<&mut op_ai::chat_usage::RunUsage>,
+    usage_sent: &mut bool,
 ) -> Result<bool, BuiltinHttpError> {
     let mut stream = resp.bytes_stream();
     let mut buf = Vec::<u8>::new();
@@ -61,7 +81,9 @@ pub(crate) async fn pump_sse_response_with_usage(
             let line = String::from_utf8_lossy(&line);
             let line = line.trim_end_matches('\n').trim_end_matches('\r');
             if line.is_empty() {
-                if emit_sse_event(&mut event_data, tx, parse, usage.as_deref_mut()).await {
+                if emit_sse_event(&mut event_data, tx, parse, usage.as_deref_mut(), usage_sent)
+                    .await
+                {
                     emitted_done = true;
                     break;
                 }
@@ -89,7 +111,9 @@ pub(crate) async fn pump_sse_response_with_usage(
             event_data.push_str(data.trim_start());
         }
     }
-    if !emitted_done && emit_sse_event(&mut event_data, tx, parse, usage.as_deref_mut()).await {
+    if !emitted_done
+        && emit_sse_event(&mut event_data, tx, parse, usage.as_deref_mut(), usage_sent).await
+    {
         emitted_done = true;
     }
 
@@ -101,13 +125,15 @@ async fn emit_sse_event(
     tx: &mpsc::Sender<ChatDelta>,
     parse: fn(&str) -> Option<ChatDelta>,
     usage: Option<&mut op_ai::chat_usage::RunUsage>,
+    usage_sent: &mut bool,
 ) -> bool {
     let data = event_data.trim();
     if data.is_empty() {
         event_data.clear();
         return false;
     }
-    if let Some(usage) = usage {
+    let mut usage = usage;
+    if let Some(usage) = usage.as_deref_mut() {
         usage.observe_anthropic_event(data);
     }
     let Some(delta) = parse(data) else {
@@ -116,6 +142,14 @@ async fn emit_sse_event(
     };
     let emitted_done = matches!(delta, ChatDelta::Done { .. });
     let emitted_error = matches!(delta, ChatDelta::Error(_));
+    // The host retires the turn on `Done`, so usage goes out first. An
+    // `Error` is followed by a synthesized `Done`, so it goes before that too.
+    if (emitted_done || emitted_error) && !*usage_sent {
+        if let Some(usage_delta) = usage.and_then(|usage| usage.to_delta()) {
+            *usage_sent = true;
+            let _ = tx.send(usage_delta).await;
+        }
+    }
     if tx.send(delta).await.is_err() {
         event_data.clear();
         return true;

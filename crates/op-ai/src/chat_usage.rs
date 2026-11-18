@@ -77,6 +77,22 @@ impl RunUsage {
         self.turns += turn.turns;
     }
 
+    /// Whether any token count was learned. `turns` alone is not data: it
+    /// counts responses even when the endpoint reported no `usage` at all.
+    pub fn has_token_data(&self) -> bool {
+        self.input_tokens > 0
+            || self.cache_creation_input_tokens > 0
+            || self.cache_read_input_tokens > 0
+            || self.output_tokens > 0
+    }
+
+    /// The delta that reports this usage to the chat UI, or `None` when no
+    /// token count was learned (so the UI never shows a zero meter).
+    pub fn to_delta(&self) -> Option<crate::chat_provider::ChatDelta> {
+        self.has_token_data()
+            .then_some(crate::chat_provider::ChatDelta::Usage(*self))
+    }
+
     /// The one log line a run prints when it ends.
     pub fn log_line(&self) -> String {
         format!(

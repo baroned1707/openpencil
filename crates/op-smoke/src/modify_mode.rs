@@ -548,6 +548,7 @@ fn echo_deltas(deltas: &[ChatDelta]) {
             ChatDelta::ToolUse { name, .. } => eprintln!("[MODIFY] tool: {name}"),
             ChatDelta::Done { stop_reason } => eprintln!("[MODIFY] done: {stop_reason:?}"),
             ChatDelta::Error(error) => eprintln!("[MODIFY] provider error: {error}"),
+            ChatDelta::Usage(run) => eprintln!("[MODIFY] {}", run.log_line()),
         }
     }
 }

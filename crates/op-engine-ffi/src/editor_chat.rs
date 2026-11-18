@@ -378,6 +378,15 @@ impl MobileChatHost {
         let is_design = job.session.is_design_loop();
         let running_tab = job.running_tab;
         let mut changed = false;
+        // Token usage is not transcript content: it lands on the bound tab
+        // (summed over the turn's agents) without touching the bubble.
+        if let Some(usage) = job.session.take_usage() {
+            host.editor_state_mut()
+                .chat
+                .run_tab_mut(Some(running_tab))
+                .record_run_usage(usage);
+            changed = true;
+        }
         if !poll.is_idle() {
             let messages = &mut host
                 .editor_state_mut()

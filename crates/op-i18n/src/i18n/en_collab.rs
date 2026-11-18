@@ -671,6 +671,10 @@ pub fn lookup(key: &str) -> Option<&'static str> {
         "settings.images.unsplashToggleHint" => "Off by default. Needs your own key; check the Unsplash API terms first.",
         "settings.images.getKeyLink" => "Get a free key",
         "settings.images.unsplashTerms" => "Unsplash API terms",
+        "ai.usage.line" => "{input} in · {cached}% cached · {output} out",
+        "ai.usage.lineNoCache" => "{input} in · {output} out",
+        "ai.usage.detail" => "Input {total}: {fresh} new, {read} from cache, {write} written to cache. Output {output}. Responses: {turns}.",
+        "ai.usage.cacheNote" => "Cache hits cost a fraction of normal input tokens.",
         _ => return None,
     })
 }
