@@ -27,6 +27,8 @@ pub mod compose;
 mod deck_corpus_tests;
 pub mod design_data;
 pub mod design_data_search;
+#[cfg(test)]
+mod design_intelligence_tests;
 pub mod design_systems;
 pub mod frontmatter;
 pub mod loader;
@@ -369,6 +371,15 @@ pub fn design_agent_system_prompt() -> &'static str {
     static PROMPT: std::sync::OnceLock<String> = std::sync::OnceLock::new();
     PROMPT.get_or_init(|| design_agent_system_prompt_for(DesignVerifyProtocol::Screenshot))
 }
+
+/// Design-intelligence skills written for the tool-using design loop (and the
+/// MCP prompt built from it): they tell the agent to call `get_guidelines`, to
+/// write a brief next to a tool call and to check with `snapshot_layout` /
+/// `get_screenshot`. Consumers that have no tools or parse a script / JSON
+/// reply (orchestrator sub-agents, the plain chat prompt, the builtin
+/// preamble) drop these by name.
+pub const TOOL_LOOP_ONLY_SKILLS: [&str; 3] =
+    ["design-craft", "design-brief", "design-wcag-quickcheck"];
 
 /// Return the design-agent tool-loop system prompt with the prompt-matched
 /// product-depth skills appended.

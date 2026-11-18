@@ -96,6 +96,7 @@ pub fn build_chat_system_prompt(state: &EditorState, user_message: &str) -> Stri
     let knowledge = ctx
         .skills
         .iter()
+        .filter(|s| !op_ai_skills::TOOL_LOOP_ONLY_SKILLS.contains(&s.meta.name.as_str()))
         .map(|s| s.content.as_str())
         .collect::<Vec<_>>()
         .join("\n\n");
@@ -249,6 +250,17 @@ mod tests {
         // Generation-phase skills resolve for a design message, so the
         // prompt must be longer than the bare core prompt.
         assert!(prompt.len() > CHAT_CORE_PROMPT.len() + 100);
+    }
+
+    #[test]
+    fn chat_system_prompt_omits_the_tool_loop_only_design_skills() {
+        // A plain chat turn has no tools, so the brief workflow and the
+        // self-review that name `get_guidelines` / `snapshot_layout` stay out.
+        let state = EditorState::new();
+        let prompt = build_chat_system_prompt(&state, "design a login form");
+        assert!(!prompt.contains("CONTEXT AND UX BRIEF"));
+        assert!(!prompt.contains("CRAFT FLOOR AND SELF-REVIEW"));
+        assert!(!prompt.contains("ACCESSIBILITY QUICK CHECK"));
     }
 
     #[test]

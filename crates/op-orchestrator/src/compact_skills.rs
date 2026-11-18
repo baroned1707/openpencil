@@ -129,6 +129,12 @@ fn compact_subagent_skills<T: SkillNamed>(
             if has_design_system_substitute && name == "design-system" {
                 return false;
             }
+            // Tool-loop-only skills: they tell the agent to write a brief and
+            // to run `snapshot_layout` / `get_screenshot`, while a sub-agent
+            // emits one script and has no tools.
+            if op_ai_skills::TOOL_LOOP_ONLY_SKILLS.contains(&name) {
+                return false;
+            }
             true
         })
         .collect();
@@ -321,6 +327,21 @@ mod tests {
     ) -> Vec<FakeSkill> {
         let (kept, _drops) = apply_skill_filter(skills, tier, false, false, minimal, reduced);
         kept
+    }
+
+    #[test]
+    fn tool_loop_only_design_skills_never_reach_sub_agents() {
+        for tier in [ModelTier::Full, ModelTier::Standard, ModelTier::Basic] {
+            let input = skills(&[
+                "schema",
+                "layout",
+                "design-craft",
+                "design-brief",
+                "design-wcag-quickcheck",
+            ]);
+            let out = filter(input, tier, false, false);
+            assert_eq!(names(&out), ["schema", "layout"], "{tier:?}");
+        }
     }
 
     // -----------------------------------------------------------------------

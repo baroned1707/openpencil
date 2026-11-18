@@ -708,6 +708,10 @@ pub use turns::*;
 mod tests;
 
 #[cfg(test)]
+#[path = "chat_intent_design_brief_tests.rs"]
+mod design_brief_tests;
+
+#[cfg(test)]
 #[path = "chat_intent_selection_tests.rs"]
 mod selection_tests;
 

@@ -245,6 +245,7 @@ pub fn resolved_skill_preamble(user_message: &str) -> String {
     );
     ctx.skills
         .iter()
+        .filter(|s| !op_ai_skills::TOOL_LOOP_ONLY_SKILLS.contains(&s.meta.name.as_str()))
         .map(|s| s.content.as_str())
         .collect::<Vec<_>>()
         .join("\n\n")
@@ -401,6 +402,15 @@ mod tests {
         // a design prompt must yield a non-empty preamble.
         let preamble = resolved_skill_preamble("design a login form");
         assert!(!preamble.is_empty());
+    }
+
+    #[test]
+    fn skill_preamble_omits_the_tool_loop_only_design_skills() {
+        let preamble = resolved_skill_preamble("design a login form with accessibility");
+        assert!(!preamble.is_empty());
+        assert!(!preamble.contains("CONTEXT AND UX BRIEF"));
+        assert!(!preamble.contains("CRAFT FLOOR AND SELF-REVIEW"));
+        assert!(!preamble.contains("ACCESSIBILITY QUICK CHECK"));
     }
 
     #[test]

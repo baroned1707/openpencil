@@ -208,3 +208,201 @@ fn a_temp_copy_without_the_section_fails_the_check() {
         ["Unknown Dataset (MIT)"]
     );
 }
+
+// ---------------------------------------------------------------------------
+// Adapted prompt skills (design-craft, design-brief, design-wcag-quickcheck)
+// ---------------------------------------------------------------------------
+
+const ANTHROPIC_SKILLS: &str = "e4bb5d960d87126ff3b3a8af1a104b7db67560ba";
+const IMPECCABLE: &str = "d41d9860b0094dcb68030657da63461212835aaa";
+const DESIGNER_SKILLS: &str = "9a6930cf84a822eb458624bd11c61aac5bbdf224";
+const KNOWLEDGE_WORK_PLUGINS: &str = "e91a134584eb798bac7fb0379358006a2b63b965";
+
+const MODIFIED_STATEMENT: &str =
+    "Adapted and condensed by OpenPencil for a node-based editor; modified.";
+
+const ANTHROPIC_SECTION: &str =
+    "Anthropic skills (frontend-design) and knowledge-work-plugins (write-spec) (Apache-2.0)";
+const IMPECCABLE_SECTION: &str = "Impeccable (Apache-2.0)";
+const OWL_SECTION: &str = "Owl-Listener designer-skills (MIT)";
+const APACHE_SECTION: &str = "Apache License 2.0 (full text)";
+
+/// Skill -> the third-party files it was adapted from: (path, commit).
+const ADAPTED_SKILLS: [(&str, &[(&str, &str)]); 2] = [
+    (
+        "design-craft",
+        &[
+            ("skills/frontend-design/SKILL.md", ANTHROPIC_SKILLS),
+            ("skill/reference/craft-floor.md", IMPECCABLE),
+            ("skill/reference/typeset.md", IMPECCABLE),
+            ("skill/reference/colorize.md", IMPECCABLE),
+            ("skill/reference/layout.md", IMPECCABLE),
+            ("skill/reference/critique-rubric.md", IMPECCABLE),
+        ],
+    ),
+    (
+        "design-brief",
+        &[
+            ("ux-strategy/skills/design-brief/SKILL.md", DESIGNER_SKILLS),
+            (
+                "ux-strategy/skills/information-architecture/SKILL.md",
+                DESIGNER_SKILLS,
+            ),
+            (
+                "prototyping-testing/skills/user-flow-diagram/SKILL.md",
+                DESIGNER_SKILLS,
+            ),
+            (
+                "product-management/skills/write-spec/SKILL.md",
+                KNOWLEDGE_WORK_PLUGINS,
+            ),
+        ],
+    ),
+];
+
+/// Impeccable's NOTICE.md at the pinned commit (sha256 c60a093c...), verbatim.
+const IMPECCABLE_NOTICE: &str = "# Third-Party Notices\n\
+\n\
+This project includes content derived from third-party work, used under the terms of its original license.\n\
+\n\
+## Platform Design Skills\n\
+\n\
+The `skill/reference/ios.md` and `skill/reference/android.md` platform reference files are distilled from ehmo's `platform-design-skills` (Apple Human Interface Guidelines and Material Design 3 rules), rewritten in Impeccable's voice.\n\
+\n\
+**Original work:** https://github.com/ehmo/platform-design-skills\n\
+**Original license:** MIT\n\
+**Author:** ehmo";
+
+/// Body of the level-3 subsection `### heading`, up to the next heading.
+fn subsection_body<'a>(markdown: &'a str, heading: &str) -> &'a str {
+    let marker = format!("\n### {heading}\n");
+    let start = markdown
+        .find(&marker)
+        .unwrap_or_else(|| panic!("no subsection {heading:?}"))
+        + marker.len();
+    let rest = &markdown[start..];
+    rest.find("\n#").map_or(rest, |end| &rest[..end])
+}
+
+#[test]
+fn adapted_skills_have_notices_with_sources() {
+    let markdown = notices_markdown();
+    let list = section_body(&markdown, "Adapted prompt skills");
+    for (skill, sources) in ADAPTED_SKILLS {
+        assert!(
+            crate::get_skill_by_name(skill).is_some(),
+            "{skill} is not a registered skill"
+        );
+        let body = subsection_body(list, skill);
+        assert!(
+            body.contains(MODIFIED_STATEMENT),
+            "{skill}: the notice must say the work was modified"
+        );
+        for (path, commit) in sources {
+            assert!(
+                body.contains(path) && body.contains(&format!("`{commit}`")),
+                "{skill}: source {path} at {commit} is not listed"
+            );
+        }
+    }
+    // The WCAG skill copies nothing and says so, with the specification link.
+    let wcag = subsection_body(list, "design-wcag-quickcheck");
+    assert!(wcag.contains("independent summary"));
+    assert!(wcag.contains("https://www.w3.org/TR/WCAG22/"));
+    // Each source project has its section, with the right copyright line.
+    let headings = section_headings(&markdown);
+    for section in [
+        ANTHROPIC_SECTION,
+        IMPECCABLE_SECTION,
+        OWL_SECTION,
+        APACHE_SECTION,
+    ] {
+        assert!(headings.contains(section), "missing section {section:?}");
+    }
+    assert!(section_body(&markdown, ANTHROPIC_SECTION).contains(ANTHROPIC_SKILLS));
+    assert!(section_body(&markdown, ANTHROPIC_SECTION).contains(KNOWLEDGE_WORK_PLUGINS));
+    assert!(section_body(&markdown, ANTHROPIC_SECTION).contains(MODIFIED_STATEMENT));
+    assert!(section_body(&markdown, IMPECCABLE_SECTION).contains(IMPECCABLE));
+    assert!(section_body(&markdown, IMPECCABLE_SECTION).contains(MODIFIED_STATEMENT));
+    let owl = section_body(&markdown, OWL_SECTION);
+    assert!(owl.contains(DESIGNER_SKILLS));
+    assert!(owl.contains("Copyright (c) 2026 MC Dean"));
+    assert!(owl.contains("Permission is hereby granted, free of charge"));
+    assert!(owl.contains(MODIFIED_STATEMENT));
+}
+
+#[test]
+fn apache_text_and_impeccable_notice_are_present() {
+    let markdown = notices_markdown();
+    // The Apache text appears once, whole: its title, every numbered
+    // section heading and the closing line.
+    let apache = section_body(&markdown, APACHE_SECTION);
+    assert!(apache.contains("Apache License\n                           Version 2.0, January 2004"));
+    assert!(apache.contains("TERMS AND CONDITIONS FOR USE, REPRODUCTION, AND DISTRIBUTION"));
+    for clause in [
+        "1. Definitions.",
+        "2. Grant of Copyright License.",
+        "3. Grant of Patent License.",
+        "4. Redistribution.",
+        "5. Submission of Contributions.",
+        "6. Trademarks.",
+        "7. Disclaimer of Warranty.",
+        "8. Limitation of Liability.",
+        "9. Accepting Warranty or Additional Liability.",
+    ] {
+        assert!(apache.contains(clause), "Apache text lacks {clause:?}");
+    }
+    assert_eq!(markdown.matches("END OF TERMS AND CONDITIONS").count(), 1);
+    assert_eq!(markdown.matches("Grant of Patent License").count(), 1);
+
+    // Impeccable: copyright line, the NOTICE text line for line (indented),
+    // and the exclusion statement.
+    let impeccable = section_body(&markdown, IMPECCABLE_SECTION);
+    assert!(impeccable.contains("Copyright 2025 Paul Bakaus"));
+    for line in IMPECCABLE_NOTICE.lines().filter(|line| !line.is_empty()) {
+        assert!(
+            impeccable.contains(&format!("    {line}")),
+            "Impeccable NOTICE line missing: {line:?}"
+        );
+    }
+    for excluded in ["ios.md", "android.md", "*.native.md"] {
+        assert!(
+            impeccable.contains(excluded),
+            "exclusion of {excluded} not stated"
+        );
+    }
+}
+
+#[test]
+fn notice_check_fails_without_a_section() {
+    let markdown = notices_markdown();
+    let required = [
+        ANTHROPIC_SECTION,
+        IMPECCABLE_SECTION,
+        OWL_SECTION,
+        APACHE_SECTION,
+    ];
+    assert!(missing_sections(required, &markdown).is_empty());
+    // Negative proof on real files: cut one section out of a temp copy and the
+    // check must name exactly that section.
+    for (index, section) in required.iter().enumerate() {
+        let start = markdown
+            .find(&format!("\n## {section}\n"))
+            .expect("section present")
+            + 1;
+        let end = markdown[start..]
+            .find("\n## ")
+            .map_or(markdown.len(), |next| start + next + 1);
+        let directory = std::env::temp_dir().join(format!(
+            "op-ai-skills-adapted-notices-{}-{index}",
+            std::process::id()
+        ));
+        std::fs::create_dir_all(&directory).expect("temp dir");
+        let copy = directory.join("THIRD_PARTY_NOTICES.md");
+        std::fs::write(&copy, format!("{}{}", &markdown[..start], &markdown[end..]))
+            .expect("write copy");
+        let reduced = std::fs::read_to_string(&copy).expect("read copy");
+        std::fs::remove_dir_all(&directory).expect("clean up");
+        assert_eq!(missing_sections(required, &reduced), [*section]);
+    }
+}
