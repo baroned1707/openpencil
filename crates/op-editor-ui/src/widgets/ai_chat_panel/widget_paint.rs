@@ -261,6 +261,8 @@ impl<'a> Widget for AIChatPlaceholder<'a> {
         // Above everything else in the input block: the chips describe the
         // next turn and what it is aimed at, not the turn's content.
         crate::widgets::ai_chat_chip_row::paint_chip_row(cx, &self.theme, self, rows_rect);
+        // The style suggestions sit right under that line, above the text.
+        self.paint_style_suggest_row(cx, rows_rect);
         let chip_row_h = self.chip_row_h();
         let input_rect = Rect {
             origin: Point2D::new(rect.origin.x + PAD, sep_y + 1.0 + notice_h + chip_row_h),
@@ -409,6 +411,7 @@ impl<'a> Widget for AIChatPlaceholder<'a> {
         // Usage meter + its hover card: over the transcript's lower edge and
         // under the style card, which is the only thing allowed above it.
         self.paint_usage_meter(cx, rect);
+        self.paint_style_suggest_hover(cx, rect);
 
         // Pinned-style detail card — last of all, so it hangs over the input
         // block, and anchored ABOVE its chip so the ✕ on that row stays both

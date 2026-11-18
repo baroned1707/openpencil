@@ -65,6 +65,7 @@ mod spawn_worker_tests {
             visual_ref_enabled: false,
             pinned_style_guide: None,
             reference_skeleton: None,
+            style_hint: None,
         }
     }
 
@@ -203,6 +204,7 @@ mod subtask_retry_tests {
             visual_ref_enabled: false,
             pinned_style_guide: None,
             reference_skeleton: None,
+            style_hint: None,
         }
     }
 
@@ -445,6 +447,7 @@ Calm and focused.
             visual_ref_enabled: false,
             pinned_style_guide: None,
             reference_skeleton: None,
+            style_hint: None,
         }
     }
 

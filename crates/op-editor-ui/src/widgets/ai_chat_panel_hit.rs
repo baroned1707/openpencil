@@ -213,6 +213,9 @@ impl<'a> AIChatPlaceholder<'a> {
             let attach_h = self.attachment_row_h();
             let toolbar_top = attach_top + attach_h;
             if chip_row_h > 0.0 && point.y < text_top {
+                if let Some(hit) = self.style_suggest_press_at(input_rect, point) {
+                    return Some(hit);
+                }
                 if self
                     .style_receipt_clear_rect(input_rect)
                     .is_some_and(|clear| clear.contains(point))
@@ -604,6 +607,9 @@ impl<'a> AIChatPlaceholder<'a> {
         let input_rect = self.input_rect(rect);
         if !(input_rect).contains(point) {
             return None;
+        }
+        if let Some(hover) = self.style_suggest_hover_at(rect, point) {
+            return Some(hover);
         }
         let attach_h = self.attachment_row_h();
         // The chip row sits at the top of the input block — hover math must

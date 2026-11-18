@@ -197,6 +197,7 @@ fn append_does_not_mutate_preexisting_styled_node() {
         visual_ref_enabled: false,
         pinned_style_guide: None,
         reference_skeleton: None,
+        style_hint: None,
     };
 
     futures::executor::block_on(Orchestrator::new().run(

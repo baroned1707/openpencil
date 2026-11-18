@@ -208,6 +208,8 @@ impl DesktopApp {
         // request.
         let now_ms = self.clock_start.elapsed().as_millis() as u64;
         should_paint |= self.drain_scene_template_open(now_ms);
+        // The composer's style suggestions (debounced; see `style_suggest_host`).
+        should_paint |= self.tick_style_suggestions(now_ms);
         // A topic typed into the same panel's generate row replaces the
         // document too, then queues a chat turn on it. The launch has to
         // happen here rather than waiting for the next pointer / key event:

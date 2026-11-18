@@ -73,6 +73,11 @@ impl ChatAppPrefs {
             input_scroll_caret: _,
             // Per conversation: it describes this tab's last run.
             last_run_usage: _,
+            // Per conversation: the row describes this tab's draft.
+            style_suggestions: _,
+            suggestions_for: _,
+            chosen_style: _,
+            suggestions_dismissed_for: _,
         } = tab;
         Self {
             discovered_models: discovered_models.clone(),
@@ -126,6 +131,11 @@ impl ChatAppPrefs {
             input_scroll_caret: _,
             // Per conversation: it describes this tab's last run.
             last_run_usage: _,
+            // Per conversation: the row describes this tab's draft.
+            style_suggestions: _,
+            suggestions_for: _,
+            chosen_style: _,
+            suggestions_dismissed_for: _,
         } = tab;
         discovered_models.clone_from(&self.discovered_models);
         available_models.clone_from(&self.available_models);

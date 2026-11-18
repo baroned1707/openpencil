@@ -164,6 +164,7 @@ fn desktop_audit_uses_the_queued_request_even_when_the_user_bubble_is_shorter() 
         continuation_context: None,
         pinned_style_guide: None,
         reference_skeleton: None,
+        style_hint: None,
     };
     state.chat.messages[1].design_request_json_for_retry =
         Some(serde_json::to_string(&request).unwrap());

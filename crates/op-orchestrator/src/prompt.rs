@@ -225,6 +225,7 @@ pub fn build_orchestrator_prompt(
             );
             let mut user_prompt = cp.user_prompt;
             append_reference_skeleton(&mut user_prompt, req);
+            append_style_hint(&mut user_prompt, req);
             crate::source_copy::SourceCopy::from_brief(&req.prompt)
                 .append_planning_instruction(&mut user_prompt);
             let mut system_prompt = cp.system;
@@ -280,6 +281,7 @@ pub fn build_orchestrator_prompt(
             append_source_facts_contract(&mut system_prompt, req);
             let mut user_prompt = req.prompt.clone();
             append_reference_skeleton(&mut user_prompt, req);
+            append_style_hint(&mut user_prompt, req);
             crate::source_copy::SourceCopy::from_brief(&req.prompt)
                 .append_planning_instruction(&mut user_prompt);
             PlanningPrompt {
@@ -297,6 +299,14 @@ pub fn build_orchestrator_prompt(
                 mode,
             }
         }
+    }
+}
+
+/// The user's one-run style pick, as its own paragraph after the brief.
+fn append_style_hint(user_prompt: &mut String, req: &DesignRequest) {
+    if let Some(hint) = req.style_hint.as_deref().filter(|hint| !hint.is_empty()) {
+        user_prompt.push_str("\n\n");
+        user_prompt.push_str(hint);
     }
 }
 
@@ -330,6 +340,10 @@ pub(crate) fn subtask_intent(req: &DesignRequest, subtask: &Subtask) -> String {
 #[cfg(test)]
 #[path = "prompt_tests.rs"]
 mod tests;
+
+#[cfg(test)]
+#[path = "prompt_style_hint_tests.rs"]
+mod prompt_style_hint_tests;
 
 #[cfg(test)]
 #[path = "prompt_reference_tests.rs"]

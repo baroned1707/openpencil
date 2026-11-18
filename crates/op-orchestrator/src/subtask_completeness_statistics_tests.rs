@@ -186,6 +186,7 @@ fn retained_first_info_response_finishes_without_statistics_quota_retry_or_rollb
         visual_ref_enabled: false,
         pinned_style_guide: None,
         reference_skeleton: None,
+        style_hint: None,
     };
     let llm = ScriptedLlm::new(vec![ScriptResponse::Text(RESPONSE.into())]);
     let mut sink = VecDocSink::new();

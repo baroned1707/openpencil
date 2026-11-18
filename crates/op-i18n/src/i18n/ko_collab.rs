@@ -651,6 +651,11 @@ pub fn lookup(key: &str) -> Option<&'static str> {
         "ai.usage.lineNoCache" => "입력 {input} · 출력 {output}",
         "ai.usage.detail" => "입력 {total}: 새 토큰 {fresh}, 캐시 읽기 {read}, 캐시 쓰기 {write}. 출력 {output}. 응답 수: {turns}.",
         "ai.usage.cacheNote" => "캐시 적중은 일반 입력 토큰보다 훨씬 적은 비용이 듭니다.",
+        "ai.styleSuggest.label" => "추천 스타일",
+        "ai.styleSuggest.chosen" => "스타일: {{name}}",
+        "ai.styleSuggest.chooseTip" => "다음 생성에 이 스타일 사용",
+        "ai.styleSuggest.unchooseTip" => "다시 클릭하면 사용을 취소합니다",
+        "ai.styleSuggest.dismissTip" => "스타일 추천 숨기기",
         _ => return None,
     })
 }

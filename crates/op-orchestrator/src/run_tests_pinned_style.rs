@@ -27,6 +27,7 @@ fn pinned_req(pinned: Option<&str>) -> DesignRequest {
         visual_ref_enabled: false,
         pinned_style_guide: pinned.map(str::to_string),
         reference_skeleton: None,
+        style_hint: None,
     }
 }
 

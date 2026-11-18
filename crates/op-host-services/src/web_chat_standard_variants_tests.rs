@@ -138,6 +138,7 @@ fn a_scripted_variants_run_lands_every_direction_in_the_daemon_document() {
         visual_ref_enabled: false,
         pinned_style_guide: None,
         reference_skeleton: None,
+        style_hint: None,
     };
     let mut plans = choose_variant_style_guides(BRIEF, None, 3);
     localize_variant_plans(&mut plans, Locale::ZhCn);

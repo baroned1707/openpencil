@@ -150,6 +150,7 @@ fn retained_merchant_list_finishes_retry_ladder_without_a_count_retry() {
         visual_ref_enabled: false,
         pinned_style_guide: None,
         reference_skeleton: None,
+        style_hint: None,
     };
     let llm = ScriptedLlm::new(vec![ScriptResponse::Text(SCRIPTS[0].into())]);
     let mut sink = VecDocSink::new();

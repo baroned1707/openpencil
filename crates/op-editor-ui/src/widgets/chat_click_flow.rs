@@ -98,6 +98,20 @@ pub fn apply_chat_hit(state: &mut EditorState, hit: AIChatHit, now_ms: u64) -> C
                 ChatClickStep::Clean
             }
         }
+        AIChatHit::ToggleSuggestedStyle(index) => {
+            if state.chat.toggle_chosen_style(index) {
+                ChatClickStep::Dirty
+            } else {
+                ChatClickStep::Clean
+            }
+        }
+        AIChatHit::DismissStyleSuggestions => {
+            if state.chat.dismiss_style_suggestions() {
+                ChatClickStep::Dirty
+            } else {
+                ChatClickStep::Clean
+            }
+        }
         AIChatHit::FocusInput => {
             state.chat.focus_input_at_end(now_ms);
             state.chat.transcript_selection = None;

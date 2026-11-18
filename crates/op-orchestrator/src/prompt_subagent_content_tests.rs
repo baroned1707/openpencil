@@ -411,6 +411,7 @@ fn subagent_prompt_honors_explicit_radius_and_spacing_numbers() {
         visual_ref_enabled: false,
         pinned_style_guide: None,
         reference_skeleton: None,
+        style_hint: None,
     };
     let mut mobile_plan = plan();
     mobile_plan.root_frame.width = 402.0;
@@ -475,6 +476,7 @@ fn mobile_food_prompt_avoids_fixed_food_template() {
         visual_ref_enabled: false,
         pinned_style_guide: None,
         reference_skeleton: None,
+        style_hint: None,
     };
     let mut mobile_plan = plan();
     mobile_plan.root_frame.width = 402.0;
@@ -563,6 +565,7 @@ fn chinese_mobile_food_prompt_carries_language_consistency_rule() {
         visual_ref_enabled: false,
         pinned_style_guide: None,
         reference_skeleton: None,
+        style_hint: None,
     };
     let mut mobile_plan = plan();
     mobile_plan.root_frame.width = 390.0;

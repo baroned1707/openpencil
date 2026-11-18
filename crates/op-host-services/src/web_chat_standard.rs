@@ -407,6 +407,7 @@ fn design_request_for(
         visual_ref_enabled: false,
         pinned_style_guide: snapshot.editor_ui.pinned_style_guide.clone(),
         reference_skeleton: None,
+        style_hint: None,
     }
 }
 

@@ -100,6 +100,7 @@ fn req_validation_enabled() -> DesignRequest {
         visual_ref_enabled: false,
         pinned_style_guide: None,
         reference_skeleton: None,
+        style_hint: None,
     }
 }
 
@@ -117,6 +118,7 @@ fn req_validation_disabled() -> DesignRequest {
         visual_ref_enabled: false,
         pinned_style_guide: None,
         reference_skeleton: None,
+        style_hint: None,
     }
 }
 
@@ -340,6 +342,7 @@ fn dashboard_validation_enabled_emits_validation_done() {
             visual_ref_enabled: false,
             pinned_style_guide: None,
             reference_skeleton: None,
+            style_hint: None,
         },
         &mut sink,
         &llm,
@@ -404,6 +407,7 @@ fn dashboard_validation_disabled_no_validation_events() {
             visual_ref_enabled: false,
             pinned_style_guide: None,
             reference_skeleton: None,
+            style_hint: None,
         },
         &mut sink,
         &llm,
@@ -452,6 +456,7 @@ fn concurrent_validation_enabled_emits_validation_done() {
             visual_ref_enabled: false,
             pinned_style_guide: None,
             reference_skeleton: None,
+            style_hint: None,
         },
         &mut sink,
         &llm,
@@ -516,6 +521,7 @@ fn concurrent_validation_disabled_no_validation_events() {
             visual_ref_enabled: false,
             pinned_style_guide: None,
             reference_skeleton: None,
+            style_hint: None,
         },
         &mut sink,
         &llm,

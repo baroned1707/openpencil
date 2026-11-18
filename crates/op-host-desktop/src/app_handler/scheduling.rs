@@ -85,6 +85,11 @@ impl DesktopApp {
         if let Some(due) = self.next_projects_wake() {
             wake_no_later_than(event_loop, due);
         }
+        // The style suggestions wait out a typing pause; an idle app has no
+        // other frame coming, so the wake is what makes the chips appear.
+        if let Some(due) = self.style_suggest_wake() {
+            wake_no_later_than(event_loop, due);
+        }
     }
 
     fn schedule_primary_wake(&mut self, event_loop: &ActiveEventLoop) {
@@ -198,6 +203,8 @@ impl DesktopApp {
             // nothing. Ask about the tooltip itself or the wake we
             // scheduled for it would be thrown away unpainted.
             || self.host.top_bar_tooltip_showing()
+            // Same for the debounce of the style suggestions: its wake must repaint.
+            || self.style_suggest_wake().is_some()
             || self.update_probe.is_pending()
             || self.host.auth_flow_active()
             || op_host_services::hosted_models::needs_poll()

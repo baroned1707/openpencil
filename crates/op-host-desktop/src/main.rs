@@ -133,6 +133,7 @@ mod settings_io;
 mod single_instance;
 mod site_import_host;
 mod style_import_host;
+mod style_suggest_host;
 mod sub_agent_launch_plan;
 mod sub_agent_session;
 mod sub_agent_spawn_error;
@@ -159,9 +160,7 @@ const INITIAL_VIEWPORT_W: f32 = 1440.0;
 const INITIAL_VIEWPORT_H: f32 = 900.0;
 
 /// Worker payload of a clipboard HTML decode: the mapped nodes plus the
-/// importer's TYPED degradations. The typed form (not the rendered strings)
-/// is what the post-import diagnostics overlay needs — it localizes each row
-/// from the warning's code + structured args.
+/// importer's TYPED degradations (the diagnostics overlay localizes each row).
 type HtmlPasteResult = (
     Vec<jian_ops_schema::node::PenNode>,
     Vec<op_html::ImportWarning>,
@@ -343,6 +342,8 @@ struct DesktopApp {
     image_panel: image_panel_host::ImagePanelJobs,
     /// Studio Home 加链接 brand extractions running off the UI thread.
     brand_jobs: brand_extract_host::BrandJobs,
+    /// Debounce of the composer's style suggestions.
+    style_suggest: style_suggest_host::StyleSuggestDriver,
     /// Studio Home one-click website imports running off the UI thread.
     site_imports: site_import_host::SiteImportJobs,
     /// Background fetches for remote `http(s)` image sources the

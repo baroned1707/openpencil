@@ -9,7 +9,9 @@
 //! in the Asset Center, and the current selection — used to reach only the
 //! orchestrator pipeline. They ride the loop through ONE bounded block built
 //! here from the orchestrator's own serializers
-//! (`op_orchestrator::design_md_prompt_text`, `pinned_style_guide_prompt`).
+//! (`op_orchestrator::design_md_prompt_text`, `pinned_style_guide_prompt`). A style
+//! the user picked from the composer's suggestions (`chat.chosen_style`) joins
+//! them as one short paragraph for that run only.
 
 use op_editor_core::pen_node_ext::PenNodeExt;
 use op_editor_core::EditorState;
@@ -113,6 +115,15 @@ pub fn design_user_context_block(state: &EditorState, model: Option<&str>) -> Op
         }
     }
 
+    // The style the user picked from the composer's suggestions for this run
+    // only. Last, so design.md and a pinned guide above it read as the
+    // stronger decisions (the paragraph also says so itself).
+    if let Some(paragraph) = state.chat.chosen_style.as_ref().and_then(|chosen| {
+        op_ai_skills::design_styles_choice::chosen_style_paragraph(&chosen.style_ref)
+    }) {
+        parts.push(format!("### Style chosen for this run\n{paragraph}"));
+    }
+
     if parts.is_empty() {
         return None;
     }
@@ -150,3 +161,7 @@ pub fn design_loop_system_prompt(
 #[cfg(test)]
 #[path = "design_loop_prompt_tests.rs"]
 mod tests;
+
+#[cfg(test)]
+#[path = "design_loop_prompt_choice_tests.rs"]
+mod choice_tests;

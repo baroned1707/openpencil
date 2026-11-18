@@ -24,6 +24,8 @@ mod projects;
 mod settings;
 #[path = "document_swap_render_tests.rs"]
 mod swap_render;
+#[path = "ui3_proof_style_suggest_tests.rs"]
+mod style_suggest;
 #[path = "ui3_proof_tabs_tests.rs"]
 mod tabs;
 #[path = "ui3_proof_usage_tests.rs"]

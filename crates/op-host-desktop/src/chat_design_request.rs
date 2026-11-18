@@ -50,6 +50,11 @@ pub(crate) fn build_design_request(
         // style guide the prompt would otherwise infer.
         pinned_style_guide: state.editor_ui.pinned_style_guide.clone(),
         reference_skeleton: None,
+        // The style picked from the composer's suggestions for this run only
+        // (cleared by the launcher once the send is drained).
+        style_hint: state.chat.chosen_style.as_ref().and_then(|chosen| {
+            op_ai_skills::design_styles_choice::chosen_style_paragraph(&chosen.style_ref)
+        }),
     }
 }
 
@@ -121,6 +126,40 @@ mod tests {
         assert_eq!(
             req.pinned_style_guide.as_deref(),
             Some("nordic-frost-light")
+        );
+    }
+
+    #[test]
+    fn orchestrator_request_carries_the_chosen_style() {
+        let mut state = EditorState::new();
+        assert_eq!(
+            build_design_request("draw a dashboard".into(), &state, None).style_hint,
+            None,
+            "a run without a choice carries no hint"
+        );
+        if op_ai_skills::style_by_ref("glassmorphism").is_none() {
+            return; // no embedded style table on this target
+        }
+        state.chat.chosen_style = Some(op_editor_core::StyleSuggestion {
+            style_ref: "glassmorphism".into(),
+            name: "Glassmorphism".into(),
+            blurb: String::new(),
+        });
+        let req = build_design_request("draw a dashboard".into(), &state, None);
+        let hint = req.style_hint.expect("the choice rides the request");
+        assert!(hint.contains("Glassmorphism"));
+        assert!(hint.contains("design.md and the pinned style (if any) outrank it"));
+        // The brief stays the user's own words.
+        assert_eq!(req.prompt, "draw a dashboard");
+        // A retired style reference adds nothing.
+        state.chat.chosen_style = Some(op_editor_core::StyleSuggestion {
+            style_ref: "retired".into(),
+            name: "Retired".into(),
+            blurb: String::new(),
+        });
+        assert_eq!(
+            build_design_request("draw a dashboard".into(), &state, None).style_hint,
+            None
         );
     }
 

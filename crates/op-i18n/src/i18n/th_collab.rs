@@ -637,6 +637,11 @@ pub fn lookup(key: &str) -> Option<&'static str> {
         "ai.usage.lineNoCache" => "{input} เข้า · {output} ออก",
         "ai.usage.detail" => "อินพุต {total}: ใหม่ {fresh}, อ่านจากแคช {read}, เขียนลงแคช {write}. เอาต์พุต {output}. จำนวนการตอบกลับ: {turns}.",
         "ai.usage.cacheNote" => "การเข้าถึงแคชมีค่าใช้จ่ายเพียงเศษเสี้ยวของโทเค็นอินพุตปกติ",
+        "ai.styleSuggest.label" => "สไตล์ที่แนะนำ",
+        "ai.styleSuggest.chosen" => "สไตล์: {{name}}",
+        "ai.styleSuggest.chooseTip" => "ใช้สไตล์นี้ในการสร้างครั้งถัดไป",
+        "ai.styleSuggest.unchooseTip" => "คลิกอีกครั้งเพื่อเลิกใช้สไตล์นี้",
+        "ai.styleSuggest.dismissTip" => "ซ่อนสไตล์ที่แนะนำ",
         _ => return None,
     })
 }

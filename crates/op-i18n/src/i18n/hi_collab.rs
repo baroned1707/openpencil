@@ -639,6 +639,11 @@ pub fn lookup(key: &str) -> Option<&'static str> {
         "ai.usage.lineNoCache" => "{input} इनपुट · {output} आउटपुट",
         "ai.usage.detail" => "इनपुट {total}: {fresh} नए, {read} कैश से पढ़े, {write} कैश में लिखे। आउटपुट {output}। उत्तर: {turns}।",
         "ai.usage.cacheNote" => "कैश हिट की लागत सामान्य इनपुट टोकन का एक छोटा हिस्सा होती है।",
+        "ai.styleSuggest.label" => "सुझाया गया स्टाइल",
+        "ai.styleSuggest.chosen" => "शैली: {{name}}",
+        "ai.styleSuggest.chooseTip" => "अगली बार इस स्टाइल का उपयोग करें",
+        "ai.styleSuggest.unchooseTip" => "इस स्टाइल का उपयोग रोकने के लिए फिर से क्लिक करें",
+        "ai.styleSuggest.dismissTip" => "स्टाइल सुझाव छिपाएं",
         _ => return None,
     })
 }

@@ -44,6 +44,7 @@ fn fixture(interactive: bool) -> (Subtask, OrchestratorPlan, DesignRequest) {
         visual_ref_enabled: false,
         pinned_style_guide: None,
         reference_skeleton: None,
+        style_hint: None,
     };
     (task, plan, request)
 }

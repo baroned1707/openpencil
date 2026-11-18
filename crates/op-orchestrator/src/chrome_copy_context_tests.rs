@@ -126,6 +126,7 @@ const a=I(s,{type:'frame',name:'Current account',layout:'vertical',width:'fill_c
         visual_ref_enabled: false,
         pinned_style_guide: None,
         reference_skeleton: None,
+        style_hint: None,
     };
     let providers = ValidationProviders {
         pre_validator: &SkippedPreValidator,
@@ -275,6 +276,7 @@ fn same_page_copy_is_appended_to_full_reduced_and_minimal_body_calls() {
             visual_ref_enabled: false,
             pinned_style_guide: None,
             reference_skeleton: None,
+            style_hint: None,
         };
         futures::executor::block_on(run_subtask_with_reveal_at_and_outcomes(
             &task,

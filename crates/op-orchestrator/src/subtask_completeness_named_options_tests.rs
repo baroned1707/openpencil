@@ -160,6 +160,7 @@ fn ladder_for_task(
         visual_ref_enabled: false,
         pinned_style_guide: None,
         reference_skeleton: None,
+        style_hint: None,
     };
     let llm = ScriptedLlm::new(
         responses

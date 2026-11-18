@@ -72,6 +72,7 @@ fn replay_retained_glm_overprint_through_the_complete_generation_pipeline() {
         visual_ref_enabled: false,
         pinned_style_guide: Some("leadprint-vermilion-light".into()),
         reference_skeleton: None,
+        style_hint: None,
     };
     let providers = ValidationProviders {
         pre_validator: &SkippedPreValidator,

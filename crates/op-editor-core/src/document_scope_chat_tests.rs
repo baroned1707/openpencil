@@ -125,3 +125,52 @@ fn usage_follows_the_document_tab() {
     live.switch_document_scope(&mut parked);
     assert_eq!(live.chat.last_run_usage, Some(other), "B keeps its own");
 }
+
+fn suggestion(name: &str) -> crate::StyleSuggestion {
+    crate::StyleSuggestion {
+        style_ref: name.to_lowercase(),
+        name: name.to_string(),
+        blurb: format!("Best for {name}"),
+    }
+}
+
+#[test]
+fn style_suggestions_follow_the_document_tab() {
+    // The chips describe the draft typed in THIS tab of THIS document: they
+    // travel with it and never show over another document's composer.
+    let mut live = EditorState::starter();
+    live.chat.set_style_suggestions(7, vec![suggestion("Glass")]);
+    live.chat.toggle_chosen_style(0);
+    live.chat.new_tab();
+    assert!(!live.chat.has_style_suggest_row(), "a second tab starts clean");
+
+    let mut parked = DocumentScope::from_state(EditorState::starter());
+    live.switch_document_scope(&mut parked);
+    assert!(!live.chat.has_style_suggest_row(), "document B has no row");
+    live.chat.set_style_suggestions(8, vec![suggestion("Swiss")]);
+
+    live.switch_document_scope(&mut parked);
+    assert_eq!(live.chat.tabs()[0].chosen_style, Some(suggestion("Glass")));
+    assert_eq!(live.chat.tabs()[0].suggestions_for, Some(7));
+    assert!(live.chat.tabs()[1].style_suggestions.is_empty());
+    live.switch_document_scope(&mut parked);
+    assert_eq!(live.chat.style_suggestions, vec![suggestion("Swiss")]);
+}
+
+#[test]
+fn suggestions_are_not_persisted() {
+    // App-level chat prefs (what settings keep) carry none of the row: a new
+    // tab that receives them starts without chips or a choice.
+    let mut live = EditorState::starter();
+    live.chat.set_style_suggestions(7, vec![suggestion("Glass")]);
+    live.chat.toggle_chosen_style(0);
+    let prefs = live.chat.app_prefs();
+
+    let mut other = crate::chat_sessions::ChatSessions::default();
+    other.apply_app_prefs(&prefs);
+    let tab = other.active();
+    assert!(tab.style_suggestions.is_empty());
+    assert_eq!(tab.chosen_style, None);
+    assert_eq!(tab.suggestions_for, None);
+    assert_eq!(tab.suggestions_dismissed_for, None);
+}

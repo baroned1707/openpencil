@@ -62,6 +62,7 @@ fn orchestrator_prompt_long_prompt_has_larger_timeout_than_short() {
         visual_ref_enabled: false,
         pinned_style_guide: None,
         reference_skeleton: None,
+        style_hint: None,
     };
     let long_prompt = "x".repeat(5000); // >= 4200 chars
     let long_req = DesignRequest {
@@ -77,6 +78,7 @@ fn orchestrator_prompt_long_prompt_has_larger_timeout_than_short() {
         visual_ref_enabled: false,
         pinned_style_guide: None,
         reference_skeleton: None,
+        style_hint: None,
     };
     let short_pp = build_orchestrator_prompt(&short_req, PlanningMode::Rich, AbortFlag::new());
     let long_pp = build_orchestrator_prompt(&long_req, PlanningMode::Rich, AbortFlag::new());
@@ -103,6 +105,7 @@ fn orchestrator_prompt_multiplier_applied() {
         visual_ref_enabled: false,
         pinned_style_guide: None,
         reference_skeleton: None,
+        style_hint: None,
     };
     let pp = build_orchestrator_prompt(&ds_req, PlanningMode::Rich, AbortFlag::new());
     // Short bucket base: 300_000ms × 2.0 = 600_000ms
@@ -149,6 +152,7 @@ fn subagent_prompt_long_prompt_has_larger_timeout() {
         visual_ref_enabled: false,
         pinned_style_guide: None,
         reference_skeleton: None,
+        style_hint: None,
     };
     let long_req = DesignRequest {
         prompt: "x".repeat(5000),
@@ -163,6 +167,7 @@ fn subagent_prompt_long_prompt_has_larger_timeout() {
         visual_ref_enabled: false,
         pinned_style_guide: None,
         reference_skeleton: None,
+        style_hint: None,
     };
     let (short_cr, _) = bsp(
         &subtask(),
@@ -202,6 +207,7 @@ fn subagent_prompt_basic_tier_clamps_soft_timeouts() {
         visual_ref_enabled: false,
         pinned_style_guide: None,
         reference_skeleton: None,
+        style_hint: None,
     };
     let (cr, _) = bsp(
         &subtask(),
@@ -473,6 +479,7 @@ fn subtask_intent_includes_prompt_label_and_hints() {
         visual_ref_enabled: false,
         pinned_style_guide: None,
         reference_skeleton: None,
+        style_hint: None,
     };
     let mut sub = crate::plan::Subtask {
         id: "header".into(),

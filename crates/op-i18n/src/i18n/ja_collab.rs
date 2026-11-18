@@ -651,6 +651,11 @@ pub fn lookup(key: &str) -> Option<&'static str> {
         "ai.usage.lineNoCache" => "{input} 入力 · {output} 出力",
         "ai.usage.detail" => "入力 {total}：新規 {fresh}、キャッシュ読み取り {read}、キャッシュ書き込み {write}。出力 {output}。応答回数：{turns}。",
         "ai.usage.cacheNote" => "キャッシュヒットの料金は通常の入力トークンのごく一部です。",
+        "ai.styleSuggest.label" => "おすすめのスタイル",
+        "ai.styleSuggest.chosen" => "スタイル：{{name}}",
+        "ai.styleSuggest.chooseTip" => "次の生成でこのスタイルを使う",
+        "ai.styleSuggest.unchooseTip" => "もう一度クリックすると解除します",
+        "ai.styleSuggest.dismissTip" => "スタイルの提案を隠す",
         _ => return None,
     })
 }

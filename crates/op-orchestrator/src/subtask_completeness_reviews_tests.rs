@@ -292,6 +292,7 @@ fn retained_second_response_finishes_without_a_false_quota_retry() {
         visual_ref_enabled: false,
         pinned_style_guide: None,
         reference_skeleton: None,
+        style_hint: None,
     };
     let llm = ScriptedLlm::new(vec![ScriptResponse::Text(SCRIPTS[0].into())]);
     let mut sink = VecDocSink::new();

@@ -201,7 +201,8 @@ fn card_fill(theme: &Theme) -> crate::Color {
     }
 }
 
-fn paint_usage_card(
+/// The card itself: also used by the style-suggestion hover.
+pub(crate) fn paint_usage_card(
     cx: &mut PaintCx<'_>,
     theme: &Theme,
     row: Rect,

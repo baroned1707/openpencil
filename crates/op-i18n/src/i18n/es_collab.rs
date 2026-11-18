@@ -635,6 +635,11 @@ pub fn lookup(key: &str) -> Option<&'static str> {
         "ai.usage.lineNoCache" => "{input} de entrada · {output} de salida",
         "ai.usage.detail" => "Entrada {total}: {fresh} nuevos, {read} leídos de la caché, {write} escritos en la caché. Salida {output}. Respuestas: {turns}.",
         "ai.usage.cacheNote" => "Los aciertos de caché cuestan una fracción de los tokens de entrada normales.",
+        "ai.styleSuggest.label" => "Estilo sugerido",
+        "ai.styleSuggest.chosen" => "Estilo: {{name}}",
+        "ai.styleSuggest.chooseTip" => "Usar este estilo en la próxima generación",
+        "ai.styleSuggest.unchooseTip" => "Haz clic de nuevo para dejar de usar este estilo",
+        "ai.styleSuggest.dismissTip" => "Ocultar estilos sugeridos",
         _ => return None,
     })
 }

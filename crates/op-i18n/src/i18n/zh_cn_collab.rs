@@ -635,6 +635,11 @@ pub fn lookup(key: &str) -> Option<&'static str> {
         "ai.usage.lineNoCache" => "{input} 输入 · {output} 输出",
         "ai.usage.detail" => "输入 {total}：新增 {fresh}，缓存读取 {read}，缓存写入 {write}。输出 {output}。响应次数：{turns}。",
         "ai.usage.cacheNote" => "缓存命中的费用只是普通输入 token 的一小部分。",
+        "ai.styleSuggest.label" => "推荐风格",
+        "ai.styleSuggest.chosen" => "风格：{{name}}",
+        "ai.styleSuggest.chooseTip" => "下次生成时使用此风格",
+        "ai.styleSuggest.unchooseTip" => "再次点击取消使用此风格",
+        "ai.styleSuggest.dismissTip" => "隐藏风格推荐",
         _ => return None,
     })
 }

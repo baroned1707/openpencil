@@ -665,6 +665,11 @@ pub fn lookup(key: &str) -> Option<&'static str> {
         "ai.usage.lineNoCache" => "{input} вход · {output} выход",
         "ai.usage.detail" => "Вход {total}: {fresh} новых, {read} из кэша, {write} записано в кэш. Выход {output}. Ответов: {turns}.",
         "ai.usage.cacheNote" => "Попадания в кэш стоят лишь долю обычных входных токенов.",
+        "ai.styleSuggest.label" => "Рекомендуемый стиль",
+        "ai.styleSuggest.chosen" => "Стиль: {{name}}",
+        "ai.styleSuggest.chooseTip" => "Использовать этот стиль в следующем запуске",
+        "ai.styleSuggest.unchooseTip" => "Нажмите ещё раз, чтобы не использовать этот стиль",
+        "ai.styleSuggest.dismissTip" => "Скрыть рекомендации стилей",
         _ => return None,
     })
 }

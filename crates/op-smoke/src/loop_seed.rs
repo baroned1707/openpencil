@@ -84,6 +84,7 @@ pub fn build_seed_command(prompt: &str) -> Result<EditorCommand, SeedBuildError>
         visual_ref_enabled: false,
         pinned_style_guide: None,
         reference_skeleton: None,
+        style_hint: None,
     };
     // Reuse the orchestrator's NO-LLM heuristic planner for the root-frame
     // spec + the section names/count.
@@ -173,6 +174,7 @@ pub fn seed_system_prompt_suffix(prompt: &str) -> String {
         visual_ref_enabled: false,
         pinned_style_guide: None,
         reference_skeleton: None,
+        style_hint: None,
     };
     let plan = build_fallback_plan(&req);
     let section_list = plan

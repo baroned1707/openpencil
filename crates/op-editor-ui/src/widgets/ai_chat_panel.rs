@@ -1,5 +1,5 @@
 use crate::theme::Theme;
-use crate::widgets::ai_chat_chip_row::ChipRowLayout;
+use crate::widgets::ai_chat_chip_row::{ChipRowLayout, CHIP_ROW_HEIGHT};
 pub(crate) use crate::widgets::ai_chat_panel_controls::chat_neutral_feedback_color;
 // Re-exported for paint tests that verify hover tint colours.
 #[cfg(test)]
@@ -318,11 +318,9 @@ impl<'a> AIChatPlaceholder<'a> {
     /// user with nothing pinned and nothing selected gets no empty band
     /// above the input at all.
     pub(crate) fn chip_row_h(&self) -> f32 {
-        if self.style_receipt.is_some() || self.selected_count > 0 {
-            crate::widgets::ai_chat_chip_row::CHIP_ROW_HEIGHT
-        } else {
-            0.0
-        }
+        let chips = self.style_receipt.is_some() || self.selected_count > 0;
+        let line = if chips { CHIP_ROW_HEIGHT } else { 0.0 };
+        line + self.style_suggest_row_h()
     }
 
     /// Height of the pre-flight MCP notice — `0` when the selected agent can
@@ -353,7 +351,7 @@ impl<'a> AIChatPlaceholder<'a> {
     /// The input block with the notice row (if any) already taken off the top,
     /// so every row below it lands in the same place whether or not the notice
     /// is showing.
-    fn input_rows_rect(&self, rect: Rect) -> Rect {
+    pub(crate) fn input_rows_rect(&self, rect: Rect) -> Rect {
         let input = self.input_rect(rect);
         let offset = self.mcp_notice_row_h();
         Rect {
@@ -790,3 +788,7 @@ mod tests_selected_chip;
 #[cfg(test)]
 #[path = "ai_chat_panel/tests_usage_meter.rs"]
 mod tests_usage_meter;
+
+#[cfg(test)]
+#[path = "ai_chat_panel/tests_style_suggest.rs"]
+mod tests_style_suggest;

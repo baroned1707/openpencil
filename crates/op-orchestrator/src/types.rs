@@ -728,6 +728,13 @@ pub struct DesignRequest {
     /// Content-free structure extracted from an imported reference page.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub reference_skeleton: Option<crate::reference_skeleton::ReferenceSkeleton>,
+    /// One paragraph naming the style the user picked from the composer's
+    /// suggestions for THIS run (already rendered by the host, with its own
+    /// statement that design.md and a pinned guide outrank it). Appended to the
+    /// planning prompt only: it is guidance, not part of `prompt`, so design-type
+    /// detection, skill matching and copy-language rules never read it.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub style_hint: Option<String>,
 }
 
 /// Mirrors the serde defaults exactly, so a request built through `Default`
@@ -749,6 +756,7 @@ impl Default for DesignRequest {
             visual_ref_enabled: default_visual_ref_enabled(),
             pinned_style_guide: None,
             reference_skeleton: None,
+            style_hint: None,
         }
     }
 }

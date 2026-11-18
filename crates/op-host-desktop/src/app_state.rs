@@ -215,6 +215,7 @@ impl DesktopApp {
             image_search: image_search_session::ImageSearchSession::new(),
             image_panel: image_panel_host::ImagePanelJobs::new(),
             brand_jobs: crate::brand_extract_host::BrandJobs::new(),
+            style_suggest: Default::default(),
             site_imports: crate::site_import_host::SiteImportJobs::new(),
             remote_images: remote_image_host::RemoteImageSession::new(),
             collab_avatars: collab_avatar_host::CollabAvatarHost::new(),

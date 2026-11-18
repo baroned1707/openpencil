@@ -635,6 +635,11 @@ pub fn lookup(key: &str) -> Option<&'static str> {
         "ai.usage.lineNoCache" => "{input} masuk · {output} keluar",
         "ai.usage.detail" => "Input {total}: {fresh} baru, {read} dibaca dari cache, {write} ditulis ke cache. Output {output}. Respons: {turns}.",
         "ai.usage.cacheNote" => "Cache hit berbiaya hanya sebagian kecil dari token input biasa.",
+        "ai.styleSuggest.label" => "Gaya yang disarankan",
+        "ai.styleSuggest.chosen" => "Gaya: {{name}}",
+        "ai.styleSuggest.chooseTip" => "Gunakan gaya ini untuk proses berikutnya",
+        "ai.styleSuggest.unchooseTip" => "Klik lagi untuk berhenti memakai gaya ini",
+        "ai.styleSuggest.dismissTip" => "Sembunyikan saran gaya",
         _ => return None,
     })
 }

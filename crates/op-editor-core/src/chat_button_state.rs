@@ -46,4 +46,9 @@ pub enum ChatFooterButton {
     /// The usage line under the transcript. Hover only: it raises the exact
     /// numbers, takes no click and shows no pointer cursor.
     UsageMeter,
+    /// The `n`-th style chip above the composer (suggest row, hover only: it
+    /// raises the chip's blurb; the click is `AIChatHit::ToggleSuggestedStyle`).
+    StyleSuggestChip(u8),
+    /// The ✕ that hides the style suggestions.
+    StyleSuggestDismiss,
 }

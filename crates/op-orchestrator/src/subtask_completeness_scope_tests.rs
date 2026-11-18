@@ -279,6 +279,7 @@ fn retained_header_and_real_grid_each_finish_the_retry_ladder_on_first_attempt()
         visual_ref_enabled: false,
         pinned_style_guide: None,
         reference_skeleton: None,
+        style_hint: None,
     };
     let category_script = format!(
         "I(null,{});",

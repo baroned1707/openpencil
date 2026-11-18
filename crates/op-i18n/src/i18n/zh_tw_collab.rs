@@ -635,6 +635,11 @@ pub fn lookup(key: &str) -> Option<&'static str> {
         "ai.usage.lineNoCache" => "{input} 輸入 · {output} 輸出",
         "ai.usage.detail" => "輸入 {total}：新增 {fresh}，快取讀取 {read}，快取寫入 {write}。輸出 {output}。回應次數：{turns}。",
         "ai.usage.cacheNote" => "快取命中的費用只是一般輸入 token 的一小部分。",
+        "ai.styleSuggest.label" => "推薦風格",
+        "ai.styleSuggest.chosen" => "風格：{{name}}",
+        "ai.styleSuggest.chooseTip" => "下次生成時使用此風格",
+        "ai.styleSuggest.unchooseTip" => "再次點擊取消使用此風格",
+        "ai.styleSuggest.dismissTip" => "隱藏風格推薦",
         _ => return None,
     })
 }

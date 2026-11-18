@@ -647,6 +647,11 @@ pub fn lookup(key: &str) -> Option<&'static str> {
         "ai.usage.lineNoCache" => "{input} vào · {output} ra",
         "ai.usage.detail" => "Đầu vào {total}: {fresh} mới, {read} đọc từ bộ nhớ đệm, {write} ghi vào bộ nhớ đệm. Đầu ra {output}. Số phản hồi: {turns}.",
         "ai.usage.cacheNote" => "Lượt trúng bộ nhớ đệm có chi phí chỉ bằng một phần nhỏ token đầu vào thông thường.",
+        "ai.styleSuggest.label" => "Phong cách gợi ý",
+        "ai.styleSuggest.chosen" => "Phong cách: {{name}}",
+        "ai.styleSuggest.chooseTip" => "Dùng phong cách này cho lần tạo tiếp theo",
+        "ai.styleSuggest.unchooseTip" => "Nhấp lần nữa để bỏ chọn phong cách này",
+        "ai.styleSuggest.dismissTip" => "Ẩn gợi ý phong cách",
         _ => return None,
     })
 }

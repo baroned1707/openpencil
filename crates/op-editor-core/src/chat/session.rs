@@ -118,6 +118,7 @@ impl ChatState {
         self.messages.push(user_msg);
         // A new run starts: the previous run's usage no longer describes it.
         self.last_run_usage = None;
+        self.style_run_started();
         // Empty streaming assistant bubble — provider deltas append here.
         let mut assistant_msg = ChatMessage::assistant_streaming();
         assistant_msg.agent_name = agent_name;
@@ -229,6 +230,9 @@ impl ChatState {
         self.runtime_instance = ChatInstanceId::default();
         self.messages.clear();
         self.last_run_usage = None;
+        self.style_run_started();
+        self.chosen_style = None;
+        self.suggestions_dismissed_for = None;
         self.title = DEFAULT_CHAT_TITLE.to_string();
         self.input.set_text("");
         self.pending_send = None;

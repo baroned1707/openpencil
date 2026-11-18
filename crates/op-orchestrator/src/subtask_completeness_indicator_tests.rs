@@ -222,6 +222,7 @@ fn retained_first_hero_finishes_without_a_quota_retry() {
         visual_ref_enabled: false,
         pinned_style_guide: None,
         reference_skeleton: None,
+        style_hint: None,
     };
     let llm = ScriptedLlm::new(vec![ScriptResponse::Text(RETAINED[0].into())]);
     let mut sink = VecDocSink::new();

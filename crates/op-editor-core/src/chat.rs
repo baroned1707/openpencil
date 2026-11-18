@@ -22,6 +22,7 @@
 //! - `messages` — `impl ChatState` per-message card state, per-turn
 //!   selectors and attachments
 //! - [`usage`] — [`UsageView`], the last run's token usage for the meter
+//! - [`style_suggestion`] — [`StyleSuggestion`], the style chips above the composer
 
 mod instance;
 pub mod message;
@@ -30,11 +31,15 @@ pub mod models;
 mod session;
 #[cfg(test)]
 mod tests;
+pub mod style_suggestion;
 pub mod usage;
 
 pub use instance::ChatInstanceId;
 pub use message::{ChatImage, ChatMessage, ChatRole, ChatToolCall};
 pub use models::{AgentProvider, ModelEntry};
+pub use style_suggestion::{
+    style_blurb, text_fingerprint, StyleSuggestion, MAX_STYLE_SUGGESTIONS, STYLE_BLURB_MAX_CHARS,
+};
 pub use usage::{format_token_count, UsageView};
 
 /// Re-export of the chat-request knobs from `op-ai` so callers of
@@ -326,6 +331,22 @@ pub struct ChatState {
     /// run reports any. Cleared when a new run starts. In memory only: it
     /// moves with the tab (and so with its document) and is never saved.
     pub last_run_usage: Option<UsageView>,
+    /// Up to three styles offered for the text being typed (desktop host
+    /// only). In memory only, like [`last_run_usage`].
+    ///
+    /// [`last_run_usage`]: ChatState::last_run_usage
+    pub style_suggestions: Vec<StyleSuggestion>,
+    /// Fingerprint of the text [`style_suggestions`] was computed for (an empty
+    /// result counts), so the host searches once per stable text.
+    ///
+    /// [`style_suggestions`]: ChatState::style_suggestions
+    pub suggestions_for: Option<u64>,
+    /// The style the user picked for the NEXT run only; the launcher takes it
+    /// and clears it, whatever route the run takes.
+    pub chosen_style: Option<StyleSuggestion>,
+    /// Fingerprint of the text the user dismissed the row for. The row stays
+    /// hidden until the text changes.
+    pub suggestions_dismissed_for: Option<u64>,
 }
 
 /// Process-global allocator for [`ChatImage::id`]. A *global* counter
@@ -376,6 +397,10 @@ impl Default for ChatState {
             input_scroll: 0.0,
             input_scroll_caret: 0,
             last_run_usage: None,
+            style_suggestions: Vec::new(),
+            suggestions_for: None,
+            chosen_style: None,
+            suggestions_dismissed_for: None,
         }
     }
 }

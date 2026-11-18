@@ -635,6 +635,11 @@ pub fn lookup(key: &str) -> Option<&'static str> {
         "ai.usage.lineNoCache" => "{input} giriş · {output} çıkış",
         "ai.usage.detail" => "Giriş {total}: {fresh} yeni, {read} önbellekten okunan, {write} önbelleğe yazılan. Çıkış {output}. Yanıt sayısı: {turns}.",
         "ai.usage.cacheNote" => "Önbellek isabetleri normal giriş token'larının çok küçük bir kısmına mal olur.",
+        "ai.styleSuggest.label" => "Önerilen stil",
+        "ai.styleSuggest.chosen" => "Stil: {{name}}",
+        "ai.styleSuggest.chooseTip" => "Sonraki çalıştırmada bu stili kullan",
+        "ai.styleSuggest.unchooseTip" => "Bu stili kullanmayı bırakmak için tekrar tıklayın",
+        "ai.styleSuggest.dismissTip" => "Stil önerilerini gizle",
         _ => return None,
     })
 }

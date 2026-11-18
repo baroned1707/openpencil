@@ -226,7 +226,7 @@ pub fn style_data_json(query: &str, limit: usize) -> String {
 
 /// At most `max` whole comma-separated items of `text` that fit `max_chars`
 /// characters; when even the first item is longer, cut it at a word boundary.
-fn short_list(text: &str, max_chars: usize) -> String {
+pub(crate) fn short_list(text: &str, max_chars: usize) -> String {
     let mut out = String::new();
     for item in text.split(", ") {
         let joined = if out.is_empty() {

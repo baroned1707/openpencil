@@ -635,6 +635,11 @@ pub fn lookup(key: &str) -> Option<&'static str> {
         "ai.usage.lineNoCache" => "{input} en entrée · {output} en sortie",
         "ai.usage.detail" => "Entrée {total} : {fresh} nouveaux, {read} lus depuis le cache, {write} écrits dans le cache. Sortie {output}. Réponses : {turns}.",
         "ai.usage.cacheNote" => "Un accès au cache coûte une fraction des jetons d'entrée normaux.",
+        "ai.styleSuggest.label" => "Style suggéré",
+        "ai.styleSuggest.chosen" => "Style : {{name}}",
+        "ai.styleSuggest.chooseTip" => "Utiliser ce style pour la prochaine génération",
+        "ai.styleSuggest.unchooseTip" => "Cliquer à nouveau pour ne plus utiliser ce style",
+        "ai.styleSuggest.dismissTip" => "Masquer les styles suggérés",
         _ => return None,
     })
 }

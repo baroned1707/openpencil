@@ -295,7 +295,9 @@ fn paint_footer_neutral_hovers_use_visible_feedback() {
             op_editor_core::ChatFooterButton::AddAttachment => footer.attach,
             op_editor_core::ChatFooterButton::Send => footer.send,
             op_editor_core::ChatFooterButton::Stop
-            | op_editor_core::ChatFooterButton::UsageMeter => {
+            | op_editor_core::ChatFooterButton::UsageMeter
+            | op_editor_core::ChatFooterButton::StyleSuggestChip(_)
+            | op_editor_core::ChatFooterButton::StyleSuggestDismiss => {
                 unreachable!()
             }
         };

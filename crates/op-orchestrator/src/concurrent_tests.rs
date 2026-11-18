@@ -105,6 +105,7 @@ mod geometry_echo {
             visual_ref_enabled: false,
             pinned_style_guide: None,
             reference_skeleton: None,
+            style_hint: None,
         }
     }
 

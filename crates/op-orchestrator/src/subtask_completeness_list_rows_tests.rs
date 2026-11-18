@@ -149,6 +149,7 @@ fn retained_dish_response_completes_without_a_quota_retry() {
         visual_ref_enabled: false,
         pinned_style_guide: None,
         reference_skeleton: None,
+        style_hint: None,
     };
     let llm = ScriptedLlm::new(vec![ScriptResponse::Text(valid_actions(SCRIPTS[0]))]);
     let mut sink = VecDocSink::new();

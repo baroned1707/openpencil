@@ -28,6 +28,7 @@ mod deck_corpus_tests;
 pub mod design_data;
 pub mod design_data_search;
 pub mod design_styles;
+pub mod design_styles_choice;
 pub mod design_styles_search;
 #[cfg(test)]
 mod design_intelligence_tests;

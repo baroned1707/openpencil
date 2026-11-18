@@ -103,7 +103,11 @@ pub fn launch_if_pending_with(
     current_design: &mut Option<DesignSession>,
     context: &ChatLaunchContext,
 ) -> bool {
+    let had_send = host.editor_state().chat.pending_send.is_some();
     let launched = launch_if_pending_inner(host, current_chat, current_design, context);
+    if had_send {
+        host.editor_state_mut().chat.chosen_style = None; // the composer's pick is for one run
+    }
     if launched {
         stamp_workspace_run_epoch(host);
     }
@@ -135,13 +139,12 @@ fn launch_if_pending_inner(
     let Some(user_text) = host.editor_state_mut().chat.pending_send.take() else {
         return false;
     };
-    // Consume the pinned route (resetting it to `Auto`) — Home and the
-    // 成品视图's restyle pin `Orchestrator` because their whole-design
-    // briefs only finish on the orchestrator pipeline with
-    // reasoning-budget models.
+    // Consume the pinned route (resetting it to `Auto`) — Home and the 成品视图's
+    // restyle pin `Orchestrator`: their whole-design briefs only finish there.
     let launch_route = std::mem::take(&mut host.editor_state_mut().chat.launch_route);
     if launch_route != op_editor_core::LaunchRoute::Auto {
         host.editor_state_mut().editor_ui.workspace.page_edit_retry = None;
+        host.editor_state_mut().chat.chosen_style = None; // not typed in the composer row
     }
     host.mark_editor_state_dirty();
     let effective_user_text = resolve_turn_user_text(host.editor_state(), &user_text);
@@ -778,6 +781,10 @@ use providers::{chat_provider_for_selected_model, selected_provider_label};
 #[cfg(test)]
 #[path = "chat_session_launch_tests.rs"]
 mod tests;
+
+#[cfg(test)]
+#[path = "chat_session_launch_style_choice_tests.rs"]
+mod style_choice_tests;
 
 #[cfg(test)]
 #[path = "chat_session_launch_selection_tests.rs"]

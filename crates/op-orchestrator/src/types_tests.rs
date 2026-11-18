@@ -143,6 +143,7 @@ fn design_request_append_context_none_compiles() {
         visual_ref_enabled: false,
         pinned_style_guide: None,
         reference_skeleton: None,
+        style_hint: None,
     };
     assert!(req.append_context.is_none());
 }
@@ -168,6 +169,7 @@ fn design_request_append_context_some_compiles() {
         visual_ref_enabled: false,
         pinned_style_guide: None,
         reference_skeleton: None,
+        style_hint: None,
     };
     assert!(req.append_context.is_some());
 }
@@ -187,6 +189,7 @@ fn design_request_append_context_omitted_from_json_when_none() {
         visual_ref_enabled: false,
         pinned_style_guide: None,
         reference_skeleton: None,
+        style_hint: None,
     };
     let json = serde_json::to_string(&req).expect("serialize");
     assert!(
@@ -464,6 +467,7 @@ fn design_request_validation_enabled_serde_roundtrip() {
         visual_ref_enabled: false,
         pinned_style_guide: None,
         reference_skeleton: None,
+        style_hint: None,
     };
     let json = serde_json::to_string(&req).expect("serialize");
     let back: DesignRequest = serde_json::from_str(&json).expect("deserialize");

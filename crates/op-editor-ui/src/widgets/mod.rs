@@ -356,6 +356,7 @@ pub(crate) mod ai_chat_transcript_steps;
 pub(crate) mod ai_chat_transcript_text;
 pub(crate) mod ai_chat_transcript_tools;
 pub mod ai_chat_usage_meter;
+pub(crate) mod ai_chat_style_suggest;
 mod ai_chat_workspace_copy;
 pub mod align_toolbar;
 pub mod color_picker;

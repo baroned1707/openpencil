@@ -344,8 +344,9 @@ pub use align::AlignAction;
 pub use brand_kit::{design_md_is_brand_kit, BrandKitPayload, BRAND_KIT_MARKER};
 pub use button_press_state::ButtonPressTarget;
 pub use chat::{
-    format_token_count, AgentProvider, ChatAnchor, ChatImage, ChatMessage, ChatRole, ChatState,
-    ChatToolCall, LaunchRoute, ModelEntry, UsageView,
+    format_token_count, style_blurb, text_fingerprint, AgentProvider, ChatAnchor, ChatImage,
+    ChatMessage, ChatRole, ChatState, ChatToolCall, LaunchRoute, ModelEntry, StyleSuggestion,
+    UsageView, MAX_STYLE_SUGGESTIONS, STYLE_BLURB_MAX_CHARS,
 };
 pub use chat_activity::{ChatActivity, ChatActivityStatus, ChatCompletion, PendingSubtaskRetry};
 pub use chat_app_prefs::ChatAppPrefs;

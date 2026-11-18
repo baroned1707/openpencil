@@ -82,6 +82,12 @@ pub enum AIChatHit {
     /// Click on the selected-count chip's clear target — host clears
     /// the current canvas selection.
     ClearSelection,
+    /// Click on the `n`-th style chip above the composer — host picks that
+    /// style for the next run, or lets go of it when it is already picked.
+    ToggleSuggestedStyle(usize),
+    /// Click on the ✕ of the style-suggestion row — host hides the row until
+    /// the draft changes.
+    DismissStyleSuggestions,
     /// Click on a message's thinking-block header — host toggles
     /// `ChatMessage::thinking_collapsed` for that message index.
     ToggleThinking(usize),

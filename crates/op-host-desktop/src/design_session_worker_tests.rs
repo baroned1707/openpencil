@@ -35,16 +35,9 @@ fn persisted_subtask_json() -> String {
 fn persisted_request_json() -> String {
     serde_json::to_string(&op_orchestrator::DesignRequest {
         prompt: "design profile".into(),
-        model: None,
-        provider: None,
-        design_md: None,
         concurrency: 2,
-        continuation_context: None,
-        append_context: None,
         validation_enabled: false,
-        visual_ref_enabled: false,
-        pinned_style_guide: None,
-        reference_skeleton: None,
+        ..Default::default()
     })
     .unwrap()
 }

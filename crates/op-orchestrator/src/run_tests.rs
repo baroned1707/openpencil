@@ -32,6 +32,7 @@ fn req() -> DesignRequest {
         visual_ref_enabled: false,
         pinned_style_guide: None,
         reference_skeleton: None,
+        style_hint: None,
     }
 }
 
@@ -51,6 +52,7 @@ fn req_standard() -> DesignRequest {
         visual_ref_enabled: false,
         pinned_style_guide: None,
         reference_skeleton: None,
+        style_hint: None,
     }
 }
 
@@ -73,6 +75,7 @@ fn req_basic() -> DesignRequest {
         visual_ref_enabled: false,
         pinned_style_guide: None,
         reference_skeleton: None,
+        style_hint: None,
     }
 }
 

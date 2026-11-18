@@ -508,6 +508,7 @@ async fn main() -> std::process::ExitCode {
             .map(|s| s.trim().to_string())
             .filter(|s| !s.is_empty()),
         reference_skeleton: None,
+        style_hint: None,
     };
     let abort = AbortFlag::new();
     // Same three-way reference resolution the desktop / web design routes
