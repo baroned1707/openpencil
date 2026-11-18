@@ -12,6 +12,7 @@ fn hit(id: &str, title: &str, tags: &str) -> RawHit {
         thumb_url: format!("https://example.test/{id}.jpg"),
         attribution: String::new(),
         original: None,
+        ..Default::default()
     }
 }
 

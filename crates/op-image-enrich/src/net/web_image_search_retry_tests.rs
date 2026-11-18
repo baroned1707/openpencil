@@ -24,6 +24,7 @@ fn isolated_retry_preserves_the_original_isolation_contract() {
                         attribution: String::new(),
                         title: "Modern sofa studio photograph".to_string(),
                         relevance_metadata: "Modern sofa studio photograph".to_string(),
+                        ..Default::default()
                     },
                     RawHit {
                         original: None,
@@ -32,6 +33,7 @@ fn isolated_retry_preserves_the_original_isolation_contract() {
                         attribution: String::new(),
                         title: "Modern sofa".to_string(),
                         relevance_metadata: "Modern sofa cut out on white background".to_string(),
+                        ..Default::default()
                     },
                 ]),
                 unexpected => panic!("unexpected Openverse query: {unexpected}"),
@@ -68,6 +70,7 @@ fn relevance_filtered_openverse_results_retry_the_concrete_subject_once() {
                     attribution: String::new(),
                     title: "Knitted wool sweater catalogue illustration".to_string(),
                     relevance_metadata: "Knitted wool sweater catalogue illustration".to_string(),
+                    ..Default::default()
                 }]),
                 "wool sweater" => Some(vec![
                     RawHit {
@@ -77,6 +80,7 @@ fn relevance_filtered_openverse_results_retry_the_concrete_subject_once() {
                         attribution: String::new(),
                         title: "Christmas holiday lights".to_string(),
                         relevance_metadata: "Christmas holiday lights".to_string(),
+                        ..Default::default()
                     },
                     RawHit {
                         original: None,
@@ -85,6 +89,7 @@ fn relevance_filtered_openverse_results_retry_the_concrete_subject_once() {
                         attribution: String::new(),
                         title: "Knitted wool sweater product photo".to_string(),
                         relevance_metadata: "Knitted wool sweater product photo".to_string(),
+                        ..Default::default()
                     },
                 ]),
                 unexpected => panic!("unexpected Openverse query: {unexpected}"),
@@ -253,6 +258,7 @@ fn explicit_toy_query_keeps_toy_results_but_product_query_rejects_them() {
         attribution: String::new(),
         title: "Handmade plush toy".to_string(),
         relevance_metadata: "Handmade plush teddy toy stuffed doll".to_string(),
+        ..Default::default()
     };
 
     assert_eq!(
@@ -268,6 +274,7 @@ fn explicit_toy_query_keeps_toy_results_but_product_query_rejects_them() {
         attribution: String::new(),
         title: "Wooden lamp toy".to_string(),
         relevance_metadata: "Wooden lamp plush teddy toy".to_string(),
+        ..Default::default()
     };
     assert!(retain_relevant_hits(vec![toy], "wooden lamp").is_empty());
 }
@@ -287,6 +294,7 @@ fn wikimedia_filtered_primary_retries_concrete_subject() {
                     attribution: String::new(),
                     title: "Wooden lamp montage".to_string(),
                     relevance_metadata: "Wooden lamp montage collage".to_string(),
+                    ..Default::default()
                 }],
                 "wooden lamp" => vec![
                     RawHit {
@@ -296,6 +304,7 @@ fn wikimedia_filtered_primary_retries_concrete_subject() {
                         attribution: String::new(),
                         title: "Wooden lamp over a dining table".to_string(),
                         relevance_metadata: "Wooden lamp in dining room interior".to_string(),
+                        ..Default::default()
                     },
                     RawHit {
                         original: None,
@@ -304,6 +313,7 @@ fn wikimedia_filtered_primary_retries_concrete_subject() {
                         attribution: String::new(),
                         title: "The Wooden Lamp".to_string(),
                         relevance_metadata: "The Wooden Lamp".to_string(),
+                        ..Default::default()
                     },
                 ],
                 unexpected => panic!("unexpected Wikimedia query: {unexpected}"),
@@ -341,6 +351,7 @@ fn zero_openverse_results_use_the_same_single_retry_path() {
                         attribution: String::new(),
                         title: "Ceramic vase in a hotel lounge".to_string(),
                         relevance_metadata: "Ceramic vase in a hotel lounge interior".to_string(),
+                        ..Default::default()
                     },
                     RawHit {
                         original: None,
@@ -349,6 +360,7 @@ fn zero_openverse_results_use_the_same_single_retry_path() {
                         attribution: String::new(),
                         title: "Ceramic vase catalogue illustration".to_string(),
                         relevance_metadata: "Ceramic vase catalogue illustration".to_string(),
+                        ..Default::default()
                     },
                     RawHit {
                         original: None,
@@ -357,6 +369,7 @@ fn zero_openverse_results_use_the_same_single_retry_path() {
                         attribution: String::new(),
                         title: "Ceramic vase isolated on white".to_string(),
                         relevance_metadata: "Ceramic vase isolated on white".to_string(),
+                        ..Default::default()
                     },
                 ]),
                 unexpected => panic!("unexpected Openverse query: {unexpected}"),
@@ -412,6 +425,7 @@ fn non_photo_query_keeps_relevant_illustrations() {
         attribution: String::new(),
         title: "Ceramic tableware illustration".to_string(),
         relevance_metadata: "Ceramic tableware illustration".to_string(),
+        ..Default::default()
     }];
 
     let ranked = retain_relevant_hits(hits, "ceramic tableware illustration");
@@ -429,6 +443,7 @@ fn descriptor_only_studio_photo_query_preserves_unclassified_hits() {
         attribution: String::new(),
         title: String::new(),
         relevance_metadata: String::new(),
+        ..Default::default()
     }];
 
     let ranked = retain_relevant_hits(hits, "studio product photo");
@@ -451,6 +466,7 @@ fn descriptor_only_isolated_query_still_requires_positive_evidence() {
         attribution: String::new(),
         title: metadata.to_string(),
         relevance_metadata: metadata.to_string(),
+        ..Default::default()
     })
     .collect();
 
@@ -470,6 +486,7 @@ fn failed_relevant_thumbnail_never_falls_through_to_downloadable_holiday_hit() {
             attribution: "By Chair".to_string(),
             title: "Modern armchair".to_string(),
             relevance_metadata: "Modern armchair".to_string(),
+            ..Default::default()
         },
         RawHit {
             original: None,
@@ -478,6 +495,7 @@ fn failed_relevant_thumbnail_never_falls_through_to_downloadable_holiday_hit() {
             attribution: "By Holiday".to_string(),
             title: "Christmas technology celebration".to_string(),
             relevance_metadata: "Christmas technology celebration".to_string(),
+            ..Default::default()
         },
     ];
     let relevant = retain_relevant_hits(hits, "warm modern armchair");

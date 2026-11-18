@@ -42,6 +42,10 @@ pub(crate) enum AssetFetchError {
     /// cache is sized against. Detected from `Content-Length` before the body
     /// is read when the server declares one, from the body length otherwise.
     TooLarge,
+    /// Our SSRF guard refused the destination: a loopback / private /
+    /// link-local / metadata address, a disallowed scheme, or a redirect to
+    /// one. Nothing was sent to the refused address.
+    Refused(String),
     /// The response body is empty, so there is nothing to decode.
     EmptyBody,
     /// The response is neither typed `image/*` nor recognised by the
@@ -59,6 +63,7 @@ impl fmt::Display for AssetFetchError {
         match self {
             AssetFetchError::HttpClient(message)
             | AssetFetchError::Request(message)
+            | AssetFetchError::Refused(message)
             | AssetFetchError::Generate(message) => f.write_str(message),
             AssetFetchError::TooLarge => f.write_str("image exceeds the size cap"),
             AssetFetchError::EmptyBody => f.write_str("empty response body"),

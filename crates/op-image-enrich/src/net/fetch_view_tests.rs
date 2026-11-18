@@ -93,6 +93,7 @@ fn cropped_judge_keeps_one_call_original_brief_deadline_and_complete_asset() {
         attribution: "test".into(),
         relevance_metadata: String::new(),
         original: None,
+        ..Default::default()
     };
     let result = crate::net::block_on_image_runtime(async {
         let client = reqwest::Client::builder()

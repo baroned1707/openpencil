@@ -275,7 +275,7 @@ fn generate_client() -> Result<reqwest::Client, ImageGenerateError> {
     reqwest::Client::builder()
         .use_rustls_tls()
         .timeout(Duration::from_secs(120))
-        .user_agent(concat!("openpencil-web-daemon/", env!("CARGO_PKG_VERSION")))
+        .user_agent(op_image_enrich::HTTP_USER_AGENT)
         .build()
         .map_err(|e| ImageGenerateError::ClientBuild {
             message: e.to_string(),

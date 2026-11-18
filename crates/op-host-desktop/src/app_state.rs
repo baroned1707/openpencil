@@ -220,6 +220,7 @@ impl DesktopApp {
             iconify_job: None,
             font_downloads: font_download_host::FontDownloadHost::new(),
             image_gen_test_job: None,
+            image_search_test_job: None,
             kit_browser_open_persisted,
             provider_connect_job: None,
             provider_reconnect_queue: Vec::new(),

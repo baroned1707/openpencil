@@ -9,6 +9,7 @@ fn hit(title: &str, tags: &str) -> RawHit {
         title: title.to_string(),
         relevance_metadata: format!("{title} {tags}"),
         original: None,
+        ..Default::default()
     }
 }
 

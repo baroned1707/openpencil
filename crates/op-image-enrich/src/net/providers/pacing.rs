@@ -1,4 +1,10 @@
-//! Process-wide Openverse rate-limit pacing and OAuth token reuse.
+//! Process-wide per-provider rate-limit pacing and Openverse OAuth token reuse.
+//!
+//! State is keyed by the provider's base URL, so two providers (or a real
+//! host and a loopback test fake) never share a quota flag. Openverse keeps
+//! its `x-ratelimit-*` / `Retry-After` / daily-quota logic; Commons gets
+//! serial requests, exponential backoff on 429/503 that honours
+//! `Retry-After`, and a skip-for-the-process rule after repeated throttling.
 
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex, OnceLock};
@@ -58,19 +64,110 @@ impl TokenCache {
     }
 }
 
+/// Rate-limit state of one provider host.
 #[derive(Debug, Default)]
-pub(crate) struct PacingState {
+struct ProviderPacing {
     burst_window_until: Option<Instant>,
     daily_quota_exhausted: bool,
     daily_quota_logged: bool,
+    /// Consecutive 429/503 answers (reset by any success).
+    consecutive_throttled: u32,
+    /// Set once throttling repeats: no more requests this process.
+    skipped: bool,
+}
+
+#[derive(Debug, Default)]
+pub(crate) struct PacingState {
+    providers: HashMap<String, ProviderPacing>,
     pub(crate) token_cache: TokenCache,
     token_locks: HashMap<String, Arc<tokio::sync::Mutex<()>>>,
+    serial_locks: HashMap<String, Arc<tokio::sync::Mutex<()>>>,
+}
+
+impl PacingState {
+    fn provider(&mut self, key: &str) -> &mut ProviderPacing {
+        self.providers.entry(key.to_string()).or_default()
+    }
 }
 
 static STATE: OnceLock<Mutex<PacingState>> = OnceLock::new();
 
 pub(crate) fn state() -> &'static Mutex<PacingState> {
     STATE.get_or_init(|| Mutex::new(PacingState::default()))
+}
+
+/// Three throttled answers in a row mean the host does not want us; stop for
+/// the rest of the process (same spirit as Openverse's daily-quota stop).
+const SKIP_AFTER_CONSECUTIVE_THROTTLES: u32 = 3;
+
+/// Retry schedule for a throttled provider: `base * 2^attempt` capped at
+/// `max`, replaced by the server's `Retry-After` (also capped) when present.
+#[derive(Debug, Clone, Copy)]
+pub(crate) struct BackoffPolicy {
+    pub(crate) base: Duration,
+    pub(crate) max: Duration,
+    /// Retries after the first request.
+    pub(crate) retries: u32,
+}
+
+impl BackoffPolicy {
+    pub(crate) const DEFAULT: Self = Self {
+        base: Duration::from_secs(1),
+        max: Duration::from_secs(MAX_SLEEP_SECONDS),
+        retries: 2,
+    };
+
+    /// Delay before retry number `attempt` (0-based).
+    pub(crate) fn delay(&self, attempt: u32, headers: &HeaderMap) -> Duration {
+        let server = headers
+            .get(RETRY_AFTER)
+            .and_then(|value| value.to_str().ok())
+            .and_then(|value| value.trim().parse::<u64>().ok())
+            .map(Duration::from_secs);
+        server
+            .unwrap_or_else(|| self.base.saturating_mul(2u32.saturating_pow(attempt)))
+            .min(self.max)
+    }
+}
+
+/// One-at-a-time gate for a host that must never see parallel requests.
+pub(crate) fn serial_lock(key: &str) -> Arc<tokio::sync::Mutex<()>> {
+    let mut state = state().lock().expect("pacing mutex poisoned");
+    Arc::clone(
+        state
+            .serial_locks
+            .entry(key.to_string())
+            .or_insert_with(|| Arc::new(tokio::sync::Mutex::new(()))),
+    )
+}
+
+pub(crate) fn is_skipped(key: &str) -> bool {
+    state()
+        .lock()
+        .expect("pacing mutex poisoned")
+        .provider(key)
+        .skipped
+}
+
+/// Count one 429/503. Returns `true` when this answer tipped the provider
+/// into the skipped-for-the-process state.
+pub(crate) fn note_throttled(key: &str) -> bool {
+    let mut state = state().lock().expect("pacing mutex poisoned");
+    let pacing = state.provider(key);
+    pacing.consecutive_throttled += 1;
+    if pacing.consecutive_throttled >= SKIP_AFTER_CONSECUTIVE_THROTTLES && !pacing.skipped {
+        pacing.skipped = true;
+        eprintln!("[ENRICH] {key}: repeatedly throttled, skipping this provider for this process");
+    }
+    pacing.skipped
+}
+
+pub(crate) fn note_success(key: &str) {
+    state()
+        .lock()
+        .expect("pacing mutex poisoned")
+        .provider(key)
+        .consecutive_throttled = 0;
 }
 
 pub(crate) fn parse_rate_limit_headers(headers: &HeaderMap) -> ParsedRateLimits {
@@ -129,10 +226,11 @@ pub(crate) fn burst_wait_duration(headers: &HeaderMap) -> Option<Duration> {
     )
 }
 
-pub(crate) fn record_response(headers: &HeaderMap) {
+pub(crate) fn record_response(key: &str, headers: &HeaderMap) {
     let parsed = parse_rate_limit_headers(headers);
     let now = Instant::now();
     let mut state = state().lock().expect("Openverse pacing mutex poisoned");
+    let state = state.provider(key);
 
     if parsed.sustained_available == Some(0) {
         state.daily_quota_exhausted = true;
@@ -153,10 +251,11 @@ pub(crate) fn record_response(headers: &HeaderMap) {
     }
 }
 
-pub(crate) async fn wait_for_request() -> bool {
+pub(crate) async fn wait_for_request(key: &str) -> bool {
     loop {
         let wait_for = {
-            let state = state().lock().expect("Openverse pacing mutex poisoned");
+            let mut state = state().lock().expect("Openverse pacing mutex poisoned");
+            let state = state.provider(key);
             if state.daily_quota_exhausted {
                 return false;
             }

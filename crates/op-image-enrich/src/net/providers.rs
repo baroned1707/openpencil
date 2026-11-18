@@ -18,37 +18,51 @@
 mod brand_fence;
 mod catalog;
 mod download;
+mod ladder;
+pub mod license;
+mod openverse;
 mod original_download;
 pub(crate) mod pacing;
+mod provider;
 mod relevance;
+pub mod ssrf_guard;
+mod wikimedia;
 
 pub(crate) use catalog::original_source;
+pub(crate) use catalog::wikimedia_hit;
 pub(crate) use catalog::wikimedia_info_is_image;
-pub(crate) use catalog::{fetch_openverse_list, fetch_openverse_list_with_aspect};
-pub use catalog::{
-    fetch_openverse_token, parse_openverse_results, parse_wikimedia_results, OriginalImageSource,
-    RawHit,
-};
+pub use catalog::{parse_openverse_results, parse_wikimedia_results, OriginalImageSource, RawHit};
 pub use download::{
     fetch_image_and_judge_thumbnail, fetch_image_and_judge_thumbnail_for_view, fetch_image_bytes,
     fetch_image_data_url, fetch_judge_thumbnail, normalize_image_mime_header, read_capped,
     sniff_image_mime,
 };
+pub(crate) use ladder::{fenced_list, run_ladder, FencedList, LadderRequest};
+pub(crate) use license::hit_license_is_usable;
+pub use license::{license_policy, license_policy_with, LicensePolicy};
+pub use openverse::fetch_openverse_token;
 pub(crate) use original_download::fetch_original_image_data_url;
+pub(crate) use provider::WIKIMEDIA_BASE_URL;
+pub use provider::{
+    default_providers, test_first_provider, ImageProvider, ProviderCtx, ProviderKind, SearchError,
+};
 pub use relevance::simplify_search_query;
+pub(crate) use wikimedia::fetch_pages_json as fetch_wikimedia_pages_json;
 
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::time::Duration;
 
-pub(crate) use catalog::fetch_relevant_wikimedia_list_for_intent;
-use catalog::{fetch_relevant_wikimedia_list, materialize_first_thumb, materialize_thumbs};
-use relevance::retain_relevant_hits;
+use catalog::{materialize_first_thumb, materialize_thumbs};
 pub(crate) use relevance::{
     fence_rejection, retain_relevant_hits_for_intent, retrieval_plan, two_keyword_retry,
 };
 
 #[cfg(test)]
-use catalog::fetch_relevant_wikimedia_list_with;
+pub(crate) use ladder::fenced_openverse_list_with;
+#[cfg(test)]
+use ladder::{fetch_relevant_openverse_list_with, fetch_relevant_wikimedia_list_with};
+#[cfg(test)]
+use relevance::retain_relevant_hits;
 #[cfg(test)]
 pub(crate) use relevance::rewrite_queries;
 #[cfg(test)]
@@ -272,20 +286,23 @@ fn empty_search_outcome() -> WebImageSearchOutcome {
     }
 }
 
+/// Plain client for the catalogue ladders: rustls, 8 s budget, the shared
+/// contact user-agent.
+fn ladder_client() -> Option<reqwest::Client> {
+    reqwest::Client::builder()
+        .use_rustls_tls()
+        .timeout(Duration::from_secs(8))
+        .user_agent(crate::HTTP_USER_AGENT)
+        .build()
+        .ok()
+}
+
 async fn run_search(
     query: &str,
     credentials: Option<&WebOpenverseCredentials>,
 ) -> WebImageSearchOutcome {
-    let Ok(client) = reqwest::Client::builder()
-        .use_rustls_tls()
-        .timeout(Duration::from_secs(8))
-        .user_agent(concat!("openpencil-web-daemon/", env!("CARGO_PKG_VERSION")))
-        .build()
-    else {
-        return WebImageSearchOutcome {
-            results: Vec::new(),
-            source: None,
-        };
+    let Some(client) = ladder_client() else {
+        return empty_search_outcome();
     };
     run_search_with_fetcher(&client, query, credentials, |url: String| {
         let client = client.clone();
@@ -295,19 +312,13 @@ async fn run_search(
 }
 
 /// Single-result variant of [`run_search`]. Provider list lookup keeps the
-/// same Openverse → retry → Wikimedia order, but thumbnail materialization
-/// stops after the first successful download instead of fetching the whole
-/// five-result Web UI page.
+/// same ladder order, but thumbnail materialization stops after the first
+/// successful download instead of fetching the whole five-result Web UI page.
 async fn run_first_search(
     query: &str,
     credentials: Option<&WebOpenverseCredentials>,
 ) -> WebImageSearchOutcome {
-    let Ok(client) = reqwest::Client::builder()
-        .use_rustls_tls()
-        .timeout(Duration::from_secs(8))
-        .user_agent(concat!("openpencil-web-daemon/", env!("CARGO_PKG_VERSION")))
-        .build()
-    else {
+    let Some(client) = ladder_client() else {
         return empty_search_outcome();
     };
     run_first_search_with_fetcher(&client, query, credentials, |url: String| {
@@ -323,37 +334,69 @@ async fn run_first_search_with_judge(
     judge: &dyn crate::net::ImageRelevanceJudge,
     intent: &str,
 ) -> WebImageSearchOutcome {
-    let Ok(client) = reqwest::Client::builder()
-        .use_rustls_tls()
-        .timeout(Duration::from_secs(8))
-        .user_agent(concat!("openpencil-web-daemon/", env!("CARGO_PKG_VERSION")))
-        .build()
-    else {
+    let Some(client) = ladder_client() else {
         return empty_search_outcome();
     };
-    let query = simplify_search_query(query);
-    let hits = fetch_relevant_openverse_list(&client, &query, credentials)
-        .await
-        .unwrap_or_default();
-    if let Some(result) = materialize_judged_first(&client, hits, &query, intent, judge).await {
-        return WebImageSearchOutcome {
-            results: vec![result],
-            source: Some("openverse"),
-        };
-    }
+    run_first_search_with_judge_over(
+        &client,
+        &default_providers(),
+        query,
+        credentials,
+        judge,
+        intent,
+    )
+    .await
+}
 
-    let wiki = fetch_relevant_wikimedia_list(&client, &query).await;
-    let Some(result) = materialize_first_thumb(wiki, &|url: String| {
+/// [`run_first_search_with_judge`] over a caller-supplied client + provider
+/// list. Only Openverse is judged here (its ten best thumbnails go to the
+/// judge); every other provider keeps the first-usable-thumbnail pick this
+/// path has always used for Wikimedia. The list fence takes the EMPTY intent
+/// (as it always did on this path); `intent` only reaches the judge.
+pub(crate) async fn run_first_search_with_judge_over(
+    client: &reqwest::Client,
+    providers: &[ImageProvider],
+    query: &str,
+    credentials: Option<&WebOpenverseCredentials>,
+    judge: &dyn crate::net::ImageRelevanceJudge,
+    intent: &str,
+) -> WebImageSearchOutcome {
+    let query = simplify_search_query(query);
+    let ctx = ProviderCtx::new(client, credentials);
+    let request = LadderRequest {
+        query: &query,
+        intent: "",
+        aspect: None,
+    };
+    let fetch_data_url = |url: String| {
         let client = client.clone();
         async move { fetch_image_data_url(&client, &url).await }
-    })
-    .await
-    else {
-        return empty_search_outcome();
     };
-    WebImageSearchOutcome {
-        results: vec![result],
-        source: Some("wikimedia"),
+    let query_ref = query.as_str();
+    let fetch_data_url = &fetch_data_url;
+    let found = run_ladder(providers, &ctx, &request, |provider, list| {
+        let source = provider.id();
+        let judged = matches!(provider, ImageProvider::Openverse { .. });
+        async move {
+            let result = if judged {
+                materialize_judged_first(client, list.hits, query_ref, intent, judge).await
+            } else {
+                materialize_first_thumb(list.hits, fetch_data_url).await
+            };
+            result.map(|hit| (hit, source))
+        }
+    })
+    .await;
+    outcome_from_first(found)
+}
+
+fn outcome_from_first(found: Option<(WebImageSearchHit, &'static str)>) -> WebImageSearchOutcome {
+    match found {
+        Some((hit, source)) => WebImageSearchOutcome {
+            results: vec![hit],
+            source: Some(source),
+        },
+        None => empty_search_outcome(),
     }
 }
 
@@ -373,26 +416,51 @@ where
     F: Fn(String) -> Fut,
     Fut: std::future::Future<Output = Option<String>>,
 {
+    run_search_over(
+        client,
+        &default_providers(),
+        query,
+        credentials,
+        fetch_data_url,
+    )
+    .await
+}
+
+pub(crate) async fn run_search_over<F, Fut>(
+    client: &reqwest::Client,
+    providers: &[ImageProvider],
+    query: &str,
+    credentials: Option<&WebOpenverseCredentials>,
+    fetch_data_url: F,
+) -> WebImageSearchOutcome
+where
+    F: Fn(String) -> Fut,
+    Fut: std::future::Future<Output = Option<String>>,
+{
     // Simplify verbose prompts into keywords (TS simplifySearchQuery).
     let query = simplify_search_query(query);
-
-    // Openverse first; either a zero-result answer or an answer fully removed
-    // by the relevance/photo fence retries once with a short concrete subject
-    // phrase before falling through to Wikimedia.
-    let hits = fetch_relevant_openverse_list(client, &query, credentials).await;
-    if let Some(urls) = hits.filter(|h| !h.is_empty()) {
-        let results = materialize_thumbs(urls, &fetch_data_url).await;
-        if !results.is_empty() {
-            return WebImageSearchOutcome {
-                results,
-                source: Some("openverse"),
-            };
+    let ctx = ProviderCtx::new(client, credentials);
+    let request = LadderRequest {
+        query: &query,
+        intent: "",
+        aspect: None,
+    };
+    let fetch_data_url = &fetch_data_url;
+    let found = run_ladder(providers, &ctx, &request, |provider, list| {
+        let source = provider.id();
+        async move {
+            let results = materialize_thumbs(list.hits, fetch_data_url).await;
+            (!results.is_empty()).then_some((results, source))
         }
+    })
+    .await;
+    match found {
+        Some((results, source)) => WebImageSearchOutcome {
+            results,
+            source: Some(source),
+        },
+        None => empty_search_outcome(),
     }
-    let wiki = fetch_relevant_wikimedia_list(client, &query).await;
-    let results = materialize_thumbs(wiki, &fetch_data_url).await;
-    let source = (!results.is_empty()).then_some("wikimedia");
-    WebImageSearchOutcome { results, source }
 }
 
 async fn run_first_search_with_fetcher<F, Fut>(
@@ -405,26 +473,46 @@ where
     F: Fn(String) -> Fut,
     Fut: std::future::Future<Output = Option<String>>,
 {
+    run_first_search_over(
+        client,
+        &default_providers(),
+        query,
+        credentials,
+        fetch_data_url,
+    )
+    .await
+}
+
+/// MCP / headless single-result ladder over a caller-supplied provider list.
+pub(crate) async fn run_first_search_over<F, Fut>(
+    client: &reqwest::Client,
+    providers: &[ImageProvider],
+    query: &str,
+    credentials: Option<&WebOpenverseCredentials>,
+    fetch_data_url: F,
+) -> WebImageSearchOutcome
+where
+    F: Fn(String) -> Fut,
+    Fut: std::future::Future<Output = Option<String>>,
+{
     let query = simplify_search_query(query);
-
-    let hits = fetch_relevant_openverse_list(client, &query, credentials).await;
-    if let Some(urls) = hits.filter(|h| !h.is_empty()) {
-        if let Some(result) = materialize_first_thumb(urls, &fetch_data_url).await {
-            return WebImageSearchOutcome {
-                results: vec![result],
-                source: Some("openverse"),
-            };
-        }
-    }
-
-    let wiki = fetch_relevant_wikimedia_list(client, &query).await;
-    let Some(result) = materialize_first_thumb(wiki, &fetch_data_url).await else {
-        return empty_search_outcome();
+    let ctx = ProviderCtx::new(client, credentials);
+    let request = LadderRequest {
+        query: &query,
+        intent: "",
+        aspect: None,
     };
-    WebImageSearchOutcome {
-        results: vec![result],
-        source: Some("wikimedia"),
-    }
+    let fetch_data_url = &fetch_data_url;
+    let found = run_ladder(providers, &ctx, &request, |provider, list| {
+        let source = provider.id();
+        async move {
+            materialize_first_thumb(list.hits, fetch_data_url)
+                .await
+                .map(|hit| (hit, source))
+        }
+    })
+    .await;
+    outcome_from_first(found)
 }
 
 struct PreparedJudgeHit {
@@ -475,48 +563,6 @@ async fn materialize_judged_first(
     })
 }
 
-/// Fetch and relevance-filter the Openverse catalogue, retrying at most once
-/// with the concrete subject phrase. `None` remains a request-level failure:
-/// it falls through to Wikimedia without turning a network error into another
-/// Openverse request. `Some([])` and non-empty-but-fully-filtered replies share
-/// the same single retry, so the two conditions can never trigger duplicate
-/// catalogue requests.
-pub(crate) async fn fetch_relevant_openverse_list(
-    client: &reqwest::Client,
-    query: &str,
-    credentials: Option<&WebOpenverseCredentials>,
-) -> Option<Vec<RawHit>> {
-    fetch_relevant_openverse_list_with(query, |candidate| {
-        let client = client.clone();
-        let credentials = credentials.cloned();
-        async move { fetch_openverse_list(&client, &candidate, credentials.as_ref()).await }
-    })
-    .await
-}
-
-async fn fetch_relevant_openverse_list_with<F, Fut>(
-    query: &str,
-    mut fetch_list: F,
-) -> Option<Vec<RawHit>>
-where
-    F: FnMut(String) -> Fut,
-    Fut: std::future::Future<Output = Option<Vec<RawHit>>>,
-{
-    let hits = fetch_list(query.to_string()).await?;
-    let relevant = retain_relevant_hits(hits, query);
-    if !relevant.is_empty() {
-        return Some(relevant);
-    }
-
-    let Some(retry_query) = two_keyword_retry(query) else {
-        return Some(relevant);
-    };
-    let retry = fetch_list(retry_query).await?;
-    // The provider receives a shorter concrete query, but relevance still
-    // follows the authored query so photo/studio/isolated intent is not lost.
-    Some(retain_relevant_hits(retry, query))
-}
-
 #[cfg(test)]
 #[path = "web_image_search_tests.rs"]
 mod tests;
@@ -528,3 +574,11 @@ mod relevance_tests;
 #[cfg(test)]
 #[path = "web_image_search_retry_tests.rs"]
 mod retry_tests;
+
+#[cfg(test)]
+#[path = "web_image_search_ladder_seam_tests.rs"]
+mod ladder_seam_tests;
+
+#[cfg(test)]
+#[path = "provider_ladder_tests.rs"]
+mod provider_ladder_tests;

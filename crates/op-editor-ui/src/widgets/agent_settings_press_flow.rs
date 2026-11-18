@@ -224,6 +224,9 @@ pub fn apply_agent_settings_hit(
             let has_client_secret = !settings.openverse_client_secret.trim().is_empty();
             settings.images_search_ready = true;
             settings.images_search_test_status = if has_client_id && has_client_secret {
+                // The host resolves Testing into Valid / Invalid by running
+                // one real query (the editor layer never dials).
+                settings.pending_image_search_test = true;
                 ImageTestStatus::Testing
             } else {
                 ImageTestStatus::Invalid

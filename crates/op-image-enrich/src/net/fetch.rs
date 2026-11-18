@@ -17,7 +17,7 @@ use std::time::{Duration, Instant};
 use crate::net::providers::{
     fetch_image_and_judge_thumbnail_for_view, normalize_image_mime_header, retrieval_plan,
     simplify_search_query, wikimedia_info_is_image, RawHit, WebOpenverseCredentials,
-    MAX_EMBEDDED_IMAGE_BYTES,
+    MAX_EMBEDDED_IMAGE_BYTES, WIKIMEDIA_BASE_URL,
 };
 use crate::net::resolve::{fetch_first_image_resolved, fetch_relevant_openverse_list_with_aspect};
 pub use crate::net::resolve::{fetch_first_image_resolved_blocking, ResolvedImage};
@@ -65,6 +65,10 @@ pub use entry::*;
 #[path = "fetch_view_tests.rs"]
 mod view_tests;
 
+#[cfg(test)]
+#[path = "fetch_license_tests.rs"]
+mod license_tests;
+
 #[allow(clippy::too_many_arguments)]
 async fn fetch_first_image_url_with_judge(
     query: &str,
@@ -79,7 +83,7 @@ async fn fetch_first_image_url_with_judge(
     let client = reqwest::Client::builder()
         .use_rustls_tls()
         .timeout(Duration::from_secs(8))
-        .user_agent(concat!("openpencil-desktop/", env!("CARGO_PKG_VERSION")))
+        .user_agent(crate::HTTP_USER_AGENT)
         .build()
         .ok()?;
     let slot = JudgeSlot {
@@ -207,7 +211,14 @@ async fn fetch_first_image_url_with_judge(
         };
         let result = before_deadline(
             tier_deadline,
-            fetch_judged_wikimedia(&client, &truncated, &slot, used_urls, fallback.is_empty()),
+            fetch_judged_wikimedia(
+                &client,
+                WIKIMEDIA_BASE_URL,
+                &truncated,
+                &slot,
+                used_urls,
+                fallback.is_empty(),
+            ),
         )
         .await;
         let Ok(image) = result else {
@@ -229,7 +240,14 @@ async fn fetch_first_image_url_with_judge(
     };
     let result = before_deadline(
         tier_deadline,
-        fetch_judged_wikimedia(&client, &query, &slot, used_urls, fallback.is_empty()),
+        fetch_judged_wikimedia(
+            &client,
+            WIKIMEDIA_BASE_URL,
+            &query,
+            &slot,
+            used_urls,
+            fallback.is_empty(),
+        ),
     )
     .await;
     let Ok(image) = result else {
@@ -250,6 +268,7 @@ struct PreparedJudgeCandidate {
     identity: Option<String>,
     attribution: String,
     original: Option<crate::net::providers::OriginalImageSource>,
+    provenance: Option<crate::ImageProvenance>,
 }
 
 async fn fetch_judged_openverse(
@@ -272,8 +291,10 @@ async fn fetch_judged_openverse(
         else {
             continue;
         };
+        let provenance = hit.provenance();
         candidates.push(PreparedJudgeCandidate {
             identity: Some(hit_identity(&hit)),
+            provenance,
             title: hit.title,
             data_url,
             thumb_jpeg,
@@ -312,6 +333,7 @@ async fn fetch_judged_openverse(
 /// up front; the winner claims both its page identity and its content digest.
 async fn fetch_judged_wikimedia(
     client: &reqwest::Client,
+    base_url: &str,
     query: &str,
     slot: &JudgeSlot<'_>,
     used_urls: &Mutex<HashSet<String>>,
@@ -319,12 +341,15 @@ async fn fetch_judged_wikimedia(
 ) -> Option<JudgedImage> {
     const ROUND_SIZE: usize = 5;
     const MAX_JUDGE_CANDIDATES: usize = ROUND_SIZE * 2;
-    let url = wikimedia_search_url(query, MAX_JUDGE_CANDIDATES)?;
-    let resp = client.get(url).send().await.ok()?;
-    if !resp.status().is_success() {
-        return None;
-    }
-    let json: serde_json::Value = resp.json().await.ok()?;
+    // Same transport (URL, user-agent, pacing, body cap) as the list ladder.
+    let json = crate::net::providers::fetch_wikimedia_pages_json(
+        client,
+        base_url,
+        query,
+        MAX_JUDGE_CANDIDATES,
+    )
+    .await
+    .ok()??;
     let pages = json.get("query")?.get("pages")?.as_object()?;
     // The pages object is keyed by page id; `index` carries the search rank.
     let mut ordered: Vec<&serde_json::Value> = pages.values().collect();
@@ -345,6 +370,13 @@ async fn fetch_judged_wikimedia(
         let Some(candidate_url) = wikimedia_image_candidates(page).into_iter().next() else {
             continue;
         };
+        // Licence gate BEFORE the thumbnail download and the judge: a refused
+        // licence can never be ranked or chosen.
+        let Some(hit) = crate::net::providers::wikimedia_hit(page)
+            .filter(crate::net::providers::hit_license_is_usable)
+        else {
+            continue;
+        };
         let Some((data_url, thumb_jpeg)) =
             fetch_image_and_judge_thumbnail_for_view(client, &candidate_url, slot.view).await
         else {
@@ -360,11 +392,9 @@ async fn fetch_judged_wikimedia(
             data_url,
             thumb_jpeg,
             identity: Some(identity),
-            attribution: page["imageinfo"][0]["extmetadata"]["LicenseShortName"]["value"]
-                .as_str()
-                .unwrap_or_default()
-                .to_string(),
+            attribution: hit.attribution.clone(),
             original: crate::net::providers::original_source(&page["imageinfo"][0], &candidate_url),
+            provenance: hit.provenance(),
         });
     }
     if candidates.is_empty() {
@@ -507,26 +537,6 @@ pub fn openverse_search_url(
             .append_pair("aspect_ratio", aspect_ratio.as_openverse_param());
     }
     Some(url)
-}
-
-fn wikimedia_search_url(query: &str, limit: usize) -> Option<reqwest::Url> {
-    let limit = limit.to_string();
-    reqwest::Url::parse_with_params(
-        "https://commons.wikimedia.org/w/api.php",
-        &[
-            ("action", "query"),
-            ("generator", "search"),
-            ("gsrsearch", query),
-            ("gsrnamespace", "6"),
-            ("gsrlimit", limit.as_str()),
-            ("prop", "imageinfo"),
-            ("iiprop", "url|size|mime|extmetadata"),
-            ("iiurlwidth", "800"),
-            ("format", "json"),
-            ("origin", "*"),
-        ],
-    )
-    .ok()
 }
 
 pub fn wikimedia_page_identity(page: &serde_json::Value) -> Option<String> {
@@ -683,26 +693,4 @@ pub fn image_bytes_to_data_url(mime: &str, bytes: &[u8]) -> Option<String> {
         return Some(format!("data:{scaled_mime};base64,{}", B64.encode(&scaled)));
     }
     Some(format!("data:{mime};base64,{}", B64.encode(bytes)))
-}
-
-#[cfg(test)]
-mod wikimedia_url_tests {
-    use super::wikimedia_search_url;
-
-    #[test]
-    fn judged_fallback_asks_for_a_full_candidate_page() {
-        let url = wikimedia_search_url("kyoto temple", 10).expect("url");
-        let pairs: Vec<(String, String)> = url
-            .query_pairs()
-            .map(|(k, v)| (k.into_owned(), v.into_owned()))
-            .collect();
-        assert!(pairs.contains(&("gsrlimit".into(), "10".into())));
-        assert!(pairs.contains(&("gsrsearch".into(), "kyoto temple".into())));
-    }
-
-    #[test]
-    fn unjudged_fallback_keeps_the_single_page_shape() {
-        let url = wikimedia_search_url("vase", 1).expect("url");
-        assert!(url.query_pairs().any(|(k, v)| k == "gsrlimit" && v == "1"));
-    }
 }

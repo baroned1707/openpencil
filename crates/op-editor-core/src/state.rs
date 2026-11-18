@@ -129,6 +129,10 @@ pub struct EditorState {
     /// here; they are owned by the file and are never overwritten.
     /// Transient — not serialized, reset on document replace.
     pub app_state_owner: std::collections::BTreeMap<String, usize>,
+    /// Creator / licence of stock images that landed on nodes, keyed by node
+    /// id. Document-scoped, in memory only: the `.op` schema has no field to
+    /// persist it (see `image_provenance.rs`). Reset on document replace.
+    pub image_provenance: std::collections::BTreeMap<String, crate::ImageProvenance>,
     /// Virtual child currently swapped into an authored Ref slot by
     /// the synchronous instance-write scope. Lets generic mutators
     /// treat the child as editable after the Ref-level lock gate has
@@ -166,6 +170,7 @@ impl EditorState {
             theme_presets: Vec::new(),
             theme_presets_dirty: false,
             app_state_owner: std::collections::BTreeMap::new(),
+            image_provenance: std::collections::BTreeMap::new(),
             instance_write_virtual_anchor: None,
         }
     }
@@ -218,6 +223,7 @@ impl EditorState {
         self.sync_dirty_flag();
         // Generation-run ownership is doc-scoped; clear on whole-doc replace.
         self.app_state_owner.clear();
+        self.image_provenance.clear();
         self.instance_write_virtual_anchor = None;
         drop_document_after_replace(old_doc);
     }
@@ -245,6 +251,7 @@ impl EditorState {
         self.codegen.reset_for_document_replacement();
         // Generation-run ownership is doc-scoped; clear on whole-doc replace.
         self.app_state_owner.clear();
+        self.image_provenance.clear();
         self.instance_write_virtual_anchor = None;
         self.sync_dirty_flag();
         drop_document_after_replace(old_doc);

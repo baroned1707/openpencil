@@ -308,6 +308,7 @@ fn canonicalize_word(word: &str) -> String {
 /// subject word. When a query contains no concrete words (for example an
 /// all-descriptor prompt), preserve the provider response rather than making
 /// an unprovable relevance decision.
+#[cfg(test)]
 pub(crate) fn retain_relevant_hits(hits: Vec<RawHit>, query: &str) -> Vec<RawHit> {
     retain_relevant_hits_for_intent(hits, query, "")
 }

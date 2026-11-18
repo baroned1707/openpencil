@@ -37,6 +37,7 @@ pub(super) struct JudgedImage {
     pub identity: Option<String>,
     pub attribution: String,
     pub original: Option<crate::net::providers::OriginalImageSource>,
+    pub provenance: Option<crate::ImageProvenance>,
 }
 
 pub(super) fn claim_ranked_image(
@@ -66,6 +67,7 @@ pub(super) fn claim_ranked_image(
                 identity: candidate.identity.clone(),
                 attribution: candidate.attribution.clone(),
                 original: candidate.original.clone(),
+                provenance: candidate.provenance.clone(),
             });
         }
         // Duplicate content keeps its page identity claimed, as in the
@@ -143,6 +145,7 @@ impl<'a> WeakFallback<'a> {
             title: image.title,
             attribution: image.attribution,
             original: image.original,
+            provenance: image.provenance,
         };
         if image.verdict == RelevanceVerdict::On {
             self.release();

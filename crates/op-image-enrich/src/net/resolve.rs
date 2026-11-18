@@ -20,16 +20,15 @@ use crate::net::fetch::{
     first_unused_renderable_image_src, settle_provider_identity, ImageCandidateClaim,
 };
 use crate::net::providers::{
-    fetch_openverse_list_with_aspect, fetch_relevant_wikimedia_list_for_intent,
-    retain_relevant_hits_for_intent, simplify_search_query, two_keyword_retry, RawHit,
-    WebOpenverseCredentials,
+    default_providers, fenced_list, run_ladder, simplify_search_query, FencedList, ImageProvider,
+    LadderRequest, ProviderCtx, WebOpenverseCredentials,
 };
-use crate::net::search_trace::{short_title, trace_hits, trace_line};
+use crate::net::search_trace::{short_title, trace_line};
 use crate::ImageAspectRatio;
 
 /// The image a ladder settled on, with enough provenance for a one-line
 /// diagnostic (`[IMAGE] <node> query=… -> <provider> "<title>"`).
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct ResolvedImage {
     /// Renderable `data:` URL written into the slot.
     pub src: String,
@@ -43,6 +42,9 @@ pub struct ResolvedImage {
     /// Attribution and the original URL belong to this exact chosen artwork.
     pub attribution: String,
     pub original: Option<crate::net::providers::OriginalImageSource>,
+    /// Who made the artwork and under which licence; `None` for hand-built
+    /// values. Persisted on the node by `apply_result_with_provenance`.
+    pub provenance: Option<crate::ImageProvenance>,
 }
 
 impl ResolvedImage {
@@ -55,13 +57,6 @@ impl ResolvedImage {
             short_title(&self.provider_query, 60)
         )
     }
-}
-
-/// A relevance-fenced provider list plus the stage/query that produced it.
-pub(crate) struct FencedList {
-    pub(crate) hits: Vec<RawHit>,
-    pub(crate) provider: &'static str,
-    pub(crate) provider_query: String,
 }
 
 pub fn fetch_first_image_resolved_blocking(
@@ -197,46 +192,53 @@ async fn fetch_first_image_resolved_thumbnail(
     let client = reqwest::Client::builder()
         .use_rustls_tls()
         .timeout(Duration::from_secs(8))
-        .user_agent(concat!("openpencil-desktop/", env!("CARGO_PKG_VERSION")))
+        .user_agent(crate::HTTP_USER_AGENT)
         .build()
         .ok()?;
+    resolve_thumbnail_over(
+        &client,
+        &default_providers(),
+        query,
+        intent,
+        aspect_ratio,
+        credentials,
+        used_urls,
+    )
+    .await
+}
+
+/// The unjudged ladder over a caller-supplied client + provider list: the
+/// shared [`run_ladder`] supplies each provider's fenced list (aspect relaxed
+/// once, one concrete retry) and this consumer claims the first hit, in fence
+/// rank order, whose thumbnail renders and is unused. When every list is
+/// fenced empty the slot stays unresolved rather than taking an unrelated
+/// picture.
+pub(crate) async fn resolve_thumbnail_over(
+    client: &reqwest::Client,
+    providers: &[ImageProvider],
+    query: &str,
+    intent: &str,
+    aspect_ratio: Option<ImageAspectRatio>,
+    credentials: Option<&WebOpenverseCredentials>,
+    used_urls: &Mutex<HashSet<String>>,
+) -> Option<ResolvedImage> {
     let query = simplify_search_query(query);
     trace_line(format_args!(
         "ladder=unjudged query=\"{query}\" intent=\"{}\" aspect={}",
         short_title(intent, 90),
         aspect_ratio.map_or("any", ImageAspectRatio::as_openverse_param)
     ));
-    // The aspect filter is a preference (the slot crops its fill), not part
-    // of the subject contract: the square filter answered zero hits for both
-    // incident queries while the unfiltered catalogue had fenced product
-    // shots. Relax it once before leaving Openverse.
-    let aspect_attempts = if aspect_ratio.is_some() {
-        vec![aspect_ratio, None]
-    } else {
-        vec![None]
+    let ctx = ProviderCtx::new(client, credentials);
+    let request = LadderRequest {
+        query: &query,
+        intent,
+        aspect: aspect_ratio,
     };
-    for aspect in aspect_attempts {
-        if aspect.is_none() && aspect_ratio.is_some() {
-            trace_line("openverse: aspect filter fenced empty, retrying without it");
-        }
-        let Some(list) =
-            fetch_relevant_openverse_list_with_aspect(&client, &query, intent, aspect, credentials)
-                .await
-        else {
-            // Request-level failure (429 / network): don't hammer the API.
-            break;
-        };
-        if let Some(resolved) = claim_first_fenced_hit(&client, list, "openverse:", used_urls).await
-        {
-            return Some(resolved);
-        }
-    }
-    let wiki = FencedList {
-        hits: fetch_relevant_wikimedia_list_for_intent(&client, &query, intent).await,
-        provider: "wikimedia",
-        provider_query: query.clone(),
-    };
-    let resolved = claim_first_fenced_hit(&client, wiki, "wikimedia:", used_urls).await;
+    let resolved = run_ladder(providers, &ctx, &request, |provider, list| {
+        let identity_prefix = format!("{}:", provider.id());
+        async move { claim_first_fenced_hit(client, list, &identity_prefix, used_urls).await }
+    })
+    .await;
     if resolved.is_none() {
         trace_line(format_args!(
             "chosen: none for \"{query}\" (every provider list fenced empty or unusable)"
@@ -275,6 +277,7 @@ async fn claim_first_fenced_hit(
             ));
             continue;
         };
+        let provenance = hit.provenance();
         let resolved = ResolvedImage {
             src,
             provider: list.provider,
@@ -282,6 +285,7 @@ async fn claim_first_fenced_hit(
             title: hit.title,
             attribution: hit.attribution,
             original: hit.original,
+            provenance,
         };
         trace_line(format_args!(
             "chosen: {} — highest-ranked fenced hit whose thumbnail rendered",
@@ -292,10 +296,10 @@ async fn claim_first_fenced_hit(
     None
 }
 
-/// Fetch and relevance-fence one Openverse list, retrying once with the
-/// concrete tail of the query when the primary answer is empty or fully
-/// fenced. The fence always follows the authored `query` + `intent`, so a
-/// shorter provider query never loosens the subject or photo contract.
+/// Fetch and relevance-fence one Openverse list (primary query, then one
+/// concrete retry). The fence always follows the authored `query` + `intent`,
+/// so a shorter provider query never loosens the subject or photo contract.
+/// The judged ladder's Openverse tiers call this.
 pub(crate) async fn fetch_relevant_openverse_list_with_aspect(
     client: &reqwest::Client,
     query: &str,
@@ -303,66 +307,17 @@ pub(crate) async fn fetch_relevant_openverse_list_with_aspect(
     aspect_ratio: Option<ImageAspectRatio>,
     credentials: Option<&WebOpenverseCredentials>,
 ) -> Option<FencedList> {
-    fenced_openverse_list_with(query, intent, |candidate| {
-        let client = client.clone();
-        let credentials = credentials.cloned();
-        async move {
-            fetch_openverse_list_with_aspect(
-                &client,
-                &candidate,
-                aspect_ratio,
-                credentials.as_ref(),
-            )
-            .await
-        }
-    })
-    .await
-}
-
-/// Transport-free core of [`fetch_relevant_openverse_list_with_aspect`]:
-/// `fetch_list` answers one provider query (`None` = request failure).
-pub(crate) async fn fenced_openverse_list_with<F, Fut>(
-    query: &str,
-    intent: &str,
-    mut fetch_list: F,
-) -> Option<FencedList>
-where
-    F: FnMut(String) -> Fut,
-    Fut: std::future::Future<Output = Option<Vec<RawHit>>>,
-{
-    let hits = fetch_list(query.to_string()).await?;
-    trace_hits("openverse", query, (query, intent), &hits);
-    let relevant = retain_relevant_hits_for_intent(hits, query, intent);
-    if !relevant.is_empty() {
-        return Some(FencedList {
-            hits: relevant,
-            provider: "openverse",
-            provider_query: query.to_string(),
-        });
-    }
-
-    let Some(retry_query) = two_keyword_retry(query) else {
-        return Some(FencedList {
-            hits: relevant,
-            provider: "openverse",
-            provider_query: query.to_string(),
-        });
+    let ctx = ProviderCtx::new(client, credentials);
+    let request = LadderRequest {
+        query,
+        intent,
+        aspect: aspect_ratio,
     };
-    let retry = fetch_list(retry_query.clone()).await?;
-    trace_hits("openverse-retry", &retry_query, (query, intent), &retry);
-    let retry_total = retry.len();
-    let relevant = retain_relevant_hits_for_intent(retry, query, intent);
-    if relevant.is_empty() && retry_total > 0 {
-        eprintln!(
-            "[ENRICH] openverse: \"{query}\" {retry_total} hits for \"{retry_query}\", none lexically relevant"
-        );
-    }
-    Some(FencedList {
-        hits: relevant,
-        provider: "openverse-retry",
-        provider_query: retry_query,
-    })
+    fenced_list(&ImageProvider::openverse(), &ctx, &request, aspect_ratio).await
 }
+
+#[cfg(test)]
+pub(crate) use crate::net::providers::fenced_openverse_list_with;
 
 #[cfg(test)]
 #[path = "resolve_tests.rs"]

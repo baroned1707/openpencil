@@ -356,6 +356,7 @@ mod tests {
             provider: "openverse",
             provider_query: "serum oil bottle".to_string(),
             title: "Dropper bottle, blank retro label".to_string(),
+            provenance: None,
         };
         assert_eq!(
             image_provenance_line("n246", "serum oil bottle", Some(&hit)),
@@ -452,6 +453,7 @@ mod tests {
                     provider: "test",
                     provider_query: "coffee cup".into(),
                     title: "Coffee".into(),
+                    provenance: None,
                     attribution: String::new(),
                     original: None,
                 })

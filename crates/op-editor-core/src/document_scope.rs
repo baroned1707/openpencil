@@ -58,6 +58,7 @@ pub struct DocumentScope {
     pub(crate) codegen: CodegenState,
     pub(crate) components: ComponentLibrary,
     pub(crate) app_state_owner: std::collections::BTreeMap<String, usize>,
+    pub(crate) image_provenance: std::collections::BTreeMap<String, crate::ImageProvenance>,
     pub(crate) instance_write_virtual_anchor: Option<crate::NodeId>,
 }
 
@@ -88,6 +89,7 @@ impl DocumentScope {
             theme_presets: _,
             theme_presets_dirty: _,
             app_state_owner,
+            image_provenance,
             instance_write_virtual_anchor,
         } = state;
         Self {
@@ -107,6 +109,7 @@ impl DocumentScope {
             codegen,
             components,
             app_state_owner,
+            image_provenance,
             instance_write_virtual_anchor,
         }
     }
@@ -220,6 +223,7 @@ impl EditorState {
             theme_presets: _,
             theme_presets_dirty: _,
             app_state_owner,
+            image_provenance,
             instance_write_virtual_anchor,
         } = self;
         let DocumentScope {
@@ -239,6 +243,7 @@ impl EditorState {
             codegen: scope_codegen,
             components: scope_components,
             app_state_owner: scope_app_state_owner,
+            image_provenance: scope_image_provenance,
             instance_write_virtual_anchor: scope_instance_write_virtual_anchor,
         } = scope;
         std::mem::swap(doc, scope_doc);
@@ -257,6 +262,7 @@ impl EditorState {
         std::mem::swap(codegen, scope_codegen);
         std::mem::swap(components, scope_components);
         std::mem::swap(app_state_owner, scope_app_state_owner);
+        std::mem::swap(image_provenance, scope_image_provenance);
         std::mem::swap(
             instance_write_virtual_anchor,
             scope_instance_write_virtual_anchor,

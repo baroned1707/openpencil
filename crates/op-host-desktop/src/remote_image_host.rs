@@ -12,11 +12,13 @@
 
 use std::sync::mpsc::{self, Receiver, TryRecvError};
 use std::sync::Arc;
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
 use op_editor_ui::widgets::canvas_viewport_image::{
     mark_remote_image_failed, store_remote_image_bytes, take_remote_image_requests,
 };
+
+use op_image_enrich::net::providers::ssrf_guard::{get_guarded, GuardError, GuardPolicy};
 
 use crate::asset_fetch_error::AssetFetchError;
 
@@ -27,6 +29,8 @@ const MAX_CONCURRENT_FETCHES: usize = 4;
 /// cache is bounded by entry COUNT, so the per-entry cap bounds the
 /// worst-case memory.
 const MAX_REMOTE_IMAGE_BYTES: usize = 8 * 1024 * 1024;
+/// Whole-request budget (DNS, redirects, body).
+const REMOTE_IMAGE_TIMEOUT: Duration = Duration::from_secs(20);
 
 type Fetcher = Arc<dyn Fn(&str) -> Result<Vec<u8>, AssetFetchError> + Send + Sync>;
 
@@ -118,53 +122,57 @@ fn spawn_fetch(id: u64, url: String, fetcher: Fetcher) -> FetchJob {
     FetchJob { id, rx }
 }
 
-/// Blocking HTTPS fetch — only ever runs on a worker thread. `reqwest`
-/// is async-only in this workspace, so the call is bridged through
+/// Blocking fetch — only ever runs on a worker thread. `reqwest` is
+/// async-only in this workspace, so the call is bridged through
 /// `chat_runtime::block_on_anywhere`: on the plain worker thread it uses the
 /// shared runtime, and it stays correct if this sync entry point is ever
-/// reached from a tokio worker. Validates the response is a plausible image
-/// (content type or magic bytes) and bounded in size.
+/// reached from a tokio worker.
+///
+/// The `src` came from a document, so it is untrusted: the shared SSRF guard
+/// refuses loopback / private / link-local / metadata destinations (by IP
+/// literal, by DNS answer, and on every redirect hop), pins the validated
+/// DNS answer, and the body is read through a streaming cap that aborts as
+/// soon as it is crossed. Validates the response is a plausible image
+/// (content type or magic bytes).
 fn fetch_remote_image_blocking(url: &str) -> Result<Vec<u8>, AssetFetchError> {
+    fetch_remote_image_guarded(url, &GuardPolicy::http_or_https(), MAX_REMOTE_IMAGE_BYTES)
+}
+
+/// [`fetch_remote_image_blocking`] with the policy and cap injected. Tests
+/// pass a policy that allow-lists their loopback fake and a tiny cap;
+/// production always passes the default policy.
+fn fetch_remote_image_guarded(
+    url: &str,
+    policy: &GuardPolicy,
+    cap: usize,
+) -> Result<Vec<u8>, AssetFetchError> {
     op_host_services::chat_runtime::block_on_anywhere(async {
-        let client = reqwest::Client::builder()
-            .use_rustls_tls()
-            .timeout(Duration::from_secs(20))
-            .user_agent(concat!("openpencil-desktop/", env!("CARGO_PKG_VERSION")))
-            .build()
-            .map_err(|e| AssetFetchError::HttpClient(e.to_string()))?;
-        let resp = client
-            .get(url)
-            .send()
+        let deadline = Instant::now() + REMOTE_IMAGE_TIMEOUT;
+        let body = get_guarded(url, policy, deadline, cap, op_image_enrich::HTTP_USER_AGENT)
             .await
-            .map_err(|e| AssetFetchError::Request(e.to_string()))?
-            .error_for_status()
-            .map_err(|e| AssetFetchError::Request(e.to_string()))?;
-        if resp
-            .content_length()
-            .is_some_and(|len| len > MAX_REMOTE_IMAGE_BYTES as u64)
-        {
-            return Err(AssetFetchError::TooLarge);
-        }
-        let content_type_is_image = resp
-            .headers()
-            .get(reqwest::header::CONTENT_TYPE)
-            .and_then(|v| v.to_str().ok())
-            .map(|v| v.trim().to_ascii_lowercase().starts_with("image/"))
-            .unwrap_or(false);
-        let bytes = resp
-            .bytes()
-            .await
-            .map_err(|e| AssetFetchError::Request(e.to_string()))?;
-        if bytes.is_empty() {
+            .map_err(|error| match error {
+                GuardError::Refused(reason) => AssetFetchError::Refused(reason.to_string()),
+                GuardError::Request(message) => AssetFetchError::Request(message),
+                GuardError::Status(status) => {
+                    AssetFetchError::Request(format!("HTTP status {status}"))
+                }
+                GuardError::TooLarge => AssetFetchError::TooLarge,
+                GuardError::DeadlineExceeded => {
+                    AssetFetchError::Request("request timed out".to_string())
+                }
+            })?;
+        if body.bytes.is_empty() {
             return Err(AssetFetchError::EmptyBody);
         }
-        if bytes.len() > MAX_REMOTE_IMAGE_BYTES {
-            return Err(AssetFetchError::TooLarge);
-        }
-        if !content_type_is_image && !looks_like_image(&bytes) {
+        let content_type_is_image = body
+            .content_type
+            .as_deref()
+            .map(|value| value.trim().to_ascii_lowercase().starts_with("image/"))
+            .unwrap_or(false);
+        if !content_type_is_image && !looks_like_image(&body.bytes) {
             return Err(AssetFetchError::NotAnImage);
         }
-        Ok(bytes.to_vec())
+        Ok(body.bytes)
     })
 }
 
@@ -191,6 +199,10 @@ fn looks_like_svg(bytes: &[u8]) -> bool {
     let trimmed = text.trim_start_matches('\u{feff}').trim_start();
     trimmed.starts_with('<') && trimmed.contains("<svg")
 }
+
+#[cfg(test)]
+#[path = "remote_image_host_guard_tests.rs"]
+mod guard_tests;
 
 #[cfg(test)]
 mod tests {

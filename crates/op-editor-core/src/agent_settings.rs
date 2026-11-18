@@ -350,6 +350,11 @@ pub struct AgentSettings {
     /// still needs the host's `GET /workbench-api/qwen-image/status`
     /// probe. Runtime-only — never persisted.
     pub pending_image_gen_test: Option<String>,
+    /// Image-search Test request seam: set by the Settings > Images Test
+    /// press, taken by the host, which runs one tiny query through the first
+    /// configured provider and lands Valid / Invalid in
+    /// `images_search_test_status`. Runtime-only — never persisted.
+    pub pending_image_search_test: bool,
     pub image_gen_provider_menu_open: Option<usize>,
     pub hover_image_gen_provider_option: Option<(usize, ImageGenProvider)>,
     pub hover_image_gen_profile_header: Option<usize>,
@@ -439,6 +444,7 @@ impl Default for AgentSettings {
             active_image_gen_profile_id: None,
             image_gen_enabled: false,
             pending_image_gen_test: None,
+            pending_image_search_test: false,
             image_gen_provider_menu_open: None,
             hover_image_gen_provider_option: None,
             hover_image_gen_profile_header: None,

@@ -146,6 +146,7 @@ impl EditorState {
         self.editor_ui.clear_document_derived();
         self.codegen.reset_for_document_replacement();
         self.app_state_owner.clear();
+        self.image_provenance.clear();
         self.instance_write_virtual_anchor = None;
 
         match origin {

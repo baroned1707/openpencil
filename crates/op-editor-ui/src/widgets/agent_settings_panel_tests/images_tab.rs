@@ -279,3 +279,38 @@ fn images_tab_test_search_is_disabled_while_testing_like_ts() {
         AgentSettingsHit::Inside
     );
 }
+
+#[test]
+fn image_search_test_press_queues_the_host_probe_only_with_credentials() {
+    use crate::widgets::agent_settings_press_flow::apply_agent_settings_hit;
+    use op_editor_core::host_settings_commit::SettingsCommitScope;
+
+    let mut state = EditorState::default();
+    state.editor_ui.agent_settings.tab = AgentSettingsTab::Images;
+
+    // No credentials: Invalid at once, nothing for the host to run.
+    apply_agent_settings_hit(
+        &mut state,
+        AgentSettingsHit::TestImageSearch,
+        SettingsCommitScope::Operator,
+        0,
+    );
+    let settings = &state.editor_ui.agent_settings;
+    assert_eq!(settings.images_search_test_status, ImageTestStatus::Invalid);
+    assert!(!settings.pending_image_search_test);
+
+    // With credentials: Testing, and the host seam is raised so the status
+    // can resolve to Valid / Invalid from a real query.
+    let settings = &mut state.editor_ui.agent_settings;
+    settings.openverse_client_id = "client".into();
+    settings.openverse_client_secret = "secret".into();
+    apply_agent_settings_hit(
+        &mut state,
+        AgentSettingsHit::TestImageSearch,
+        SettingsCommitScope::Operator,
+        0,
+    );
+    let settings = &state.editor_ui.agent_settings;
+    assert_eq!(settings.images_search_test_status, ImageTestStatus::Testing);
+    assert!(settings.pending_image_search_test);
+}

@@ -47,6 +47,7 @@ fn relevance_fence_returns_empty_when_no_hit_mentions_the_subject() {
         attribution: "By X".to_string(),
         title: "Christmas technology celebration".to_string(),
         relevance_metadata: "Christmas technology celebration computer".to_string(),
+        ..Default::default()
     }];
 
     assert!(retain_relevant_hits(hits, "warm modern armchair").is_empty());
@@ -68,6 +69,7 @@ fn relevance_fence_ranks_more_complete_matches_stably() {
         attribution: String::new(),
         title: metadata.to_string(),
         relevance_metadata: metadata.to_string(),
+        ..Default::default()
     })
     .collect();
 
@@ -96,6 +98,7 @@ fn multi_word_product_query_rejects_one_generic_match() {
         attribution: String::new(),
         title: metadata.to_string(),
         relevance_metadata: metadata.to_string(),
+        ..Default::default()
     })
     .collect();
 
@@ -114,6 +117,7 @@ fn single_word_product_query_keeps_one_exact_subject_match() {
         attribution: String::new(),
         title: "Studio armchair photograph".to_string(),
         relevance_metadata: "Studio armchair photograph".to_string(),
+        ..Default::default()
     }];
 
     let ranked = retain_relevant_hits(hits, "armchair studio photo");
@@ -144,6 +148,7 @@ fn product_photo_query_rejects_room_scenes_unless_the_query_requests_one() {
         attribution: String::new(),
         title: title.to_string(),
         relevance_metadata: metadata.to_string(),
+        ..Default::default()
     })
     .collect();
 
@@ -158,6 +163,7 @@ fn product_photo_query_rejects_room_scenes_unless_the_query_requests_one() {
         attribution: String::new(),
         title: "Cream armchair in a living room".to_string(),
         relevance_metadata: "Cream armchair furniture in a living room interior".to_string(),
+        ..Default::default()
     }];
     assert_eq!(
         retain_relevant_hits(requested_scene, "cream armchair living room photo").len(),
@@ -193,6 +199,7 @@ fn lounge_chair_does_not_opt_into_scenes_but_explicit_scene_phrases_do() {
         attribution: String::new(),
         title: title.to_string(),
         relevance_metadata: metadata.to_string(),
+        ..Default::default()
     })
     .collect();
 
@@ -233,6 +240,7 @@ fn concise_subject_dense_vase_title_beats_long_kylix_metadata() {
         attribution: String::new(),
         title: title.to_string(),
         relevance_metadata: metadata.to_string(),
+        ..Default::default()
     })
     .collect();
 
@@ -260,6 +268,7 @@ fn photo_query_rejects_explicit_illustration_and_catalog_hits() {
         attribution: String::new(),
         title: metadata.to_string(),
         relevance_metadata: metadata.to_string(),
+        ..Default::default()
     })
     .collect();
 
@@ -294,6 +303,7 @@ fn isolated_query_requires_positive_isolation_metadata() {
         attribution: String::new(),
         title: metadata.to_string(),
         relevance_metadata: metadata.to_string(),
+        ..Default::default()
     })
     .collect();
 
@@ -323,6 +333,7 @@ fn raw(id: &str, title: &str, tags: &str) -> RawHit {
         attribution: String::new(),
         title: title.to_string(),
         relevance_metadata: format!("{title} {tags}"),
+        ..Default::default()
     }
 }
 

@@ -86,6 +86,7 @@ fn hit(id: &str, title: &str, tags: &[&str]) -> RawHit {
             .chain(tags.iter().copied())
             .collect::<Vec<_>>()
             .join(" "),
+        ..Default::default()
     }
 }
 
@@ -282,6 +283,7 @@ fn resolved_image_description_is_one_line_and_url_free() {
         provider: "openverse",
         provider_query: "serum oil bottle".to_string(),
         title: "Dropper \"bottle\"\nblank".to_string(),
+        provenance: None,
     };
     assert_eq!(
         resolved.describe(),

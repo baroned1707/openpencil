@@ -311,6 +311,7 @@ fn first_thumbnail_materializer_stops_after_first_success() {
             attribution: format!("by {id}"),
             title: id.to_string(),
             relevance_metadata: id.to_string(),
+            ..Default::default()
         })
         .collect();
 
@@ -345,6 +346,7 @@ fn multi_thumbnail_materializer_caps_public_results_at_five() {
             attribution: String::new(),
             title: format!("Product {index}"),
             relevance_metadata: format!("Product {index}"),
+            ..Default::default()
         })
         .collect();
 

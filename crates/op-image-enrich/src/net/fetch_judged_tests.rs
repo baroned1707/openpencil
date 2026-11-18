@@ -53,6 +53,7 @@ fn candidate(src: &str, grade: u8) -> PreparedJudgeCandidate {
         data_url: src.into(),
         thumb_jpeg: vec![grade],
         identity: None,
+        provenance: None,
     }
 }
 

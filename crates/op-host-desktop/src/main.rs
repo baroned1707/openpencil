@@ -72,6 +72,7 @@ mod image_gen_test_host;
 mod image_generate_host;
 mod image_panel_host;
 mod image_search_session;
+mod image_search_test_host;
 mod ime_window;
 mod import_target_host;
 mod in_place_save_host;
@@ -368,6 +369,10 @@ struct DesktopApp {
     /// Test) — spawned from the `pending_image_gen_test` seam, drained by
     /// `drain_image_gen_test`.
     image_gen_test_job: Option<image_gen_test_host::ImageGenTestJob>,
+    /// In-flight image-search probe (Settings → Images → Test) — spawned from
+    /// the `pending_image_search_test` seam, drained by
+    /// `drain_image_search_test`.
+    image_search_test_job: Option<image_search_test_host::ImageSearchTestJob>,
     /// The `component_browser_open` value last written to
     /// `uikits.json` — `drain_kit_io` rewrites the store when the live
     /// value drifts (TS persists `browserOpen` on every toggle).

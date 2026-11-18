@@ -51,7 +51,7 @@ async fn run_generate(
     let mut builder = reqwest::Client::builder()
         .use_rustls_tls()
         .timeout(Duration::from_secs(120))
-        .user_agent(concat!("openpencil-desktop/", env!("CARGO_PKG_VERSION")));
+        .user_agent(op_image_enrich::HTTP_USER_AGENT);
     // A self-hosted workbench on a LAN/tailnet must not go through the
     // system proxy the GUI grafts from the login shell (it answers 502).
     if profile.provider == ImageGenProvider::Workbench

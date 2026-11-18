@@ -302,6 +302,11 @@ impl DesktopApp {
         if self.drain_image_gen_test() {
             self.redraw_dirty = true;
         }
+        // Same for the image-search Test: run the requested one-query probe,
+        // land the finished one into `images_search_test_status`.
+        if self.drain_image_search_test() {
+            self.redraw_dirty = true;
+        }
         // Drain the document a Studio Home brief replaced: the new design
         // starts untitled and unsaved work stays open as a background tab.
         if self.drain_replaced_home_document() {

@@ -1,16 +1,21 @@
 //! Bounded upgrade from a selected catalogue thumbnail to its original image.
 
-use std::net::{IpAddr, SocketAddr, ToSocketAddrs};
 use std::time::{Duration, Instant};
 
-use reqwest::header::{CONTENT_TYPE, LOCATION};
 use reqwest::Url;
 
-use super::download::{normalize_image_mime_header, read_capped, sniff_image_mime};
+#[cfg(test)]
+use super::download::read_capped;
+#[cfg(test)]
+use std::net::SocketAddr;
+
+use super::download::{normalize_image_mime_header, sniff_image_mime};
+use super::ssrf_guard::{self, GuardPolicy};
 use super::MAX_EMBEDDED_IMAGE_BYTES;
 
 const ORIGINAL_FETCH_BUDGET: Duration = Duration::from_secs(8);
-const MAX_REDIRECTS: usize = 3;
+#[cfg(test)]
+const MAX_REDIRECTS: usize = ssrf_guard::DEFAULT_MAX_REDIRECTS;
 const MAX_ORIGINAL_PIXELS: u64 = 64_000_000;
 const MAX_ORIGINAL_EDGE: u32 = 32_768;
 const MAX_DELIVERED_EDGE: u32 = 2048;
@@ -37,44 +42,27 @@ fn opportunity_deadline(now: Instant, deadline: Option<Instant>) -> Option<Insta
     (deadline > now).then_some(deadline)
 }
 
-async fn fetch_until(mut url: Url, deadline: Instant) -> Option<String> {
-    for redirects in 0..=MAX_REDIRECTS {
-        let host = url.host_str()?.trim_matches(['[', ']']).to_string();
-        let addresses = public_addresses(&host, url.port_or_known_default()?).await?;
-        let remaining = deadline.checked_duration_since(Instant::now())?;
-        let client = reqwest::Client::builder()
-            .use_rustls_tls()
-            .redirect(reqwest::redirect::Policy::none())
-            .timeout(remaining)
-            .user_agent(concat!("openpencil-desktop/", env!("CARGO_PKG_VERSION")))
-            // Pin validated DNS results for direct connections. System proxies
-            // remain supported and own their remote DNS/connection policy.
-            .resolve_to_addrs(&host, &addresses)
-            .build()
-            .ok()?;
-        let response = client.get(url.clone()).send().await.ok()?;
-        if response.status().is_redirection() {
-            let location = response.headers().get(LOCATION)?.to_str().ok()?;
-            url = checked_redirect(&url, location, redirects)?;
-            continue;
-        }
-        if !response.status().is_success() {
-            return None;
-        }
-        let mime = response
-            .headers()
-            .get(CONTENT_TYPE)
-            .and_then(|value| value.to_str().ok())
-            .and_then(normalize_image_mime_header);
-        let bytes = read_capped(response, MAX_EMBEDDED_IMAGE_BYTES).await?;
-        let mime = mime.or_else(|| sniff_image_mime(&bytes).map(str::to_owned))?;
-        // Decoding cannot block the async deadline or monopolize its worker.
-        return tokio::task::spawn_blocking(move || original_data_url(&mime, &bytes))
-            .await
-            .ok()
-            .flatten();
-    }
-    None
+async fn fetch_until(url: Url, deadline: Instant) -> Option<String> {
+    let body = ssrf_guard::get_guarded(
+        url.as_str(),
+        &GuardPolicy::https_only(),
+        deadline,
+        MAX_EMBEDDED_IMAGE_BYTES,
+        crate::HTTP_USER_AGENT,
+    )
+    .await
+    .ok()?;
+    let mime = body
+        .content_type
+        .as_deref()
+        .and_then(normalize_image_mime_header);
+    let bytes = body.bytes;
+    let mime = mime.or_else(|| sniff_image_mime(&bytes).map(str::to_owned))?;
+    // Decoding cannot block the async deadline or monopolize its worker.
+    tokio::task::spawn_blocking(move || original_data_url(&mime, &bytes))
+        .await
+        .ok()
+        .flatten()
 }
 
 fn original_data_url(mime: &str, bytes: &[u8]) -> Option<String> {
@@ -121,96 +109,23 @@ fn safe_dimensions(width: u32, height: u32) -> bool {
         && u64::from(width) * u64::from(height) <= MAX_ORIGINAL_PIXELS
 }
 
-fn checked_redirect(url: &Url, location: &str, followed: usize) -> Option<Url> {
-    if followed >= MAX_REDIRECTS {
-        return None;
-    }
-    safe_original_url(url.join(location).ok()?.as_str())
-}
-
 fn safe_original_url(value: &str) -> Option<Url> {
-    let mut url = Url::parse(value).ok()?;
-    if url.scheme() != "https" || !url.username().is_empty() || url.password().is_some() {
-        return None;
-    }
-    let host = url.host_str()?.trim_matches(['[', ']']);
-    if let Ok(ip) = host.parse::<IpAddr>() {
-        if !public_ip(ip) {
-            return None;
-        }
-    } else {
-        let host = host.trim_end_matches('.').to_ascii_lowercase();
-        if !host.contains('.')
-            || [
-                "localhost",
-                "local",
-                "internal",
-                "home",
-                "lan",
-                "test",
-                "invalid",
-                "example",
-                "onion",
-                "arpa",
-            ]
-            .iter()
-            .any(|suffix| host == *suffix || host.ends_with(&format!(".{suffix}")))
-            || ["example.com", "example.net", "example.org"]
-                .iter()
-                .any(|name| host == *name || host.ends_with(&format!(".{name}")))
-        {
-            return None;
-        }
-    }
-    url.set_fragment(None);
-    Some(url)
+    ssrf_guard::guarded_url(value, &GuardPolicy::https_only())
 }
 
-async fn public_addresses(host: &str, port: u16) -> Option<Vec<SocketAddr>> {
-    if let Ok(ip) = host.parse::<IpAddr>() {
-        return public_ip(ip).then(|| vec![SocketAddr::new(ip, port)]);
-    }
-    let host = host.to_string();
-    let addresses = tokio::task::spawn_blocking(move || {
-        (host.as_str(), port)
-            .to_socket_addrs()
-            .ok()
-            .map(|addresses| addresses.collect::<Vec<_>>())
-    })
-    .await
-    .ok()??;
-    validate_addresses(addresses)
+#[cfg(test)]
+fn checked_redirect(url: &Url, location: &str, followed: usize) -> Option<Url> {
+    ssrf_guard::checked_redirect(url, location, followed, &GuardPolicy::https_only())
 }
 
+#[cfg(test)]
 fn validate_addresses(addresses: Vec<SocketAddr>) -> Option<Vec<SocketAddr>> {
-    (!addresses.is_empty() && addresses.iter().all(|address| public_ip(address.ip())))
-        .then_some(addresses)
+    ssrf_guard::validate_addresses(addresses, &GuardPolicy::https_only())
 }
 
-fn public_ip(ip: IpAddr) -> bool {
-    match ip {
-        IpAddr::V4(ip) => {
-            let [a, b, c, _] = ip.octets();
-            !(matches!(a, 0 | 10 | 127 | 224..=255)
-                || (a == 100 && (64..=127).contains(&b))
-                || (a == 169 && b == 254)
-                || (a == 172 && (16..=31).contains(&b))
-                || (a == 192 && (b == 168 || (b == 0 && matches!(c, 0 | 2))))
-                || (a == 192 && b == 88 && c == 99)
-                || (a == 198 && matches!(b, 18 | 19))
-                || (a == 198 && b == 51 && c == 100)
-                || (a == 203 && b == 0 && c == 113))
-        }
-        IpAddr::V6(ip) => {
-            let segments = ip.segments();
-            // Only global unicast; exclude protocol assignments, documentation,
-            // and transition ranges that could tunnel to non-public IPv4.
-            (segments[0] & 0xe000) == 0x2000
-                && !(segments[0] == 0x2001 && (segments[1] <= 0x01ff || segments[1] == 0x0db8))
-                && segments[0] != 0x2002
-                && !(segments[0] == 0x3fff && segments[1] <= 0x0fff)
-        }
-    }
+#[cfg(test)]
+fn public_ip(ip: std::net::IpAddr) -> bool {
+    ssrf_guard::public_ip(ip)
 }
 
 #[cfg(test)]

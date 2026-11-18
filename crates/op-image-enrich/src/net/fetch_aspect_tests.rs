@@ -9,6 +9,7 @@ fn image(src: &str, verdict: RelevanceVerdict) -> JudgedImage {
         identity: None,
         attribution: String::new(),
         original: None,
+        provenance: None,
     }
 }
 
@@ -224,6 +225,7 @@ fn candidate_dedup_is_per_slot_and_leaves_new_hits_available() {
             title: id.into(),
             relevance_metadata: id.into(),
             original: None,
+            ..Default::default()
         }
     }
     let seen = Mutex::new(HashSet::from(["openverse:square-hit".to_string()]));
@@ -310,6 +312,7 @@ fn unavailable_off_stays_retryable_but_a_completed_off_is_deduplicated() {
         identity: Some("openverse:jar".into()),
         attribution: String::new(),
         original: None,
+        provenance: None,
     }];
     let batches = vec![vec![vec![1]]];
     let unavailable = select_and_record(&slot, &batches, &candidates, &seen);

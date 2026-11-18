@@ -27,7 +27,7 @@ impl ImageGenTestJob {
                 let client = match reqwest::Client::builder()
                     .use_rustls_tls()
                     .timeout(std::time::Duration::from_secs(20))
-                    .user_agent(concat!("openpencil-desktop/", env!("CARGO_PKG_VERSION")))
+                    .user_agent(op_image_enrich::HTTP_USER_AGENT)
                     .build()
                 {
                     Ok(client) => client,

@@ -16,6 +16,8 @@ mod original_delivery;
 pub mod providers;
 pub mod resolve;
 pub mod search_trace;
+#[cfg(test)]
+mod test_support;
 
 pub use judge::{
     format_judge_log, select_with_judge, ImageRelevanceJudge, JudgeSelection, JudgedCandidate,

@@ -38,6 +38,39 @@ pub fn collaboration_image_result_gate(state: &EditorState) -> Result<(), Collab
     )
 }
 
+/// [`apply_result`] plus the creator / licence record of the chosen image.
+///
+/// The record is stored in `EditorState::image_provenance` under the node id
+/// only when the url actually landed. It is NOT persisted to the `.op` file:
+/// TODO(jian schema): `PenNodeBase` (so image nodes AND the image fills of
+/// frames / rectangles can carry it) needs an optional provenance field with
+/// the keys of `ImageProvenance::to_json`; until then the record is lost on
+/// save/load, and the MCP `enrich_images` tool (which applies on a clone and
+/// returns node patches) cannot carry it to the live document at all.
+pub fn apply_result_with_provenance(
+    state: &mut EditorState,
+    node_id: &NodeId,
+    url: &str,
+    provenance: Option<&crate::ImageProvenance>,
+) -> bool {
+    let changed = apply_result(state, node_id, url);
+    if changed && url.trim() != SEARCH_FAILED_PLACEHOLDER_SRC {
+        match provenance {
+            Some(provenance) => {
+                state
+                    .image_provenance
+                    .insert(node_id.as_str().to_string(), provenance.clone());
+            }
+            // A new image without a record must not keep the previous
+            // image's credit.
+            None => {
+                state.image_provenance.remove(node_id.as_str());
+            }
+        }
+    }
+    changed
+}
+
 /// Land a resolved stock-search url onto the target node in place.
 ///
 /// `Image` nodes get their `src`; a still-unfilled placeholder frame or
