@@ -10,49 +10,66 @@ fn leak(records: Vec<DesignRecord>) -> &'static [DesignRecord] {
     Box::leak(records.into_boxed_slice())
 }
 
+/// The seed table alone. The assertions below describe the six hand-written
+/// records; the imported table has its own tests in
+/// `design_data_import_tests.rs` (it contains travel, restaurant, ... records
+/// that these weak-query assertions deliberately do not see).
 fn seed_records() -> &'static [DesignRecord] {
-    design_records()
+    static SEED: std::sync::OnceLock<&'static [DesignRecord]> = std::sync::OnceLock::new();
+    SEED.get_or_init(|| {
+        leak(
+            design_records()
+                .iter()
+                .filter(|record| record.source.name == "OpenPencil seed")
+                .cloned()
+                .collect(),
+        )
+    })
+}
+
+fn seed_search(query: &str, platform: Option<&str>, limit: usize) -> Vec<DesignHit> {
+    search_records(seed_records(), query, platform, limit)
+}
+
+fn seed_json(query: &str, platform: Option<&str>, limit: usize) -> String {
+    hits_to_json(&seed_search(query, platform, limit.clamp(1, MAX_LIMIT)))
 }
 
 #[test]
 fn search_exact_synonym_cjk_and_weak_match() {
     // Exact product type (id words) and exact name.
     assert_eq!(
-        ids(&search_design_data("fintech dashboard", None, 1)),
+        ids(&seed_search("fintech dashboard", None, 1)),
         ["fintech-dashboard"]
     );
     assert_eq!(
-        ids(&search_design_data("SaaS landing page", None, 1)),
+        ids(&seed_search("SaaS landing page", None, 1)),
         ["saas-landing"]
     );
     // Synonyms that appear only as keywords.
     assert_eq!(
-        ids(&search_design_data("an online store for shoes", None, 1)),
+        ids(&seed_search("an online store for shoes", None, 1)),
         ["ecommerce-storefront"]
     );
     assert_eq!(
-        ids(&search_design_data("a workout and sleep app", None, 1)),
+        ids(&seed_search("a workout and sleep app", None, 1)),
         ["mobile-health-tracker"]
     );
     assert_eq!(
-        ids(&search_design_data("API reference for our SDK", None, 1)),
+        ids(&seed_search("API reference for our SDK", None, 1)),
         ["developer-docs"]
     );
     assert_eq!(
-        ids(&search_design_data(
-            "photographer personal website",
-            None,
-            1
-        )),
+        ids(&seed_search("photographer personal website", None, 1)),
         ["portfolio-creative"]
     );
     // CJK keyword matched as a substring.
     assert_eq!(
-        ids(&search_design_data("设计一个健身应用", None, 1)),
+        ids(&seed_search("设计一个健身应用", None, 1)),
         ["mobile-health-tracker"]
     );
     assert_eq!(
-        ids(&search_design_data("银行仪表盘", None, 1)),
+        ids(&seed_search("银行仪表盘", None, 1)),
         ["fintech-dashboard"]
     );
     // Weak or unrelated queries return nothing.
@@ -67,7 +84,7 @@ fn search_exact_synonym_cjk_and_weak_match() {
         "x",
     ] {
         assert!(
-            search_design_data(weak, None, 3).is_empty(),
+            seed_search(weak, None, 3).is_empty(),
             "{weak:?} must not match"
         );
     }
@@ -85,11 +102,11 @@ fn weak_match_returns_empty_not_random() {
         "grid of project images",
         "restaurant menu",
     ] {
-        let hits = search_design_data(query, None, 3);
+        let hits = seed_search(query, None, 3);
         assert!(hits.is_empty(), "{query:?} returned {:?}", ids(&hits));
     }
     let message: Value =
-        serde_json::from_str(&design_data_json("restaurant menu", None, 3)).expect("json");
+        serde_json::from_str(&seed_json("restaurant menu", None, 3)).expect("json");
     assert_eq!(message["matches"], json!([]));
     assert!(message["message"]
         .as_str()
@@ -100,30 +117,27 @@ fn weak_match_returns_empty_not_random() {
 #[test]
 fn search_applies_platform_filter_limit_and_stable_order() {
     // Platform filter keeps only records that list it.
-    let mobile = search_design_data("shop", Some("mobile"), 3);
+    let mobile = seed_search("shop", Some("mobile"), 3);
     assert!(mobile
         .iter()
         .all(|hit| hit.record.platforms.iter().any(|p| p == "mobile")));
     assert_eq!(ids(&mobile), ["ecommerce-storefront"]);
-    assert!(search_design_data("saas landing page", Some("mobile"), 3).is_empty());
+    assert!(seed_search("saas landing page", Some("mobile"), 3).is_empty());
     assert_eq!(
-        ids(&search_design_data("saas landing page", Some(" WEB "), 3)),
+        ids(&seed_search("saas landing page", Some(" WEB "), 3)),
         ["saas-landing"]
     );
 
     // limit 0 is empty; a broad query is cut at the limit.
-    assert!(search_design_data("fintech dashboard", None, 0).is_empty());
+    assert!(seed_search("fintech dashboard", None, 0).is_empty());
     let broad = "fintech finance saas landing health fitness ecommerce shop docs sdk portfolio";
-    assert_eq!(search_design_data(broad, None, 2).len(), 2);
-    assert_eq!(
-        search_design_data(broad, None, 10).len(),
-        seed_records().len()
-    );
+    assert_eq!(seed_search(broad, None, 2).len(), 2);
+    assert_eq!(seed_search(broad, None, 10).len(), seed_records().len());
 
     // Deterministic: repeated calls agree, equal scores order by id.
-    let first = ids(&search_design_data(broad, None, 10)).join(",");
+    let first = ids(&seed_search(broad, None, 10)).join(",");
     for _ in 0..5 {
-        assert_eq!(ids(&search_design_data(broad, None, 10)).join(","), first);
+        assert_eq!(ids(&seed_search(broad, None, 10)).join(","), first);
     }
     let twin = |id: &str| {
         let mut record = seed_records()[0].clone();
@@ -141,7 +155,7 @@ fn search_applies_platform_filter_limit_and_stable_order() {
 
 #[test]
 fn design_data_json_clamps_limit_and_reports_sources() {
-    let one: Value = serde_json::from_str(&design_data_json("fintech", None, 99)).expect("json");
+    let one: Value = serde_json::from_str(&seed_json("fintech", None, 99)).expect("json");
     assert!(one["matches"].as_array().expect("matches").len() <= MAX_LIMIT);
     let first = &one["matches"][0];
     assert_eq!(first["id"], "fintech-dashboard");
@@ -205,7 +219,7 @@ fn get_guidelines_data_returns_capped_json() {
         assert!((1..3).contains(&kept), "{fill}: kept {kept} matches");
         assert_eq!(value["matches"][0]["id"], "max-a");
     }
-    // Real data with limit 3 stays within the cap too.
+    // Real data (seed and imported) with limit 3 stays within the cap too.
     assert!(
         design_data_json(
             "fintech finance saas landing health shop docs portfolio",

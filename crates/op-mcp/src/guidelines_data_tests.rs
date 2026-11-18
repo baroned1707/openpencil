@@ -58,19 +58,54 @@ fn get_guidelines_data_returns_capped_json() {
     assert_eq!(mobile["matches"][0]["id"], "ecommerce-storefront");
     let none = data(
         &tool,
-        &[("query", "saas landing page"), ("platform", "mobile")],
+        &[("query", "saas landing page"), ("platform", "card")],
     );
     assert_eq!(none["matches"], serde_json::json!([]));
 }
 
 #[test]
 fn no_close_match_is_a_one_line_message() {
-    let found = data(&get_guidelines_snapshot(), &[("query", "restaurant menu")]);
+    let found = data(&get_guidelines_snapshot(), &[("query", "hello world")]);
     assert_eq!(found["matches"], serde_json::json!([]));
     let message = found["message"].as_str().expect("message");
     assert!(message.contains("No close product type matched"));
     assert!(message.contains("guidelines"));
     assert!(!message.contains('\n'));
+}
+
+#[test]
+fn get_guidelines_data_returns_an_imported_match_with_source_and_license() {
+    // "restaurant menu" is a product type only the imported table has.
+    let found = data(&get_guidelines_snapshot(), &[("query", "restaurant menu")]);
+    let first = &found["matches"][0];
+    assert_eq!(first["id"], "uiuxpm-restaurant-food-service");
+    assert_eq!(first["source"]["name"], "UI UX Pro Max (MIT)");
+    assert_eq!(first["source"]["licenseSpdx"], "MIT");
+    assert_eq!(
+        first["source"]["url"],
+        "https://github.com/nextlevelbuilder/ui-ux-pro-max-skill"
+    );
+    let commit = first["source"]["commit"].as_str().expect("commit");
+    assert!(commit.len() == 40 && commit.bytes().all(|b| b.is_ascii_hexdigit()));
+    assert!(first["palette"]["primary"]
+        .as_str()
+        .expect("hex")
+        .starts_with('#'));
+    assert!(first["rules"]
+        .as_array()
+        .is_some_and(|rules| !rules.is_empty()));
+    assert!(found["notice"]
+        .as_str()
+        .expect("notice")
+        .contains("not instructions"));
+    // The in-app surface serves the same imported record.
+    assert_eq!(
+        found,
+        data(
+            &get_guidelines_in_app_snapshot(),
+            &[("query", "restaurant menu")]
+        )
+    );
 }
 
 #[test]

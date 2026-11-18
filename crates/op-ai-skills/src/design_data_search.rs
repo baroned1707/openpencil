@@ -3,7 +3,9 @@
 //!
 //! Scoring is deterministic and dependency-free: keywords weigh most, then
 //! the id/name, then single words of multi-word keywords; pattern words only
-//! break ties. A record must reach [`MIN_SCORE`] from keywords/name alone, so
+//! break ties. An EXACT product-type match (the query contains the record's
+//! whole id phrase or whole name) always ranks first, whichever file the
+//! record comes from; then score, then id. A record must reach [`MIN_SCORE`] from keywords/name alone, so
 //! a weak query returns NOTHING instead of the least-bad record: an agent
 //! that is told "no match" falls back to the guidelines, an agent handed a
 //! random product type copies the wrong palette.
@@ -16,7 +18,7 @@ use std::cmp::Reverse;
 
 use serde_json::{json, Value};
 
-use crate::design_data::{design_records, DesignRecord};
+use crate::design_data::{design_records, DesignRecord, IMPORTED_ID_PREFIX};
 use crate::resolver::match_keyword;
 
 /// Lowest primary score that counts as a match.
@@ -30,6 +32,7 @@ const MAX_QUERY_CHARS: usize = 300;
 const KEYWORD_WEIGHT: u32 = 10;
 const EXTRA_KEYWORD_WORD_WEIGHT: u32 = 2;
 const ID_PHRASE_WEIGHT: u32 = 12;
+const NAME_PHRASE_WEIGHT: u32 = 12;
 const NAME_WORD_WEIGHT: u32 = 6;
 const KEYWORD_WORD_WEIGHT: u32 = 3;
 const PATTERN_WORD_WEIGHT: u32 = 1;
@@ -84,7 +87,7 @@ pub fn search_design_data(query: &str, platform: Option<&str>, limit: usize) -> 
     search_records(design_records(), query, platform, limit)
 }
 
-fn search_records(
+pub(crate) fn search_records(
     records: &'static [DesignRecord],
     query: &str,
     platform: Option<&str>,
@@ -100,7 +103,7 @@ fn search_records(
         .filter(|value| !value.is_empty());
     let words = significant_words(&query);
 
-    let mut hits: Vec<DesignHit> = records
+    let mut hits: Vec<(bool, DesignHit)> = records
         .iter()
         .filter(|record| {
             platform
@@ -109,15 +112,51 @@ fn search_records(
         })
         .filter_map(|record| {
             let primary = primary_score(record, &query, &words);
-            (primary >= MIN_SCORE).then(|| DesignHit {
-                record,
-                score: primary + pattern_bonus(record, &words),
+            (primary >= MIN_SCORE).then(|| {
+                (
+                    is_exact_product_type(record, &query),
+                    DesignHit {
+                        record,
+                        score: primary + pattern_bonus(record, &words),
+                    },
+                )
             })
         })
         .collect();
-    hits.sort_by(|a, b| (Reverse(a.score), &a.record.id).cmp(&(Reverse(b.score), &b.record.id)));
+    hits.sort_by(|(exact_a, a), (exact_b, b)| {
+        (Reverse(*exact_a), Reverse(a.score), &a.record.id).cmp(&(
+            Reverse(*exact_b),
+            Reverse(b.score),
+            &b.record.id,
+        ))
+    });
     hits.truncate(limit);
-    hits
+    hits.into_iter().map(|(_, hit)| hit).collect()
+}
+
+/// The id as words, without the import namespace (`uiuxpm-fintech-banking`
+/// is the product type "fintech banking").
+fn id_phrase(record: &DesignRecord) -> String {
+    let id = record
+        .id
+        .strip_prefix(IMPORTED_ID_PREFIX)
+        .unwrap_or(&record.id);
+    id.replace('-', " ")
+}
+
+/// The name as lower-case words: `SaaS (General)` -> `saas general`.
+fn name_phrase(record: &DesignRecord) -> String {
+    let lower = record.name.to_lowercase();
+    let spaced: String = lower
+        .chars()
+        .map(|c| if c.is_alphanumeric() { c } else { ' ' })
+        .collect();
+    spaced.split_whitespace().collect::<Vec<_>>().join(" ")
+}
+
+/// The query names the record's product type in full (id phrase or name).
+fn is_exact_product_type(record: &DesignRecord, query: &str) -> bool {
+    match_keyword(query, &id_phrase(record)) || match_keyword(query, &name_phrase(record))
 }
 
 /// Keyword, id and name evidence. Only this part decides match / no match.
@@ -129,8 +168,13 @@ fn primary_score(record: &DesignRecord, query: &str, words: &[String]) -> u32 {
             score += KEYWORD_WEIGHT + EXTRA_KEYWORD_WORD_WEIGHT * extra_words;
         }
     }
-    if match_keyword(query, &record.id.replace('-', " ")) {
+    let id_phrase = id_phrase(record);
+    if match_keyword(query, &id_phrase) {
         score += ID_PHRASE_WEIGHT;
+    }
+    let name_phrase = name_phrase(record);
+    if name_phrase != id_phrase && match_keyword(query, &name_phrase) {
+        score += NAME_PHRASE_WEIGHT;
     }
     let name = record.name.to_lowercase();
     let name_words = significant_words(&name);
