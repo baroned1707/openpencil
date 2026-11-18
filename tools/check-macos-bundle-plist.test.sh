@@ -60,6 +60,37 @@ cases = {
     },
 }
 
+def document_types(op_icon=None, pen_icon=None, op_extensions=("op",)):
+    def entry(extensions, icon):
+        item = {"CFBundleTypeExtensions": list(extensions)}
+        if icon is not None:
+            item["CFBundleTypeIconFile"] = icon
+        return item
+
+    return [
+        entry(op_extensions, op_icon),
+        entry(("pen",), pen_icon),
+        entry(("fig",), None),
+    ]
+
+
+cases["document-types-ok.plist"] = {
+    **baseline,
+    "CFBundleDocumentTypes": document_types(op_icon="document"),
+}
+cases["op-icon-missing.plist"] = {
+    **baseline,
+    "CFBundleDocumentTypes": document_types(),
+}
+cases["pen-icon.plist"] = {
+    **baseline,
+    "CFBundleDocumentTypes": document_types(op_icon="document", pen_icon="document"),
+}
+cases["op-pen-shared.plist"] = {
+    **baseline,
+    "CFBundleDocumentTypes": document_types(op_icon="document", op_extensions=("op", "pen")),
+}
+
 cases["missing-description.plist"].pop("NSLocalNetworkUsageDescription")
 for name, value in cases.items():
     with (output / name).open("wb") as handle:
@@ -78,6 +109,17 @@ expect_rejected \
 expect_rejected \
   "$TMP_DIR/extra-service.plist" \
   'NSBonjourServices must equal'
+
+bash "$CHECKER" "$TMP_DIR/document-types-ok.plist"
+expect_rejected \
+  "$TMP_DIR/op-icon-missing.plist" \
+  'the .op document type must list only'
+expect_rejected \
+  "$TMP_DIR/pen-icon.plist" \
+  'only the .op document type may set CFBundleTypeIconFile'
+expect_rejected \
+  "$TMP_DIR/op-pen-shared.plist" \
+  'the .op document type must list only'
 
 if [[ "$(uname -s)" == Darwin ]]; then
   # Exercise the same canonical patch helper used by both real bundle scripts.

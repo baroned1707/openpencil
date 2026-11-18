@@ -67,6 +67,30 @@ for raw_path in sys.argv[1:]:
         )
         failed = True
 
+    # Only .op has its own Finder icon. .pen (another product's extension)
+    # and .fig (Figma's) must keep showing the app icon. Plists without
+    # document types (the cargo-bundle source, the dev bundle) pass.
+    for entry in plist.get("CFBundleDocumentTypes", []):
+        extensions = entry.get("CFBundleTypeExtensions", [])
+        icon = entry.get("CFBundleTypeIconFile")
+        if "op" in extensions:
+            if extensions != ["op"] or icon != "document":
+                print(
+                    "macos-bundle-plist: error: "
+                    f"{path}: the .op document type must list only 'op' and set "
+                    f"CFBundleTypeIconFile to 'document', got {extensions!r} / {icon!r}",
+                    file=sys.stderr,
+                )
+                failed = True
+        elif icon is not None:
+            print(
+                "macos-bundle-plist: error: "
+                f"{path}: only the .op document type may set CFBundleTypeIconFile, "
+                f"got {icon!r} on {extensions!r}",
+                file=sys.stderr,
+            )
+            failed = True
+
 if failed:
     raise SystemExit(1)
 PY
@@ -94,6 +118,15 @@ for bundle_script in scripts/bundle-macos.sh tools/bundle-macos.sh; do
     '^[[:space:]]*bash[[:space:]]+".*check-macos-bundle-plist[.]sh"[[:space:]]+"\$PLIST"[[:space:]]*$' \
     'must validate the final bundle Info.plist'
 done
+
+require_regex \
+  "$ROOT/scripts/bundle-macos.sh" \
+  'CFBundleDocumentTypes:0:CFBundleTypeIconFile string document"' \
+  'must give the .op document type its own icon'
+require_regex \
+  "$ROOT/scripts/bundle-macos.sh" \
+  'document[.]icns"[[:space:]]+"\$APP/Contents/Resources/document[.]icns"' \
+  'must copy document.icns into Contents/Resources'
 
 release_workflow="$ROOT/.github/workflows/rust-release.yml"
 require_regex \

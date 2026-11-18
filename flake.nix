@@ -191,6 +191,9 @@
               install -Dm755 target/release/op $out/bin/op
               install -Dm755 target/release/op-host-web-server $out/bin/op-host-web-server
               install -Dm644 crates/op-host-desktop/assets/icon.png $out/share/icons/hicolor/1024x1024/apps/openpencil.png
+              # 16..512 app icons + the .op document icon (mimetypes/), see
+              # scripts/generate-brand-assets.py.
+              cp -r --no-preserve=mode,ownership ${./packaging/linux/icons/hicolor}/. $out/share/icons/hicolor/
               install -Dm644 ${pkgs.writeText "openpencil.desktop" ''
                 [Desktop Entry]
                 Name=OpenPencil
@@ -209,6 +212,7 @@
                     <comment>OpenPencil Document</comment>
                     <glob pattern="*.op"/>
                     <glob pattern="*.pen"/>
+                    <icon name="application-x-openpencil"/>
                   </mime-type>
                 </mime-info>
               ''} $out/share/mime/packages/openpencil.xml

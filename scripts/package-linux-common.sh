@@ -8,10 +8,12 @@
 # Divergences (intentional):
 #   * Exec is `openpencil-desktop %U`, not electron's `AppRun --no-sandbox %U`
 #     — the Rust shell has no Chromium sandbox flag.
-#   * Icon ships at its source size (1024px) into hicolor + pixmaps; older
-#     hicolor index files may not list 1024x1024, so usr/share/pixmaps is the
-#     universal fallback. No resize step: imagemagick is not guaranteed on
-#     runners and the spec tolerates the fallback path.
+#   * The app icon ships at its source size (1024px) into hicolor + pixmaps;
+#     older hicolor index files may not list 1024x1024, so usr/share/pixmaps is
+#     the universal fallback. The 16..512 hicolor sizes (app icon + the .op
+#     document icon under mimetypes/) are pre-rendered into
+#     packaging/linux/icons by scripts/generate-brand-assets.py, so there is no
+#     resize step here: imagemagick is not guaranteed on runners.
 
 OP_DESKTOP_BIN_NAME="openpencil-desktop"
 OP_CLI_BIN_NAME="op"
@@ -42,7 +44,7 @@ op_write_mime_xml() {
     <comment>OpenPencil Document</comment>
     <glob pattern="*.op"/>
     <glob pattern="*.pen"/>
-    <icon name="openpencil"/>
+    <icon name="application-x-openpencil"/>
   </mime-type>
 </mime-info>
 EOF
@@ -54,13 +56,20 @@ EOF
 #   usr/share/applications/openpencil.desktop
 #   usr/share/mime/packages/openpencil.xml
 #   usr/share/icons/hicolor/1024x1024/apps/openpencil.png
+#   usr/share/icons/hicolor/<16..512>x<16..512>/apps/openpencil.png
+#   usr/share/icons/hicolor/<16..512>x<16..512>/mimetypes/application-x-openpencil.png
 #   usr/share/pixmaps/openpencil.png
 # Uses mkdir/cp/chmod (not `install -D`) so the layout can be dry-run on
 # macOS, whose BSD install(1) lacks -D.
 op_install_usr_tree() {
   local root="$1" desktop_bin="$2" cli_bin="$3" icon_png="$4"
-  local script_dir
+  local script_dir icons_src
   script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+  icons_src="$script_dir/../packaging/linux/icons/hicolor"
+  if [ ! -d "$icons_src" ]; then
+    echo "error: missing $icons_src (run scripts/generate-brand-assets.py)" >&2
+    return 1
+  fi
 
   mkdir -p \
     "$root/usr/bin" \
@@ -78,9 +87,12 @@ op_install_usr_tree() {
 
   cp "$icon_png" "$root/usr/share/icons/hicolor/1024x1024/apps/openpencil.png"
   cp "$icon_png" "$root/usr/share/pixmaps/openpencil.png"
+  cp -R "$icons_src/." "$root/usr/share/icons/hicolor/"
   chmod 644 \
     "$root/usr/share/icons/hicolor/1024x1024/apps/openpencil.png" \
     "$root/usr/share/pixmaps/openpencil.png"
+  find "$root/usr/share/icons/hicolor" -type f -exec chmod 644 {} +
+  find "$root/usr/share/icons/hicolor" -type d -exec chmod 755 {} +
   bash "$script_dir/stage-font-notices.sh" "$root/usr/share/doc/openpencil/font-notices"
 }
 

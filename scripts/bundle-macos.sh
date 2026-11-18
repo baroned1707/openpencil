@@ -19,7 +19,7 @@
 #      / CFBundleIconFile / CFBundleShortVersionString /
 #      CFBundleDocumentTypes (with UTI binding) /
 #      UTImportedTypeDeclarations / local-network privacy metadata.
-#   5. Copies the icon into Resources/.
+#   5. Copies the app icon and the .op document icon into Resources/.
 #   6. Re-registers the bundle with LaunchServices so Finder picks up
 #      the .fig binding.
 #
@@ -146,28 +146,43 @@ echo "==> patching Info.plist (name, identifier, icon, doc-types, UTI)"
 /usr/libexec/PlistBuddy -c "Delete :CFBundleDocumentTypes"         "$PLIST" 2>/dev/null || true
 /usr/libexec/PlistBuddy -c "Add    :CFBundleDocumentTypes array"   "$PLIST"
 
-# Group 0: .op / .pen (canonical OpenPencil documents).
+# Group 0: .op (canonical OpenPencil documents). Carries its own Finder icon:
+# CFBundleTypeIconFile names a file in Contents/Resources (extension optional).
 /usr/libexec/PlistBuddy \
   -c "Add :CFBundleDocumentTypes:0 dict" \
   -c "Add :CFBundleDocumentTypes:0:CFBundleTypeName string 'OpenPencil Document'" \
   -c "Add :CFBundleDocumentTypes:0:CFBundleTypeRole string Editor" \
+  -c "Add :CFBundleDocumentTypes:0:CFBundleTypeIconFile string document" \
   -c "Add :CFBundleDocumentTypes:0:CFBundleTypeExtensions array" \
   -c "Add :CFBundleDocumentTypes:0:CFBundleTypeExtensions:0 string op" \
-  -c "Add :CFBundleDocumentTypes:0:CFBundleTypeExtensions:1 string pen" \
   -c "Add :CFBundleDocumentTypes:0:LSHandlerRank string Owner" \
   "$PLIST"
 
-# Group 1: .fig (Figma export) — UTI-based binding so Finder routes
-# double-clicks even though the OS-assigned UTI is com.figma.document.
+# Group 1: .pen. Same handler as .op but deliberately NO CFBundleTypeIconFile:
+# the .pen extension belongs to another product, so Finder keeps showing the
+# app icon for it instead of the ".op" document icon.
 /usr/libexec/PlistBuddy \
   -c "Add :CFBundleDocumentTypes:1 dict" \
-  -c "Add :CFBundleDocumentTypes:1:CFBundleTypeName string 'Figma Document'" \
+  -c "Add :CFBundleDocumentTypes:1:CFBundleTypeName string 'OpenPencil Document'" \
   -c "Add :CFBundleDocumentTypes:1:CFBundleTypeRole string Editor" \
   -c "Add :CFBundleDocumentTypes:1:CFBundleTypeExtensions array" \
-  -c "Add :CFBundleDocumentTypes:1:CFBundleTypeExtensions:0 string fig" \
-  -c "Add :CFBundleDocumentTypes:1:LSItemContentTypes array" \
-  -c "Add :CFBundleDocumentTypes:1:LSItemContentTypes:0 string com.figma.document" \
-  -c "Add :CFBundleDocumentTypes:1:LSHandlerRank string Alternate" \
+  -c "Add :CFBundleDocumentTypes:1:CFBundleTypeExtensions:0 string pen" \
+  -c "Add :CFBundleDocumentTypes:1:LSHandlerRank string Owner" \
+  "$PLIST"
+
+# Group 2: .fig (Figma export) — UTI-based binding so Finder routes
+# double-clicks even though the OS-assigned UTI is com.figma.document.
+# No CFBundleTypeIconFile: the .fig type belongs to Figma, so Finder keeps
+# the app icon for it.
+/usr/libexec/PlistBuddy \
+  -c "Add :CFBundleDocumentTypes:2 dict" \
+  -c "Add :CFBundleDocumentTypes:2:CFBundleTypeName string 'Figma Document'" \
+  -c "Add :CFBundleDocumentTypes:2:CFBundleTypeRole string Editor" \
+  -c "Add :CFBundleDocumentTypes:2:CFBundleTypeExtensions array" \
+  -c "Add :CFBundleDocumentTypes:2:CFBundleTypeExtensions:0 string fig" \
+  -c "Add :CFBundleDocumentTypes:2:LSItemContentTypes array" \
+  -c "Add :CFBundleDocumentTypes:2:LSItemContentTypes:0 string com.figma.document" \
+  -c "Add :CFBundleDocumentTypes:2:LSHandlerRank string Alternate" \
   "$PLIST"
 
 # UTImportedTypeDeclarations — declare we KNOW about com.figma.document
@@ -195,6 +210,8 @@ bash "$WS_ROOT/tools/check-macos-bundle-plist.sh" "$PLIST"
 echo "==> copying icon into Resources/"
 mkdir -p "$APP/Contents/Resources"
 cp "$WS_ROOT/crates/op-host-desktop/assets/icon.icns" "$APP/Contents/Resources/icon.icns"
+# File-type icon for .op documents (CFBundleTypeIconFile = document above).
+cp "$WS_ROOT/crates/op-host-desktop/assets/document.icns" "$APP/Contents/Resources/document.icns"
 bash "$WS_ROOT/scripts/stage-font-notices.sh" "$APP/Contents/Resources/font-notices"
 
 if [ -n "${OPENPENCIL_BINARY:-}" ]; then

@@ -11,11 +11,14 @@
 ;                           op-cli-<target>.zip in the release; $INSTDIR is
 ;                           NOT added to PATH — doing so reliably needs the
 ;                           non-stock EnVar plugin, deferred)
-;   openpencil.ico          icon used by shortcuts + the .op/.pen ProgID
+;   openpencil.ico          icon used by shortcuts + the .pen ProgID
+;   openpencil-document.ico icon of .op files (their own ProgID, see below)
 ;   Uninstall.exe           uninstaller (registered in Add/Remove Programs)
 ;
 ; File association: ProgID "OpenPencil.Document" under HKCR with DefaultIcon
-; and an open command, claimed by .op and .pen. Writing the machine hive
+; and an open command, claimed by .pen; .op uses its own ProgID
+; "OpenPencil.OpDocument" (same open command) so Explorer can show the .op
+; document icon while .pen keeps the app icon. Writing the machine hive
 ; requires elevation, hence RequestExecutionLevel admin + $PROGRAMFILES64 —
 ; an intentional divergence from electron-builder's per-user install
 ; (perMachine: false): a per-user HKCU\Software\Classes claim silently loses
@@ -58,6 +61,9 @@ Unicode true
 !ifndef ICON_FILE
   !define ICON_FILE "..\crates\op-host-desktop\assets\icon.ico"
 !endif
+!ifndef DOC_ICON_FILE
+  !define DOC_ICON_FILE "..\crates\op-host-desktop\assets\document.ico"
+!endif
 !ifndef OUT_FILE
   !define OUT_FILE "OpenPencil-${VERSION}-${ARCH}-win-setup.exe"
 !endif
@@ -81,6 +87,7 @@ Unicode true
 !define EXE_NAME "openpencil-desktop.exe"
 !define CLI_NAME "op.exe"
 !define PROG_ID "OpenPencil.Document"
+!define PROG_ID_OP "OpenPencil.OpDocument"
 !define REG_APP_KEY "Software\${PRODUCT_NAME}"
 !define UNINST_KEY "Software\Microsoft\Windows\CurrentVersion\Uninstall\${PRODUCT_NAME}"
 !define VC_RUNTIME_REG_KEY "SOFTWARE\Microsoft\VisualStudio\14.0\VC\Runtimes\${ARCH}"
@@ -284,6 +291,7 @@ Section "OpenPencil" SecMain
   File "${BIN_DIR}\${EXE_NAME}"
   File "${BIN_DIR}\${CLI_NAME}"
   File "/oname=openpencil.ico" "${ICON_FILE}"
+  File "/oname=openpencil-document.ico" "${DOC_ICON_FILE}"
 
   SetOutPath "$INSTDIR\font-notices"
   File "..\packaging\shared\fonts\NOTICE.txt"
@@ -327,13 +335,19 @@ Section "OpenPencil" SecMain
   WriteRegDWORD HKLM "${UNINST_KEY}" "NoModify" 1
   WriteRegDWORD HKLM "${UNINST_KEY}" "NoRepair" 1
 
-  ; File association: one ProgID claimed by both OpenPencil extensions.
+  ; File association: .pen uses the app-icon ProgID, .op its own ProgID
+  ; (same open command) so only .op gets the document icon.
   WriteRegStr HKCR "${PROG_ID}" "" "OpenPencil Document"
   WriteRegStr HKCR "${PROG_ID}\DefaultIcon" "" "$INSTDIR\openpencil.ico"
   WriteRegStr HKCR "${PROG_ID}\shell" "" "open"
   WriteRegStr HKCR "${PROG_ID}\shell\open\command" "" '"$INSTDIR\${EXE_NAME}" "%1"'
 
-  WriteRegStr HKCR ".op" "" "${PROG_ID}"
+  WriteRegStr HKCR "${PROG_ID_OP}" "" "OpenPencil Document"
+  WriteRegStr HKCR "${PROG_ID_OP}\DefaultIcon" "" "$INSTDIR\openpencil-document.ico"
+  WriteRegStr HKCR "${PROG_ID_OP}\shell" "" "open"
+  WriteRegStr HKCR "${PROG_ID_OP}\shell\open\command" "" '"$INSTDIR\${EXE_NAME}" "%1"'
+
+  WriteRegStr HKCR ".op" "" "${PROG_ID_OP}"
   WriteRegStr HKCR ".op" "Content Type" "application/x-openpencil"
   WriteRegStr HKCR ".pen" "" "${PROG_ID}"
   WriteRegStr HKCR ".pen" "Content Type" "application/x-openpencil"
@@ -346,6 +360,7 @@ Section "Uninstall"
   Delete "$INSTDIR\${EXE_NAME}"
   Delete "$INSTDIR\${CLI_NAME}"
   Delete "$INSTDIR\openpencil.ico"
+  Delete "$INSTDIR\openpencil-document.ico"
   Delete "$INSTDIR\Uninstall.exe"
   Delete "$INSTDIR\font-notices\NOTICE.txt"
   Delete "$INSTDIR\font-notices\OFL-Inter.txt"
@@ -360,12 +375,13 @@ Section "Uninstall"
   ; Only unclaim the extensions if they still point at our ProgID — never
   ; clobber an association another app took over after us.
   ReadRegStr $0 HKCR ".op" ""
-  StrCmp $0 "${PROG_ID}" 0 +2
+  StrCmp $0 "${PROG_ID_OP}" 0 +2
     DeleteRegKey HKCR ".op"
   ReadRegStr $0 HKCR ".pen" ""
   StrCmp $0 "${PROG_ID}" 0 +2
     DeleteRegKey HKCR ".pen"
   DeleteRegKey HKCR "${PROG_ID}"
+  DeleteRegKey HKCR "${PROG_ID_OP}"
 
   DeleteRegKey HKLM "${UNINST_KEY}"
   DeleteRegKey HKLM "${REG_APP_KEY}"
