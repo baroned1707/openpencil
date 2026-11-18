@@ -65,16 +65,22 @@ fn prompt_is_landing(prompt: &str) -> bool {
 }
 
 /// E-lite: the loop-path system-prompt fact naming the user's
-/// `chat.agent_team_size` (⚡Nx) setting, so the model actually knows how
-/// many parallel agents it's allowed before deciding whether to
-/// `spawn_agents` for a multi-screen request — the design-agent.md
-/// spawn_agents guidance no longer uses a fixed screen-count threshold, it
-/// asks whether "the user's parallel-agents setting allows it", which is
-/// meaningless unless the model is TOLD the setting. `None` at the default
-/// of 1 — a team of one has nothing to parallelize, so the fact would only
-/// add noise for the common case.
+/// `chat.agent_team_size` (⚡Nx) setting, so the model knows it may delegate
+/// screens with `spawn_agents` — the design-agent.md guidance asks whether
+/// "the user's agent-team setting allows it", which is meaningless unless the
+/// model is TOLD the setting. The fact says how the delegation behaves, because
+/// the host runs the spawned sub-agents ONE AFTER ANOTHER (see
+/// `sub_agent_session`), never in parallel. `None` at the default of 1 — a team
+/// of one has nothing to delegate, so the fact would only add noise for the
+/// common case. The ⚡Nx setting also drives the orchestrator's concurrency;
+/// that is a different path and not described here.
 fn team_size_fact(agent_team_size: u32) -> Option<String> {
-    (agent_team_size > 1).then(|| format!("User's parallel-agents setting: {agent_team_size}"))
+    (agent_team_size > 1).then(|| {
+        format!(
+            "User's agent-team setting: {agent_team_size} (spawn_agents may hand screens to \
+             sub-agents; they run one after another, not at the same time)"
+        )
+    })
 }
 
 /// Screen-shaped top-level frame width band — mirrors
@@ -316,7 +322,7 @@ pub(super) fn launch_design_loop_turn(
     // E-lite: tell the model the ⚡Nx setting it's actually operating under
     // (see `team_size_fact`) — independent of whether a canvas brief exists,
     // so a fresh-canvas multi-screen ask with team_size > 1 still knows it
-    // may `spawn_agents`.
+    // may delegate with `spawn_agents`.
     if let Some(fact) = team_size_fact(agent_team_size) {
         system_prompt.push_str("\n\n---\n\n");
         system_prompt.push_str(&fact);
@@ -674,13 +680,36 @@ mod tests {
 
     #[test]
     fn team_size_fact_names_the_setting_when_above_one() {
-        assert_eq!(
-            team_size_fact(4).as_deref(),
-            Some("User's parallel-agents setting: 4")
+        for size in [4u32, 6] {
+            let fact = team_size_fact(size).expect("a team above one gets a fact");
+            assert!(
+                fact.starts_with(&format!("User's agent-team setting: {size} ")),
+                "{fact}"
+            );
+        }
+    }
+
+    /// Invariant: the fact never promises parallel execution (the host runs
+    /// sub-agents one after another), and it keeps the exact label that
+    /// design-agent.md tells the model to look for.
+    #[test]
+    fn team_size_fact_is_truthful() {
+        let fact = team_size_fact(4).expect("fact above one");
+        let lower = fact.to_lowercase();
+        for banned in ["parallel", "concurrent", "simultaneous"] {
+            assert!(!lower.contains(banned), "{banned}: {fact}");
+        }
+        assert!(fact.contains("one after another"), "{fact}");
+        assert!(fact.contains("spawn_agents"), "{fact}");
+
+        let skill = op_ai_skills::design_agent_system_prompt();
+        assert!(
+            skill.contains("`User's agent-team setting: N`"),
+            "design-agent.md must look for the exact fact label the host writes"
         );
-        assert_eq!(
-            team_size_fact(6).as_deref(),
-            Some("User's parallel-agents setting: 6")
+        assert!(
+            !skill.contains("build the screens concurrently"),
+            "design-agent.md must not promise concurrent builds"
         );
     }
 }

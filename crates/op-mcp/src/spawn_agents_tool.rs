@@ -1,20 +1,21 @@
-//! MCP tool `spawn_agents` — request surface only (Phase 0).
+//! MCP tool `spawn_agents` — config validation plus an honest refusal.
 //!
-//! A design agent calls this to split a large design task into parallel
-//! sub-tasks. Each config item carries a prompt, the container node(s) to
-//! fill, and the styleguide + guideline NAMES to pass along (sub-agents
-//! cannot search styleguides, so the parent resolves and passes them in).
+//! A design agent calls this to split a large design task into sub-tasks.
+//! Each config item carries a prompt, the container node(s) to fill, and the
+//! styleguide + guideline NAMES to pass along (sub-agents cannot search
+//! styleguides, so the parent resolves and passes them in).
 //!
-//! Phase 0: validates the config and returns the spawned-agent request
-//! result (`{ spawned, agentIds }`). Actual parallel execution is wired
-//! in Phase 3 (Task 3.1) when the sub-loop runtime exists.
-//! The `enable_spawn_agents` flag / `ToolOutcome::SpawnAgents` emission
-//! are therefore DEFERRED to Phase 3 — this tool ALWAYS registers and
-//! always runs the request-surface path.
+//! This tool runs nothing. Sub-agents exist only inside the editor's built-in
+//! design agent, which intercepts the call before it reaches this tool
+//! (`op-host-desktop` `chat_session::handle_spawn_agents`, one sub-agent after
+//! another). Every other connection — the live MCP server, headless `--mcp`,
+//! ACP agents — dispatches here: a malformed config still reports its specific
+//! argument error, and a valid one gets [`SPAWN_AGENTS_UNSUPPORTED`] as a tool
+//! error, never a success that implies sections were built.
 
 use std::collections::BTreeMap;
 
-use serde_json::{json, Value};
+use serde_json::Value;
 
 use super::spawn_agents_error::{SpawnConfigError, SpawnFieldError};
 use super::{McpTool, ToolErrorCode, ToolOutcome};
@@ -22,13 +23,19 @@ use super::{McpTool, ToolErrorCode, ToolOutcome};
 /// Maximum number of sub-agents per call (Pencil recommends ≤ 8–10).
 const MAX_AGENTS: usize = 12;
 
+/// The text of the tool error a valid `spawn_agents` call gets outside the
+/// editor's built-in design agent. It names the fallback so the caller can
+/// continue without guessing.
+pub const SPAWN_AGENTS_UNSUPPORTED: &str = "spawn_agents is available only inside the editor's \
+built-in design agent; nothing was started. With this connection, build the sections yourself \
+with batch_design (one section per call), then call finalize_design.";
+
 // ---------------------------------------------------------------------------
-// Public types (consumed by Phase 3)
+// Public types (consumed by the desktop sub-agent runtime)
 // ---------------------------------------------------------------------------
 
 /// One spawned sub-agent specification — the caller's intent for one
-/// parallel design subtask. Public so Phase 3 can consume it directly
-/// after execution is wired.
+/// design subtask. Public so the desktop sub-agent runtime can consume it.
 #[derive(Debug, Clone, PartialEq)]
 pub struct SpawnSpec {
     /// The design prompt for this sub-agent.
@@ -173,10 +180,10 @@ pub fn parse_spawn_config_typed(
 // Tool
 // ---------------------------------------------------------------------------
 
-/// Stateless MCP tool that validates and returns a spawn-agents request.
-///
-/// Phase 0 always registers this tool and returns the request result.
-/// Actual parallel execution is deferred to Phase 3 (Task 3.1).
+/// Stateless MCP tool: validates the config, then refuses with
+/// [`SPAWN_AGENTS_UNSUPPORTED`] because no sub-agent runtime exists behind an
+/// MCP connection. Always registered so the catalog (and its pinned counts)
+/// stays stable.
 pub struct SpawnAgents;
 
 impl McpTool for SpawnAgents {
@@ -185,21 +192,16 @@ impl McpTool for SpawnAgents {
     }
 
     fn call(&self, args: &BTreeMap<String, String>) -> ToolOutcome {
-        let specs = match parse_spawn_config_typed(args) {
-            Ok(specs) => specs,
-            Err(error) => {
-                return ToolOutcome::Err(ToolErrorCode::InvalidArgument, error.to_string())
-            }
-        };
-        let n = specs.len();
-        let agent_ids: Vec<String> = (0..n).map(|i| format!("agent-{i}")).collect();
-        match serde_json::to_string(&json!({ "spawned": n, "agentIds": agent_ids })) {
-            Ok(json) => ToolOutcome::OkJson(json),
-            Err(e) => ToolOutcome::Err(
-                ToolErrorCode::Internal,
-                format!("serialize spawn_agents result failed: {e}"),
-            ),
+        // Validation comes first so a malformed call still names its argument.
+        if let Err(error) = parse_spawn_config_typed(args) {
+            return ToolOutcome::Err(ToolErrorCode::InvalidArgument, error.to_string());
         }
+        // No `Unsupported` code exists; `ToolFailed` is the closest: the call
+        // was well-formed but this connection cannot perform it.
+        ToolOutcome::Err(
+            ToolErrorCode::ToolFailed,
+            SPAWN_AGENTS_UNSUPPORTED.to_string(),
+        )
     }
 }
 
@@ -322,40 +324,54 @@ mod tests {
 
     // --- McpTool::call tests ---
 
+    /// Invariant: a VALID config never gets a success. Nothing runs behind an
+    /// MCP connection, so the call is a tool error that names the fallback.
     #[test]
-    fn call_valid_single_item_returns_ok_json_with_spawned_1_and_agent_0() {
+    fn spawn_agents_over_mcp_returns_an_error_not_success() {
         let tool = spawn_agents_snapshot();
-        let args = args_with_config(
+        for config in [
             r#"[{"prompt":"Hero","containerNodes":["n1"],"styleguideName":"brand","guidelineNames":["web-app"]}]"#,
-        );
-        match tool.call(&args) {
-            ToolOutcome::OkJson(json) => {
-                let v: serde_json::Value =
-                    serde_json::from_str(&json).expect("OkJson is valid JSON");
-                assert_eq!(v["spawned"], 1);
-                assert_eq!(v["agentIds"], serde_json::json!(["agent-0"]));
+            r#"[{"prompt":"Hero","styleguideName":"brand"},{"prompt":"Footer","styleguideName":"brand"}]"#,
+        ] {
+            match tool.call(&args_with_config(config)) {
+                ToolOutcome::Err(ToolErrorCode::ToolFailed, msg) => {
+                    assert_eq!(msg, SPAWN_AGENTS_UNSUPPORTED);
+                    assert!(msg.contains("built-in design agent"), "{msg}");
+                    assert!(msg.contains("batch_design"), "{msg}");
+                    assert!(msg.contains("finalize_design"), "{msg}");
+                    assert!(!msg.contains("agentIds"), "{msg}");
+                }
+                other => panic!("a valid config must be a ToolFailed error, got {other:?}"),
             }
-            other => panic!("expected OkJson, got {other:?}"),
         }
     }
 
+    /// Invariant: validation runs before the refusal, so a malformed call
+    /// still reports its specific argument error rather than the generic
+    /// "unsupported" text.
     #[test]
-    fn call_two_item_config_returns_spawned_2_and_correct_agent_ids() {
+    fn spawn_agents_validation_errors_still_name_the_argument() {
         let tool = spawn_agents_snapshot();
-        let args = args_with_config(
-            r#"[
-              {"prompt":"Hero","styleguideName":"brand"},
-              {"prompt":"Footer","styleguideName":"brand"}
-            ]"#,
-        );
-        match tool.call(&args) {
-            ToolOutcome::OkJson(json) => {
-                let v: serde_json::Value =
-                    serde_json::from_str(&json).expect("OkJson is valid JSON");
-                assert_eq!(v["spawned"], 2);
-                assert_eq!(v["agentIds"], serde_json::json!(["agent-0", "agent-1"]));
+        let cases = [
+            ("[]", "non-empty config array"),
+            (
+                r#"[{"prompt":"  ","styleguideName":"brand"}]"#,
+                "prompt must be non-empty",
+            ),
+            (
+                r#"[{"prompt":"Hero","styleguideName":""}]"#,
+                "styleguideName must be non-empty",
+            ),
+            (r#"[{"prompt":"Hero"}]"#, "styleguideName"),
+        ];
+        for (config, expected) in cases {
+            match tool.call(&args_with_config(config)) {
+                ToolOutcome::Err(ToolErrorCode::InvalidArgument, msg) => {
+                    assert!(msg.contains(expected), "{config}: {msg}");
+                    assert_ne!(msg, SPAWN_AGENTS_UNSUPPORTED);
+                }
+                other => panic!("{config}: expected InvalidArgument, got {other:?}"),
             }
-            other => panic!("expected OkJson, got {other:?}"),
         }
     }
 

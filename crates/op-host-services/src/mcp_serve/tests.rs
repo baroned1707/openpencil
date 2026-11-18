@@ -372,3 +372,6 @@ mod transport;
 
 #[path = "tests_dispatch.rs"]
 mod dispatch;
+
+#[path = "spawn_agents_honesty_tests.rs"]
+mod spawn_agents_honesty;

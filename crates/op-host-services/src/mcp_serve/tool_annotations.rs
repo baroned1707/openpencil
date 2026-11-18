@@ -51,7 +51,8 @@ const READ_BUT_WRITES_ELSEWHERE: &[&str] = &[
     "codegen_submit_chunk",
     "codegen_assemble",
     "codegen_clean",
-    // Starts sub-agent runs.
+    // Not read-only by contract: in the in-app design agent it starts
+    // sub-agent runs (an MCP connection gets a refusal instead).
     "spawn_agents",
 ];
 

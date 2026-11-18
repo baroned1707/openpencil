@@ -592,3 +592,45 @@ fn pump_executes_scripted_tool_call_against_live_state() {
     assert!(msg.content.contains("tool said:"));
     assert!(!msg.streaming);
 }
+
+/// Verified in-app behaviour of `spawn_agents` in the built-in design loop:
+/// the call is intercepted (it never reaches the MCP tool), the specs are
+/// stashed for the host to launch one after another after the parent pump, and
+/// the ack returns at once with the agent ids — it does not wait for, or carry,
+/// any sub-agent result. A nested call and a malformed call are not acked as
+/// launched.
+#[test]
+fn in_app_spawn_agents_stashes_specs_and_acks_without_waiting() {
+    use crate::sub_agent_session::take_pending_spawn;
+    let _guard = crate::agent_indicator_test_lock::LOCK
+        .lock()
+        .unwrap_or_else(|e| e.into_inner());
+    let _ = take_pending_spawn();
+
+    let args = serde_json::json!({
+        "config": [
+            {"prompt": "Home", "containerNodes": ["a"], "styleguideName": "brand"},
+            {"prompt": "Cart", "containerNodes": ["b"], "styleguideName": "brand"},
+        ]
+    })
+    .to_string();
+    let ack = handle_spawn_agents(&args);
+    assert!(!ack.is_error, "{}", ack.content);
+    let value: serde_json::Value = serde_json::from_str(&ack.content).unwrap();
+    assert_eq!(value["data"]["spawned"], 2);
+    assert_eq!(
+        value["data"]["agentIds"],
+        serde_json::json!(["agent-0", "agent-1"])
+    );
+    let stashed = take_pending_spawn().expect("the host launches these after the parent pump");
+    assert_eq!(stashed.len(), 2);
+    assert_eq!(stashed[0].container_nodes, vec!["a".to_string()]);
+    assert_eq!(stashed[1].prompt, "Cart");
+    assert!(take_pending_spawn().is_none(), "the stash is consumed once");
+
+    // A malformed call is an error and stashes nothing.
+    let bad = handle_spawn_agents(r#"{"config":[{"prompt":"x","styleguideName":""}]}"#);
+    assert!(bad.is_error, "{}", bad.content);
+    assert!(bad.content.contains("styleguideName must be non-empty"));
+    assert!(take_pending_spawn().is_none());
+}

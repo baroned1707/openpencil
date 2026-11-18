@@ -72,8 +72,8 @@ pub(super) fn rebuild_registry(
     register_tool!("get_style_guide", get_style_guide_snapshot());
     register_tool!("list_style_guides", list_style_guides_snapshot());
     register_tool!("get_guidelines", get_guidelines_snapshot());
-    // Phase 0: always register spawn_agents (validates + returns request result).
-    // Actual parallel execution is deferred to Phase 3 (Task 3.1).
+    // Always registered so the catalog counts stay stable. It validates the
+    // config, then refuses: sub-agents exist only in the in-app design agent.
     register_tool!("spawn_agents", spawn_agents_snapshot());
     register_tool!(
         "ToolSearch",

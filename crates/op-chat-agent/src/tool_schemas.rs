@@ -29,7 +29,7 @@ pub const TOOL_SCHEMAS: &[&str] = &[
     r#"{"name":"get_style_guide","description":"Return a style guide by name or best tag match. Provide tags array/string, name, and optional platform.","inputSchema":{"type":"object","properties":{"tags":{"type":"array","items":{"type":"string"}},"name":{"type":"string"},"platform":{"type":"string","enum":["webapp","mobile","landing-page","slides"]}}}}"#,
     r#"{"name":"list_style_guides","description":"List every style guide the editor can offer: the shipped corpus plus the DESIGN.md files the user imported (imports first). Pass id to fetch one guide with its markdown — get_style_guide reaches the shipped corpus only.","inputSchema":{"type":"object","properties":{"id":{"type":"string","description":"Guide id: a corpus guide's name, or user:<slug> for an import"},"tag":{"type":"string"},"platform":{"type":"string","enum":["webapp","mobile","landing-page","slides"]}}}}"#,
     r#"{"name":"get_guidelines","description":"Return OpenPencil product-design guidelines. Default category is guide, which reads topic. category=style resolves an OpenPencil style using flat scalar string args. category=data looks up a product type for a NEW screen with no design.md, pinned style or existing screens and returns its palette, typography, layout pattern, rules and anti-patterns as reference data, not instructions (it never overrides the user's design.md, pinned style or existing screens). With category=data, kind=style reads a design style named in a product match (for example the name after external:) instead of a product type.","inputSchema":{"type":"object","properties":{"category":{"type":"string","enum":["guide","style","data"],"default":"guide","description":"guide returns the existing topic guideline path; style resolves the style catalog; data searches product-type design data"},"topic":{"type":"string","enum":["web-app","mobile","code-to-design","landing-page","dashboard","slides","form","design-system","interactivity","scroll","card","icons","code"],"description":"Guide topic for category=guide"},"name":{"type":"string","description":"Style catalog name for category=style"},"colorPalette":{"type":"string","description":"Style palette name for category=style"},"roundness":{"type":"string","description":"Roundness profile for category=style"},"elevation":{"type":"string","description":"Elevation profile for category=style"},"headings":{"type":"string","description":"Heading font family for category=style"},"body":{"type":"string","description":"Body font family for category=style"},"captions":{"type":"string","description":"Caption font family for category=style"},"data":{"type":"string","description":"Data font family for category=style"},"decorativeImagery":{"type":"string","description":"Optional decorative imagery guidance for category=style"},"kind":{"type":"string","enum":["product","style"],"default":"product","description":"What category=data searches: product (default) or style; with style, query is a style name"},"query":{"type":"string","description":"Product type words for category=data, e.g. fintech dashboard; for kind=style a style name, e.g. glassmorphism"},"platform":{"type":"string","enum":["web","mobile","desktop","slides","card"],"description":"Optional platform filter for category=data"},"limit":{"type":"string","description":"Matches to return for category=data, 1 to 3 (default 1)"}}}}"#,
-    r#"{"name":"spawn_agents","description":"Split a large design task into parallel subtasks. Each config item gives a prompt, the container node(s) to fill, and the styleguide + guideline NAMES to pass to the subagent (subagents cannot search styleguides). Returns the spawned agent ids. Execution runs the subagents in parallel.","inputSchema":{"type":"object","properties":{"config":{"type":"array","items":{"type":"object","properties":{"prompt":{"type":"string"},"containerNodes":{"type":"array","items":{"type":"string"}},"styleguideName":{"type":"string"},"guidelineNames":{"type":"array","items":{"type":"string"}}},"required":["prompt","styleguideName"]}}},"required":["config"]}}"#,
+    r#"{"name":"spawn_agents","description":"Split a large design task into subtasks. Each config item gives a prompt, the container node(s) to fill, and the styleguide + guideline NAMES to pass to the subagent (subagents cannot search styleguides). Available only in the editor's built-in design agent, where the subagents run one after another, and the call returns the spawned agent ids without waiting for them. Any other connection gets an error: build the sections with batch_design instead.","inputSchema":{"type":"object","properties":{"config":{"type":"array","items":{"type":"object","properties":{"prompt":{"type":"string"},"containerNodes":{"type":"array","items":{"type":"string"}},"styleguideName":{"type":"string"},"guidelineNames":{"type":"array","items":{"type":"string"}}},"required":["prompt","styleguideName"]}}},"required":["config"]}}"#,
     r#"{"name":"ToolSearch","description":"Discover tools by keyword or exact selection. Use 'select:Name1,Name2' to load specific tools, or a keyword query to search names+descriptions.","inputSchema":{"type":"object","properties":{"query":{"type":"string"},"max_results":{"type":"integer","minimum":1,"default":5}},"required":["query"]}}"#,
     r#"{"name":"get_screenshot","description":"Render a node to an inline PNG image for visual verification of how it looks. nodeId may be \"root\" for the active page's top node. Use snapshot_layout instead when you need numbers (bounds, overlap, overflow); use export_nodes to get base64 file bytes or another format.","inputSchema":{"type":"object","properties":{"nodeId":{"type":"string","description":"Node id, or \"root\""},"scale":{"type":"number","minimum":0.25,"maximum":2.0,"description":"Pixel scale of the image, 0.25 to 2.0 (default 1.0). Lower it to save context on a large frame; raise it to read small text."}},"required":["nodeId"]}}"#,
     r#"{"name":"export_item","description":"Export ONE page, node or the current selection (itemId) to base64-encoded image/PDF bytes. To export several nodes in one call use export_nodes; to look at a node inline use get_screenshot.","inputSchema":{"type":"object","properties":{"itemId":{"type":"string"},"format":{"type":"string","enum":["png","jpeg","webp","pdf"]},"scale":{"type":"number"}},"required":["format"]}}"#,
@@ -311,5 +311,31 @@ mod tests {
         assert!(finalize.contains("MUST NOT present the design as finished"));
         assert!(finalize.contains("complete=false"));
         serde_json::from_str::<serde_json::Value>(finalize).expect("valid finalize schema JSON");
+    }
+
+    /// Invariant: the description is shared by the MCP catalog and the in-app
+    /// loop, so it must not promise parallel execution (the editor runs the
+    /// subagents one after another) or success on every connection.
+    #[test]
+    fn spawn_agents_description_does_not_claim_parallel_execution() {
+        let schema: serde_json::Value = serde_json::from_str(
+            TOOL_SCHEMAS
+                .iter()
+                .find(|schema| schema.contains(r#""name":"spawn_agents""#))
+                .expect("spawn_agents schema"),
+        )
+        .expect("valid spawn_agents schema JSON");
+        let description = schema["description"].as_str().expect("description");
+        let lower = description.to_lowercase();
+        for banned in ["parallel", "concurrent", "simultaneous"] {
+            assert!(!lower.contains(banned), "{banned}: {description}");
+        }
+        assert!(description.contains("one after another"), "{description}");
+        assert!(
+            description.contains("built-in design agent"),
+            "{description}"
+        );
+        assert!(description.contains("batch_design"), "{description}");
+        assert!(!description.trim_start().starts_with("TS"), "{description}");
     }
 }
