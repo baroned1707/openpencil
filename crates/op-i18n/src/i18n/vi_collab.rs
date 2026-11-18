@@ -631,6 +631,17 @@ pub fn lookup(key: &str) -> Option<&'static str> {
         "imageCredits.copiedOne" => "Đã sao chép 1 ghi công hình ảnh",
         "imageCredits.copied" => "Đã sao chép {{count}} ghi công hình ảnh",
         "imageCredits.none" => "Tài liệu này không có ghi công hình ảnh",
+        "settings.images.stockTitle" => "Nhà cung cấp ảnh stock",
+        "settings.images.pixabayKey" => "Khóa Pixabay",
+        "settings.images.pixabayKeyPlaceholder" => "Dán khóa API Pixabay của bạn",
+        "settings.images.pixabayHint" => "Tùy chọn. Chỉ từ khóa tìm kiếm được gửi tới Pixabay.",
+        "settings.images.unsplashKey" => "Khóa Unsplash",
+        "settings.images.unsplashKeyPlaceholder" => "Dán khóa truy cập Unsplash của bạn",
+        "settings.images.unsplashHint" => "Khóa của riêng bạn. Chỉ từ khóa tìm kiếm được gửi tới Unsplash.",
+        "settings.images.unsplashToggle" => "Dùng Unsplash",
+        "settings.images.unsplashToggleHint" => "Mặc định tắt. Cần khóa của riêng bạn; hãy đọc điều khoản API của Unsplash trước.",
+        "settings.images.getKeyLink" => "Lấy khóa miễn phí",
+        "settings.images.unsplashTerms" => "Điều khoản API của Unsplash",
         _ => return None,
     })
 }

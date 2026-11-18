@@ -126,9 +126,53 @@ pub fn fetch_first_image_resolved_blocking_with_judge_for_view(
     deadline: Option<Instant>,
     view: Option<crate::ImageJudgeView>,
 ) -> Option<ResolvedImage> {
+    fetch_first_image_resolved_blocking_with_judge_and_providers(
+        query,
+        aspect_ratio,
+        credentials,
+        used_urls,
+        judge,
+        intent,
+        deadline,
+        view,
+        &default_providers(),
+        crate::ImageKind::Photo,
+    )
+}
+
+/// The judged ladder over the caller's provider list (from `providers_for`).
+/// Key-based stock providers (Pixabay, Unsplash) run first, judged like
+/// Openverse; Openverse and Commons keep their own judged stages. A VECTOR
+/// slot skips the judge (a vision model has nothing to say about an icon) and
+/// takes the unjudged ladder.
+#[allow(clippy::too_many_arguments)]
+pub fn fetch_first_image_resolved_blocking_with_judge_and_providers(
+    query: &str,
+    aspect_ratio: Option<ImageAspectRatio>,
+    credentials: Option<&WebOpenverseCredentials>,
+    used_urls: &Mutex<HashSet<String>>,
+    judge: &dyn ImageRelevanceJudge,
+    intent: &str,
+    deadline: Option<Instant>,
+    view: Option<crate::ImageJudgeView>,
+    providers: &[ImageProvider],
+    kind: crate::ImageKind,
+) -> Option<ResolvedImage> {
     let query = query.trim();
     if query.is_empty() {
         return None;
+    }
+    if kind == crate::ImageKind::Vector {
+        return crate::net::resolve::fetch_first_image_resolved_blocking_with_providers(
+            query,
+            intent,
+            aspect_ratio,
+            credentials,
+            used_urls,
+            deadline,
+            providers,
+            kind,
+        );
     }
     crate::net::block_on_image_runtime(async {
         let (selected, delivery_deadline) = fetch_first_image_url_with_judge(
@@ -140,6 +184,7 @@ pub fn fetch_first_image_resolved_blocking_with_judge_for_view(
             intent,
             deadline,
             view,
+            providers,
         )
         .await?;
         Some(

@@ -37,10 +37,12 @@ fn a_repeat_query_gets_the_same_photo_back_not_a_dedup_downgrade() {
         width: None,
         height: None,
         judge_view: None,
+        kind: op_image_enrich::ImageKind::Photo,
     };
     let job = spawn_job(
         target,
         None,
+        op_image_enrich::net::providers::StockKeys::default(),
         Arc::clone(&used_urls),
         Arc::clone(&resolved),
         1,
@@ -92,10 +94,12 @@ fn a_pending_search_intent_is_singleflight() {
         width: None,
         height: None,
         judge_view: None,
+        kind: op_image_enrich::ImageKind::Photo,
     };
     let job = spawn_job(
         target,
         None,
+        op_image_enrich::net::providers::StockKeys::default(),
         Arc::new(Mutex::new(HashSet::new())),
         Arc::clone(&memo),
         8,
@@ -254,6 +258,7 @@ fn directed_stock_target(prompt: Option<&str>) -> ImageSearchTarget {
         width: Some(240.0),
         height: Some(240.0),
         judge_view: None,
+        kind: op_image_enrich::ImageKind::Photo,
     }
 }
 
@@ -286,6 +291,7 @@ fn ready_memo_keeps_different_art_directions_separate() {
         let job = spawn_job(
             target,
             None,
+            op_image_enrich::net::providers::StockKeys::default(),
             Arc::clone(&used_urls),
             Arc::clone(&memo),
             1,
@@ -347,6 +353,7 @@ fn pending_art_direction_does_not_join_another_directions_search() {
         let job = spawn_job(
             cool,
             None,
+            op_image_enrich::net::providers::StockKeys::default(),
             Arc::new(Mutex::new(HashSet::new())),
             Arc::clone(&memo),
             9,
@@ -415,6 +422,7 @@ fn blank_prompts_keep_query_only_memo_and_fingerprint_behavior() {
         let job = spawn_job(
             target,
             None,
+            op_image_enrich::net::providers::StockKeys::default(),
             Arc::new(Mutex::new(HashSet::new())),
             Arc::clone(&memo),
             1,

@@ -144,3 +144,97 @@ fn url_license_code(url: &str) -> Option<Vec<String>> {
         _ => None,
     }
 }
+
+/// Licence of every Pixabay hit (the service has one licence for all content).
+pub const PIXABAY_LICENSE: &str = "Pixabay Content License";
+pub const PIXABAY_LICENSE_URL: &str = "https://pixabay.com/service/license-summary/";
+/// Licence of every Unsplash hit.
+pub const UNSPLASH_LICENSE: &str = "Unsplash License";
+pub const UNSPLASH_LICENSE_URL: &str = "https://unsplash.com/license";
+
+/// Policy for a hit of a provider that reports a NAMED licence instead of a
+/// Creative Commons one. Never guesses: a name the table does not know, or a
+/// URL that is not the licence's own page, is refused.
+///
+/// | provider   | licence                                  | policy            |
+/// |------------|------------------------------------------|-------------------|
+/// | `pixabay`  | `Pixabay Content License` (own URL only) | `Allow`           |
+/// | `unsplash` | `Unsplash License` (own URL only)        | `AllowWithCredit` |
+/// | `iconify`  | an SPDX id, see [`iconify_spdx_policy`]  | per SPDX table    |
+///
+/// Any other provider falls through to [`license_policy_with`].
+pub fn provider_license_policy(
+    provider: &str,
+    license_short: &str,
+    license_url: &str,
+    license_id: &str,
+    allow_share_alike: bool,
+) -> LicensePolicy {
+    match provider {
+        "pixabay" => named_license_policy(
+            license_short,
+            license_url,
+            (PIXABAY_LICENSE, PIXABAY_LICENSE_URL),
+            LicensePolicy::Allow,
+        ),
+        "unsplash" => named_license_policy(
+            license_short,
+            license_url,
+            (UNSPLASH_LICENSE, UNSPLASH_LICENSE_URL),
+            LicensePolicy::AllowWithCredit,
+        ),
+        "iconify" => iconify_spdx_policy(license_id, allow_share_alike),
+        _ => license_policy_with(license_short, license_url, allow_share_alike),
+    }
+}
+
+fn named_license_policy(
+    license_short: &str,
+    license_url: &str,
+    (name, own_url): (&str, &str),
+    verdict: LicensePolicy,
+) -> LicensePolicy {
+    if !license_short.trim().eq_ignore_ascii_case(name) {
+        return LicensePolicy::Refuse("licence not on the allow list");
+    }
+    let url = license_url.trim().trim_end_matches('/');
+    if !url.is_empty() && !url.eq_ignore_ascii_case(own_url.trim_end_matches('/')) {
+        return LicensePolicy::Refuse("licence URL does not match the named licence");
+    }
+    verdict
+}
+
+/// Iconify reports one SPDX id per icon collection.
+///
+/// | SPDX id                                              | policy            |
+/// |------------------------------------------------------|-------------------|
+/// | `MIT`, `Apache-2.0`, `ISC`, `CC0-1.0`, `BSD-*`, `OFL-1.1` | `Allow`      |
+/// | `CC-BY-4.0`, `CC-BY-3.0`                             | `AllowWithCredit` |
+/// | `CC-BY-*-SA` (share-alike)                           | refused unless the hook allows it |
+/// | any NC / ND variant, `GPL*`, `LGPL*`, `AGPL*`, empty, unknown | `Refuse` |
+///
+/// `Allow` here means "usable commercially"; the credit is still stored for
+/// every hit because the licences above ask to keep the notice.
+pub fn iconify_spdx_policy(spdx: &str, allow_share_alike: bool) -> LicensePolicy {
+    let id = spdx.trim().to_ascii_lowercase();
+    if id.is_empty() {
+        return LicensePolicy::Refuse("licence unknown");
+    }
+    let tokens: Vec<&str> = id.split('-').collect();
+    if tokens.iter().any(|token| matches!(*token, "nc" | "nd")) {
+        return LicensePolicy::Refuse("non-commercial or no-derivatives licence");
+    }
+    if tokens.contains(&"sa") {
+        return if allow_share_alike && id.starts_with("cc-by-") {
+            LicensePolicy::AllowWithCredit
+        } else {
+            LicensePolicy::Refuse("share-alike licence can attach to the exported design")
+        };
+    }
+    match id.as_str() {
+        "mit" | "apache-2.0" | "isc" | "cc0-1.0" | "ofl-1.1" => LicensePolicy::Allow,
+        "cc-by-4.0" | "cc-by-3.0" => LicensePolicy::AllowWithCredit,
+        _ if id.starts_with("bsd-") => LicensePolicy::Allow,
+        _ => LicensePolicy::Refuse("licence not on the allow list"),
+    }
+}

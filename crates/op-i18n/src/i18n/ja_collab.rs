@@ -635,6 +635,17 @@ pub fn lookup(key: &str) -> Option<&'static str> {
         "imageCredits.copiedOne" => "画像クレジット 1 件をコピーしました",
         "imageCredits.copied" => "画像クレジット {{count}} 件をコピーしました",
         "imageCredits.none" => "このドキュメントに画像クレジットはありません",
+        "settings.images.stockTitle" => "ストック写真プロバイダー",
+        "settings.images.pixabayKey" => "Pixabay キー",
+        "settings.images.pixabayKeyPlaceholder" => "Pixabay の API キーを貼り付け",
+        "settings.images.pixabayHint" => "任意。Pixabay に送るのは検索キーワードだけです。",
+        "settings.images.unsplashKey" => "Unsplash キー",
+        "settings.images.unsplashKeyPlaceholder" => "Unsplash のアクセスキーを貼り付け",
+        "settings.images.unsplashHint" => "ご自身のキーを使います。Unsplash に送るのは検索キーワードだけです。",
+        "settings.images.unsplashToggle" => "Unsplash を使う",
+        "settings.images.unsplashToggleHint" => "既定ではオフ。ご自身のキーが必要です。先に Unsplash API 規約をご確認ください。",
+        "settings.images.getKeyLink" => "無料キーを取得",
+        "settings.images.unsplashTerms" => "Unsplash API 規約",
         _ => return None,
     })
 }

@@ -163,6 +163,8 @@ pub(crate) fn parse_search_reply(
                         credit: hit
                             .get("credit")
                             .and_then(|credit| serde_json::from_value(credit.clone()).ok()),
+                        // The browser host does not use the key-based providers.
+                        download_ping: None,
                     })
                 })
                 .collect()

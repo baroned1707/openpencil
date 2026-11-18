@@ -27,6 +27,7 @@ pub(crate) use op_host_services::web_image_search::{simplify_search_query, sniff
 use op_ai::chat_provider::ChatProvider;
 use op_host_services::image_relevance_judge::{ChatVisionJudge, OpenAiCompatVisionJudge};
 use op_host_services::web_image_generate::ImageGenerateError;
+use op_image_enrich::net::providers::StockKeys;
 use op_image_enrich::net::{ImageRelevanceJudge, NoJudge};
 pub(crate) use op_image_enrich::{
     collaboration_image_result_gate, collect_targets, collect_targets_with_scene,
@@ -117,6 +118,8 @@ pub(crate) struct SearchIntentKey {
     aspect_ratio: Option<ImageAspectRatio>,
     prompt: Option<String>,
     judge_view: Option<String>,
+    /// Photo or vector: the same words ask different providers.
+    kind: op_image_enrich::ImageKind,
 }
 
 enum SearchMemoEntry {
@@ -466,6 +469,7 @@ impl ImageSearchSession {
         let gen_profile = crate::image_panel_host::active_image_gen_profile(state).cloned();
         let auto_gen_active = state.editor_ui.agent_settings.image_gen_active();
         let credentials = OpenverseCredentials::from_state(state);
+        let stock_keys = StockKeys::from_settings(&state.editor_ui.agent_settings);
         for target in targets {
             let id = target.node_id.as_str().to_string();
             let profile = intent::generation_profile_for_request(
@@ -493,6 +497,7 @@ impl ImageSearchSession {
                     spawn_job(
                         target,
                         credentials.clone(),
+                        stock_keys.clone(),
                         Arc::clone(&self.used_urls),
                         Arc::clone(&self.search_memo),
                         request_id,
@@ -575,12 +580,14 @@ impl ImageSearchSession {
                         self.ensure_judge(None, None);
                         let (judge, judge_enabled) = self.judge_pair();
                         let credentials = OpenverseCredentials::from_state(state);
+                        let stock_keys = StockKeys::from_settings(&state.editor_ui.agent_settings);
                         let target = job
                             .fallback_target
                             .expect("can_fallback implies a kept target");
                         let fallback_job = spawn_job(
                             target,
                             credentials,
+                            stock_keys,
                             Arc::clone(&self.used_urls),
                             Arc::clone(&self.search_memo),
                             request_id,
@@ -679,10 +686,19 @@ impl ImageSearchSession {
                     }
                     // Ours: a failed search lands the theme-adaptive dashed
                     // placeholder (sentinel src) instead of a bare grey box.
-                    let FoundImage { url, credit } =
-                        found.unwrap_or_else(|| FoundImage::from(SEARCH_FAILED_PLACEHOLDER_SRC));
+                    let FoundImage {
+                        url,
+                        credit,
+                        download_ping,
+                    } = found.unwrap_or_else(|| FoundImage::from(SEARCH_FAILED_PLACEHOLDER_SRC));
                     if apply_result_with_credit(state, &job.node_id, &url, credit.as_ref()) {
                         changed = true;
+                        // The image is applied (not merely found): report it
+                        // to a provider that asks for that (Unsplash).
+                        op_image_enrich::net::applied_ping::notify_applied(
+                            download_ping.as_deref(),
+                            &state.editor_ui.agent_settings.unsplash_access_key,
+                        );
                         if url == SEARCH_FAILED_PLACEHOLDER_SRC
                             && walkers::find_node(state.active_children(), &job.node_id)
                                 .is_some_and(is_image_fallback)
@@ -728,10 +744,13 @@ mod progress;
 use jobs::publish_search_result;
 use jobs::{spawn_gen_job, spawn_job, spawn_unavailable_gen_job};
 
-use fetch::fetch_first_image_resolved_blocking_with_judge_for_view;
+use fetch::fetch_first_image_resolved_blocking_with_judge_and_providers;
 pub(crate) use fetch::fetch_image_data_url;
 use intent::current_intent_snapshot;
-pub(crate) use intent::{intent_fingerprint, search_intent_key};
+#[cfg(test)]
+pub(crate) use intent::search_intent_key;
+pub(crate) use intent::{intent_fingerprint, search_intent_key_for_kind};
+use op_image_enrich::net::providers::providers_for;
 
 // `apply_result` + the slot predicates + the target/mode/aspect types live in
 // the shared `op-image-enrich` crate now (see the re-export block at the top

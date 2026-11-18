@@ -3,17 +3,28 @@
 //! text); this module applies it to provider hits.
 
 pub(crate) use crate::license_policy::ALLOW_SHARE_ALIKE_DEFAULT;
-pub use crate::license_policy::{license_policy, license_policy_with, LicensePolicy};
+pub use crate::license_policy::{
+    iconify_spdx_policy, license_policy, license_policy_with, provider_license_policy,
+    LicensePolicy,
+};
 
 use super::catalog::RawHit;
 
-/// Whether one hit's licence is usable under the default policy.
-pub(crate) fn hit_license_is_usable(hit: &RawHit) -> bool {
-    license_policy(
+/// The policy verdict for one hit: its provider's named-licence table when it
+/// has one, the Creative Commons table otherwise.
+pub(crate) fn hit_policy(hit: &RawHit, allow_share_alike: bool) -> LicensePolicy {
+    provider_license_policy(
+        hit.provider,
         hit.license.as_deref().unwrap_or(""),
         hit.license_url.as_deref().unwrap_or(""),
+        hit.license_id.as_deref().unwrap_or(""),
+        allow_share_alike,
     )
-    .is_usable()
+}
+
+/// Whether one hit's licence is usable under the default policy.
+pub(crate) fn hit_license_is_usable(hit: &RawHit) -> bool {
+    hit_policy(hit, ALLOW_SHARE_ALIKE_DEFAULT).is_usable()
 }
 
 /// Drop every hit whose licence is not usable. Runs right after parsing and
@@ -23,14 +34,7 @@ pub(crate) fn retain_usable_license(hits: Vec<RawHit>, allow_share_alike: bool) 
     let total = hits.len();
     let kept: Vec<RawHit> = hits
         .into_iter()
-        .filter(|hit| {
-            license_policy_with(
-                hit.license.as_deref().unwrap_or(""),
-                hit.license_url.as_deref().unwrap_or(""),
-                allow_share_alike,
-            )
-            .is_usable()
-        })
+        .filter(|hit| hit_policy(hit, allow_share_alike).is_usable())
         .collect();
     if kept.len() < total {
         eprintln!(
@@ -64,3 +68,7 @@ pub(crate) fn openverse_short_name(code: &str, version: &str) -> Option<String> 
 #[cfg(test)]
 #[path = "license_tests.rs"]
 mod tests;
+
+#[cfg(test)]
+#[path = "provider_license_tests.rs"]
+mod provider_license_tests;

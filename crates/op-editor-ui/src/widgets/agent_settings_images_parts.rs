@@ -70,8 +70,10 @@ pub(super) fn paint_search_input_row(
     let stored = match field_kind {
         ImageSearchField::ClientId => settings.openverse_client_id.as_str(),
         ImageSearchField::ClientSecret => settings.openverse_client_secret.as_str(),
+        ImageSearchField::PixabayKey => settings.pixabay_api_key.expose(),
+        ImageSearchField::UnsplashKey => settings.unsplash_access_key.expose(),
     };
-    let fallback = if matches!(field_kind, ImageSearchField::ClientSecret) && !stored.is_empty() {
+    let fallback = if !matches!(field_kind, ImageSearchField::ClientId) && !stored.is_empty() {
         "********"
     } else {
         stored

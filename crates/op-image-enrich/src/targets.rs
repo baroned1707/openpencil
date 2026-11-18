@@ -48,6 +48,10 @@ pub struct ImageSearchTarget {
     /// Actual centered slot view for stock judging; unknown geometry keeps
     /// the compatibility path that judges the complete image.
     pub judge_view: Option<crate::ImageJudgeView>,
+    /// Photo (default) or vector / icon, read from the `vector:` prefix of
+    /// the slot's search text (see [`crate::ImageKind`]). `query` is the
+    /// text WITHOUT the prefix.
+    pub kind: crate::ImageKind,
 }
 
 /// How a slot wants its image: stock search, AI generation, or the legacy
@@ -293,9 +297,15 @@ fn image_search_target_for(
         .map(|(width, height)| (Some(width), Some(height)))
         .unwrap_or_else(|| (node.width_px(), node.height_px()));
     let context = page_context::derive(ancestors, document_name);
+    let (kind, keywords) = crate::ImageKind::split_query(&query.text);
+    let keywords = keywords.to_string();
+    if keywords.is_empty() {
+        return None;
+    }
     Some(ImageSearchTarget {
         node_id: NodeId::new(id),
-        query: query.text,
+        query: keywords,
+        kind,
         aspect_ratio: infer_aspect_ratio(width, height),
         prompt,
         page_context: context.context,

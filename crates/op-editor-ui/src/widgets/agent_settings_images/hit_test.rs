@@ -33,6 +33,9 @@ pub fn hit_test_for_ui(
             return ImagesHit::TestSearch;
         }
     }
+    if let Some(hit) = stock::hit_test(content, settings, scrolled, touch) {
+        return hit;
+    }
     if (add_btn_rect_for_ui(content, settings, touch)).contains(scrolled) {
         return ImagesHit::AddGenConfig;
     }

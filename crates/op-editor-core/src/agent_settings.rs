@@ -23,6 +23,7 @@
 use std::collections::{BTreeMap, BTreeSet, VecDeque};
 
 use crate::agent_settings_builtin_presets::BuiltinAgentPresetKey;
+use crate::api_key::ApiKey;
 pub use crate::chat::AgentProvider;
 
 mod config_types;
@@ -31,7 +32,8 @@ mod mutators;
 pub use config_types::{
     normalize_builtin_models, AcpAgentConfig, AcpConnectionType, BuiltinAgentConfig,
     BuiltinAgentKind, ImageGenProfile, ImageGenProvider, MAX_BUILTIN_AGENT_MODELS,
-    MAX_BUILTIN_MODEL_CHARS, OPENVERSE_AUTH_DOCS_URL,
+    MAX_BUILTIN_MODEL_CHARS, OPENVERSE_AUTH_DOCS_URL, PIXABAY_DOCS_URL, UNSPLASH_DOCS_URL,
+    UNSPLASH_TERMS_URL,
 };
 
 /// Which section of the settings modal is active.
@@ -195,6 +197,19 @@ pub enum ImageGenField {
 pub enum ImageSearchField {
     ClientId,
     ClientSecret,
+    PixabayKey,
+    UnsplashKey,
+}
+
+/// The stock providers that need the user's own key.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum StockProvider {
+    Pixabay,
+    Unsplash,
+}
+
+impl StockProvider {
+    pub const ALL: [StockProvider; 2] = [StockProvider::Pixabay, StockProvider::Unsplash];
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -340,6 +355,21 @@ pub struct AgentSettings {
     /// Provenance marker for Openverse credentials copied from a web
     /// deployment. `None` means the singleton is operator-managed.
     pub openverse_credential_owner: Option<String>,
+    /// Pixabay API key (the user's own; the editor ships none). Empty = the
+    /// provider is not used. Persisted in the 0600 settings file; `ApiKey`
+    /// keeps it out of `Debug` output.
+    pub pixabay_api_key: ApiKey,
+    /// Unsplash access key (the user's own). Used only while
+    /// `unsplash_enabled` is also on.
+    pub unsplash_access_key: ApiKey,
+    /// Unsplash is opt-in: its API terms limit how a key may be used, so it
+    /// needs BOTH a key and this switch. Off by default. Persisted.
+    pub unsplash_enabled: bool,
+    pub pixabay_test_status: ImageTestStatus,
+    pub unsplash_test_status: ImageTestStatus,
+    /// Stock-provider Test request seam: set by the Settings > Images Test
+    /// press for that provider, taken by the host. Runtime-only.
+    pub pending_stock_provider_test: Option<StockProvider>,
     pub image_gen_profiles: Vec<ImageGenProfile>,
     pub active_image_gen_profile_id: Option<String>,
     /// Chat-panel image-generation toggle. Off by default; it only takes
@@ -440,6 +470,12 @@ impl Default for AgentSettings {
             openverse_client_id: String::new(),
             openverse_client_secret: String::new(),
             openverse_credential_owner: None,
+            pixabay_api_key: ApiKey::default(),
+            unsplash_access_key: ApiKey::default(),
+            unsplash_enabled: false,
+            pixabay_test_status: ImageTestStatus::Idle,
+            unsplash_test_status: ImageTestStatus::Idle,
+            pending_stock_provider_test: None,
             image_gen_profiles: Vec::new(),
             active_image_gen_profile_id: None,
             image_gen_enabled: false,

@@ -39,6 +39,15 @@ pub struct RawHit {
     pub(crate) license_url: Option<String>,
     /// Human landing page of the work at the provider.
     pub(crate) source_page_url: Option<String>,
+    /// Machine licence id (an SPDX id) when the provider reports one apart
+    /// from the display name; only Iconify does.
+    pub(crate) license_id: Option<String>,
+    /// Unsplash `links.download_location`: pinged once when the image is
+    /// APPLIED, never persisted on the node.
+    pub(crate) download_ping: Option<String>,
+    /// `thumb_url` is an SVG document to embed as `data:image/svg+xml`
+    /// (Iconify), not a raster.
+    pub(crate) thumb_is_svg: bool,
 }
 
 impl RawHit {
@@ -131,6 +140,7 @@ pub fn parse_openverse_results(json: &serde_json::Value) -> Vec<RawHit> {
                 license: openverse_short_name(license_code, license_version),
                 license_url: text_field(r, "license_url"),
                 source_page_url: text_field(r, "foreign_landing_url"),
+                ..RawHit::default()
             })
         })
         .take(SEARCH_CANDIDATE_COUNT)
@@ -215,6 +225,7 @@ pub(crate) fn wikimedia_hit(page: &serde_json::Value) -> Option<RawHit> {
         license: meta("LicenseShortName"),
         license_url: meta("LicenseUrl"),
         source_page_url: text_field(info, "descriptionurl"),
+        ..RawHit::default()
     })
 }
 
@@ -285,9 +296,28 @@ pub(crate) fn wikimedia_info_is_image(page: &serde_json::Value, info: &serde_jso
         .any(|extension| title.ends_with(extension))
 }
 
+/// The embeddable `data:` URL of one hit: the caller's raster materializer,
+/// or the capped, sanitised SVG embed for an icon hit.
+pub(crate) async fn thumb_data_url<F, Fut>(
+    client: &reqwest::Client,
+    hit: &RawHit,
+    fetch_data_url: &F,
+) -> Option<String>
+where
+    F: Fn(String) -> Fut,
+    Fut: std::future::Future<Output = Option<String>>,
+{
+    if hit.thumb_is_svg {
+        super::iconify::fetch_svg_data_url(client, &hit.thumb_url).await
+    } else {
+        fetch_data_url(hit.thumb_url.clone()).await
+    }
+}
+
 /// Download each hit's thumbnail into a `data:` URL through the caller's
 /// materializer. Hits whose thumbnails fail to download are dropped.
 pub(super) async fn materialize_thumbs<F, Fut>(
+    client: &reqwest::Client,
     hits: Vec<RawHit>,
     fetch_data_url: &F,
 ) -> Vec<WebImageSearchHit>
@@ -297,9 +327,10 @@ where
 {
     let mut out = Vec::with_capacity(hits.len().min(SEARCH_RESULT_COUNT));
     for hit in hits {
-        if let Some(data_url) = fetch_data_url(hit.thumb_url.clone()).await {
+        if let Some(data_url) = thumb_data_url(client, &hit, fetch_data_url).await {
             out.push(WebImageSearchHit {
                 credit: hit.provenance(),
+                download_ping: hit.download_ping,
                 id: hit.id,
                 thumb_data_url: data_url,
                 attribution: hit.attribution,
@@ -315,6 +346,7 @@ where
 /// Materialize only the first usable thumbnail. Failed downloads advance to
 /// the next provider hit, while the first success ends the loop immediately.
 pub(super) async fn materialize_first_thumb<F, Fut>(
+    client: &reqwest::Client,
     hits: Vec<RawHit>,
     fetch_data_url: &F,
 ) -> Option<WebImageSearchHit>
@@ -324,9 +356,10 @@ where
 {
     for hit in hits {
         let credit = hit.provenance();
-        if let Some(data_url) = fetch_data_url(hit.thumb_url).await {
+        if let Some(data_url) = thumb_data_url(client, &hit, fetch_data_url).await {
             return Some(WebImageSearchHit {
                 credit,
+                download_ping: hit.download_ping,
                 id: hit.id,
                 thumb_data_url: data_url,
                 attribution: hit.attribution,

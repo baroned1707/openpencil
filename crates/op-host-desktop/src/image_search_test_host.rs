@@ -9,7 +9,8 @@
 
 use std::sync::mpsc::{self, Receiver, TryRecvError};
 
-use op_editor_core::agent_settings::{AgentSettings, ImageTestStatus};
+use op_editor_core::agent_settings::{AgentSettings, ImageTestStatus, StockProvider};
+use op_image_enrich::net::providers::ImageProvider;
 
 use crate::image_search_session::OpenverseCredentials;
 use crate::DesktopApp;
@@ -51,6 +52,25 @@ impl ImageSearchTestJob {
         })
     }
 
+    /// One tiny query through exactly `provider` (a Pixabay / Unsplash key
+    /// check).
+    fn spawn_provider(provider: ImageProvider) -> Self {
+        Self::spawn_with(move || {
+            op_host_services::chat_runtime::block_on_anywhere(async move {
+                let Ok(client) = reqwest::Client::builder()
+                    .use_rustls_tls()
+                    .timeout(std::time::Duration::from_secs(20))
+                    .user_agent(op_image_enrich::HTTP_USER_AGENT)
+                    .build()
+                else {
+                    return ImageTestStatus::Invalid;
+                };
+                op_image_enrich::net::providers::test_first_provider(&client, &[provider], None)
+                    .await
+            })
+        })
+    }
+
     fn poll(&self) -> Option<ImageTestStatus> {
         match self.rx.try_recv() {
             Ok(status) => Some(status),
@@ -73,11 +93,74 @@ fn land_status(settings: &mut AgentSettings, status: ImageTestStatus) -> bool {
     }
 }
 
+/// The provider a stock Test press probes, built from the CURRENT key.
+/// `None` for a blank key (the press itself already reads Invalid then).
+fn stock_provider(settings: &AgentSettings, which: StockProvider) -> Option<ImageProvider> {
+    let key = match which {
+        StockProvider::Pixabay => &settings.pixabay_api_key,
+        StockProvider::Unsplash => &settings.unsplash_access_key,
+    };
+    (!key.is_blank()).then(|| match which {
+        StockProvider::Pixabay => ImageProvider::pixabay(key.clone()),
+        StockProvider::Unsplash => ImageProvider::unsplash(key.clone()),
+    })
+}
+
+/// Land a finished stock probe on ITS OWN status; only a button still in
+/// Testing accepts it.
+fn land_stock_status(
+    settings: &mut AgentSettings,
+    which: StockProvider,
+    status: ImageTestStatus,
+) -> bool {
+    let slot = match which {
+        StockProvider::Pixabay => &mut settings.pixabay_test_status,
+        StockProvider::Unsplash => &mut settings.unsplash_test_status,
+    };
+    if *slot == ImageTestStatus::Testing {
+        *slot = status;
+        true
+    } else {
+        false
+    }
+}
+
 impl DesktopApp {
+    /// Pump the Pixabay / Unsplash Test buttons: land a finished probe on its
+    /// own status, then start the requested one.
+    fn drain_stock_provider_test(&mut self) -> bool {
+        let mut changed = false;
+        if let Some((which, job)) = self.stock_provider_test_job.as_ref() {
+            if let Some(status) = job.poll() {
+                let which = *which;
+                self.stock_provider_test_job = None;
+                let settings = &mut self.host.editor_state_mut().editor_ui.agent_settings;
+                changed |= land_stock_status(settings, which, status);
+            }
+        }
+        if self.stock_provider_test_job.is_some() {
+            return changed;
+        }
+        let settings = &mut self.host.editor_state_mut().editor_ui.agent_settings;
+        if let Some(which) = settings.pending_stock_provider_test.take() {
+            match stock_provider(settings, which) {
+                Some(provider) => {
+                    self.stock_provider_test_job =
+                        Some((which, ImageSearchTestJob::spawn_provider(provider)));
+                }
+                None => {
+                    land_stock_status(settings, which, ImageTestStatus::Invalid);
+                }
+            }
+            changed = true;
+        }
+        changed
+    }
+
     /// Pump: land a finished probe, then start the next requested one.
     /// Returns true when state changed.
     pub(crate) fn drain_image_search_test(&mut self) -> bool {
-        let mut changed = false;
+        let mut changed = self.drain_stock_provider_test();
         if let Some(job) = self.image_search_test_job.as_ref() {
             if let Some(status) = job.poll() {
                 self.image_search_test_job = None;
@@ -129,6 +212,39 @@ mod tests {
             assert!(land_status(&mut settings, wait_for(&job)));
             assert_eq!(settings.images_search_test_status, scripted);
         }
+    }
+
+    #[test]
+    fn stock_test_lands_on_its_own_provider_status_only_while_testing() {
+        let mut settings = AgentSettings {
+            pixabay_test_status: ImageTestStatus::Testing,
+            ..AgentSettings::default()
+        };
+        // An outcome for Unsplash never touches Pixabay's button.
+        assert!(!land_stock_status(
+            &mut settings,
+            StockProvider::Unsplash,
+            ImageTestStatus::Valid
+        ));
+        assert_eq!(settings.pixabay_test_status, ImageTestStatus::Testing);
+        assert!(land_stock_status(
+            &mut settings,
+            StockProvider::Pixabay,
+            ImageTestStatus::Valid
+        ));
+        assert_eq!(settings.pixabay_test_status, ImageTestStatus::Valid);
+        assert_eq!(settings.unsplash_test_status, ImageTestStatus::Idle);
+    }
+
+    #[test]
+    fn stock_provider_is_built_from_the_current_key_and_blank_means_none() {
+        let mut settings = AgentSettings::default();
+        assert!(stock_provider(&settings, StockProvider::Pixabay).is_none());
+        settings.pixabay_api_key = "k".into();
+        settings.unsplash_access_key = "  ".into();
+        let provider = stock_provider(&settings, StockProvider::Pixabay).unwrap();
+        assert_eq!(provider.id(), "pixabay");
+        assert!(stock_provider(&settings, StockProvider::Unsplash).is_none());
     }
 
     #[test]

@@ -623,6 +623,17 @@ pub fn lookup(key: &str) -> Option<&'static str> {
         "imageCredits.copiedOne" => "1 छवि क्रेडिट कॉपी किया गया",
         "imageCredits.copied" => "{{count}} छवि क्रेडिट कॉपी किए गए",
         "imageCredits.none" => "इस दस्तावेज़ में कोई छवि क्रेडिट नहीं है",
+        "settings.images.stockTitle" => "स्टॉक फ़ोटो प्रदाता",
+        "settings.images.pixabayKey" => "Pixabay कुंजी",
+        "settings.images.pixabayKeyPlaceholder" => "अपनी Pixabay API कुंजी पेस्ट करें",
+        "settings.images.pixabayHint" => "वैकल्पिक। Pixabay को केवल खोज के कीवर्ड भेजे जाते हैं।",
+        "settings.images.unsplashKey" => "Unsplash कुंजी",
+        "settings.images.unsplashKeyPlaceholder" => "अपनी Unsplash एक्सेस कुंजी पेस्ट करें",
+        "settings.images.unsplashHint" => "आपकी अपनी कुंजी। Unsplash को केवल खोज के कीवर्ड भेजे जाते हैं।",
+        "settings.images.unsplashToggle" => "Unsplash का उपयोग करें",
+        "settings.images.unsplashToggleHint" => "डिफ़ॉल्ट रूप से बंद। आपकी अपनी कुंजी चाहिए; पहले Unsplash API की शर्तें पढ़ें।",
+        "settings.images.getKeyLink" => "मुफ़्त कुंजी पाएँ",
+        "settings.images.unsplashTerms" => "Unsplash API की शर्तें",
         _ => return None,
     })
 }

@@ -8,6 +8,7 @@
 //! mobile FFI host resolves design image slots through the exact desktop
 //! ladder instead of a drifting port.
 
+pub mod applied_ping;
 pub mod downscale;
 pub mod fetch;
 pub mod judge;

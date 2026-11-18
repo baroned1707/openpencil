@@ -789,6 +789,7 @@ mod empty_file_tests;
 mod enrich_images_tool_tests;
 #[cfg(test)]
 mod image_credits_catalog_tests;
+mod key_leak_tests;
 #[cfg(test)]
 mod finalize_tool_advisory_tests;
 #[cfg(test)]

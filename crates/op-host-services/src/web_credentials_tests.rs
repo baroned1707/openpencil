@@ -242,6 +242,38 @@ fn operator_openverse_credentials_win_without_blocking_other_browser_credentials
 }
 
 #[test]
+fn browser_snapshots_never_touch_the_operator_stock_provider_keys() {
+    // The Pixabay / Unsplash keys are operator settings: the browser payload
+    // has no field for them, and applying or clearing a browser snapshot
+    // leaves them (and the Unsplash opt-in) exactly as they were.
+    let mut state = EditorState::new();
+    {
+        let settings = &mut state.editor_ui.agent_settings;
+        settings.pixabay_api_key = "operator-pixabay".into();
+        settings.unsplash_access_key = "operator-unsplash".into();
+        settings.unsplash_enabled = true;
+    }
+    apply_json(&mut state, VALID_BODY).expect("browser snapshot");
+    let empty = r#"{"version":2,"builtin_agents":[],"image_gen_profiles":[],
+        "active_image_gen_profile_id":null,"openverse_oauth":null}"#;
+    apply_json(&mut state, empty).expect("empty snapshot");
+    let settings = &state.editor_ui.agent_settings;
+    assert_eq!(settings.pixabay_api_key.expose(), "operator-pixabay");
+    assert_eq!(settings.unsplash_access_key.expose(), "operator-unsplash");
+    assert!(settings.unsplash_enabled);
+
+    // A browser that tries to send stock keys is refused, not merged.
+    let sneaky = r#"{"version":2,"builtin_agents":[],"image_gen_profiles":[],
+        "active_image_gen_profile_id":null,"openverse_oauth":null,
+        "pixabay_api_key":"browser-pixabay"}"#;
+    assert!(apply_json(&mut state, sneaky).is_err());
+    assert_eq!(
+        state.editor_ui.agent_settings.pixabay_api_key.expose(),
+        "operator-pixabay"
+    );
+}
+
+#[test]
 fn newer_browser_snapshot_replaces_the_previous_browser_snapshot() {
     let mut state = state_with_operator_agent();
     apply_json(&mut state, VALID_BODY).expect("first browser snapshot");

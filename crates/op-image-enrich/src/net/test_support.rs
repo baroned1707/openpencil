@@ -60,9 +60,13 @@ impl FakeResponse {
 /// arrival index.
 type Handler = dyn Fn(&str, usize) -> FakeResponse + Send + Sync;
 
+/// Raw request heads (request line + headers), in arrival order.
+type HeadLog = Arc<Mutex<Vec<String>>>;
+
 pub(crate) struct FakeHttp {
     pub base_url: String,
     log: Arc<Mutex<Vec<String>>>,
+    heads: HeadLog,
     stop: Arc<AtomicBool>,
     address: std::net::SocketAddr,
 }
@@ -73,24 +77,33 @@ impl FakeHttp {
         let address = listener.local_addr().expect("local addr");
         let handler: Arc<Handler> = Arc::new(handler);
         let log = Arc::new(Mutex::new(Vec::new()));
+        let heads: HeadLog = Arc::new(Mutex::new(Vec::new()));
         let stop = Arc::new(AtomicBool::new(false));
-        let (thread_log, thread_stop) = (log.clone(), stop.clone());
+        let (thread_log, thread_heads, thread_stop) = (log.clone(), heads.clone(), stop.clone());
         std::thread::spawn(move || {
             for stream in listener.incoming() {
                 if thread_stop.load(Ordering::SeqCst) {
                     return;
                 }
                 let Ok(stream) = stream else { continue };
-                let (handler, log) = (handler.clone(), thread_log.clone());
-                std::thread::spawn(move || serve(stream, handler.as_ref(), &log));
+                let (handler, log, heads) =
+                    (handler.clone(), thread_log.clone(), thread_heads.clone());
+                std::thread::spawn(move || serve(stream, handler.as_ref(), &log, &heads));
             }
         });
         Self {
             base_url: format!("http://{address}"),
             log,
+            heads,
             stop,
             address,
         }
+    }
+
+    /// The raw head of every request received so far (headers included), in
+    /// the same order as [`FakeHttp::requests`].
+    pub fn request_heads(&self) -> Vec<String> {
+        self.heads.lock().unwrap().clone()
     }
 
     /// Every request target received so far, in arrival order.
@@ -107,7 +120,7 @@ impl Drop for FakeHttp {
     }
 }
 
-fn serve(mut stream: TcpStream, handler: &Handler, log: &Mutex<Vec<String>>) {
+fn serve(mut stream: TcpStream, handler: &Handler, log: &Mutex<Vec<String>>, heads: &HeadLog) {
     let _ = stream.set_read_timeout(Some(Duration::from_secs(5)));
     let mut request = Vec::new();
     let mut chunk = [0_u8; 1024];
@@ -129,6 +142,7 @@ fn serve(mut stream: TcpStream, handler: &Handler, log: &Mutex<Vec<String>>) {
         let mut log = log.lock().unwrap();
         let index = log.len();
         log.push(target.clone());
+        heads.lock().unwrap().push(text.to_string());
         drop(log);
         handler(&target, index)
     };

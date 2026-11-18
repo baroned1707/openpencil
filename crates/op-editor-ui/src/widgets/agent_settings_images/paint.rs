@@ -17,6 +17,7 @@ pub(in crate::widgets) fn paint_images_tab(
     paint_search_header(cx, theme, settings, ui, content, density);
     paint_advanced(cx, theme, settings, ui, content, density, now_ms);
     paint_generation(cx, theme, settings, ui, content, density, now_ms);
+    stock::paint_stock(cx, theme, settings, ui, content, density, now_ms);
 }
 
 fn paint_search_header(
@@ -272,7 +273,13 @@ fn paint_search_test(
     density: ImagesDensity,
 ) {
     let btn = test_btn_rect_for_ui(content, settings, density.touch);
-    paint_search_test_status(cx, theme, settings, btn, density.touch);
+    paint_search_test_status(
+        cx,
+        theme,
+        settings.images_search_test_status,
+        btn,
+        density.touch,
+    );
     let radius = if density.touch { 10.0 } else { 6.0 };
     cx.backend.fill_round_rect(btn, radius, theme.muted);
     crate::widgets::button::paint_ghost_button_feedback(
@@ -439,10 +446,10 @@ fn paint_add_button(
     );
 }
 
-fn paint_search_test_status(
+pub(super) fn paint_search_test_status(
     cx: &mut PaintCx<'_>,
     theme: &Theme,
-    settings: &AgentSettings,
+    status: ImageTestStatus,
     btn: Rect,
     touch: bool,
 ) {
@@ -453,23 +460,23 @@ fn paint_search_test_status(
     } else {
         btn.origin.x - 20.0
     };
-    match settings.images_search_test_status {
+    match status {
         ImageTestStatus::Idle => {}
         ImageTestStatus::Testing | ImageTestStatus::Valid => draw_icon(
             cx.backend,
-            if settings.images_search_test_status == ImageTestStatus::Testing {
+            if status == ImageTestStatus::Testing {
                 Icon::Loader
             } else {
                 Icon::Check
             },
             Point2D::new(icon_x, icon_y),
             icon_size,
-            if settings.images_search_test_status == ImageTestStatus::Valid {
+            if status == ImageTestStatus::Valid {
                 theme.primary
             } else {
                 theme.muted_foreground
             },
-            if settings.images_search_test_status == ImageTestStatus::Valid {
+            if status == ImageTestStatus::Valid {
                 1.8
             } else {
                 1.5

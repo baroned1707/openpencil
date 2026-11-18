@@ -184,6 +184,9 @@ pub fn paint_search_popover(
                 match source {
                     ImageSearchSource::Openverse => "Openverse",
                     ImageSearchSource::Wikimedia => "Wikimedia Commons",
+                    ImageSearchSource::Pixabay => "Pixabay",
+                    ImageSearchSource::Unsplash => "Unsplash",
+                    ImageSearchSource::Iconify => "Iconify",
                 },
             );
             let layout_text = TextLayout::single_run(

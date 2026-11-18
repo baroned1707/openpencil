@@ -87,11 +87,19 @@ pub(crate) async fn fenced_list(
     request: &LadderRequest<'_>,
     aspect: Option<ImageAspectRatio>,
 ) -> Option<FencedList> {
-    fenced_list_with(
+    // The photo contract in `intent` ("product photo", brand fences) does not
+    // apply to icons and vector art, so a vector request fences on the query
+    // alone.
+    let intent = match ctx.kind {
+        crate::ImageKind::Photo => request.intent,
+        crate::ImageKind::Vector => "",
+    };
+    fenced_list_with_policy(
         provider.id(),
         provider.retry_stage(),
+        provider.fenced_by_relevance(),
         request.query,
-        request.intent,
+        intent,
         |candidate| async move { provider.search(ctx, &candidate, aspect).await },
     )
     .await
@@ -104,9 +112,30 @@ pub(crate) async fn fenced_list(
 /// so a shorter provider query never loosens the subject or photo contract.
 /// A failed request, primary or retry, yields `None` (the whole list is
 /// discarded, no further requests).
+#[cfg(test)]
 pub(crate) async fn fenced_list_with<F, Fut>(
     provider_id: &'static str,
     retry_stage: Option<&'static str>,
+    query: &str,
+    intent: &str,
+    fetch_list: F,
+) -> Option<FencedList>
+where
+    F: FnMut(String) -> Fut,
+    Fut: Future<Output = Result<Vec<RawHit>, SearchError>>,
+{
+    fenced_list_with_policy(provider_id, retry_stage, true, query, intent, fetch_list).await
+}
+
+/// [`fenced_list_with`] with the lexical fence switchable. A provider that
+/// ranks by icon NAME (Iconify) answers `fence = false`: its hits are the
+/// provider's own matches, kept as returned, with no two-keyword retry (an
+/// icon called `cart` has one word of evidence for "shopping cart", which
+/// the two-token subject rule would drop).
+pub(crate) async fn fenced_list_with_policy<F, Fut>(
+    provider_id: &'static str,
+    retry_stage: Option<&'static str>,
+    fence: bool,
     query: &str,
     intent: &str,
     mut fetch_list: F,
@@ -117,6 +146,13 @@ where
 {
     let hits = fetch_list(query.to_string()).await.ok()?;
     trace_hits(provider_id, query, (query, intent), &hits);
+    if !fence {
+        return Some(FencedList {
+            hits,
+            provider: provider_id,
+            provider_query: query.to_string(),
+        });
+    }
     let relevant = retain_relevant_hits_for_intent(hits, query, intent);
     if !relevant.is_empty() {
         return Some(FencedList {

@@ -35,6 +35,7 @@ pub(crate) async fn fetch_list_json(
     aspect_ratio: Option<crate::ImageAspectRatio>,
     page_size: usize,
     credentials: Option<&WebOpenverseCredentials>,
+    kind: crate::ImageKind,
 ) -> Option<serde_json::Value> {
     let mut url = reqwest::Url::parse_with_params(
         &format!("{base_url}/v1/images/"),
@@ -48,6 +49,9 @@ pub(crate) async fn fetch_list_json(
     if let Some(aspect_ratio) = aspect_ratio {
         url.query_pairs_mut()
             .append_pair("aspect_ratio", aspect_ratio.as_openverse_param());
+    }
+    if kind == crate::ImageKind::Vector {
+        url.query_pairs_mut().append_pair("extension", "svg");
     }
     fetch_openverse_json(client, base_url, url, query, credentials).await
 }

@@ -9,6 +9,7 @@ use super::*;
 pub(super) fn spawn_job(
     target: ImageSearchTarget,
     credentials: Option<OpenverseCredentials>,
+    stock_keys: StockKeys,
     used_urls: Arc<Mutex<HashSet<String>>>,
     search_memo: Arc<Mutex<HashMap<SearchIntentKey, SearchMemoEntry>>>,
     request_id: u64,
@@ -21,12 +22,16 @@ pub(super) fn spawn_job(
     let node_id = target.node_id.clone();
     let aspect_ratio = target.aspect_ratio;
     let stock_view = Some(target.judge_view);
-    let key = search_intent_key(
+    let key = search_intent_key_for_kind(
         &target.query,
         aspect_ratio,
         target.prompt.as_deref(),
         target.judge_view,
+        target.kind,
     );
+    // With no keys this is exactly [Openverse, Wikimedia]; a vector slot gets
+    // Iconify first.
+    let providers = providers_for(target.kind, &stock_keys);
     let intent = Some(intent);
     let judge_intent = target
         .prompt
@@ -75,7 +80,7 @@ pub(super) fn spawn_job(
     }
     std::thread::spawn(move || {
         let found = if judge_enabled {
-            fetch_first_image_resolved_blocking_with_judge_for_view(
+            fetch_first_image_resolved_blocking_with_judge_and_providers(
                 &target.query,
                 aspect_ratio,
                 credentials.as_ref().map(OpenverseCredentials::as_web),
@@ -84,6 +89,8 @@ pub(super) fn spawn_job(
                 &judge_intent,
                 deadline,
                 target.judge_view,
+                &providers,
+                target.kind,
             )
             .map(found_image)
         } else {
@@ -91,13 +98,15 @@ pub(super) fn spawn_job(
             // relevance. The slot's image prompt is passed as intent so a
             // product-photo slot also rejects artwork hits (a tattoo shot and
             // a graffiti mural once filled skincare product cards).
-            op_image_enrich::net::resolve::fetch_first_image_resolved_blocking_with_deadline(
+            op_image_enrich::net::resolve::fetch_first_image_resolved_blocking_with_providers(
                 &target.query,
                 &judge_intent,
                 aspect_ratio,
                 credentials.as_ref().map(OpenverseCredentials::as_web),
                 &used_urls,
                 deadline,
+                &providers,
+                target.kind,
             )
             .map(found_image)
         };
@@ -117,6 +126,7 @@ fn found_image(resolved: op_image_enrich::net::resolve::ResolvedImage) -> FoundI
     FoundImage {
         url: resolved.src,
         credit: resolved.provenance,
+        download_ping: resolved.download_ping,
     }
 }
 

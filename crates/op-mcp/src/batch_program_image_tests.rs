@@ -417,3 +417,49 @@ img=G(card, "search", "desert dunes epic film poster")"##;
         "hint must carry the reason: {hint}"
     );
 }
+
+#[test]
+fn g_default_kind_is_photo_and_vector_is_opt_in() {
+    // `G` stores the prompt verbatim in `imageSearchQuery`; the kind lives in
+    // that text (a `vector:` prefix), because the node schema has no field
+    // for it. A plain prompt is a photo slot, exactly as before.
+    let mut state = sample();
+    let program = r##"a=I(null, {"type":"frame","name":"A","x":500,"y":0,"width":160,"height":90,"layout":"none"})
+b=I(null, {"type":"frame","name":"B","x":700,"y":0,"width":64,"height":64,"layout":"none"})
+photo=G(a, "search", "red bicycle")
+icon=G(b, "search", "vector: shopping cart")"##;
+    let (envelope, cmd) = call_operations(&state, program);
+    let photo_id = binding_id(&envelope, "photo");
+    let icon_id = binding_id(&envelope, "icon");
+    assert!(state.apply(cmd.expect("command")));
+    let query_of = |id: &str| {
+        let node = op_editor_core::walkers::find_node(state.active_children(), &NodeId::new(id))
+            .expect("image");
+        let jian_ops_schema::node::PenNode::Image(image) = node else {
+            panic!("expected image")
+        };
+        image.image_search_query.clone()
+    };
+    assert_eq!(query_of(&photo_id).as_deref(), Some("red bicycle"));
+    assert_eq!(query_of(&icon_id).as_deref(), Some("vector: shopping cart"));
+
+    // The enrichment side reads the kind back out of that text.
+    let targets = op_image_enrich::collect_targets(&state, &Default::default());
+    let kind_of = |id: &str| {
+        targets
+            .iter()
+            .find(|target| target.node_id.as_str() == id)
+            .map(|target| (target.kind, target.query.clone()))
+    };
+    assert_eq!(
+        kind_of(&photo_id),
+        Some((op_image_enrich::ImageKind::Photo, "red bicycle".to_string()))
+    );
+    assert_eq!(
+        kind_of(&icon_id),
+        Some((
+            op_image_enrich::ImageKind::Vector,
+            "shopping cart".to_string()
+        ))
+    );
+}

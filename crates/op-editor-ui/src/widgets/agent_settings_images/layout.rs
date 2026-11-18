@@ -164,6 +164,21 @@ pub(super) fn image_gen_section_top_for_ui(
     y + SECTION_GAP
 }
 
+/// Top of the "Stock photo providers" block: below the Image Generation list
+/// (which grows when a profile is expanded), one section gap under it. It
+/// sits last so the geometry of everything above it is unchanged.
+pub(super) fn stock_block_top_for_ui(
+    content: Rect,
+    settings: &AgentSettings,
+    density: ImagesDensity,
+) -> f32 {
+    image_gen_section_top_for_ui(content, settings, density.touch)
+        + density.section_title_h()
+        + PROFILE_LIST_TOP_GAP
+        + profile_list_h_for_ui(settings, density.touch)
+        + SECTION_GAP
+}
+
 pub(in crate::widgets) fn content_height_for_ui(
     settings: &AgentSettings,
     content_w: f32,
@@ -179,6 +194,8 @@ pub(in crate::widgets) fn content_height_for_ui(
         + density.section_title_h()
         + PROFILE_LIST_TOP_GAP
         + profile_list_h_for_ui(settings, touch)
+        + SECTION_GAP
+        + super::stock::block_height_for_ui(content, touch)
         + 24.0
 }
 

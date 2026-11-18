@@ -299,6 +299,8 @@ pub mod agent_settings_images;
 mod agent_settings_images_parts;
 #[cfg(test)]
 mod agent_settings_images_profile_tests;
+#[cfg(test)]
+mod agent_settings_images_stock_tests;
 pub mod agent_settings_mcp;
 mod agent_settings_metrics;
 pub mod agent_settings_panel;

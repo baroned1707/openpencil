@@ -15,8 +15,9 @@ use std::sync::Mutex;
 use std::time::{Duration, Instant};
 
 use crate::net::providers::{
-    fetch_image_and_judge_thumbnail_for_view, normalize_image_mime_header, retrieval_plan,
-    simplify_search_query, wikimedia_info_is_image, RawHit, WebOpenverseCredentials,
+    default_providers, fenced_list, fetch_image_and_judge_thumbnail_for_view,
+    normalize_image_mime_header, retrieval_plan, simplify_search_query, wikimedia_info_is_image,
+    ImageProvider, LadderRequest, ProviderCtx, RawHit, WebOpenverseCredentials,
     MAX_EMBEDDED_IMAGE_BYTES, WIKIMEDIA_BASE_URL,
 };
 use crate::net::resolve::{fetch_first_image_resolved, fetch_relevant_openverse_list_with_aspect};
@@ -70,7 +71,7 @@ mod view_tests;
 mod license_tests;
 
 #[allow(clippy::too_many_arguments)]
-async fn fetch_first_image_url_with_judge(
+pub(crate) async fn fetch_first_image_url_with_judge(
     query: &str,
     aspect_ratio: Option<ImageAspectRatio>,
     credentials: Option<&WebOpenverseCredentials>,
@@ -79,6 +80,7 @@ async fn fetch_first_image_url_with_judge(
     intent: &str,
     deadline: Option<Instant>,
     view: Option<crate::ImageJudgeView>,
+    providers: &[ImageProvider],
 ) -> Option<(ResolvedImage, Option<Instant>)> {
     let client = reqwest::Client::builder()
         .use_rustls_tls()
@@ -99,6 +101,62 @@ async fn fetch_first_image_url_with_judge(
     trace_line(format_args!(
         "ladder=judged query=\"{query}\" aspect={aspect_ratio:?} judge_view={view:?}"
     ));
+    // Key-based stock providers come first, judged like any other candidate
+    // list; with no keys the list is empty and nothing changes.
+    for provider in providers.iter().filter(|provider| provider.needs_key()) {
+        if !fallback.can_continue(judge) {
+            return fallback.finish_with_deadline();
+        }
+        let tier_deadline = earlier_deadline(deadline, fallback.deadline());
+        let slot = JudgeSlot {
+            deadline: judging_deadline(judge, tier_deadline),
+            ..slot
+        };
+        let result = before_deadline(tier_deadline, async {
+            let ctx = ProviderCtx::new(&client, credentials);
+            let request = LadderRequest {
+                query: &query,
+                intent,
+                aspect: aspect_ratio,
+            };
+            // The aspect filter is a preference: relax it once when it
+            // fences everything out (same rule as `run_ladder`).
+            let aspects = if aspect_ratio.is_some() {
+                vec![aspect_ratio, None]
+            } else {
+                vec![None]
+            };
+            let mut hits = Vec::new();
+            for aspect in aspects {
+                match fenced_list(provider, &ctx, &request, aspect).await {
+                    Some(list) => hits = list.hits,
+                    None => break,
+                }
+                if !hits.is_empty() {
+                    break;
+                }
+            }
+            fetch_judged_openverse(
+                &client,
+                hits,
+                &slot,
+                used_urls,
+                &seen,
+                fallback.is_empty(),
+                provider.id(),
+            )
+            .await
+        })
+        .await;
+        let Ok(image) = result else {
+            return fallback.finish_with_deadline();
+        };
+        if let Some(image) = image {
+            if let Some(image) = fallback.consider(provider.id(), &query, image) {
+                return Some((image, fallback.delivery_deadline()));
+            }
+        }
+    }
     let original = search_original_aspects(
         &query,
         aspect_ratio,
@@ -269,6 +327,7 @@ struct PreparedJudgeCandidate {
     attribution: String,
     original: Option<crate::net::providers::OriginalImageSource>,
     provenance: Option<crate::ImageCredit>,
+    download_ping: Option<String>,
 }
 
 async fn fetch_judged_openverse(
@@ -294,6 +353,7 @@ async fn fetch_judged_openverse(
         let provenance = hit.provenance();
         candidates.push(PreparedJudgeCandidate {
             identity: Some(hit_identity(&hit)),
+            download_ping: hit.download_ping.clone(),
             provenance,
             title: hit.title,
             data_url,
@@ -395,6 +455,7 @@ async fn fetch_judged_wikimedia(
             attribution: hit.attribution.clone(),
             original: crate::net::providers::original_source(&page["imageinfo"][0], &candidate_url),
             provenance: hit.provenance(),
+            download_ping: None,
         });
     }
     if candidates.is_empty() {

@@ -635,6 +635,17 @@ pub fn lookup(key: &str) -> Option<&'static str> {
         "imageCredits.copiedOne" => "이미지 크레딧 1개를 복사했습니다",
         "imageCredits.copied" => "이미지 크레딧 {{count}}개를 복사했습니다",
         "imageCredits.none" => "이 문서에는 이미지 크레딧이 없습니다",
+        "settings.images.stockTitle" => "스톡 사진 제공처",
+        "settings.images.pixabayKey" => "Pixabay 키",
+        "settings.images.pixabayKeyPlaceholder" => "Pixabay API 키를 붙여넣으세요",
+        "settings.images.pixabayHint" => "선택 사항입니다. Pixabay로는 검색 키워드만 전송됩니다.",
+        "settings.images.unsplashKey" => "Unsplash 키",
+        "settings.images.unsplashKeyPlaceholder" => "Unsplash 액세스 키를 붙여넣으세요",
+        "settings.images.unsplashHint" => "본인의 키를 사용합니다. Unsplash로는 검색 키워드만 전송됩니다.",
+        "settings.images.unsplashToggle" => "Unsplash 사용",
+        "settings.images.unsplashToggleHint" => "기본값은 꺼짐입니다. 본인의 키가 필요하며 먼저 Unsplash API 약관을 확인하세요.",
+        "settings.images.getKeyLink" => "무료 키 받기",
+        "settings.images.unsplashTerms" => "Unsplash API 약관",
         _ => return None,
     })
 }

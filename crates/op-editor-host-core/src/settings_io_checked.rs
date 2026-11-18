@@ -24,6 +24,7 @@ pub(super) fn validate_payload_fields(raw: &serde_json::Value) -> Result<()> {
             "images_advanced_open",
             "openverse_oauth",
             "openverse_credential_owner",
+            "stock_providers",
             "auto_update_enabled",
             "experimental_features_enabled",
             "connected",
@@ -46,6 +47,11 @@ pub(super) fn validate_payload_fields(raw: &serde_json::Value) -> Result<()> {
         root.get("openverse_oauth"),
         &["client_id", "client_secret"],
         "Openverse OAuth",
+    )?;
+    validate_optional_object_fields(
+        root.get("stock_providers"),
+        &["pixabay_api_key", "unsplash_access_key", "unsplash_enabled"],
+        "Stock providers",
     )?;
     validate_array_object_fields(
         root.get("builtin_agents"),

@@ -20,6 +20,8 @@ pub mod agent_settings_builtin_models;
 pub mod agent_settings_builtin_presets;
 pub mod agent_settings_button_state;
 pub mod agent_settings_connection;
+pub mod api_key;
+pub use api_key::ApiKey;
 pub mod align;
 pub mod align_guides;
 pub mod auth_routes;
@@ -327,7 +329,7 @@ pub use agent_settings::{
     BuiltinModelCatalogRefreshRequest, BuiltinModelCatalogTarget, BuiltinModelOption,
     ImageGenField, ImageGenProfile, ImageGenProvider, ImageSearchField, ImageTestStatus, McpCli,
     McpServer, ProviderConnectOutcome, ProviderConnectPhase, ProviderConnection, SettingsFocus,
-    MAX_BUILTIN_AGENT_MODELS, MAX_BUILTIN_MODEL_CHARS,
+    StockProvider, MAX_BUILTIN_AGENT_MODELS, MAX_BUILTIN_MODEL_CHARS,
 };
 pub use agent_settings_builtin_presets::{
     builtin_agent_preset, infer_builtin_agent_preset, normalize_builtin_agent_preset,

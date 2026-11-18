@@ -619,6 +619,17 @@ pub fn lookup(key: &str) -> Option<&'static str> {
         "imageCredits.copiedOne" => "已复制 1 条图片署名",
         "imageCredits.copied" => "已复制 {{count}} 条图片署名",
         "imageCredits.none" => "此文档没有图片署名",
+        "settings.images.stockTitle" => "图库服务商",
+        "settings.images.pixabayKey" => "Pixabay 密钥",
+        "settings.images.pixabayKeyPlaceholder" => "粘贴你的 Pixabay API 密钥",
+        "settings.images.pixabayHint" => "可选。只会向 Pixabay 发送搜索关键词。",
+        "settings.images.unsplashKey" => "Unsplash 密钥",
+        "settings.images.unsplashKeyPlaceholder" => "粘贴你的 Unsplash 访问密钥",
+        "settings.images.unsplashHint" => "使用你自己的密钥。只会向 Unsplash 发送搜索关键词。",
+        "settings.images.unsplashToggle" => "使用 Unsplash",
+        "settings.images.unsplashToggleHint" => "默认关闭。需要你自己的密钥；请先阅读 Unsplash API 条款。",
+        "settings.images.getKeyLink" => "获取免费密钥",
+        "settings.images.unsplashTerms" => "Unsplash API 条款",
         _ => return None,
     })
 }

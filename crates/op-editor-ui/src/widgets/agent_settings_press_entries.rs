@@ -522,6 +522,10 @@ pub(crate) fn apply_entry_hit(
         | AgentSettingsHit::FocusSearchField(_)
         | AgentSettingsHit::OpenImageRegisterLink
         | AgentSettingsHit::TestImageSearch
+        | AgentSettingsHit::OpenStockRegisterLink(_)
+        | AgentSettingsHit::TestStockProvider(_)
+        | AgentSettingsHit::ToggleUnsplash
+        | AgentSettingsHit::OpenUnsplashTerms
         | AgentSettingsHit::ToggleAutoUpdate
         | AgentSettingsHit::ToggleAutosaveOnAgentRun
         | AgentSettingsHit::SelectPencilCursor(_)

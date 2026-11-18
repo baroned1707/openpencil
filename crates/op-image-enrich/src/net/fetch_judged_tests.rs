@@ -54,6 +54,7 @@ fn candidate(src: &str, grade: u8) -> PreparedJudgeCandidate {
         thumb_jpeg: vec![grade],
         identity: None,
         provenance: None,
+        download_ping: None,
     }
 }
 

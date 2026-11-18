@@ -9,6 +9,8 @@ mod checked_tests;
 mod font_download_tests;
 #[path = "settings_io_save_tests.rs"]
 mod save_tests;
+#[path = "settings_io_stock_tests.rs"]
+mod stock_tests;
 
 #[test]
 fn the_require_token_flag_defaults_off_persists_and_is_watched_for_changes() {

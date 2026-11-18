@@ -12,7 +12,7 @@ use jian_ops_schema::node::PenNode;
 use jian_ops_schema::PenDocument;
 use op_editor_core::{node_image_credit, node_image_source, PenNodeExt as _};
 
-use crate::license_policy::{license_policy_with, LicensePolicy};
+use crate::license_policy::{license_policy_with, provider_license_policy, LicensePolicy};
 use crate::ImageCredit;
 
 /// One image credit of a document and the node it was found on.
@@ -122,12 +122,20 @@ fn non_empty(value: &Option<String>) -> Option<&str> {
 
 /// Share-alike counts as "credit required" here: a stored credit is a licence
 /// that was accepted, and every CC licence except CC0 / PDM asks for credit.
+///
+/// Iconify credits keep the collection's licence TITLE, not its SPDX id, so
+/// they carry no marker rather than a guess.
 fn credit_marker(credit: &ImageCredit) -> Option<&'static str> {
-    match license_policy_with(
+    let (short, url) = (
         credit.license.as_deref().unwrap_or(""),
         credit.license_url.as_deref().unwrap_or(""),
-        true,
-    ) {
+    );
+    let policy = match credit.provider.as_str() {
+        "iconify" => return None,
+        "pixabay" | "unsplash" => provider_license_policy(&credit.provider, short, url, "", true),
+        _ => license_policy_with(short, url, true),
+    };
+    match policy {
         LicensePolicy::Allow => Some("no credit required"),
         LicensePolicy::AllowWithCredit => Some("credit required"),
         LicensePolicy::Refuse(_) => None,

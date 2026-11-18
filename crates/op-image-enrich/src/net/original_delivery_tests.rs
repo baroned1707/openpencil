@@ -65,6 +65,7 @@ fn selected() -> ResolvedImage {
         provider_query: "cream texture".into(),
         title: "Cream".into(),
         provenance: None,
+        download_ping: None,
         attribution: "Photographer / CC BY 4.0".into(),
         original: Some(OriginalImageSource {
             url: "https://images.example/cream-original.jpg".into(),

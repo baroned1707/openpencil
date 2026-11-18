@@ -18,14 +18,18 @@
 mod brand_fence;
 mod catalog;
 mod download;
+mod iconify;
 mod ladder;
 pub mod license;
 mod openverse;
 mod original_download;
 pub(crate) mod pacing;
+mod pixabay;
 mod provider;
 mod relevance;
 pub mod ssrf_guard;
+mod stock_pacing;
+mod unsplash;
 mod wikimedia;
 
 pub(crate) use catalog::original_source;
@@ -37,21 +41,28 @@ pub use download::{
     fetch_image_data_url, fetch_judge_thumbnail, normalize_image_mime_header, read_capped,
     sniff_image_mime,
 };
+pub(crate) use iconify::fetch_svg_data_url;
 pub(crate) use ladder::{fenced_list, run_ladder, FencedList, LadderRequest};
 pub(crate) use license::hit_license_is_usable;
-pub use license::{license_policy, license_policy_with, LicensePolicy};
+pub use license::{
+    iconify_spdx_policy, license_policy, license_policy_with, provider_license_policy,
+    LicensePolicy,
+};
 pub use openverse::fetch_openverse_token;
 pub(crate) use original_download::fetch_original_image_data_url;
 pub(crate) use provider::WIKIMEDIA_BASE_URL;
 pub use provider::{
-    default_providers, test_first_provider, ImageProvider, ProviderCtx, ProviderKind, SearchError,
+    default_providers, providers_for, test_first_provider, ImageProvider, ProviderCtx,
+    ProviderKind, SearchError, StockKeys,
 };
 pub use relevance::simplify_search_query;
+pub use unsplash::send_download_ping;
 pub(crate) use wikimedia::fetch_pages_json as fetch_wikimedia_pages_json;
 
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::time::Duration;
 
+use crate::ImageKind;
 use catalog::{materialize_first_thumb, materialize_thumbs};
 pub(crate) use relevance::{
     fence_rejection, retain_relevant_hits_for_intent, retrieval_plan, two_keyword_retry,
@@ -135,6 +146,9 @@ pub struct WebImageSearchHit {
     /// Creator / licence record persisted on the node when the hit is chosen;
     /// `None` for a hand-built hit that names no provider.
     pub credit: Option<crate::ImageCredit>,
+    /// Unsplash `download_location`, pinged once when the hit is APPLIED
+    /// (never when merely listed); not persisted anywhere.
+    pub download_ping: Option<String>,
 }
 
 pub struct WebImageSearchOutcome {
@@ -255,8 +269,29 @@ pub fn run_first_search_blocking_with_timeout(
     credentials: Option<&WebOpenverseCredentials>,
     remaining: Duration,
 ) -> WebImageSearchOutcome {
-    run_with_timeout(remaining, run_first_search(query, credentials))
-        .unwrap_or_else(empty_search_outcome)
+    run_first_search_blocking_with_providers(
+        &default_providers(),
+        ImageKind::Photo,
+        query,
+        credentials,
+        remaining,
+    )
+}
+
+/// [`run_first_search_blocking_with_timeout`] over the caller's provider
+/// list and slot kind (the MCP `enrich_images` path with the user's keys).
+pub fn run_first_search_blocking_with_providers(
+    providers: &[ImageProvider],
+    kind: ImageKind,
+    query: &str,
+    credentials: Option<&WebOpenverseCredentials>,
+    remaining: Duration,
+) -> WebImageSearchOutcome {
+    run_with_timeout(
+        remaining,
+        run_first_search(providers, kind, query, credentials),
+    )
+    .unwrap_or_else(empty_search_outcome)
 }
 
 /// Judge-aware single-result variant used by headless enrichment callers.
@@ -324,16 +359,25 @@ async fn run_search(
 /// same ladder order, but thumbnail materialization stops after the first
 /// successful download instead of fetching the whole five-result Web UI page.
 async fn run_first_search(
+    providers: &[ImageProvider],
+    kind: ImageKind,
     query: &str,
     credentials: Option<&WebOpenverseCredentials>,
 ) -> WebImageSearchOutcome {
     let Some(client) = ladder_client() else {
         return empty_search_outcome();
     };
-    run_first_search_with_fetcher(&client, query, credentials, |url: String| {
-        let client = client.clone();
-        async move { fetch_image_data_url(&client, &url).await }
-    })
+    run_first_search_over_kind(
+        &client,
+        providers,
+        kind,
+        query,
+        credentials,
+        |url: String| {
+            let client = client.clone();
+            async move { fetch_image_data_url(&client, &url).await }
+        },
+    )
     .await
 }
 
@@ -390,7 +434,7 @@ pub(crate) async fn run_first_search_with_judge_over(
             let result = if judged {
                 materialize_judged_first(client, list.hits, query_ref, intent, judge).await
             } else {
-                materialize_first_thumb(list.hits, fetch_data_url).await
+                materialize_first_thumb(client, list.hits, fetch_data_url).await
             };
             result.map(|hit| (hit, source))
         }
@@ -425,9 +469,10 @@ where
     F: Fn(String) -> Fut,
     Fut: std::future::Future<Output = Option<String>>,
 {
-    run_search_over(
+    run_search_with_providers(
         client,
         &default_providers(),
+        ImageKind::Photo,
         query,
         credentials,
         fetch_data_url,
@@ -435,6 +480,24 @@ where
     .await
 }
 
+/// [`run_search_with_fetcher`] over the caller's provider list (built with
+/// [`providers_for`] from the user's keys) and slot kind.
+pub async fn run_search_with_providers<F, Fut>(
+    client: &reqwest::Client,
+    providers: &[ImageProvider],
+    kind: ImageKind,
+    query: &str,
+    credentials: Option<&WebOpenverseCredentials>,
+    fetch_data_url: F,
+) -> WebImageSearchOutcome
+where
+    F: Fn(String) -> Fut,
+    Fut: std::future::Future<Output = Option<String>>,
+{
+    run_search_over_kind(client, providers, kind, query, credentials, fetch_data_url).await
+}
+
+#[cfg(test)]
 pub(crate) async fn run_search_over<F, Fut>(
     client: &reqwest::Client,
     providers: &[ImageProvider],
@@ -446,9 +509,32 @@ where
     F: Fn(String) -> Fut,
     Fut: std::future::Future<Output = Option<String>>,
 {
+    run_search_over_kind(
+        client,
+        providers,
+        ImageKind::Photo,
+        query,
+        credentials,
+        fetch_data_url,
+    )
+    .await
+}
+
+pub(crate) async fn run_search_over_kind<F, Fut>(
+    client: &reqwest::Client,
+    providers: &[ImageProvider],
+    kind: ImageKind,
+    query: &str,
+    credentials: Option<&WebOpenverseCredentials>,
+    fetch_data_url: F,
+) -> WebImageSearchOutcome
+where
+    F: Fn(String) -> Fut,
+    Fut: std::future::Future<Output = Option<String>>,
+{
     // Simplify verbose prompts into keywords (TS simplifySearchQuery).
     let query = simplify_search_query(query);
-    let ctx = ProviderCtx::new(client, credentials);
+    let ctx = ProviderCtx::new(client, credentials).with_kind(kind);
     let request = LadderRequest {
         query: &query,
         intent: "",
@@ -458,7 +544,7 @@ where
     let found = run_ladder(providers, &ctx, &request, |provider, list| {
         let source = provider.id();
         async move {
-            let results = materialize_thumbs(list.hits, fetch_data_url).await;
+            let results = materialize_thumbs(client, list.hits, fetch_data_url).await;
             (!results.is_empty()).then_some((results, source))
         }
     })
@@ -472,27 +558,7 @@ where
     }
 }
 
-async fn run_first_search_with_fetcher<F, Fut>(
-    client: &reqwest::Client,
-    query: &str,
-    credentials: Option<&WebOpenverseCredentials>,
-    fetch_data_url: F,
-) -> WebImageSearchOutcome
-where
-    F: Fn(String) -> Fut,
-    Fut: std::future::Future<Output = Option<String>>,
-{
-    run_first_search_over(
-        client,
-        &default_providers(),
-        query,
-        credentials,
-        fetch_data_url,
-    )
-    .await
-}
-
-/// MCP / headless single-result ladder over a caller-supplied provider list.
+#[cfg(test)]
 pub(crate) async fn run_first_search_over<F, Fut>(
     client: &reqwest::Client,
     providers: &[ImageProvider],
@@ -504,8 +570,32 @@ where
     F: Fn(String) -> Fut,
     Fut: std::future::Future<Output = Option<String>>,
 {
+    run_first_search_over_kind(
+        client,
+        providers,
+        ImageKind::Photo,
+        query,
+        credentials,
+        fetch_data_url,
+    )
+    .await
+}
+
+/// MCP / headless single-result ladder over a caller-supplied provider list.
+pub(crate) async fn run_first_search_over_kind<F, Fut>(
+    client: &reqwest::Client,
+    providers: &[ImageProvider],
+    kind: ImageKind,
+    query: &str,
+    credentials: Option<&WebOpenverseCredentials>,
+    fetch_data_url: F,
+) -> WebImageSearchOutcome
+where
+    F: Fn(String) -> Fut,
+    Fut: std::future::Future<Output = Option<String>>,
+{
     let query = simplify_search_query(query);
-    let ctx = ProviderCtx::new(client, credentials);
+    let ctx = ProviderCtx::new(client, credentials).with_kind(kind);
     let request = LadderRequest {
         query: &query,
         intent: "",
@@ -515,7 +605,7 @@ where
     let found = run_ladder(providers, &ctx, &request, |provider, list| {
         let source = provider.id();
         async move {
-            materialize_first_thumb(list.hits, fetch_data_url)
+            materialize_first_thumb(client, list.hits, fetch_data_url)
                 .await
                 .map(|hit| (hit, source))
         }
@@ -570,6 +660,7 @@ async fn materialize_judged_first(
         thumb_data_url: candidate.data_url.clone(),
         attribution: candidate.hit.attribution.clone(),
         credit: candidate.hit.provenance(),
+        download_ping: candidate.hit.download_ping.clone(),
     })
 }
 
@@ -592,3 +683,7 @@ mod ladder_seam_tests;
 #[cfg(test)]
 #[path = "provider_ladder_tests.rs"]
 mod provider_ladder_tests;
+
+#[cfg(test)]
+#[path = "stock_ladder_tests.rs"]
+mod stock_ladder_tests;

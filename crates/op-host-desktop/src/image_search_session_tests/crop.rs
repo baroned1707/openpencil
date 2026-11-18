@@ -17,6 +17,7 @@ fn stock_target(width: f64, height: f64, fit: ImageJudgeFit) -> ImageSearchTarge
         width: Some(width),
         height: Some(height),
         judge_view: ImageJudgeView::new(width, height, fit),
+        kind: op_image_enrich::ImageKind::Photo,
     }
 }
 
@@ -59,6 +60,7 @@ fn ready_memo_returns_the_photo_judged_for_each_exact_crop_and_fit() {
         let job = spawn_job(
             target,
             None,
+            op_image_enrich::net::providers::StockKeys::default(),
             Arc::new(Mutex::new(HashSet::new())),
             Arc::clone(&memo),
             1,
@@ -114,6 +116,7 @@ fn a_different_crop_cannot_join_or_consume_another_views_search() {
             let job = spawn_job(
                 current.clone(),
                 None,
+                op_image_enrich::net::providers::StockKeys::default(),
                 Arc::new(Mutex::new(HashSet::new())),
                 Arc::clone(&memo),
                 9,

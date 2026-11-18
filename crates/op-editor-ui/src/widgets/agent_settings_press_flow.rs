@@ -17,7 +17,8 @@
 //! enumeration).
 
 use op_editor_core::agent_settings::{
-    ImageSearchField, ImageTestStatus, SettingsFocus, OPENVERSE_AUTH_DOCS_URL,
+    ImageSearchField, ImageTestStatus, SettingsFocus, StockProvider, OPENVERSE_AUTH_DOCS_URL,
+    PIXABAY_DOCS_URL, UNSPLASH_DOCS_URL, UNSPLASH_TERMS_URL,
 };
 use op_editor_core::host_settings_commit::{commit_settings_focus, SettingsCommitScope};
 use op_editor_core::{AccountState, AgentSettingsTab, ButtonPressTarget, EditorState};
@@ -209,6 +210,18 @@ pub fn apply_agent_settings_hit(
                     .agent_settings
                     .openverse_client_secret
                     .clone(),
+                ImageSearchField::PixabayKey => state
+                    .editor_ui
+                    .agent_settings
+                    .pixabay_api_key
+                    .expose()
+                    .to_string(),
+                ImageSearchField::UnsplashKey => state
+                    .editor_ui
+                    .agent_settings
+                    .unsplash_access_key
+                    .expose()
+                    .to_string(),
             };
             focus_with_text(state, SettingsFocus::ImageSearch(field), text, now_ms);
             SettingsPressOutcome::handled()
@@ -216,6 +229,43 @@ pub fn apply_agent_settings_hit(
         AgentSettingsHit::OpenImageRegisterLink => {
             commit(state);
             SettingsPressOutcome::effect(SettingsPress::OpenUrl(OPENVERSE_AUTH_DOCS_URL))
+        }
+        AgentSettingsHit::OpenStockRegisterLink(provider) => {
+            commit(state);
+            SettingsPressOutcome::effect(SettingsPress::OpenUrl(match provider {
+                StockProvider::Pixabay => PIXABAY_DOCS_URL,
+                StockProvider::Unsplash => UNSPLASH_DOCS_URL,
+            }))
+        }
+        AgentSettingsHit::OpenUnsplashTerms => {
+            commit(state);
+            SettingsPressOutcome::effect(SettingsPress::OpenUrl(UNSPLASH_TERMS_URL))
+        }
+        AgentSettingsHit::ToggleUnsplash => {
+            commit(state);
+            state.editor_ui.agent_settings.unsplash_enabled ^= true;
+            SettingsPressOutcome::handled()
+        }
+        AgentSettingsHit::TestStockProvider(provider) => {
+            commit(state);
+            let settings = &mut state.editor_ui.agent_settings;
+            let has_key = match provider {
+                StockProvider::Pixabay => !settings.pixabay_api_key.is_blank(),
+                StockProvider::Unsplash => !settings.unsplash_access_key.is_blank(),
+            };
+            let status = if has_key {
+                // The host resolves Testing into Valid / Invalid with one
+                // real query through that provider.
+                settings.pending_stock_provider_test = Some(provider);
+                ImageTestStatus::Testing
+            } else {
+                ImageTestStatus::Invalid
+            };
+            match provider {
+                StockProvider::Pixabay => settings.pixabay_test_status = status,
+                StockProvider::Unsplash => settings.unsplash_test_status = status,
+            }
+            SettingsPressOutcome::handled()
         }
         AgentSettingsHit::TestImageSearch => {
             commit(state);

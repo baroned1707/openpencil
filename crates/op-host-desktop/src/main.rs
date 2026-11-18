@@ -374,6 +374,12 @@ struct DesktopApp {
     /// the `pending_image_search_test` seam, drained by
     /// `drain_image_search_test`.
     image_search_test_job: Option<image_search_test_host::ImageSearchTestJob>,
+    /// In-flight Pixabay / Unsplash key probe (its own Test button),
+    /// drained by `drain_image_search_test` as well.
+    stock_provider_test_job: Option<(
+        op_editor_core::StockProvider,
+        image_search_test_host::ImageSearchTestJob,
+    )>,
     /// The `component_browser_open` value last written to
     /// `uikits.json` — `drain_kit_io` rewrites the store when the live
     /// value drifts (TS persists `browserOpen` on every toggle).

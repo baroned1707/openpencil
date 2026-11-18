@@ -1,4 +1,5 @@
 use super::*;
+use crate::net::test_support::test_client;
 
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Arc;
@@ -219,6 +220,7 @@ fn search_outcome_json_shape() {
             thumb_data_url: "data:image/png;base64,AA==".into(),
             attribution: "By A".into(),
             credit: None,
+            download_ping: None,
         }],
         source: Some("openverse"),
     };
@@ -316,8 +318,9 @@ fn first_thumbnail_materializer_stops_after_first_success() {
         })
         .collect();
 
-    let hit = crate::net::block_on_image_runtime(materialize_first_thumb(hits, &fetcher))
-        .expect("the second thumbnail succeeds");
+    let hit =
+        crate::net::block_on_image_runtime(materialize_first_thumb(&test_client(), hits, &fetcher))
+            .expect("the second thumbnail succeeds");
 
     assert_eq!(hit.id, "second");
     assert_eq!(hit.thumb_data_url, "data:image/png;base64,second");
@@ -351,7 +354,8 @@ fn multi_thumbnail_materializer_caps_public_results_at_five() {
         })
         .collect();
 
-    let results = crate::net::block_on_image_runtime(materialize_thumbs(hits, &fetcher));
+    let results =
+        crate::net::block_on_image_runtime(materialize_thumbs(&test_client(), hits, &fetcher));
 
     assert_eq!(results.len(), SEARCH_RESULT_COUNT);
     assert_eq!(calls.load(Ordering::SeqCst), SEARCH_RESULT_COUNT);

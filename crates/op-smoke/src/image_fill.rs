@@ -365,6 +365,7 @@ mod tests {
             provider_query: "serum oil bottle".to_string(),
             title: "Dropper bottle, blank retro label".to_string(),
             provenance: None,
+            download_ping: None,
         };
         assert_eq!(
             image_provenance_line("n246", "serum oil bottle", Some(&hit)),
@@ -464,6 +465,7 @@ mod tests {
                     provenance: None,
                     attribution: String::new(),
                     original: None,
+                    download_ping: None,
                 })
             },
         );

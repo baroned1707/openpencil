@@ -619,6 +619,17 @@ pub fn lookup(key: &str) -> Option<&'static str> {
         "imageCredits.copiedOne" => "1 crédito de imagem copiado",
         "imageCredits.copied" => "{{count}} créditos de imagens copiados",
         "imageCredits.none" => "Nenhum crédito de imagem neste documento",
+        "settings.images.stockTitle" => "Provedores de fotos",
+        "settings.images.pixabayKey" => "Chave do Pixabay",
+        "settings.images.pixabayKeyPlaceholder" => "Cole sua chave de API do Pixabay",
+        "settings.images.pixabayHint" => "Opcional. Apenas as palavras-chave da busca são enviadas ao Pixabay.",
+        "settings.images.unsplashKey" => "Chave do Unsplash",
+        "settings.images.unsplashKeyPlaceholder" => "Cole sua chave de acesso do Unsplash",
+        "settings.images.unsplashHint" => "Sua própria chave. Apenas as palavras-chave da busca são enviadas ao Unsplash.",
+        "settings.images.unsplashToggle" => "Usar o Unsplash",
+        "settings.images.unsplashToggleHint" => "Desativado por padrão. Precisa da sua própria chave; leia antes os termos da API do Unsplash.",
+        "settings.images.getKeyLink" => "Obter uma chave grátis",
+        "settings.images.unsplashTerms" => "Termos da API do Unsplash",
         _ => return None,
     })
 }

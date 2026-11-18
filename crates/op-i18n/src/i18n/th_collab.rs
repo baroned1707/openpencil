@@ -621,6 +621,17 @@ pub fn lookup(key: &str) -> Option<&'static str> {
         "imageCredits.copiedOne" => "คัดลอกเครดิตรูปภาพ 1 รายการแล้ว",
         "imageCredits.copied" => "คัดลอกเครดิตรูปภาพ {{count}} รายการแล้ว",
         "imageCredits.none" => "ไม่มีเครดิตรูปภาพในเอกสารนี้",
+        "settings.images.stockTitle" => "ผู้ให้บริการภาพสต็อก",
+        "settings.images.pixabayKey" => "คีย์ Pixabay",
+        "settings.images.pixabayKeyPlaceholder" => "วางคีย์ API ของ Pixabay",
+        "settings.images.pixabayHint" => "ไม่บังคับ ระบบส่งเฉพาะคำค้นหาไปยัง Pixabay เท่านั้น",
+        "settings.images.unsplashKey" => "คีย์ Unsplash",
+        "settings.images.unsplashKeyPlaceholder" => "วางคีย์เข้าถึงของ Unsplash",
+        "settings.images.unsplashHint" => "ใช้คีย์ของคุณเอง ระบบส่งเฉพาะคำค้นหาไปยัง Unsplash เท่านั้น",
+        "settings.images.unsplashToggle" => "ใช้ Unsplash",
+        "settings.images.unsplashToggleHint" => "ปิดไว้เป็นค่าเริ่มต้น ต้องใช้คีย์ของคุณเอง โปรดอ่านข้อกำหนด API ของ Unsplash ก่อน",
+        "settings.images.getKeyLink" => "รับคีย์ฟรี",
+        "settings.images.unsplashTerms" => "ข้อกำหนด API ของ Unsplash",
         _ => return None,
     })
 }

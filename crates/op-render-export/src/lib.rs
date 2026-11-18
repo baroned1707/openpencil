@@ -458,4 +458,6 @@ pub mod test_support {
 }
 
 #[cfg(test)]
+mod svg_icon_tests;
+#[cfg(test)]
 mod tests;

@@ -24,7 +24,7 @@ use crate::net::providers::{
     LadderRequest, ProviderCtx, WebOpenverseCredentials,
 };
 use crate::net::search_trace::{short_title, trace_line};
-use crate::ImageAspectRatio;
+use crate::{ImageAspectRatio, ImageKind};
 
 /// The image a ladder settled on, with enough provenance for a one-line
 /// diagnostic (`[IMAGE] <node> query=… -> <provider> "<title>"`).
@@ -45,6 +45,9 @@ pub struct ResolvedImage {
     /// Who made the artwork and under which licence; `None` for hand-built
     /// values. Persisted on the node by `apply_result_with_credit`.
     pub provenance: Option<crate::ImageCredit>,
+    /// Unsplash `download_location` of the chosen photo, pinged once when
+    /// the image is applied. Transient: never written to the document.
+    pub download_ping: Option<String>,
 }
 
 impl ResolvedImage {
@@ -84,6 +87,31 @@ pub fn fetch_first_image_resolved_blocking_with_deadline(
     used_urls: &Mutex<HashSet<String>>,
     deadline: Option<Instant>,
 ) -> Option<ResolvedImage> {
+    fetch_first_image_resolved_blocking_with_providers(
+        query,
+        intent,
+        aspect_ratio,
+        credentials,
+        used_urls,
+        deadline,
+        &default_providers(),
+        ImageKind::Photo,
+    )
+}
+
+/// The unjudged blocking ladder over the caller's provider list (see
+/// `providers_for`) and slot kind.
+#[allow(clippy::too_many_arguments)]
+pub fn fetch_first_image_resolved_blocking_with_providers(
+    query: &str,
+    intent: &str,
+    aspect_ratio: Option<ImageAspectRatio>,
+    credentials: Option<&WebOpenverseCredentials>,
+    used_urls: &Mutex<HashSet<String>>,
+    deadline: Option<Instant>,
+    providers: &[ImageProvider],
+    kind: ImageKind,
+) -> Option<ResolvedImage> {
     let query = query.trim();
     if query.is_empty() {
         return None;
@@ -100,6 +128,8 @@ pub fn fetch_first_image_resolved_blocking_with_deadline(
                 aspect_ratio,
                 credentials,
                 used_urls,
+                providers,
+                kind,
             ),
         )
         .await?;
@@ -176,9 +206,16 @@ pub async fn fetch_first_image_resolved(
     credentials: Option<&WebOpenverseCredentials>,
     used_urls: &Mutex<HashSet<String>>,
 ) -> Option<ResolvedImage> {
-    let selected =
-        fetch_first_image_resolved_thumbnail(query, intent, aspect_ratio, credentials, used_urls)
-            .await?;
+    let selected = fetch_first_image_resolved_thumbnail(
+        query,
+        intent,
+        aspect_ratio,
+        credentials,
+        used_urls,
+        &default_providers(),
+        ImageKind::Photo,
+    )
+    .await?;
     Some(super::original_delivery::upgrade_selected_image(selected, used_urls, None).await)
 }
 
@@ -188,6 +225,8 @@ async fn fetch_first_image_resolved_thumbnail(
     aspect_ratio: Option<ImageAspectRatio>,
     credentials: Option<&WebOpenverseCredentials>,
     used_urls: &Mutex<HashSet<String>>,
+    providers: &[ImageProvider],
+    kind: ImageKind,
 ) -> Option<ResolvedImage> {
     let client = reqwest::Client::builder()
         .use_rustls_tls()
@@ -195,9 +234,10 @@ async fn fetch_first_image_resolved_thumbnail(
         .user_agent(crate::HTTP_USER_AGENT)
         .build()
         .ok()?;
-    resolve_thumbnail_over(
+    resolve_thumbnail_over_kind(
         &client,
-        &default_providers(),
+        providers,
+        kind,
         query,
         intent,
         aspect_ratio,
@@ -213,9 +253,34 @@ async fn fetch_first_image_resolved_thumbnail(
 /// rank order, whose thumbnail renders and is unused. When every list is
 /// fenced empty the slot stays unresolved rather than taking an unrelated
 /// picture.
+#[cfg(test)]
 pub(crate) async fn resolve_thumbnail_over(
     client: &reqwest::Client,
     providers: &[ImageProvider],
+    query: &str,
+    intent: &str,
+    aspect_ratio: Option<ImageAspectRatio>,
+    credentials: Option<&WebOpenverseCredentials>,
+    used_urls: &Mutex<HashSet<String>>,
+) -> Option<ResolvedImage> {
+    resolve_thumbnail_over_kind(
+        client,
+        providers,
+        ImageKind::Photo,
+        query,
+        intent,
+        aspect_ratio,
+        credentials,
+        used_urls,
+    )
+    .await
+}
+
+#[allow(clippy::too_many_arguments)]
+pub(crate) async fn resolve_thumbnail_over_kind(
+    client: &reqwest::Client,
+    providers: &[ImageProvider],
+    kind: ImageKind,
     query: &str,
     intent: &str,
     aspect_ratio: Option<ImageAspectRatio>,
@@ -228,7 +293,7 @@ pub(crate) async fn resolve_thumbnail_over(
         short_title(intent, 90),
         aspect_ratio.map_or("any", ImageAspectRatio::as_openverse_param)
     ));
-    let ctx = ProviderCtx::new(client, credentials);
+    let ctx = ProviderCtx::new(client, credentials).with_kind(kind);
     let request = LadderRequest {
         query: &query,
         intent,
@@ -268,8 +333,11 @@ async fn claim_first_fenced_hit(
             ));
             continue;
         };
-        let outcome =
-            first_unused_renderable_image_src(client, vec![hit.thumb_url.clone()], used_urls).await;
+        let outcome = if hit.thumb_is_svg {
+            claim_svg_icon(client, &hit.thumb_url, used_urls).await
+        } else {
+            first_unused_renderable_image_src(client, vec![hit.thumb_url.clone()], used_urls).await
+        };
         let Some(src) = claim.settle(outcome) else {
             trace_line(format_args!(
                 "skip \"{}\": thumbnail unusable or duplicate content",
@@ -286,6 +354,7 @@ async fn claim_first_fenced_hit(
             attribution: hit.attribution,
             original: hit.original,
             provenance,
+            download_ping: hit.download_ping,
         };
         trace_line(format_args!(
             "chosen: {} — highest-ranked fenced hit whose thumbnail rendered",
@@ -294,6 +363,22 @@ async fn claim_first_fenced_hit(
         return Some(resolved);
     }
     None
+}
+
+/// The SVG counterpart of [`first_unused_renderable_image_src`]: embed one
+/// icon and claim its content so two slots do not take the same icon.
+async fn claim_svg_icon(
+    client: &reqwest::Client,
+    url: &str,
+    used_urls: &Mutex<HashSet<String>>,
+) -> ImageCandidateClaim {
+    match crate::net::providers::fetch_svg_data_url(client, url).await {
+        None => ImageCandidateClaim::Unavailable,
+        Some(src) if crate::net::fetch::claim_unused_image_src(used_urls, &src) => {
+            ImageCandidateClaim::Claimed(src)
+        }
+        Some(_) => ImageCandidateClaim::Duplicate,
+    }
 }
 
 /// Fetch and relevance-fence one Openverse list (primary query, then one

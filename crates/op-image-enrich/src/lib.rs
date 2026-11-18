@@ -24,6 +24,7 @@ mod credits;
 mod fallback_policy;
 mod found_image;
 mod generation_prompt;
+mod image_kind;
 mod judge_view;
 mod license_policy;
 #[cfg(feature = "net")]
@@ -52,8 +53,12 @@ pub use fallback_policy::{
 };
 pub use found_image::FoundImage;
 pub use generation_prompt::compose_generation_prompt;
+pub use image_kind::{ImageKind, VECTOR_QUERY_PREFIX};
 pub use judge_view::{ImageJudgeFit, ImageJudgeView};
-pub use license_policy::{license_policy, license_policy_with, LicensePolicy};
+pub use license_policy::{
+    iconify_spdx_policy, license_policy, license_policy_with, provider_license_policy,
+    LicensePolicy,
+};
 pub use op_editor_core::ImageCredit;
 pub use targets::{
     collect_targets, collect_targets_with_scene, has_empty_image_fill, image_request_mode,

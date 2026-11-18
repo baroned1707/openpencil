@@ -18,6 +18,9 @@ use jian_core::text_input::TextInputState;
 pub enum ImageSearchSource {
     Openverse,
     Wikimedia,
+    Pixabay,
+    Unsplash,
+    Iconify,
 }
 
 /// One search hit ready for panel paint. The host downloads the
@@ -35,6 +38,9 @@ pub struct ImageSearchHit {
     /// Creator / licence record persisted on the node when this hit is
     /// chosen; `None` for a provider that reports none.
     pub credit: Option<crate::ImageCredit>,
+    /// Provider call to make once this hit is APPLIED (Unsplash's
+    /// `download_location`). Never persisted on the node.
+    pub download_ping: Option<String>,
 }
 
 /// Generate-popover phase (TS `type State = 'idle' | 'loading' |
@@ -112,6 +118,10 @@ pub struct ImagePanelState {
 
     /// Host-computed local-asset status for the selected image node.
     pub asset_check: Option<ImageAssetCheck>,
+
+    /// Download pings of picked search results, waiting for the host to send
+    /// them (one per APPLIED image; a listing never queues one). Runtime-only.
+    pub pending_download_pings: Vec<String>,
 }
 
 impl ImagePanelState {
@@ -199,6 +209,7 @@ mod tests {
             thumb_data_url: Arc::new("data:image/png;base64,AA==".into()),
             attribution: String::new(),
             credit: None,
+            download_ping: None,
         });
         s.close_popovers();
         assert!(!s.search_open && !s.generate_open);

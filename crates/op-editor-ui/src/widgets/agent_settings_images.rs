@@ -11,7 +11,7 @@ use crate::widgets::PaintCx;
 use crate::{Point2D, Rect, TextLayout};
 use op_editor_core::agent_settings::{
     AgentSettings, ImageGenField, ImageGenProfile, ImageGenProvider, ImageSearchField,
-    ImageTestStatus, SettingsFocus,
+    ImageTestStatus, SettingsFocus, StockProvider,
 };
 use op_editor_core::editor_ui_state::EditorUiState;
 use op_editor_core::{AgentSettingsButton, ButtonPressTarget};
@@ -19,6 +19,7 @@ use op_editor_core::{AgentSettingsButton, ButtonPressTarget};
 mod hit_test;
 mod layout;
 mod paint;
+mod stock;
 
 pub use hit_test::*;
 pub(super) use layout::*;
@@ -30,6 +31,10 @@ pub enum ImagesHit {
     FocusSearchField(ImageSearchField),
     OpenRegisterLink,
     TestSearch,
+    OpenStockRegisterLink(StockProvider),
+    TestStockProvider(StockProvider),
+    ToggleUnsplash,
+    OpenUnsplashTerms,
     AddGenConfig,
     ToggleGenConfigEditor(usize),
     SetActiveGenConfig(usize),
@@ -64,10 +69,13 @@ pub(super) fn focused_input_rect_for_ui(
     touch: bool,
 ) -> Option<Rect> {
     match focus {
+        SettingsFocus::ImageSearch(
+            field @ (ImageSearchField::PixabayKey | ImageSearchField::UnsplashKey),
+        ) => stock::focused_field_rect(content, settings, field, touch),
         SettingsFocus::ImageSearch(field) if settings.images_advanced_open => {
             let index = match field {
                 ImageSearchField::ClientId => 0,
-                ImageSearchField::ClientSecret => 1,
+                _ => 1,
             };
             Some(search_field_rect_for_ui(content, index, touch))
         }

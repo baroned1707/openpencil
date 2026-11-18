@@ -44,6 +44,7 @@ fn desktop_session_applies_image_and_credit_in_one_command() {
         SearchMemoEntry::Ready(FoundImage {
             url: "https://example.test/vase.jpg".into(),
             credit: Some(credit()),
+            download_ping: None,
         }),
     );
 

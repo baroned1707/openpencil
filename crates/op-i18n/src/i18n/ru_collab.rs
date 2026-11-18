@@ -649,6 +649,17 @@ pub fn lookup(key: &str) -> Option<&'static str> {
         "imageCredits.copiedOne" => "Скопировано авторство 1 изображения",
         "imageCredits.copied" => "Скопировано авторство изображений: {{count}}",
         "imageCredits.none" => "В этом документе нет авторства изображений",
+        "settings.images.stockTitle" => "Поставщики стоковых фото",
+        "settings.images.pixabayKey" => "Ключ Pixabay",
+        "settings.images.pixabayKeyPlaceholder" => "Вставьте ключ API Pixabay",
+        "settings.images.pixabayHint" => "Необязательно. В Pixabay отправляются только поисковые слова.",
+        "settings.images.unsplashKey" => "Ключ Unsplash",
+        "settings.images.unsplashKeyPlaceholder" => "Вставьте ключ доступа Unsplash",
+        "settings.images.unsplashHint" => "Ваш собственный ключ. В Unsplash отправляются только поисковые слова.",
+        "settings.images.unsplashToggle" => "Использовать Unsplash",
+        "settings.images.unsplashToggleHint" => "По умолчанию выключено. Нужен ваш собственный ключ; сначала прочитайте условия API Unsplash.",
+        "settings.images.getKeyLink" => "Получить бесплатный ключ",
+        "settings.images.unsplashTerms" => "Условия API Unsplash",
         _ => return None,
     })
 }

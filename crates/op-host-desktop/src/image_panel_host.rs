@@ -21,6 +21,8 @@ use op_host_native::widget_host::WidgetHostNative;
 use crate::asset_fetch_error::AssetFetchError;
 use crate::image_generate_host::run_generate_blocking;
 use crate::image_search_session::{fetch_image_data_url, OpenverseCredentials};
+use op_image_enrich::net::providers::{providers_for, ImageProvider, StockKeys};
+use op_image_enrich::ImageKind;
 
 struct SearchOutcome {
     results: Vec<ImageSearchHit>,
@@ -55,6 +57,7 @@ impl ImagePanelJobs {
         changed |= self.refresh_asset_check(host, current_path);
         changed |= self.spawn_search_if_requested(host);
         changed |= self.poll_search(host);
+        changed |= send_picked_download_pings(host);
         changed |= self.spawn_generate_if_requested(host);
         changed |= self.poll_generate(host);
         changed
@@ -106,11 +109,22 @@ impl ImagePanelJobs {
             return false;
         }
         self.search_spawned = panel.search_epoch;
-        let query = panel.search_query.text().to_owned();
+        // `vector: cart` asks the icon ladder; plain text is a photo search.
+        let (kind, keywords) = ImageKind::split_query(panel.search_query.text());
+        let (kind, query) = (kind, keywords.to_owned());
         let credentials = OpenverseCredentials::from_state(state);
+        let providers = providers_for(
+            kind,
+            &StockKeys::from_settings(&state.editor_ui.agent_settings),
+        );
         let (tx, rx) = mpsc::channel();
         std::thread::spawn(move || {
-            let _ = tx.send(run_search_blocking(&query, credentials.as_ref()));
+            let _ = tx.send(run_search_blocking(
+                &query,
+                credentials.as_ref(),
+                &providers,
+                kind,
+            ));
         });
         self.search_job = Some(rx);
         false
@@ -289,6 +303,27 @@ fn normalize_path(value: &str) -> String {
     value.replace('\\', "/")
 }
 
+/// Send the provider pings queued by picked search results (one per applied
+/// image) with the CURRENT Unsplash key. Fire-and-forget; the pick never
+/// waits for it. Returns `true` when anything was drained.
+fn send_picked_download_pings(host: &mut WidgetHostNative) -> bool {
+    let state = host.editor_state_mut();
+    if state
+        .editor_ui
+        .image_panel
+        .pending_download_pings
+        .is_empty()
+    {
+        return false;
+    }
+    let pings = std::mem::take(&mut state.editor_ui.image_panel.pending_download_pings);
+    let key = state.editor_ui.agent_settings.unsplash_access_key.clone();
+    for ping in pings {
+        op_image_enrich::net::applied_ping::notify_applied(Some(&ping), &key);
+    }
+    false
+}
+
 // --- Search backend (TS image-search.ts) -----------------------------
 //
 // The provider ladder (Openverse → two-keyword retry → Wikimedia, result
@@ -299,14 +334,29 @@ fn normalize_path(value: &str) -> String {
 // becomes a `data:` URL the panel painter renders (and writes into
 // `ImageNode.src` on select).
 
-fn run_search_blocking(query: &str, credentials: Option<&OpenverseCredentials>) -> SearchOutcome {
+fn run_search_blocking(
+    query: &str,
+    credentials: Option<&OpenverseCredentials>,
+    providers: &[ImageProvider],
+    kind: ImageKind,
+) -> SearchOutcome {
     // Runtime-aware bridge (see `image_generate_host::run_generate_blocking`):
     // a private current-thread runtime here would abort the process if this
     // sync entry point were ever reached from a tokio worker.
-    op_host_services::chat_runtime::block_on_anywhere(run_search(query, credentials))
+    op_host_services::chat_runtime::block_on_anywhere(run_search(
+        query,
+        credentials,
+        providers,
+        kind,
+    ))
 }
 
-async fn run_search(query: &str, credentials: Option<&OpenverseCredentials>) -> SearchOutcome {
+async fn run_search(
+    query: &str,
+    credentials: Option<&OpenverseCredentials>,
+    providers: &[ImageProvider],
+    kind: ImageKind,
+) -> SearchOutcome {
     let Ok(client) = reqwest::Client::builder()
         .use_rustls_tls()
         .timeout(Duration::from_secs(8))
@@ -318,8 +368,10 @@ async fn run_search(query: &str, credentials: Option<&OpenverseCredentials>) -> 
             source: None,
         };
     };
-    let outcome = op_host_services::web_image_search::run_search_with_fetcher(
+    let outcome = op_host_services::web_image_search::run_search_with_providers(
         &client,
+        providers,
+        kind,
         query,
         credentials.map(OpenverseCredentials::as_web),
         |url: String| {
@@ -337,10 +389,14 @@ async fn run_search(query: &str, credentials: Option<&OpenverseCredentials>) -> 
                 thumb_data_url: Arc::new(hit.thumb_data_url),
                 attribution: hit.attribution,
                 credit: hit.credit,
+                download_ping: hit.download_ping,
             })
             .collect(),
         source: outcome.source.map(|source| match source {
             "openverse" => ImageSearchSource::Openverse,
+            "pixabay" => ImageSearchSource::Pixabay,
+            "unsplash" => ImageSearchSource::Unsplash,
+            "iconify" => ImageSearchSource::Iconify,
             _ => ImageSearchSource::Wikimedia,
         }),
     }

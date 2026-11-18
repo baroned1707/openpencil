@@ -179,10 +179,15 @@ where
 }
 
 pub(super) fn hit_identity(hit: &RawHit) -> String {
-    if hit.id.trim().is_empty() {
-        format!("openverse:url:{}", hit.thumb_url)
+    let provider = if hit.provider.is_empty() {
+        "openverse"
     } else {
-        format!("openverse:{}", hit.id)
+        hit.provider
+    };
+    if hit.id.trim().is_empty() {
+        format!("{provider}:url:{}", hit.thumb_url)
+    } else {
+        format!("{provider}:{}", hit.id)
     }
 }
 

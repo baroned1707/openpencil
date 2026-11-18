@@ -284,6 +284,7 @@ fn resolved_image_description_is_one_line_and_url_free() {
         provider_query: "serum oil bottle".to_string(),
         title: "Dropper \"bottle\"\nblank".to_string(),
         provenance: None,
+        download_ping: None,
     };
     assert_eq!(
         resolved.describe(),

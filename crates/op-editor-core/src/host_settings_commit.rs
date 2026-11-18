@@ -10,7 +10,8 @@
 //! else is one body.
 
 use crate::agent_settings::{
-    AcpAgentField, BuiltinAgentField, ImageGenField, ImageSearchField, SettingsFocus,
+    AcpAgentField, BuiltinAgentField, ImageGenField, ImageSearchField, ImageTestStatus,
+    SettingsFocus,
 };
 use crate::editor_ui_state::EditorUiState;
 use crate::state::EditorState;
@@ -185,6 +186,18 @@ fn commit_image_search(
         }
         ImageSearchField::ClientSecret => {
             ui.agent_settings.openverse_client_secret = trimmed.to_string();
+        }
+        // Stock-provider keys are not browser-synced entries: they never
+        // touch the Openverse credential owner.
+        ImageSearchField::PixabayKey => {
+            ui.agent_settings.pixabay_api_key = trimmed.into();
+            ui.agent_settings.pixabay_test_status = ImageTestStatus::Idle;
+            return;
+        }
+        ImageSearchField::UnsplashKey => {
+            ui.agent_settings.unsplash_access_key = trimmed.into();
+            ui.agent_settings.unsplash_test_status = ImageTestStatus::Idle;
+            return;
         }
     }
     if scope.takes_over_browser_entries() {

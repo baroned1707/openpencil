@@ -48,6 +48,7 @@ impl ImageSearchBackend for StubBackend {
         Some(FoundImage {
             url,
             credit: self.credits.get(&target.query).cloned(),
+            download_ping: None,
         })
     }
 }
@@ -498,7 +499,10 @@ fn enrich_images_without_a_credit_clears_a_stale_one_on_the_live_state() {
         r#""imageSearchQuery": "forest trail", "imageCredit": {"provider": "openverse", "creator": "Old Creator"},"#,
     );
     let live = load(&source);
-    assert!(credit_of(&live, "slot").is_some(), "fixture carries a credit");
+    assert!(
+        credit_of(&live, "slot").is_some(),
+        "fixture carries a credit"
+    );
     let backend = StubBackend::with("forest trail", "data:image/jpeg;base64,AQ==");
     let commands = run_batch(&live, backend);
 

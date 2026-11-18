@@ -135,6 +135,9 @@ pub(crate) fn search_parallel_before(
 /// Wikimedia ladder, first hit wins. The first hit is the full `data:` URL.
 struct WebSearchBackend {
     credentials: Option<crate::web_image_search::WebOpenverseCredentials>,
+    /// The user's Pixabay / Unsplash settings; with none the ladder is the
+    /// Openverse -> Wikimedia one this tool always had.
+    keys: op_image_enrich::net::providers::StockKeys,
 }
 
 impl WebSearchBackend {
@@ -158,6 +161,7 @@ impl WebSearchBackend {
                 &client_id,
                 &client_secret,
             ),
+            keys: op_image_enrich::net::providers::StockKeys::from_settings(settings),
         }
     }
 }
@@ -166,14 +170,16 @@ fn found_image(hit: crate::web_image_search::WebImageSearchHit) -> FoundImage {
     FoundImage {
         url: hit.thumb_data_url,
         credit: hit.credit,
+        download_ping: hit.download_ping,
     }
 }
 
 impl ImageSearchBackend for WebSearchBackend {
     fn search(&self, target: &ImageSearchTarget) -> Option<FoundImage> {
-        let outcome =
-            crate::web_image_search::run_search_blocking(&target.query, self.credentials.as_ref());
-        outcome.results.into_iter().next().map(found_image)
+        self.search_before(
+            target,
+            Instant::now() + Duration::from_secs(DEFAULT_TIMEOUT_SECONDS),
+        )
     }
 
     fn search_before(&self, target: &ImageSearchTarget, deadline: Instant) -> Option<FoundImage> {
@@ -181,7 +187,9 @@ impl ImageSearchBackend for WebSearchBackend {
         if remaining.is_zero() {
             return None;
         }
-        crate::web_image_search::run_first_search_blocking_with_timeout(
+        crate::web_image_search::run_first_search_blocking_with_providers(
+            &op_image_enrich::net::providers::providers_for(target.kind, &self.keys),
+            target.kind,
             &target.query,
             self.credentials.as_ref(),
             remaining,
@@ -481,6 +489,12 @@ fn record_apply(
     if !apply_result_with_credit(state, node_id, &found.url, found.credit.as_ref()) {
         return;
     }
+    // The image is applied: report it to a provider that asks for that
+    // (Unsplash). Fire-and-forget; the key is the current setting.
+    op_image_enrich::net::applied_ping::notify_applied(
+        found.download_ping.as_deref(),
+        &state.editor_ui.agent_settings.unsplash_access_key,
+    );
     let Some(after) = walkers::find_node(state.active_children(), node_id) else {
         return;
     };

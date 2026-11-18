@@ -412,3 +412,9 @@ impl ImageGenProfile {
 /// point at the API reference's auth section instead, which documents
 /// how to register an application for credentials.
 pub const OPENVERSE_AUTH_DOCS_URL: &str = "https://api.openverse.org/v1/#tag/auth";
+/// Where a user gets a free Pixabay key.
+pub const PIXABAY_DOCS_URL: &str = "https://pixabay.com/api/docs/";
+/// Where a user gets an Unsplash access key.
+pub const UNSPLASH_DOCS_URL: &str = "https://unsplash.com/developers";
+/// The Unsplash API terms a user should read before enabling Unsplash.
+pub const UNSPLASH_TERMS_URL: &str = "https://unsplash.com/api-terms";

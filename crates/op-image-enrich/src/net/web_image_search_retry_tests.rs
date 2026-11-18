@@ -3,6 +3,7 @@
 //! `web_image_search_tests.rs` at the 800-line cap; pure code motion.
 
 use super::*;
+use crate::net::test_support::test_client;
 
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Arc;
@@ -509,7 +510,11 @@ fn failed_relevant_thumbnail_never_falls_through_to_downloadable_holiday_hit() {
         }
     };
 
-    let result = crate::net::block_on_image_runtime(materialize_first_thumb(relevant, &fetcher));
+    let result = crate::net::block_on_image_runtime(materialize_first_thumb(
+        &test_client(),
+        relevant,
+        &fetcher,
+    ));
 
     assert!(
         result.is_none(),

@@ -242,6 +242,14 @@ impl AgentSettingsPanel<'_> {
                         return AgentSettingsHit::OpenImageRegisterLink;
                     }
                     ImagesHit::TestSearch => return AgentSettingsHit::TestImageSearch,
+                    ImagesHit::OpenStockRegisterLink(provider) => {
+                        return AgentSettingsHit::OpenStockRegisterLink(provider);
+                    }
+                    ImagesHit::TestStockProvider(provider) => {
+                        return AgentSettingsHit::TestStockProvider(provider);
+                    }
+                    ImagesHit::ToggleUnsplash => return AgentSettingsHit::ToggleUnsplash,
+                    ImagesHit::OpenUnsplashTerms => return AgentSettingsHit::OpenUnsplashTerms,
                     ImagesHit::AddGenConfig => return AgentSettingsHit::AddGenConfig,
                     ImagesHit::ToggleGenConfigEditor(index) => {
                         return AgentSettingsHit::ToggleGenConfigEditor(index);

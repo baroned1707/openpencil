@@ -10,6 +10,7 @@ fn image(src: &str, verdict: RelevanceVerdict) -> JudgedImage {
         attribution: String::new(),
         original: None,
         provenance: None,
+        download_ping: None,
     }
 }
 
@@ -313,6 +314,7 @@ fn unavailable_off_stays_retryable_but_a_completed_off_is_deduplicated() {
         attribution: String::new(),
         original: None,
         provenance: None,
+        download_ping: None,
     }];
     let batches = vec![vec![vec![1]]];
     let unavailable = select_and_record(&slot, &batches, &candidates, &seen);

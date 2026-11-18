@@ -14,11 +14,12 @@ use op_editor_core::{AcpAgentConfig, AcpConnectionType, BuiltinAgentPresetKey, E
 // this crate so the desktop `settings.json` and the browser
 // `web_settings` snapshots cannot drift field-by-field.
 use crate::settings_payload::{
-    builtin_agent_from_payload, builtin_agent_to_payload, dedupe_builtin_agents,
-    image_gen_profile_from_payload, image_gen_profile_to_payload, migrate_mcp_cli_flags,
-    next_builtin_agent_id, next_image_gen_profile_id, openverse_oauth_to_payload, str_to_theme,
-    theme_to_str, BuiltinAgentPayload, ImageGenProfilePayload, OpenDocumentPayload,
-    OpenverseOAuthPayload, RecentFilePayload,
+    apply_stock_providers_payload, builtin_agent_from_payload, builtin_agent_to_payload,
+    dedupe_builtin_agents, image_gen_profile_from_payload, image_gen_profile_to_payload,
+    migrate_mcp_cli_flags, next_builtin_agent_id, next_image_gen_profile_id,
+    openverse_oauth_to_payload, stock_providers_to_payload, str_to_theme, theme_to_str,
+    BuiltinAgentPayload, ImageGenProfilePayload, OpenDocumentPayload, OpenverseOAuthPayload,
+    RecentFilePayload, StockProvidersPayload,
 };
 use crate::settings_payload::{
     open_documents_from_payload, open_documents_to_payload, open_projects_from_payload,
@@ -135,6 +136,8 @@ struct SettingsPayload {
     openverse_oauth: Option<OpenverseOAuthPayload>,
     #[serde(default)]
     openverse_credential_owner: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    stock_providers: Option<StockProvidersPayload>,
     #[serde(default)]
     auto_update_enabled: Option<bool>,
     #[serde(default)]
@@ -241,6 +244,7 @@ fn to_payload(state: &EditorState) -> SettingsPayload {
         images_advanced_open: Some(eui.agent_settings.images_advanced_open),
         openverse_oauth: openverse_oauth_to_payload(&eui.agent_settings),
         openverse_credential_owner: eui.agent_settings.openverse_credential_owner.clone(),
+        stock_providers: stock_providers_to_payload(&eui.agent_settings),
         auto_update_enabled: Some(eui.agent_settings.auto_update_enabled),
         experimental_features_enabled: Some(eui.agent_settings.experimental_features_enabled),
         connected: Some(eui.agent_settings.connected.to_vec()),
@@ -337,6 +341,7 @@ fn apply_payload_with_options(
         eui.agent_settings.openverse_client_secret = oauth.client_secret;
     }
     eui.agent_settings.openverse_credential_owner = payload.openverse_credential_owner;
+    apply_stock_providers_payload(&mut eui.agent_settings, payload.stock_providers);
     if let Some(b) = payload.auto_update_enabled {
         eui.agent_settings.auto_update_enabled = b;
     }

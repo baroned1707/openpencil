@@ -54,7 +54,18 @@ impl WidgetHostNative {
             return;
         };
         let credit = image_ops::image_search_result_credit(&self.editor_state, index);
-        self.write_selected_image_src(&url, credit);
+        let ping = image_ops::image_search_result_ping(&self.editor_state, index);
+        // The pick is the moment the photo is USED: queue its provider ping
+        // for the host pump (a listing never does).
+        if self.write_selected_image_src(&url, credit) {
+            if let Some(ping) = ping {
+                self.editor_state
+                    .editor_ui
+                    .image_panel
+                    .pending_download_pings
+                    .push(ping);
+            }
+        }
         self.clear_image_input_selection_drag();
         self.editor_state.editor_ui.image_panel.close_popovers();
     }
@@ -88,17 +99,19 @@ impl WidgetHostNative {
         &mut self,
         src: &str,
         credit: Option<op_editor_core::ImageCredit>,
-    ) {
+    ) -> bool {
         if !self.collab_allows_document_mutation(
             op_editor_core::CollabDocumentMutation::Unsupported(
                 op_editor_core::CollabUnsupportedFeature::ExternalAssets,
             ),
         ) {
-            return;
+            return false;
         }
-        if image_ops::write_selected_image_src(&mut self.editor_state, src, credit) {
+        let written = image_ops::write_selected_image_src(&mut self.editor_state, src, credit);
+        if written {
             self.mark_dirty();
         }
+        written
     }
 
     /// Route a printable char into whichever popover input is open.
@@ -294,6 +307,7 @@ mod tests {
                 thumb_data_url: Arc::new("data:image/png;base64,AA==".into()),
                 attribution: String::new(),
                 credit: None,
+                download_ping: None,
             });
         host.apply_property_action(A::SelectImageSearchResult(0));
         let node = host.editor_state().selected_node().expect("image");

@@ -476,7 +476,7 @@ fn visible_pixel_count(bytes: &[u8]) -> usize {
 }
 
 /// Decode an exported PNG into `(width, height, unpremul RGBA bytes)`.
-fn decode_rgba(bytes: &[u8]) -> (i32, i32, Vec<u8>) {
+pub(super) fn decode_rgba(bytes: &[u8]) -> (i32, i32, Vec<u8>) {
     let image = skia_safe::Image::from_encoded(skia_safe::Data::new_copy(bytes))
         .expect("decode exported PNG");
     let width = image.width();
@@ -501,7 +501,7 @@ fn decode_rgba(bytes: &[u8]) -> (i32, i32, Vec<u8>) {
 }
 
 /// One RGBA pixel at `(x, y)` from a `decode_rgba` result.
-fn pixel_at(decoded: &(i32, i32, Vec<u8>), x: i32, y: i32) -> [u8; 4] {
+pub(super) fn pixel_at(decoded: &(i32, i32, Vec<u8>), x: i32, y: i32) -> [u8; 4] {
     let (w, h, pixels) = decoded;
     assert!(x < *w && y < *h, "probe ({x},{y}) outside {w}x{h}");
     let i = (y as usize * *w as usize + x as usize) * 4;

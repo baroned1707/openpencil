@@ -142,16 +142,23 @@ pub fn image_search_result_url(state: &EditorState, index: usize) -> Option<Stri
 /// The clicked result's creator / licence record, `None` for a hit that
 /// carries none. Written together with the url so the credit lands in the
 /// same undo step as the picture.
-pub fn image_search_result_credit(
-    state: &EditorState,
-    index: usize,
-) -> Option<crate::ImageCredit> {
+pub fn image_search_result_credit(state: &EditorState, index: usize) -> Option<crate::ImageCredit> {
     state
         .editor_ui
         .image_panel
         .search_results
         .get(index)
         .and_then(|hit| hit.credit.clone())
+}
+
+/// The clicked result's provider ping (Unsplash `download_location`), if any.
+pub fn image_search_result_ping(state: &EditorState, index: usize) -> Option<String> {
+    state
+        .editor_ui
+        .image_panel
+        .search_results
+        .get(index)
+        .and_then(|hit| hit.download_ping.clone())
 }
 
 /// The generated preview's URL, if the popover is showing one.

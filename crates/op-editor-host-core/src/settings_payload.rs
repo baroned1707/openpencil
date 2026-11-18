@@ -14,7 +14,7 @@
 //! serde only).
 
 use op_editor_core::{
-    normalize_builtin_models, BuiltinAgentConfig, BuiltinAgentKind, BuiltinAgentPresetKey,
+    normalize_builtin_models, ApiKey, BuiltinAgentConfig, BuiltinAgentKind, BuiltinAgentPresetKey,
     ImageGenProfile, ImageGenProvider, SessionDocument, ThemeMode,
 };
 use serde::{Deserialize, Serialize};
@@ -124,6 +124,42 @@ pub struct ImageGenProfilePayload {
 pub struct OpenverseOAuthPayload {
     pub client_id: String,
     pub client_secret: String,
+}
+
+/// Stock-provider keys and the Unsplash opt-in. A struct of its own so the
+/// derived `Debug` of the whole settings payload prints no key (`ApiKey` is
+/// redacted); the file itself holds the plain strings (0600).
+#[derive(Debug, Serialize, Deserialize, Clone, Default, PartialEq, Eq)]
+pub struct StockProvidersPayload {
+    #[serde(default)]
+    pub pixabay_api_key: ApiKey,
+    #[serde(default)]
+    pub unsplash_access_key: ApiKey,
+    #[serde(default)]
+    pub unsplash_enabled: bool,
+}
+
+/// `None` while nothing is configured, so a settings file of a user who never
+/// touches stock providers stays byte-identical to before.
+pub fn stock_providers_to_payload(
+    settings: &op_editor_core::agent_settings::AgentSettings,
+) -> Option<StockProvidersPayload> {
+    let payload = StockProvidersPayload {
+        pixabay_api_key: settings.pixabay_api_key.trimmed().unwrap_or("").into(),
+        unsplash_access_key: settings.unsplash_access_key.trimmed().unwrap_or("").into(),
+        unsplash_enabled: settings.unsplash_enabled,
+    };
+    (payload != StockProvidersPayload::default()).then_some(payload)
+}
+
+pub fn apply_stock_providers_payload(
+    settings: &mut op_editor_core::agent_settings::AgentSettings,
+    payload: Option<StockProvidersPayload>,
+) {
+    let payload = payload.unwrap_or_default();
+    settings.pixabay_api_key = payload.pixabay_api_key;
+    settings.unsplash_access_key = payload.unsplash_access_key;
+    settings.unsplash_enabled = payload.unsplash_enabled;
 }
 
 pub fn builtin_agent_to_payload(agent: &BuiltinAgentConfig) -> BuiltinAgentPayload {

@@ -10,11 +10,18 @@ use crate::ImageCredit;
 pub struct FoundImage {
     pub url: String,
     pub credit: Option<ImageCredit>,
+    /// Provider call to make once the image is APPLIED (Unsplash's
+    /// `download_location`); transient, never written to the document.
+    pub download_ping: Option<String>,
 }
 
 impl From<String> for FoundImage {
     fn from(url: String) -> Self {
-        Self { url, credit: None }
+        Self {
+            url,
+            credit: None,
+            download_ping: None,
+        }
     }
 }
 

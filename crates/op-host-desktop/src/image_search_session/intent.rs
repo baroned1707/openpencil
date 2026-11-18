@@ -14,7 +14,7 @@ use std::collections::{HashMap, HashSet};
 use op_editor_core::agent_settings::ImageGenProfile;
 use op_editor_core::EditorState;
 use op_image_enrich::{
-    collect_targets, collect_targets_with_scene, ImageAspectRatio, ImageJudgeView,
+    collect_targets, collect_targets_with_scene, ImageAspectRatio, ImageJudgeView, ImageKind,
     ImageRequestMode, ImageSearchTarget,
 };
 
@@ -57,13 +57,18 @@ pub(crate) fn intent_fingerprint(
             target.height.map(f64::to_bits)
         )
     } else {
-        let key = search_intent_key(
+        let key = search_intent_key_for_kind(
             &target.query,
             target.aspect_ratio,
             target.prompt.as_deref(),
             target.judge_view,
+            target.kind,
         );
         let mut fingerprint = format!("search|{}|{:?}", key.query, key.aspect_ratio);
+        // Photo fingerprints keep their exact historical text.
+        if key.kind == ImageKind::Vector {
+            fingerprint.push_str("|kind=vector");
+        }
         if let Some(prompt) = key.prompt {
             fingerprint.push_str(&format!("|prompt={prompt:?}"));
         }
@@ -120,13 +125,27 @@ pub(super) fn current_intent_snapshot(
 /// Aspect remains part of intent so a square cover never reuses a wide hero.
 /// The actual view also participates: two wide slots can show different crops,
 /// and a photo judged under cover cannot stand in for a contain view.
+#[cfg(test)]
 pub(crate) fn search_intent_key(
     query: &str,
     aspect_ratio: Option<ImageAspectRatio>,
     prompt: Option<&str>,
     judge_view: Option<ImageJudgeView>,
 ) -> super::SearchIntentKey {
+    search_intent_key_for_kind(query, aspect_ratio, prompt, judge_view, ImageKind::Photo)
+}
+
+/// [`search_intent_key`] for a slot of `kind`: the same words as a photo and
+/// as a vector must not share one memoized result.
+pub(crate) fn search_intent_key_for_kind(
+    query: &str,
+    aspect_ratio: Option<ImageAspectRatio>,
+    prompt: Option<&str>,
+    judge_view: Option<ImageJudgeView>,
+    kind: ImageKind,
+) -> super::SearchIntentKey {
     super::SearchIntentKey {
+        kind,
         query: canonical_search_intent_query(query),
         aspect_ratio,
         prompt: prompt

@@ -619,6 +619,17 @@ pub fn lookup(key: &str) -> Option<&'static str> {
         "imageCredits.copiedOne" => "1 kredit gambar disalin",
         "imageCredits.copied" => "{{count}} kredit gambar disalin",
         "imageCredits.none" => "Tidak ada kredit gambar di dokumen ini",
+        "settings.images.stockTitle" => "Penyedia foto stok",
+        "settings.images.pixabayKey" => "Kunci Pixabay",
+        "settings.images.pixabayKeyPlaceholder" => "Tempel kunci API Pixabay Anda",
+        "settings.images.pixabayHint" => "Opsional. Hanya kata kunci pencarian yang dikirim ke Pixabay.",
+        "settings.images.unsplashKey" => "Kunci Unsplash",
+        "settings.images.unsplashKeyPlaceholder" => "Tempel kunci akses Unsplash Anda",
+        "settings.images.unsplashHint" => "Kunci Anda sendiri. Hanya kata kunci pencarian yang dikirim ke Unsplash.",
+        "settings.images.unsplashToggle" => "Gunakan Unsplash",
+        "settings.images.unsplashToggleHint" => "Nonaktif secara default. Memerlukan kunci Anda sendiri; baca dulu ketentuan API Unsplash.",
+        "settings.images.getKeyLink" => "Dapatkan kunci gratis",
+        "settings.images.unsplashTerms" => "Ketentuan API Unsplash",
         _ => return None,
     })
 }

@@ -619,6 +619,17 @@ pub fn lookup(key: &str) -> Option<&'static str> {
         "imageCredits.copiedOne" => "1 görsel atfı kopyalandı",
         "imageCredits.copied" => "{{count}} görsel atfı kopyalandı",
         "imageCredits.none" => "Bu belgede görsel atfı yok",
+        "settings.images.stockTitle" => "Stok fotoğraf sağlayıcıları",
+        "settings.images.pixabayKey" => "Pixabay anahtarı",
+        "settings.images.pixabayKeyPlaceholder" => "Pixabay API anahtarınızı yapıştırın",
+        "settings.images.pixabayHint" => "İsteğe bağlı. Pixabay'e yalnızca arama anahtar kelimeleri gönderilir.",
+        "settings.images.unsplashKey" => "Unsplash anahtarı",
+        "settings.images.unsplashKeyPlaceholder" => "Unsplash erişim anahtarınızı yapıştırın",
+        "settings.images.unsplashHint" => "Kendi anahtarınız. Unsplash'e yalnızca arama anahtar kelimeleri gönderilir.",
+        "settings.images.unsplashToggle" => "Unsplash kullan",
+        "settings.images.unsplashToggleHint" => "Varsayılan olarak kapalı. Kendi anahtarınız gerekir; önce Unsplash API şartlarını okuyun.",
+        "settings.images.getKeyLink" => "Ücretsiz anahtar al",
+        "settings.images.unsplashTerms" => "Unsplash API şartları",
         _ => return None,
     })
 }
