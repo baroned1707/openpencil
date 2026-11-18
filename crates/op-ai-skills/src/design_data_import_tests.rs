@@ -10,10 +10,11 @@ use crate::design_data_search::{
 };
 use serde_json::json;
 
-/// Records the generator writes for the pinned commit (192 upstream product
-/// types minus 19 whose `Border` is an `rgba(...)` value). Change it together
-/// with the generator and the regenerated file.
-const EXPECTED_IMPORTED_RECORDS: usize = 173;
+/// Records the generator writes for the pinned commit: 192 upstream product
+/// types minus the visionOS-style "Spatial Computing OS / App". (19 `rgba(...)`
+/// borders are composited over their Background, none is skipped.) Change it
+/// together with the generator and the regenerated file.
+const EXPECTED_IMPORTED_RECORDS: usize = 191;
 const SEED_SOURCE: &str = "OpenPencil seed";
 const IMPORT_SOURCE: &str = "UI UX Pro Max (MIT)";
 
@@ -459,5 +460,84 @@ fn file_sizes_are_under_the_ceiling() {
             "{}: rules were trimmed to fit",
             record.id
         );
+    }
+}
+
+/// `rgba(r,g,b,alpha)` over an opaque `#rrggbb`, per channel
+/// round(alpha*fg + (1-alpha)*bg) - the rule in the generator header.
+fn composite(foreground: [u8; 3], alpha: f64, background: &str) -> String {
+    let mut out = String::from("#");
+    for (index, fg) in foreground.iter().enumerate() {
+        let bg = u8::from_str_radix(&background[1 + 2 * index..3 + 2 * index], 16).expect("hex");
+        let mixed = (alpha * f64::from(*fg) + (1.0 - alpha) * f64::from(bg) + 0.5) as u8;
+        out.push_str(&format!("{mixed:02x}"));
+    }
+    out
+}
+
+#[test]
+fn rgba_border_is_composited_over_background() {
+    // Table: (rgba foreground, alpha, background, expected).
+    for (foreground, alpha, background, expected) in [
+        ([255, 255, 255], 0.08, "#0f172a", "#222a3b"),
+        ([255, 255, 255], 0.08, "#000000", "#141414"),
+        ([255, 255, 255], 1.0, "#0f172a", "#ffffff"),
+        ([255, 255, 255], 0.0, "#0f172a", "#0f172a"),
+        ([10, 20, 30], 1.0, "#ffffff", "#0a141e"),
+    ] {
+        assert_eq!(composite(foreground, alpha, background), expected);
+    }
+    // The generator implements the same table (python3 -I, no network).
+    let script = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("../../scripts/import-ui-ux-pro-max.py");
+    let probe = format!(
+        "import importlib.util as u;s=u.spec_from_file_location('m',{script:?});m=u.module_from_spec(s);\
+         s.loader.exec_module(m);c=m.composite_over;\
+         print(c('rgba(255,255,255,0.08)','#0f172a'),c('rgba(255 255 255 / 0.08)','#000000'),\
+         c('rgba(255,255,255,1)','#0f172a'),c('rgba(255,255,255,0)','#0f172a'),c('red','#000000'))"
+    );
+    if let Ok(output) = std::process::Command::new("python3")
+        .args(["-I", "-c", &probe])
+        .output()
+    {
+        if output.status.success() {
+            assert_eq!(
+                String::from_utf8_lossy(&output.stdout).trim(),
+                "#222a3b #141414 #ffffff #0f172a None"
+            );
+        }
+    }
+    // The committed data: the 19 upstream white-at-8% borders are the
+    // composited colour, a little lighter than their own background.
+    let mut composited = 0;
+    for record in imported_records() {
+        let palette = &record.palette;
+        let expected = composite([255, 255, 255], 0.08, &palette.background);
+        if palette.border == expected {
+            composited += 1;
+            assert_ne!(palette.border, palette.background, "{}", record.id);
+        }
+    }
+    assert!(composited >= 19, "only {composited} borders match the rule");
+    let finance = imported_records()
+        .into_iter()
+        .find(|record| record.id == "uiuxpm-personal-finance-tracker")
+        .expect("recovered record is present");
+    assert_eq!(
+        finance.palette.border,
+        composite([255, 255, 255], 0.08, &finance.palette.background)
+    );
+}
+
+#[test]
+fn apple_platform_ui_records_are_not_imported() {
+    assert!(imported_records()
+        .iter()
+        .all(|record| record.id != "uiuxpm-spatial-computing-os-app"));
+    for record in imported_records() {
+        let subject = format!("{} {}", record.name, record.keywords.join(" ")).to_lowercase();
+        for word in ["visionos", "vision pro", "watchos", "ipados", "macos"] {
+            assert!(!subject.contains(word), "{}: {word}", record.id);
+        }
     }
 }

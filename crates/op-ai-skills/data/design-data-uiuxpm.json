@@ -326,6 +326,66 @@
     "notes": "Flight search. Booking. Check-in. Boarding pass. Loyalty program. Route maps. Mobile-first."
   },
   {
+    "id": "uiuxpm-alarm-world-clock",
+    "name": "Alarm & World Clock",
+    "keywords": [
+      "alarm",
+      "clock",
+      "timezone",
+      "timer",
+      "wake",
+      "sleep",
+      "schedule",
+      "reminder",
+      "bedtime"
+    ],
+    "platforms": [
+      "web"
+    ],
+    "pattern": "Minimal & Direct",
+    "styles": [
+      "external:dark-mode-oled",
+      "external:minimalism-and-swiss-style",
+      "external:neumorphism",
+      "external:flat-design"
+    ],
+    "palette": {
+      "primary": "#d97706",
+      "onPrimary": "#000000",
+      "secondary": "#f59e0b",
+      "accent": "#6366f1",
+      "background": "#0f172a",
+      "foreground": "#ffffff",
+      "card": "#192134",
+      "muted": "#1f1e27",
+      "border": "#222a3b",
+      "destructive": "#dc2626"
+    },
+    "typography": {
+      "heading": "Poppins",
+      "body": "Open Sans",
+      "mood": "Professional + Clean hierarchy"
+    },
+    "rules": [
+      {
+        "when": "if light mode needed",
+        "do": "constraint: provide theme toggle"
+      }
+    ],
+    "avoid": [
+      "Excessive decoration",
+      "Pure white backgrounds"
+    ],
+    "source": {
+      "name": "UI UX Pro Max (MIT)",
+      "url": "https://github.com/nextlevelbuilder/ui-ux-pro-max-skill",
+      "commit": "7436a6e0b6dc3add7c12d5b6ef1ccd3d410dd7fd",
+      "licenseSpdx": "MIT",
+      "retrieved": "2026-11-18"
+    },
+    "notes": "Gentle wake (gradual volume). Timezone visualizer. Sleep tracking integration. Smart alarm skip. Bedtime mode."
+  },
+  {
     "id": "uiuxpm-analytics-dashboard",
     "name": "Analytics Dashboard",
     "keywords": [
@@ -391,6 +451,72 @@
       "retrieved": "2026-11-18"
     },
     "notes": "Clarity > aesthetics. Color-coded data priority."
+  },
+  {
+    "id": "uiuxpm-anonymous-community-confession",
+    "name": "Anonymous Community / Confession",
+    "keywords": [
+      "anonymous",
+      "community",
+      "confess",
+      "whisper",
+      "secret",
+      "vent",
+      "share",
+      "safe",
+      "private",
+      "social",
+      "yikyak"
+    ],
+    "platforms": [
+      "web"
+    ],
+    "pattern": "Social Proof-Focused + Feature-Rich",
+    "styles": [
+      "external:dark-mode-oled",
+      "external:minimalism-and-swiss-style",
+      "external:glassmorphism",
+      "external:soft-ui-evolution"
+    ],
+    "palette": {
+      "primary": "#475569",
+      "onPrimary": "#ffffff",
+      "secondary": "#334155",
+      "accent": "#0891b2",
+      "background": "#0f172a",
+      "foreground": "#ffffff",
+      "card": "#192134",
+      "muted": "#131b2f",
+      "border": "#222a3b",
+      "destructive": "#dc2626"
+    },
+    "typography": {
+      "heading": "Poppins",
+      "body": "Open Sans",
+      "mood": "Professional + Clean hierarchy"
+    },
+    "rules": [
+      {
+        "when": "if light mode needed",
+        "do": "constraint: provide theme toggle"
+      },
+      {
+        "when": "if trust needed",
+        "do": "constraint: add testimonials"
+      }
+    ],
+    "avoid": [
+      "Excessive decoration",
+      "Pure white backgrounds"
+    ],
+    "source": {
+      "name": "UI UX Pro Max (MIT)",
+      "url": "https://github.com/nextlevelbuilder/ui-ux-pro-max-skill",
+      "commit": "7436a6e0b6dc3add7c12d5b6ef1ccd3d410dd7fd",
+      "licenseSpdx": "MIT",
+      "retrieved": "2026-11-18"
+    },
+    "notes": "Anonymous posting with moderation. Safety reporting. Reaction system. Trending topics. Mental health resources link."
   },
   {
     "id": "uiuxpm-api-developer-portal",
@@ -475,6 +601,73 @@
       "retrieved": "2026-11-18"
     },
     "notes": "Endpoint discoverability. Copy-paste code samples. Auth flow clarity. Version switching. Interactive playground. Rate limit visibility."
+  },
+  {
+    "id": "uiuxpm-arcade-retro-game",
+    "name": "Arcade & Retro Game",
+    "keywords": [
+      "arcade",
+      "retro",
+      "8bit",
+      "action",
+      "shoot",
+      "runner",
+      "tap",
+      "reflex",
+      "endless",
+      "pixel",
+      "classic",
+      "score"
+    ],
+    "platforms": [
+      "web"
+    ],
+    "pattern": "Feature-Rich Showcase + Hero-Centric",
+    "styles": [
+      "external:pixel-art",
+      "external:retro-futurism",
+      "external:vibrant-and-block-based",
+      "external:motion-driven"
+    ],
+    "palette": {
+      "primary": "#dc2626",
+      "onPrimary": "#ffffff",
+      "secondary": "#2563eb",
+      "accent": "#22c55e",
+      "background": "#0f172a",
+      "foreground": "#ffffff",
+      "card": "#192134",
+      "muted": "#1f1829",
+      "border": "#222a3b",
+      "destructive": "#dc2626"
+    },
+    "typography": {
+      "heading": "Abril Fatface",
+      "body": "Merriweather",
+      "mood": "Nostalgic + Monospace + Neon"
+    },
+    "rules": [
+      {
+        "when": "if ux focused",
+        "do": "constraint: prioritize clarity"
+      },
+      {
+        "when": "if mobile",
+        "do": "constraint: optimize touch targets"
+      }
+    ],
+    "avoid": [
+      "Inconsistent styling",
+      "Poor contrast ratios"
+    ],
+    "source": {
+      "name": "UI UX Pro Max (MIT)",
+      "url": "https://github.com/nextlevelbuilder/ui-ux-pro-max-skill",
+      "commit": "7436a6e0b6dc3add7c12d5b6ef1ccd3d410dd7fd",
+      "licenseSpdx": "MIT",
+      "retrieved": "2026-11-18"
+    },
+    "notes": "Instant play with no login. Game Center leaderboards. Haptic feedback on collision. Offline. Controller support."
   },
   {
     "id": "uiuxpm-architecture-interior",
@@ -1351,6 +1544,69 @@
     "notes": "Product showcase. Story/heritage. Tasting notes. Events. Club membership. Artisanal imagery."
   },
   {
+    "id": "uiuxpm-calculator-unit-converter",
+    "name": "Calculator & Unit Converter",
+    "keywords": [
+      "calculator",
+      "converter",
+      "unit",
+      "math",
+      "currency",
+      "measurement",
+      "scientific",
+      "formula",
+      "percentage"
+    ],
+    "platforms": [
+      "web"
+    ],
+    "pattern": "Minimal & Direct",
+    "styles": [
+      "external:neumorphism",
+      "external:minimalism-and-swiss-style",
+      "external:flat-design",
+      "external:dark-mode-oled"
+    ],
+    "palette": {
+      "primary": "#ea580c",
+      "onPrimary": "#000000",
+      "secondary": "#f97316",
+      "accent": "#2563eb",
+      "background": "#1c1917",
+      "foreground": "#ffffff",
+      "card": "#262321",
+      "muted": "#2c1e16",
+      "border": "#2e2b2a",
+      "destructive": "#dc2626"
+    },
+    "typography": {
+      "heading": "Poppins",
+      "body": "Open Sans",
+      "mood": "Professional + Clean hierarchy"
+    },
+    "rules": [
+      {
+        "when": "if ux focused",
+        "do": "constraint: prioritize clarity"
+      },
+      {
+        "when": "if mobile",
+        "do": "constraint: optimize touch targets"
+      }
+    ],
+    "avoid": [
+      "Excessive decoration"
+    ],
+    "source": {
+      "name": "UI UX Pro Max (MIT)",
+      "url": "https://github.com/nextlevelbuilder/ui-ux-pro-max-skill",
+      "commit": "7436a6e0b6dc3add7c12d5b6ef1ccd3d410dd7fd",
+      "licenseSpdx": "MIT",
+      "retrieved": "2026-11-18"
+    },
+    "notes": "Scientific mode toggle. Live currency rates. Calculation history. Widget support. Gesture input."
+  },
+  {
     "id": "uiuxpm-calendar-scheduling-app",
     "name": "Calendar & Scheduling App",
     "keywords": [
@@ -1479,6 +1735,70 @@
       "retrieved": "2026-11-18"
     },
     "notes": "Barcode scanner food log. Large database. Macro goals. Restaurant lookup. Recipe builder. AI photo food logging."
+  },
+  {
+    "id": "uiuxpm-card-board-game",
+    "name": "Card & Board Game",
+    "keywords": [
+      "board",
+      "chess",
+      "checkers",
+      "poker",
+      "strategy",
+      "turn-based",
+      "multiplayer",
+      "classic",
+      "tabletop"
+    ],
+    "platforms": [
+      "web"
+    ],
+    "pattern": "Feature-Rich Showcase",
+    "styles": [
+      "external:3d-and-hyperrealism",
+      "external:flat-design",
+      "external:motion-driven",
+      "external:dark-mode-oled"
+    ],
+    "palette": {
+      "primary": "#15803d",
+      "onPrimary": "#ffffff",
+      "secondary": "#166534",
+      "accent": "#d97706",
+      "background": "#0f172a",
+      "foreground": "#ffffff",
+      "card": "#192134",
+      "muted": "#0f1f2b",
+      "border": "#222a3b",
+      "destructive": "#dc2626"
+    },
+    "typography": {
+      "heading": "Inter",
+      "body": "Inter",
+      "mood": "Bold + Clean + Sans-serif"
+    },
+    "rules": [
+      {
+        "when": "if ux focused",
+        "do": "constraint: prioritize clarity"
+      },
+      {
+        "when": "if mobile",
+        "do": "constraint: optimize touch targets"
+      }
+    ],
+    "avoid": [
+      "Complex shadows",
+      "3D effects"
+    ],
+    "source": {
+      "name": "UI UX Pro Max (MIT)",
+      "url": "https://github.com/nextlevelbuilder/ui-ux-pro-max-skill",
+      "commit": "7436a6e0b6dc3add7c12d5b6ef1ccd3d410dd7fd",
+      "licenseSpdx": "MIT",
+      "retrieved": "2026-11-18"
+    },
+    "notes": "Real-time or async multiplayer. Game state sync. Tutorial mode. Match history. ELO rating system."
   },
   {
     "id": "uiuxpm-casual-puzzle-game",
@@ -2018,6 +2338,70 @@
       "retrieved": "2026-11-18"
     },
     "notes": "Curriculum. Projects. Career outcomes. Alumni. Pricing. Application. Terminal aesthetic."
+  },
+  {
+    "id": "uiuxpm-coding-challenge-practice",
+    "name": "Coding Challenge & Practice",
+    "keywords": [
+      "coding",
+      "leetcode",
+      "challenge",
+      "algorithm",
+      "practice",
+      "programming",
+      "competitive",
+      "skill",
+      "interview",
+      "problem"
+    ],
+    "platforms": [
+      "web"
+    ],
+    "pattern": "Feature-Rich Showcase + Social Proof",
+    "styles": [
+      "external:dark-mode-oled",
+      "external:cyberpunk-ui",
+      "external:minimalism-and-swiss-style",
+      "external:flat-design"
+    ],
+    "palette": {
+      "primary": "#22c55e",
+      "onPrimary": "#0f172a",
+      "secondary": "#059669",
+      "accent": "#d97706",
+      "background": "#0f172a",
+      "foreground": "#ffffff",
+      "card": "#192134",
+      "muted": "#10242e",
+      "border": "#222a3b",
+      "destructive": "#dc2626"
+    },
+    "typography": {
+      "heading": "Playfair Display",
+      "body": "Source Serif 4",
+      "mood": "High contrast + Light on dark"
+    },
+    "rules": [
+      {
+        "when": "if light mode needed",
+        "do": "constraint: provide theme toggle"
+      },
+      {
+        "when": "if trust needed",
+        "do": "constraint: add testimonials"
+      }
+    ],
+    "avoid": [
+      "Pure white backgrounds"
+    ],
+    "source": {
+      "name": "UI UX Pro Max (MIT)",
+      "url": "https://github.com/nextlevelbuilder/ui-ux-pro-max-skill",
+      "commit": "7436a6e0b6dc3add7c12d5b6ef1ccd3d410dd7fd",
+      "licenseSpdx": "MIT",
+      "retrieved": "2026-11-18"
+    },
+    "notes": "Code editor with syntax highlight. Multiple languages. Hint system. Solution explanation. Company tags. Contest mode."
   },
   {
     "id": "uiuxpm-conference-symposium-landing-page",
@@ -3118,6 +3502,67 @@
     "notes": "Category tree. Multi-filter sidebar. Map/list toggle. Verified badges. Reviews. Claim listing flow."
   },
   {
+    "id": "uiuxpm-drawing-sketching-canvas",
+    "name": "Drawing & Sketching Canvas",
+    "keywords": [
+      "drawing",
+      "sketch",
+      "procreate",
+      "canvas",
+      "paint",
+      "illustration",
+      "brush",
+      "layers",
+      "art",
+      "stylus"
+    ],
+    "platforms": [
+      "web"
+    ],
+    "pattern": "Interactive Product Demo + Storytelling",
+    "styles": [
+      "external:minimalism-and-swiss-style",
+      "external:dark-mode-oled",
+      "external:anti-polish-raw-aesthetic",
+      "external:motion-driven"
+    ],
+    "palette": {
+      "primary": "#7c3aed",
+      "onPrimary": "#ffffff",
+      "secondary": "#8b5cf6",
+      "accent": "#0891b2",
+      "background": "#1c1917",
+      "foreground": "#ffffff",
+      "card": "#262321",
+      "muted": "#231b28",
+      "border": "#2e2b2a",
+      "destructive": "#dc2626"
+    },
+    "typography": {
+      "heading": "Poppins",
+      "body": "Open Sans",
+      "mood": "Professional + Clean hierarchy"
+    },
+    "rules": [
+      {
+        "when": "if light mode needed",
+        "do": "constraint: provide theme toggle"
+      }
+    ],
+    "avoid": [
+      "Excessive decoration",
+      "Pure white backgrounds"
+    ],
+    "source": {
+      "name": "UI UX Pro Max (MIT)",
+      "url": "https://github.com/nextlevelbuilder/ui-ux-pro-max-skill",
+      "commit": "7436a6e0b6dc3add7c12d5b6ef1ccd3d410dd7fd",
+      "licenseSpdx": "MIT",
+      "retrieved": "2026-11-18"
+    },
+    "notes": "Pressure sensitivity. Infinite canvas (pan/zoom). Layer management. Undo history. Export PNG/PSD/SVG."
+  },
+  {
     "id": "uiuxpm-e-commerce",
     "name": "E-commerce",
     "keywords": [
@@ -3760,6 +4205,73 @@
       "retrieved": "2026-11-18"
     },
     "notes": "Member color coding. Chore assignment rotation. Recurring events. Shared shopping list. Allowance tracking."
+  },
+  {
+    "id": "uiuxpm-fasting-intermittent-timer",
+    "name": "Fasting & Intermittent Timer",
+    "keywords": [
+      "fasting",
+      "intermittent",
+      "168",
+      "timer",
+      "fast",
+      "eating",
+      "window",
+      "keto",
+      "diet",
+      "zero",
+      "weight",
+      "protocol"
+    ],
+    "platforms": [
+      "web"
+    ],
+    "pattern": "Feature-Rich Showcase + Social Proof",
+    "styles": [
+      "external:minimalism-and-swiss-style",
+      "external:dark-mode-oled",
+      "external:neumorphism",
+      "external:flat-design"
+    ],
+    "palette": {
+      "primary": "#6366f1",
+      "onPrimary": "#000000",
+      "secondary": "#4338ca",
+      "accent": "#059669",
+      "background": "#0f172a",
+      "foreground": "#ffffff",
+      "card": "#192134",
+      "muted": "#151d39",
+      "border": "#222a3b",
+      "destructive": "#dc2626"
+    },
+    "typography": {
+      "heading": "Poppins",
+      "body": "Open Sans",
+      "mood": "Professional + Clean hierarchy"
+    },
+    "rules": [
+      {
+        "when": "if light mode needed",
+        "do": "constraint: provide theme toggle"
+      },
+      {
+        "when": "if trust needed",
+        "do": "constraint: add testimonials"
+      }
+    ],
+    "avoid": [
+      "Excessive decoration",
+      "Pure white backgrounds"
+    ],
+    "source": {
+      "name": "UI UX Pro Max (MIT)",
+      "url": "https://github.com/nextlevelbuilder/ui-ux-pro-max-skill",
+      "commit": "7436a6e0b6dc3add7c12d5b6ef1ccd3d410dd7fd",
+      "licenseSpdx": "MIT",
+      "retrieved": "2026-11-18"
+    },
+    "notes": "Protocol selector (16:8, 18:6, OMAD). Circular countdown timer. Fasting history log. Tips during fast. Electrolytes."
   },
   {
     "id": "uiuxpm-feature-flag-config-management",
@@ -6946,6 +7458,68 @@
     "notes": "Exhibitions. Collections. Tickets. Events. Virtual tours. Educational content. Art-focused design."
   },
   {
+    "id": "uiuxpm-music-creation-beat-maker",
+    "name": "Music Creation & Beat Maker",
+    "keywords": [
+      "music",
+      "beat",
+      "daw",
+      "garageband",
+      "create",
+      "loop",
+      "sample",
+      "instrument",
+      "track",
+      "compose",
+      "record",
+      "midi"
+    ],
+    "platforms": [
+      "web"
+    ],
+    "pattern": "Interactive Product Demo + Storytelling",
+    "styles": [
+      "external:dark-mode-oled",
+      "external:motion-driven",
+      "external:cyberpunk-ui",
+      "external:glassmorphism"
+    ],
+    "palette": {
+      "primary": "#7c3aed",
+      "onPrimary": "#ffffff",
+      "secondary": "#6366f1",
+      "accent": "#22c55e",
+      "background": "#0f172a",
+      "foreground": "#ffffff",
+      "card": "#192134",
+      "muted": "#171939",
+      "border": "#222a3b",
+      "destructive": "#dc2626"
+    },
+    "typography": {
+      "heading": "Playfair Display",
+      "body": "Source Serif 4",
+      "mood": "High contrast + Light on dark"
+    },
+    "rules": [
+      {
+        "when": "if light mode needed",
+        "do": "constraint: provide theme toggle"
+      }
+    ],
+    "avoid": [
+      "Pure white backgrounds"
+    ],
+    "source": {
+      "name": "UI UX Pro Max (MIT)",
+      "url": "https://github.com/nextlevelbuilder/ui-ux-pro-max-skill",
+      "commit": "7436a6e0b6dc3add7c12d5b6ef1ccd3d410dd7fd",
+      "licenseSpdx": "MIT",
+      "retrieved": "2026-11-18"
+    },
+    "notes": "Touch piano and drum pad. Loop browser. MIDI support. Export MP3/WAV. Low-latency audio engine."
+  },
+  {
     "id": "uiuxpm-music-instrument-learning",
     "name": "Music Instrument Learning",
     "keywords": [
@@ -7711,6 +8285,71 @@
     "notes": "Real-time availability. In-app navigation. Payment integration. Parking timer alert. Favorite spots. Street vs garage."
   },
   {
+    "id": "uiuxpm-password-manager",
+    "name": "Password Manager",
+    "keywords": [
+      "password",
+      "security",
+      "vault",
+      "credentials",
+      "login",
+      "secure",
+      "encrypt",
+      "keychain",
+      "2fa",
+      "biometric"
+    ],
+    "platforms": [
+      "web"
+    ],
+    "pattern": "Trust & Authority + Feature-Rich",
+    "styles": [
+      "external:minimalism-and-swiss-style",
+      "external:accessible-and-ethical",
+      "external:dark-mode-oled",
+      "external:swiss-modernism-2-0"
+    ],
+    "palette": {
+      "primary": "#1e3a5f",
+      "onPrimary": "#ffffff",
+      "secondary": "#334155",
+      "accent": "#059669",
+      "background": "#0f172a",
+      "foreground": "#ffffff",
+      "card": "#192134",
+      "muted": "#10192e",
+      "border": "#222a3b",
+      "destructive": "#dc2626"
+    },
+    "typography": {
+      "heading": "Poppins",
+      "body": "Open Sans",
+      "mood": "Professional + Clean hierarchy"
+    },
+    "rules": [
+      {
+        "when": "if ux focused",
+        "do": "constraint: prioritize clarity"
+      },
+      {
+        "when": "if mobile",
+        "do": "constraint: optimize touch targets"
+      }
+    ],
+    "avoid": [
+      "Excessive decoration",
+      "Color-only indicators"
+    ],
+    "source": {
+      "name": "UI UX Pro Max (MIT)",
+      "url": "https://github.com/nextlevelbuilder/ui-ux-pro-max-skill",
+      "commit": "7436a6e0b6dc3add7c12d5b6ef1ccd3d410dd7fd",
+      "licenseSpdx": "MIT",
+      "retrieved": "2026-11-18"
+    },
+    "notes": "Security-first. Zero-knowledge architecture. Biometric unlock. Breach alert dashboard. Password generator."
+  },
+  {
     "id": "uiuxpm-patent-ip-database",
     "name": "Patent / IP Database",
     "keywords": [
@@ -7937,6 +8576,69 @@
     "notes": "Cycle prediction. Symptom logging. Fertility window. Personalized insights. Privacy-first. Partner sharing option."
   },
   {
+    "id": "uiuxpm-personal-finance-tracker",
+    "name": "Personal Finance Tracker",
+    "keywords": [
+      "budget",
+      "expense",
+      "money",
+      "finance",
+      "spending",
+      "savings",
+      "tracker",
+      "personal",
+      "wallet"
+    ],
+    "platforms": [
+      "web"
+    ],
+    "pattern": "Interactive Product Demo",
+    "styles": [
+      "external:glassmorphism",
+      "external:dark-mode-oled",
+      "external:minimalism-and-swiss-style",
+      "external:flat-design"
+    ],
+    "palette": {
+      "primary": "#1e40af",
+      "onPrimary": "#ffffff",
+      "secondary": "#3b82f6",
+      "accent": "#059669",
+      "background": "#0f172a",
+      "foreground": "#ffffff",
+      "card": "#192134",
+      "muted": "#101a34",
+      "border": "#222a3b",
+      "destructive": "#dc2626"
+    },
+    "typography": {
+      "heading": "Poppins",
+      "body": "Open Sans",
+      "mood": "Modern + Clear hierarchy"
+    },
+    "rules": [
+      {
+        "when": "if light mode needed",
+        "do": "constraint: provide theme toggle"
+      },
+      {
+        "when": "if low performance",
+        "do": "style: Flat Design"
+      }
+    ],
+    "avoid": [
+      "Pure white backgrounds"
+    ],
+    "source": {
+      "name": "UI UX Pro Max (MIT)",
+      "url": "https://github.com/nextlevelbuilder/ui-ux-pro-max-skill",
+      "commit": "7436a6e0b6dc3add7c12d5b6ef1ccd3d410dd7fd",
+      "licenseSpdx": "MIT",
+      "retrieved": "2026-11-18"
+    },
+    "notes": "Category pie/donut charts. Monthly trend lines. Budget progress bars. Transaction list with swipe actions. Receipt camera. Currency formatting. Recurring entries."
+  },
+  {
     "id": "uiuxpm-pet-tech-app",
     "name": "Pet Tech App",
     "keywords": [
@@ -8051,6 +8753,67 @@
       "retrieved": "2026-11-18"
     },
     "notes": "Product catalog. Prescription upload. Refill reminders. Health info. Store locator. Safety certifications."
+  },
+  {
+    "id": "uiuxpm-photo-editor-filters",
+    "name": "Photo Editor & Filters",
+    "keywords": [
+      "photo",
+      "edit",
+      "vsco",
+      "snapseed",
+      "enhance",
+      "crop",
+      "retouch",
+      "adjust",
+      "luts",
+      "preset"
+    ],
+    "platforms": [
+      "web"
+    ],
+    "pattern": "Feature-Rich Showcase + Interactive Demo",
+    "styles": [
+      "external:minimalism-and-swiss-style",
+      "external:dark-mode-oled",
+      "external:motion-driven",
+      "external:flat-design"
+    ],
+    "palette": {
+      "primary": "#7c3aed",
+      "onPrimary": "#ffffff",
+      "secondary": "#6366f1",
+      "accent": "#0891b2",
+      "background": "#0f172a",
+      "foreground": "#ffffff",
+      "card": "#192134",
+      "muted": "#171939",
+      "border": "#222a3b",
+      "destructive": "#dc2626"
+    },
+    "typography": {
+      "heading": "Poppins",
+      "body": "Open Sans",
+      "mood": "Professional + Clean hierarchy"
+    },
+    "rules": [
+      {
+        "when": "if light mode needed",
+        "do": "constraint: provide theme toggle"
+      }
+    ],
+    "avoid": [
+      "Excessive decoration",
+      "Pure white backgrounds"
+    ],
+    "source": {
+      "name": "UI UX Pro Max (MIT)",
+      "url": "https://github.com/nextlevelbuilder/ui-ux-pro-max-skill",
+      "commit": "7436a6e0b6dc3add7c12d5b6ef1ccd3d410dd7fd",
+      "licenseSpdx": "MIT",
+      "retrieved": "2026-11-18"
+    },
+    "notes": "Non-destructive editing. Filter preview carousel. Histogram. RAW support. Batch export. Social share direct."
   },
   {
     "id": "uiuxpm-photography-studio",
@@ -9049,6 +9812,69 @@
     "notes": "Star rating summary with distribution. Verified purchase badge. Photo/video reviews. Helpful/upvote. Filter by rating. Response from business. Sort by recency."
   },
   {
+    "id": "uiuxpm-ride-hailing-transportation",
+    "name": "Ride Hailing / Transportation",
+    "keywords": [
+      "ride",
+      "taxi",
+      "uber",
+      "lyft",
+      "transport",
+      "carpool",
+      "driver",
+      "trip",
+      "fare"
+    ],
+    "platforms": [
+      "web"
+    ],
+    "pattern": "Conversion-Optimized + Demo",
+    "styles": [
+      "external:minimalism-and-swiss-style",
+      "external:glassmorphism",
+      "external:dark-mode-oled",
+      "external:motion-driven"
+    ],
+    "palette": {
+      "primary": "#1e293b",
+      "onPrimary": "#ffffff",
+      "secondary": "#334155",
+      "accent": "#2563eb",
+      "background": "#0f172a",
+      "foreground": "#ffffff",
+      "card": "#192134",
+      "muted": "#10182b",
+      "border": "#222a3b",
+      "destructive": "#dc2626"
+    },
+    "typography": {
+      "heading": "Poppins",
+      "body": "Open Sans",
+      "mood": "Professional + Clean hierarchy"
+    },
+    "rules": [
+      {
+        "when": "if low performance",
+        "do": "style: Flat Design"
+      },
+      {
+        "when": "if conversion focused",
+        "do": "constraint: add urgency colors"
+      }
+    ],
+    "avoid": [
+      "Excessive decoration"
+    ],
+    "source": {
+      "name": "UI UX Pro Max (MIT)",
+      "url": "https://github.com/nextlevelbuilder/ui-ux-pro-max-skill",
+      "commit": "7436a6e0b6dc3add7c12d5b6ef1ccd3d410dd7fd",
+      "licenseSpdx": "MIT",
+      "retrieved": "2026-11-18"
+    },
+    "notes": "Map-centric full-screen UI. Pickup/dropoff pins + route polyline. Driver card (photo/rating/vehicle). Fare estimate. Trip timer. Safety SOS button. Payment sheet."
+  },
+  {
     "id": "uiuxpm-road-trip-planner",
     "name": "Road Trip Planner",
     "keywords": [
@@ -9195,6 +10021,74 @@
       "retrieved": "2026-11-18"
     },
     "notes": "Bot status grid (running/idle/failed). Queue depth. Process flow visualization. Exception handling alert. ROI metrics. Bot scheduling calendar. Audit trail."
+  },
+  {
+    "id": "uiuxpm-running-cycling-gps",
+    "name": "Running & Cycling GPS",
+    "keywords": [
+      "running",
+      "cycling",
+      "gps",
+      "strava",
+      "track",
+      "route",
+      "speed",
+      "distance",
+      "cadence",
+      "pace",
+      "workout",
+      "sport"
+    ],
+    "platforms": [
+      "web"
+    ],
+    "pattern": "Feature-Rich Showcase + Social Proof",
+    "styles": [
+      "external:dark-mode-oled",
+      "external:vibrant-and-block-based",
+      "external:motion-driven",
+      "external:glassmorphism"
+    ],
+    "palette": {
+      "primary": "#ea580c",
+      "onPrimary": "#000000",
+      "secondary": "#f97316",
+      "accent": "#059669",
+      "background": "#0f172a",
+      "foreground": "#ffffff",
+      "card": "#192134",
+      "muted": "#201c27",
+      "border": "#222a3b",
+      "destructive": "#dc2626"
+    },
+    "typography": {
+      "heading": "Playfair Display",
+      "body": "Source Serif 4",
+      "mood": "High contrast + Light on dark"
+    },
+    "rules": [
+      {
+        "when": "if light mode needed",
+        "do": "constraint: provide theme toggle"
+      },
+      {
+        "when": "if trust needed",
+        "do": "constraint: add testimonials"
+      }
+    ],
+    "avoid": [
+      "Pure white backgrounds",
+      "Muted colors",
+      "Low energy"
+    ],
+    "source": {
+      "name": "UI UX Pro Max (MIT)",
+      "url": "https://github.com/nextlevelbuilder/ui-ux-pro-max-skill",
+      "commit": "7436a6e0b6dc3add7c12d5b6ef1ccd3d410dd7fd",
+      "licenseSpdx": "MIT",
+      "retrieved": "2026-11-18"
+    },
+    "notes": "Live GPS tracking. Route map. Auto-pause detection. Segment leaderboards. Training zones. Social feed. Garmin sync."
   },
   {
     "id": "uiuxpm-saas-general",
@@ -9379,6 +10273,134 @@
       "retrieved": "2026-11-18"
     },
     "notes": "Care services. Staff qualifications. Facility tour. Family portal. Large touch targets. High contrast. Accessibility-first."
+  },
+  {
+    "id": "uiuxpm-short-video-editor",
+    "name": "Short Video Editor",
+    "keywords": [
+      "video",
+      "edit",
+      "capcut",
+      "inshot",
+      "clip",
+      "reel",
+      "tiktok",
+      "trim",
+      "effects",
+      "transitions",
+      "music",
+      "timeline"
+    ],
+    "platforms": [
+      "web"
+    ],
+    "pattern": "Feature-Rich Showcase + Hero-Centric",
+    "styles": [
+      "external:dark-mode-oled",
+      "external:motion-driven",
+      "external:vibrant-and-block-based",
+      "external:glassmorphism"
+    ],
+    "palette": {
+      "primary": "#ec4899",
+      "onPrimary": "#000000",
+      "secondary": "#db2777",
+      "accent": "#2563eb",
+      "background": "#0f172a",
+      "foreground": "#ffffff",
+      "card": "#192134",
+      "muted": "#201a32",
+      "border": "#222a3b",
+      "destructive": "#dc2626"
+    },
+    "typography": {
+      "heading": "Playfair Display",
+      "body": "Source Serif 4",
+      "mood": "High contrast + Light on dark"
+    },
+    "rules": [
+      {
+        "when": "if light mode needed",
+        "do": "constraint: provide theme toggle"
+      }
+    ],
+    "avoid": [
+      "Pure white backgrounds"
+    ],
+    "source": {
+      "name": "UI UX Pro Max (MIT)",
+      "url": "https://github.com/nextlevelbuilder/ui-ux-pro-max-skill",
+      "commit": "7436a6e0b6dc3add7c12d5b6ef1ccd3d410dd7fd",
+      "licenseSpdx": "MIT",
+      "retrieved": "2026-11-18"
+    },
+    "notes": "Multi-track timeline. Licensed music library. Text overlays. Auto-captions. Export 9:16 / 16:9 / 1:1."
+  },
+  {
+    "id": "uiuxpm-sleep-tracker",
+    "name": "Sleep Tracker",
+    "keywords": [
+      "sleep",
+      "tracker",
+      "alarm",
+      "cycle",
+      "quality",
+      "snore",
+      "analysis",
+      "rem",
+      "deep",
+      "smart",
+      "wake",
+      "insomnia"
+    ],
+    "platforms": [
+      "web"
+    ],
+    "pattern": "Feature-Rich Showcase + Social Proof",
+    "styles": [
+      "external:dark-mode-oled",
+      "external:neumorphism",
+      "external:glassmorphism",
+      "external:minimalism-and-swiss-style"
+    ],
+    "palette": {
+      "primary": "#4338ca",
+      "onPrimary": "#ffffff",
+      "secondary": "#6366f1",
+      "accent": "#7c3aed",
+      "background": "#0f172a",
+      "foreground": "#ffffff",
+      "card": "#192134",
+      "muted": "#131936",
+      "border": "#222a3b",
+      "destructive": "#dc2626"
+    },
+    "typography": {
+      "heading": "Playfair Display",
+      "body": "Source Serif 4",
+      "mood": "High contrast + Light on dark"
+    },
+    "rules": [
+      {
+        "when": "if light mode needed",
+        "do": "constraint: provide theme toggle"
+      },
+      {
+        "when": "if trust needed",
+        "do": "constraint: add testimonials"
+      }
+    ],
+    "avoid": [
+      "Pure white backgrounds"
+    ],
+    "source": {
+      "name": "UI UX Pro Max (MIT)",
+      "url": "https://github.com/nextlevelbuilder/ui-ux-pro-max-skill",
+      "commit": "7436a6e0b6dc3add7c12d5b6ef1ccd3d410dd7fd",
+      "licenseSpdx": "MIT",
+      "retrieved": "2026-11-18"
+    },
+    "notes": "Sleep cycle detection. Smart alarm wakes at light sleep. Snore detection. Weekly trends."
   },
   {
     "id": "uiuxpm-smart-home-iot-dashboard",
@@ -9566,67 +10588,6 @@
       "retrieved": "2026-11-18"
     },
     "notes": "High-tech feel. Precision. Telemetry data."
-  },
-  {
-    "id": "uiuxpm-spatial-computing-os-app",
-    "name": "Spatial Computing OS / App",
-    "keywords": [
-      "spatial",
-      "vr",
-      "ar",
-      "vision",
-      "os",
-      "immersive",
-      "mixed-reality"
-    ],
-    "platforms": [
-      "web",
-      "mobile"
-    ],
-    "pattern": "Immersive + Interactive",
-    "styles": [
-      "external:glassmorphism",
-      "external:3d-and-hyperrealism"
-    ],
-    "palette": {
-      "primary": "#ffffff",
-      "onPrimary": "#0f172a",
-      "secondary": "#e5e5e5",
-      "accent": "#ffffff",
-      "background": "#888888",
-      "foreground": "#000000",
-      "card": "#999999",
-      "muted": "#e5e7eb",
-      "border": "#cccccc",
-      "destructive": "#ff3b30"
-    },
-    "typography": {
-      "heading": "Newsreader",
-      "body": "Roboto",
-      "mood": "Spatial + Readable typography"
-    },
-    "rules": [
-      {
-        "when": "always",
-        "do": "constraint: depth hierarchy"
-      },
-      {
-        "when": "always",
-        "do": "constraint: environment awareness"
-      }
-    ],
-    "avoid": [
-      "2D design",
-      "No spatial depth"
-    ],
-    "source": {
-      "name": "UI UX Pro Max (MIT)",
-      "url": "https://github.com/nextlevelbuilder/ui-ux-pro-max-skill",
-      "commit": "7436a6e0b6dc3add7c12d5b6ef1ccd3d410dd7fd",
-      "licenseSpdx": "MIT",
-      "retrieved": "2026-11-18"
-    },
-    "notes": "Gaze/Pinch interaction. Depth hierarchy. Environment awareness."
   },
   {
     "id": "uiuxpm-sports-team-club",
@@ -10336,6 +11297,68 @@
     "notes": "Event cards with date/venue. Interactive seat map. Cart with countdown. QR code ticket. Will-call pickup. Group discounts. Refund policy."
   },
   {
+    "id": "uiuxpm-timer-pomodoro",
+    "name": "Timer & Pomodoro",
+    "keywords": [
+      "timer",
+      "pomodoro",
+      "countdown",
+      "stopwatch",
+      "focus",
+      "clock",
+      "productivity",
+      "interval"
+    ],
+    "platforms": [
+      "web"
+    ],
+    "pattern": "Minimal & Direct",
+    "styles": [
+      "external:minimalism-and-swiss-style",
+      "external:neumorphism",
+      "external:dark-mode-oled",
+      "external:micro-interactions"
+    ],
+    "palette": {
+      "primary": "#dc2626",
+      "onPrimary": "#ffffff",
+      "secondary": "#ef4444",
+      "accent": "#059669",
+      "background": "#0f172a",
+      "foreground": "#ffffff",
+      "card": "#192134",
+      "muted": "#1f1829",
+      "border": "#222a3b",
+      "destructive": "#dc2626"
+    },
+    "typography": {
+      "heading": "Poppins",
+      "body": "Open Sans",
+      "mood": "Professional + Clean hierarchy"
+    },
+    "rules": [
+      {
+        "when": "if ux focused",
+        "do": "constraint: prioritize clarity"
+      },
+      {
+        "when": "if mobile",
+        "do": "constraint: optimize touch targets"
+      }
+    ],
+    "avoid": [
+      "Excessive decoration"
+    ],
+    "source": {
+      "name": "UI UX Pro Max (MIT)",
+      "url": "https://github.com/nextlevelbuilder/ui-ux-pro-max-skill",
+      "commit": "7436a6e0b6dc3add7c12d5b6ef1ccd3d410dd7fd",
+      "licenseSpdx": "MIT",
+      "retrieved": "2026-11-18"
+    },
+    "notes": "Large centered countdown digits. Circular progress ring. Session/break auto-switch. Session history log. Custom interval settings. Sound + haptic alerts. Focus stats chart."
+  },
+  {
     "id": "uiuxpm-translator-app",
     "name": "Translator App",
     "keywords": [
@@ -10709,6 +11732,72 @@
     "notes": "Waveform display. Background recording. Auto-transcription (AI). Tag/organize. Cloud sync."
   },
   {
+    "id": "uiuxpm-vpn-privacy-tool",
+    "name": "VPN & Privacy Tool",
+    "keywords": [
+      "vpn",
+      "privacy",
+      "secure",
+      "anonymous",
+      "encrypt",
+      "proxy",
+      "ip",
+      "protect",
+      "shield",
+      "network",
+      "nordvpn"
+    ],
+    "platforms": [
+      "web"
+    ],
+    "pattern": "Trust & Authority + Conversion-Optimized",
+    "styles": [
+      "external:minimalism-and-swiss-style",
+      "external:dark-mode-oled",
+      "external:cyberpunk-ui",
+      "external:accessible-and-ethical"
+    ],
+    "palette": {
+      "primary": "#1e3a5f",
+      "onPrimary": "#ffffff",
+      "secondary": "#334155",
+      "accent": "#22c55e",
+      "background": "#0f172a",
+      "foreground": "#ffffff",
+      "card": "#192134",
+      "muted": "#10192e",
+      "border": "#222a3b",
+      "destructive": "#dc2626"
+    },
+    "typography": {
+      "heading": "Poppins",
+      "body": "Open Sans",
+      "mood": "Professional + Clean hierarchy"
+    },
+    "rules": [
+      {
+        "when": "if light mode needed",
+        "do": "constraint: provide theme toggle"
+      },
+      {
+        "when": "if conversion focused",
+        "do": "constraint: add urgency colors"
+      }
+    ],
+    "avoid": [
+      "Excessive decoration",
+      "Pure white backgrounds"
+    ],
+    "source": {
+      "name": "UI UX Pro Max (MIT)",
+      "url": "https://github.com/nextlevelbuilder/ui-ux-pro-max-skill",
+      "commit": "7436a6e0b6dc3add7c12d5b6ef1ccd3d410dd7fd",
+      "licenseSpdx": "MIT",
+      "retrieved": "2026-11-18"
+    },
+    "notes": "One-tap connect. Server selection by country. No-log policy prominent. Speed indicator. Kill switch. Protocol choice."
+  },
+  {
     "id": "uiuxpm-wallpaper-theme-app",
     "name": "Wallpaper & Theme App",
     "keywords": [
@@ -11021,6 +12110,72 @@
       "retrieved": "2026-11-18"
     },
     "notes": "Portfolio gallery. Vendor directory. Planning tools. Timeline. Budget tracker. Romantic aesthetic."
+  },
+  {
+    "id": "uiuxpm-white-noise-ambient-sound",
+    "name": "White Noise & Ambient Sound",
+    "keywords": [
+      "white noise",
+      "ambient",
+      "sound",
+      "sleep",
+      "focus",
+      "rain",
+      "nature",
+      "relax",
+      "concentration",
+      "background",
+      "noisli"
+    ],
+    "platforms": [
+      "web"
+    ],
+    "pattern": "Minimal & Direct + Social Proof",
+    "styles": [
+      "external:minimalism-and-swiss-style",
+      "external:dark-mode-oled",
+      "external:neumorphism",
+      "external:organic-biophilic"
+    ],
+    "palette": {
+      "primary": "#475569",
+      "onPrimary": "#ffffff",
+      "secondary": "#334155",
+      "accent": "#4338ca",
+      "background": "#0f172a",
+      "foreground": "#ffffff",
+      "card": "#192134",
+      "muted": "#131b2f",
+      "border": "#222a3b",
+      "destructive": "#dc2626"
+    },
+    "typography": {
+      "heading": "Poppins",
+      "body": "Open Sans",
+      "mood": "Professional + Clean hierarchy"
+    },
+    "rules": [
+      {
+        "when": "if light mode needed",
+        "do": "constraint: provide theme toggle"
+      },
+      {
+        "when": "if trust needed",
+        "do": "constraint: add testimonials"
+      }
+    ],
+    "avoid": [
+      "Excessive decoration",
+      "Pure white backgrounds"
+    ],
+    "source": {
+      "name": "UI UX Pro Max (MIT)",
+      "url": "https://github.com/nextlevelbuilder/ui-ux-pro-max-skill",
+      "commit": "7436a6e0b6dc3add7c12d5b6ef1ccd3d410dd7fd",
+      "licenseSpdx": "MIT",
+      "retrieved": "2026-11-18"
+    },
+    "notes": "Sound mixer with multiple simultaneous layers. Sleep timer with fade. Custom soundscapes. Offline. Background audio."
   },
   {
     "id": "uiuxpm-wiki-encyclopedia",

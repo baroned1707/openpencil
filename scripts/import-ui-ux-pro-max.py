@@ -39,8 +39,11 @@ joins must succeed or the script stops):
               names and Apple-derived styles are dropped; at most 6
   palette     colors.csv Primary, On Primary, Secondary, Accent, Background,
               Foreground, Card, Muted, Border, Destructive as #rrggbb ("#abc"
-              and a missing "#" are normalised). Any value that is not a hex
-              colour (19 rows have an `rgba(...)` Border) skips the record.
+              and a missing "#" are normalised). An `rgba(r,g,b,a)` /
+              `rgba(r g b / a)` Border is alpha-composited over that record's
+              own Background, per channel round(a*fg + (1-a)*bg), clamped, and
+              emitted as #rrggbb. Any other value that is not a hex colour (or
+              an rgba value in any other role) skips the record.
   typography  the typography.csv pairing whose `Mood/Style Keywords` share the
               most words with ui-reasoning Typography_Mood (ties: first row);
               if none shares a word, the pairing whose `Best For` shares the
@@ -64,7 +67,9 @@ Safety applied to every text field: control and zero-width/bidi format
 characters are removed (Unicode Cc and Cf, which include U+200B-U+200F,
 U+202A-U+202E, U+2066-U+2069), whitespace is collapsed, and a record whose
 text contains an instruction-like phrase is skipped and listed. Anything that
-mentions Apple, the Human Interface Guidelines or VisionOS is removed (a list
+mentions Apple, the Human Interface Guidelines or VisionOS is removed, and
+the product type "Spatial Computing OS / App" (visionOS-style content) is not
+imported (a list
 item, or the sentence of a note) and the Apple-derived styles liquid-glass,
 apple-native-experience and spatial-ui-visionos are never referenced.
 
@@ -132,6 +137,8 @@ PALETTE_COLUMNS = [
     ("destructive", "Destructive"),
 ]
 
+# Product types whose subject is an Apple platform UI: not imported.
+APPLE_PLATFORM_PRODUCTS = {"spatial computing os / app"}  # visionOS-style content
 # Styles that come from Apple documentation: never referenced.
 APPLE_STYLE_IDS = {"liquid-glass", "apple-native-experience", "spatial-ui-visionos"}
 # `HIG` is case-sensitive on purpose: "hig" is inside "high".
@@ -149,7 +156,7 @@ GENERIC_KEYWORDS = {
     "build", "make", "new", "ui", "ux", "user", "interface", "that", "this",
     "from", "into", "your", "our", "simple", "modern",
     "platform", "general", "tech", "tool", "tools", "service", "services",
-    "system", "online", "digital", "software", "product", "business",
+    "system", "online", "digital", "software", "product", "business", "world",
     # Interface vocabulary: "a table of cards in a sidebar" is a layout
     # description, not a restaurant or a file manager.
     "table", "menu", "list", "grid", "filter", "search", "form", "card",
@@ -275,6 +282,30 @@ def normalise_hex(value):
     else:
         return None
     return "#" + value.lower()
+
+
+RGBA_RE = re.compile(
+    r"rgba\(\s*(\d{1,3})\s*[,\s]\s*(\d{1,3})\s*[,\s]\s*(\d{1,3})\s*[,/]\s*"
+    r"(\d*\.?\d+)(%?)\s*\)",
+    re.IGNORECASE,
+)
+
+
+def composite_over(value, background):
+    """`rgba(...)` laid over the #rrggbb `background`; None if not rgba."""
+    match = RGBA_RE.fullmatch(value.strip())
+    if not match:
+        return None
+    channels = [int(match.group(i)) for i in (1, 2, 3)]
+    alpha = float(match.group(4)) / (100 if match.group(5) else 1)
+    if any(c > 255 for c in channels) or not 0 <= alpha <= 1:
+        return None
+    out = []
+    for index, foreground in enumerate(channels):
+        behind = int(background[1 + 2 * index : 3 + 2 * index], 16)
+        mixed = int(alpha * foreground + (1 - alpha) * behind + 0.5)
+        out.append(max(0, min(255, mixed)))
+    return "#" + "".join(f"{c:02x}" for c in out)
 
 
 def build_keywords(raw):
@@ -483,6 +514,7 @@ def build(src, retrieved):
     resolver = StyleResolver(embedded_style_guide_names(), style_lookup(style_rows))
     records, skipped, used_ids = [], [], set()
     below_aa = 0
+    composited = 0
     fallback_pairings = 0
 
     for product in products:
@@ -496,10 +528,17 @@ def build(src, retrieved):
         if not raw_name or mentions_apple(raw_name):
             skip("name empty or Apple-related")
             continue
+        if key in APPLE_PLATFORM_PRODUCTS:
+            skip("subject is an Apple platform UI (visionOS-style)")
+            continue
         palette = {}
         bad_role = None
         for role, column in PALETTE_COLUMNS:
             value = normalise_hex(color[column])
+            if value is None and role == "border":
+                value = composite_over(color[column], palette["background"])
+                if value is not None:
+                    composited += 1
             if value is None:
                 bad_role = f"{column}={color[column].strip()!r}"
                 break
@@ -587,7 +626,7 @@ def build(src, retrieved):
         records.append(record)
 
     records.sort(key=lambda r: r["id"])
-    return records, skipped, resolver, below_aa, fallback_pairings
+    return records, skipped, resolver, below_aa, fallback_pairings, composited
 
 
 def render(records):
@@ -610,7 +649,7 @@ def main():
     if not retrieved or not re.fullmatch(r"\d{4}-\d{2}-\d{2}", retrieved):
         fail("--retrieved YYYY-MM-DD is required")
 
-    records, skipped, resolver, below_aa, fallback_pairings = build(args.src, retrieved)
+    records, skipped, resolver, below_aa, fallback_pairings, composited = build(args.src, retrieved)
     text = render(records)
 
     print(f"pinned commit      {PINNED_COMMIT}")
@@ -626,6 +665,7 @@ def main():
     for name, count in sorted(resolver.unresolved.items()):
         print(f"  unresolved style {name!r} x{count}")
     print(f"font pairing       {fallback_pairings} records matched through `Best For` (no mood word shared)")
+    print(f"palette            {composited} borders composited over Background")
     print(f"below WCAG AA 4.5  {below_aa} records (onPrimary/primary or foreground/background)")
     print(f"output size        {len(text.encode('utf-8')) / 1024:.1f} KiB")
 
