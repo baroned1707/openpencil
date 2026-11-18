@@ -151,12 +151,14 @@ fn save_document_onto_a_file_open_in_another_tab_is_refused() {
         "{response}"
     );
     assert_eq!(std::fs::read_to_string(&other_tab).expect("b.op"), "{}");
-    // The document's own file is a tab's file too.
+    // The addressed document's own file is no "other tab": it is the in-place
+    // save (`save_own_path_route_tests`), which is not a copy.
     let own = save_call(&workspace, &workspace.proj("designs/a.op"));
-    assert!(is_error(&own), "{own}");
-    assert_eq!(
+    assert!(!is_error(&own), "{own}");
+    assert_ne!(
         std::fs::read_to_string(workspace.proj("designs/a.op")).expect("a.op"),
-        "{}"
+        "{}",
+        "a.op now holds the document"
     );
 }
 

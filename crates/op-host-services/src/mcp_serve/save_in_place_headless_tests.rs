@@ -63,3 +63,37 @@ fn headless_save_document_with_a_file_path_still_copies() {
     assert!(copy.is_file());
     let _ = std::fs::remove_dir_all(dir);
 }
+
+/// Invariant: in headless mode too, a `filePath` that is the loaded file
+/// (however it is spelled) is the in-place save, with the in-place answer
+/// shape rather than a copy's.
+#[test]
+fn headless_save_document_with_the_loaded_file_as_file_path_saves_in_place() {
+    let dir = scratch("own-path");
+    let file = dir.join("loaded.op");
+    let mut state = EditorState::starter();
+    state.add_page();
+    std::fs::write(&file, b"{}").unwrap();
+    let respelled = dir
+        .join("../")
+        .join(dir.file_name().unwrap())
+        .join("loaded.op");
+
+    for spelling in [file.clone(), respelled] {
+        let arguments = serde_json::json!({"filePath": spelling.to_string_lossy()}).to_string();
+        std::fs::write(&file, b"{}").unwrap();
+
+        let response = process_message(&mut state, &file, &save_line(&arguments))
+            .expect("dispatch")
+            .expect("response");
+
+        let reply: serde_json::Value = serde_json::from_str(&tool_text(&response)).expect("JSON");
+        assert_eq!(reply["saved"], serde_json::json!(true), "{response}");
+        assert_eq!(reply["path"], file.to_string_lossy().as_ref());
+        assert_eq!(reply["documentId"], "d1");
+        let loaded =
+            crate::doc_io::load_editor_state(&file, op_editor_core::Locale::EnUs).expect("loads");
+        assert_eq!(loaded.doc, state.doc);
+    }
+    let _ = std::fs::remove_dir_all(dir);
+}

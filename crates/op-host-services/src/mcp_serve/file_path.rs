@@ -122,7 +122,10 @@ fn create_empty_document(path: &Path) -> Result<(), McpServeError> {
     .map_err(|e| McpServeError::Document(format!("write {}: {e}", path.display())))
 }
 
-fn same_path(target: &Path, current: &Path) -> bool {
+/// Whether two paths are the same existing file: symlinks, `..` segments and
+/// relative spellings resolved by the OS. A path that does not exist matches
+/// nothing.
+pub(super) fn same_path(target: &Path, current: &Path) -> bool {
     match (target.canonicalize(), current.canonicalize()) {
         (Ok(target), Ok(current)) => target == current,
         _ => false,

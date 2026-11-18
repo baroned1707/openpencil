@@ -2,7 +2,11 @@
 //! callers that are not the user (the MCP `save_document` without a
 //! `filePath`, and the autosave when an agent run ends).
 //!
-//! One routine serves both, so they cannot drift: refuse a document with no
+//! A `save_document` whose `filePath` names the document's OWN file is the same
+//! save (`own_path_claim`): the file is the document's, so there is no copy to
+//! write and nothing for the path policy to guard.
+//!
+//! One routine serves all of them, so they cannot drift: refuse a document with no
 //! file, refuse a collaboration session that does not let this save happen,
 //! refuse when the file changed on disk since the editor last saw it (an
 //! agent's save must never silently replace someone else's change), then write
@@ -114,6 +118,23 @@ pub fn is_in_place_save_call(call: &op_mcp::ToolCall) -> bool {
                 .get(*key)
                 .is_none_or(|value| value.trim().is_empty())
         })
+}
+
+/// The `filePath` of a `save_document` that may name the document's own file,
+/// i.e. the call that names a target but no source file (`sourceFilePath`
+/// asks for a different operation: copy THAT file). Whether the path really is
+/// the document's file is decided where the document's path is known; a path
+/// that is not stays an ordinary copy.
+pub fn own_path_claim(call: &op_mcp::ToolCall) -> Option<&str> {
+    let named = |key: &str| {
+        call.arguments
+            .get(key)
+            .filter(|value| !value.trim().is_empty())
+    };
+    if call.tool != TOOL_NAME || named("sourceFilePath").is_some() {
+        return None;
+    }
+    named("filePath").map(String::as_str)
 }
 
 /// The result an agent reads: `{ saved, path, bytes, documentId, dirtyBefore }`.

@@ -1,5 +1,6 @@
-//! `save_document` WITHOUT a `filePath` in the headless `--mcp` / `--mcp-http`
-//! modes: the loaded file is saved in place.
+//! `save_document` WITHOUT a `filePath`, or with a `filePath` that is the
+//! loaded file itself, in the headless `--mcp` / `--mcp-http` modes: the loaded
+//! file is saved in place. Any other `filePath` is a copy, as before.
 //!
 //! A headless server owns its file outright and already writes it through
 //! after every successful write (`save_editor_state`, atomic), so this changes
@@ -16,9 +17,9 @@ use op_editor_core::EditorState;
 use super::document_address::{format_document_id, HEADLESS_DOCUMENT};
 use super::tool_profile::McpAccessProfile;
 use crate::disk_fingerprint::DiskFingerprint;
-use crate::save_in_place::{is_in_place_save_call, result_json, SavedInPlace};
+use crate::save_in_place::{is_in_place_save_call, own_path_claim, result_json, SavedInPlace};
 
-/// The answer to a filePath-less `save_document`, or `None` for any other call
+/// The answer to a `save_document` for the loaded file, or `None` for any other call
 /// (or one `profile` refuses, which the dispatcher reports).
 pub(super) fn answer_in_headless(
     line: &str,
@@ -27,7 +28,11 @@ pub(super) fn answer_in_headless(
     profile: McpAccessProfile,
 ) -> Option<String> {
     let call = op_mcp::parse_tool_call(line.trim())?;
-    if !is_in_place_save_call(&call) || profile.refuse_call(&call.tool, &call.arguments).is_some() {
+    let names_loaded_file = own_path_claim(&call)
+        .is_some_and(|claimed| super::file_path::same_path(Path::new(claimed), path));
+    if !(is_in_place_save_call(&call) || names_loaded_file)
+        || profile.refuse_call(&call.tool, &call.arguments).is_some()
+    {
         return None;
     }
     let response = match super::save_editor_state(state, path) {

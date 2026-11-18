@@ -194,29 +194,6 @@ fn retry_with_same_operation_id_saves_once() {
 }
 
 #[test]
-fn save_with_file_path_still_refuses_an_open_tab_path() {
-    let workspace = Workspace::new("pinned");
-    let resolver = workspace.resolver();
-    let before = std::fs::read(workspace.file()).unwrap();
-    let body = save_body(&format!(
-        r#","filePath":{}"#,
-        serde_json::to_string(&workspace.file().to_string_lossy()).unwrap()
-    ));
-
-    let mut posted = post_save(&body, resolver, &LiveDocuments::default());
-
-    assert!(is_error(&posted.response), "{}", posted.response);
-    let text = error_text(&posted.response);
-    assert!(
-        text.contains("open in an editor tab") || text.contains("omit filePath"),
-        "{text}"
-    );
-    assert_eq!(std::fs::read(workspace.file()).unwrap(), before);
-    assert!(posted.ui.resolver.document_mut(1).state.is_dirty());
-    assert!(posted.ui.saved.is_empty());
-}
-
-#[test]
 fn the_lean_route_does_not_offer_the_in_place_save() {
     let workspace = Workspace::new("lean");
     let posted = post(
@@ -242,3 +219,6 @@ fn a_copy_save_with_a_source_file_is_not_the_in_place_form() {
     let blank = op_mcp::parse_tool_call(&save_body(r#","filePath":"  ""#)).unwrap();
     assert!(crate::save_in_place::is_in_place_save_call(&blank));
 }
+
+#[path = "save_own_path_route_tests.rs"]
+mod own_path;

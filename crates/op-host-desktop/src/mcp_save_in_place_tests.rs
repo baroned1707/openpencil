@@ -134,3 +134,35 @@ fn an_untitled_document_gets_the_actionable_error_end_to_end() {
     );
     assert!(app.document_is_dirty());
 }
+
+/// Invariant: the natural call, `filePath` = the open file, saves in place
+/// over real HTTP: the file holds the new content and the dirty mark clears,
+/// where it used to be refused as "open in an editor tab".
+#[test]
+fn save_document_with_its_own_file_path_saves_in_place_and_clears_dirty() {
+    let (mut app, port, file, work, recovery) = app_with_file_and_server("mcp-save-own-path");
+    app.poll_mcp_server();
+    edit_active(&mut app, "agent-edit");
+    assert!(app.document_is_dirty());
+
+    let response = call_tool(
+        &mut app,
+        port,
+        "save_document",
+        serde_json::json!({ "filePath": file.to_string_lossy() }),
+    );
+
+    assert!(!response.contains(r#""isError":true"#), "{response}");
+    let result = reply(&response);
+    assert_eq!(result["saved"], serde_json::json!(true));
+    assert_eq!(result["path"], file.to_string_lossy().as_ref());
+    assert_eq!(result["dirtyBefore"], serde_json::json!(true));
+    assert_eq!(saved_name(&file).as_deref(), Some("agent-edit"));
+    assert!(!app.document_is_dirty());
+    assert_eq!(
+        app.disk_baselines.get(&file),
+        DiskFingerprint::capture(&file).ok()
+    );
+    let _ = std::fs::remove_dir_all(work);
+    let _ = std::fs::remove_dir_all(recovery);
+}

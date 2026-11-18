@@ -241,10 +241,13 @@ enum UiRequest {
         ticket: Arc<Ticket>,
         ack: SyncSender<CreateAck>,
     },
-    /// `save_document` without a `filePath`: save the document to its own file
-    /// (see `save_in_place_route`).
+    /// `save_document` without a `filePath`, or with one the caller claims is
+    /// the document's own file: save the document to its own file (see
+    /// `save_in_place_route`). A `claimed_path` that is not that file is
+    /// answered `NotOwnPath` and nothing is saved.
     SaveInPlace {
         document: DocumentId,
+        claimed_path: Option<String>,
         ticket: Arc<Ticket>,
         ack: SyncSender<SaveAck>,
     },

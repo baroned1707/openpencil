@@ -201,7 +201,7 @@ pub(super) fn vet_call(
     let open_files: Vec<PathBuf> = open
         .iter()
         .filter_map(|listing| listing.path.as_deref())
-        .map(|path| std::fs::canonicalize(path).unwrap_or_else(|_| path.to_path_buf()))
+        .map(canonical_open_file)
         .collect();
     for argument in arguments {
         if let Err(reason) = confine(&argument, &roots, &open_files) {
@@ -215,6 +215,24 @@ pub(super) fn vet_call(
         }
     }
     Ok(())
+}
+
+/// An open tab's file as `confine` compares it: symlinks and `..` resolved, or
+/// the path as written when it cannot be resolved (the file is gone).
+fn canonical_open_file(path: &Path) -> PathBuf {
+    std::fs::canonicalize(path).unwrap_or_else(|_| path.to_path_buf())
+}
+
+/// Whether `claimed` names `own_file`, a document's bound file, by the same
+/// test [`vet_call`] uses to refuse a write onto an open tab: the claimed path
+/// must be absolute and, with its existing part resolved, equal the file's
+/// canonical path. So a path is claimed as the document's own exactly when the
+/// policy would otherwise refuse it as "open in an editor tab" for that tab.
+pub(super) fn names_open_file(claimed: &str, own_file: &Path) -> bool {
+    let claimed = Path::new(claimed);
+    claimed.is_absolute()
+        && resolve_through_existing_ancestor(claimed)
+            .is_ok_and(|resolved| resolved == canonical_open_file(own_file))
 }
 
 fn confine(

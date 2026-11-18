@@ -119,6 +119,13 @@ fn run_call(context: &CallContext) -> Result<String, McpLiveError> {
                 image: None,
             }));
         }
+        // `save_document { filePath }` naming the addressed document's OWN
+        // file is the in-place save. It is tried before the path policy,
+        // which would refuse that path as "open in an editor tab"; any other
+        // path (answered `None`) goes through the policy below untouched.
+        if let Some(response) = serve_own_path_save(context, call)? {
+            return Ok(response);
+        }
         if has_path_argument(call) {
             // A file on disk is read, edited and written back: serialize those
             // calls (they belong to no open document), keep every path inside
@@ -167,15 +174,89 @@ fn run_call(context: &CallContext) -> Result<String, McpLiveError> {
 /// The call runs under its document's gate: other documents' calls proceed,
 /// this document's wait.
 fn run_in_document(context: &CallContext, document: DocumentId) -> Result<String, McpLiveError> {
+    // `save_document` is classified a Read (it leaves the document alone),
+    // but its in-place form writes the file: a retried `operationId` must
+    // save once.
+    let remembered = context.tool_call.is_some_and(|call| {
+        tool_writes(&call.tool) || crate::save_in_place::is_in_place_save_call(call)
+    });
+    let answer = run_gated(context, document, remembered, |context| {
+        let mut response = dispatch(context, document)?;
+        if context.route.document.is_none() && context.lists_tools {
+            response = addressing_schema::annotate_tools_list(&response);
+        }
+        Ok(Some(response))
+    })?;
+    // The call above always answers; `None` is only the own-path claim's
+    // "not mine".
+    answer.ok_or(McpLiveError::DocumentChanged)
+}
+
+/// `save_document { filePath }` where `filePath` is the addressed document's
+/// own file, saved in place under the document's gate with the same
+/// `operationId` replay as the filePath-less save. `Ok(None)`: the call is
+/// something else, the document cannot be resolved (the normal path reports
+/// that, in its own order) or the path is not the document's file.
+fn serve_own_path_save(
+    context: &CallContext,
+    call: &ToolCall,
+) -> Result<Option<String>, McpLiveError> {
+    if crate::save_in_place::own_path_claim(call).is_none() {
+        return Ok(None);
+    }
+    let Ok(document) = resolve_document(
+        context.route.document,
+        context.address.document_id.as_deref(),
+        Addressing::Call,
+        context.req_tx,
+        context.wake_ui,
+    ) else {
+        return Ok(None);
+    };
+    // Routing only: a call whose path is not this document's file (the usual
+    // copy) must not enter the gate or the operation log, or a stalled UI
+    // thread could answer it differently from before. The UI thread decides
+    // again, on the live binding, before anything is saved.
+    let names_own_file = request_documents(context.req_tx, context.wake_ui)
+        .ok()
+        .and_then(|open| open.into_iter().find(|listing| listing.id == document))
+        .and_then(|listing| listing.path)
+        .zip(crate::save_in_place::own_path_claim(call))
+        .is_some_and(|(own, claimed)| path_policy::names_open_file(claimed, &own));
+    if !names_own_file {
+        return Ok(None);
+    }
+    let result = run_gated(context, document, true, |context| {
+        save_in_place_route::serve_own_path(
+            context.body,
+            context.profile,
+            document,
+            context.req_tx,
+            context.wake_ui,
+        )
+    });
+    if matches!(result, Err(McpLiveError::UnknownDocument { .. })) {
+        context.documents.forget(document);
+    }
+    result
+}
+
+/// Run `run` under `document`'s gate. When `remembered` and the call carries
+/// an `operationId`, a retry replays the first answer instead of running
+/// again, and an applied call's answer is recorded. `run` answers `None` when
+/// it did not take the call: nothing is recorded and the caller carries on.
+fn run_gated(
+    context: &CallContext,
+    document: DocumentId,
+    remembered: bool,
+    run: impl FnOnce(&CallContext) -> Result<Option<String>, McpLiveError>,
+) -> Result<Option<String>, McpLiveError> {
     let gate = context.documents.gate(document);
     let mut log = lock_gate(&gate);
     let timing = context.req_tx.timing();
     let operation = context
         .tool_call
-        // `save_document` is classified a Read (it leaves the document
-        // alone), but its in-place form writes the file: a retried
-        // `operationId` must save once.
-        .filter(|call| tool_writes(&call.tool) || crate::save_in_place::is_in_place_save_call(call))
+        .filter(|_| remembered)
         .zip(context.address.operation_id.as_deref())
         .map(|(call, operation_id)| {
             (
@@ -186,7 +267,7 @@ fn run_in_document(context: &CallContext, document: DocumentId) -> Result<String
         });
     if let Some((call, operation_id, fingerprint)) = &operation {
         match log.lookup(operation_id, *fingerprint, timing.now()) {
-            Lookup::Replay(stored) => return Ok(replay_response(&stored, &call.id)),
+            Lookup::Replay(stored) => return Ok(Some(replay_response(&stored, &call.id))),
             // The first attempt may have landed: refuse rather than apply twice.
             Lookup::InDoubt => return Err(McpLiveError::OutcomeUnknown),
             Lookup::Conflict => {
@@ -197,8 +278,9 @@ fn run_in_document(context: &CallContext, document: DocumentId) -> Result<String
             Lookup::Miss => {}
         }
     }
-    let mut response = match dispatch(context, document) {
-        Ok(response) => response,
+    let response = match run(context) {
+        Ok(Some(response)) => response,
+        Ok(None) => return Ok(None),
         Err(McpLiveError::OutcomeUnknown) => {
             // Recorded while this document's gate is still held, so a retry
             // cannot slip in between the doubt and its record.
@@ -216,10 +298,7 @@ fn run_in_document(context: &CallContext, document: DocumentId) -> Result<String
             log.record(operation_id, *fingerprint, response.clone(), timing.now());
         }
     }
-    if context.route.document.is_none() && context.lists_tools {
-        response = addressing_schema::annotate_tools_list(&response);
-    }
-    Ok(response)
+    Ok(Some(response))
 }
 
 /// Run the call against `document`, holding its gate.
