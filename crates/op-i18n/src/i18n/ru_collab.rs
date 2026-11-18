@@ -646,6 +646,7 @@ pub fn lookup(key: &str) -> Option<&'static str> {
         "settings.fonts.autoDownload" => "Скачивать недостающие шрифты",
         "settings.fonts.autoDownloadHint" => "Отправляет в Fontsource и GitHub только названия шрифтов.",
         "fileMenu.copyImageCredits" => "Скопировать авторство изображений",
+        "fileMenu.thirdPartyNotices" => "Уведомления третьих сторон",
         "imageCredits.copiedOne" => "Скопировано авторство 1 изображения",
         "imageCredits.copied" => "Скопировано авторство изображений: {{count}}",
         "imageCredits.none" => "В этом документе нет авторства изображений",

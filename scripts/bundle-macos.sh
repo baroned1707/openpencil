@@ -212,7 +212,7 @@ mkdir -p "$APP/Contents/Resources"
 cp "$WS_ROOT/crates/op-host-desktop/assets/icon.icns" "$APP/Contents/Resources/icon.icns"
 # File-type icon for .op documents (CFBundleTypeIconFile = document above).
 cp "$WS_ROOT/crates/op-host-desktop/assets/document.icns" "$APP/Contents/Resources/document.icns"
-bash "$WS_ROOT/scripts/stage-font-notices.sh" "$APP/Contents/Resources/font-notices"
+bash "$WS_ROOT/scripts/stage-notices.sh" "$APP/Contents/Resources/notices"
 
 if [ -n "${OPENPENCIL_BINARY:-}" ]; then
   echo "==> installing prebuilt binary into Contents/MacOS/"

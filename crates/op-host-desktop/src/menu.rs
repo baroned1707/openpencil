@@ -37,6 +37,8 @@ pub enum MenuAction {
     SaveAsTemplate,
     /// Copy the document's stock-image credit lines to the clipboard.
     CopyImageCredits,
+    /// Open the bundled third-party notices.
+    OpenThirdPartyNotices,
     Export,
     Undo,
     Redo,
@@ -95,6 +97,7 @@ mod backend {
     const ID_SAVE_AS: &str = "save-as";
     const ID_SAVE_AS_TEMPLATE: &str = "save-as-template";
     const ID_COPY_IMAGE_CREDITS: &str = "copy-image-credits";
+    const ID_THIRD_PARTY_NOTICES: &str = "third-party-notices";
     const ID_EXPORT: &str = "export";
     const ID_UNDO: &str = "undo";
     const ID_REDO: &str = "redo";
@@ -133,6 +136,7 @@ mod backend {
             ID_SAVE_AS => MenuAction::SaveAs,
             ID_SAVE_AS_TEMPLATE => MenuAction::SaveAsTemplate,
             ID_COPY_IMAGE_CREDITS => MenuAction::CopyImageCredits,
+            ID_THIRD_PARTY_NOTICES => MenuAction::OpenThirdPartyNotices,
             ID_EXPORT => MenuAction::Export,
             ID_UNDO => MenuAction::Undo,
             ID_REDO => MenuAction::Redo,
@@ -262,6 +266,12 @@ mod backend {
                 &item(
                     ID_COPY_IMAGE_CREDITS,
                     tr(locale, "fileMenu.copyImageCredits"),
+                    None,
+                ),
+                // Same reason: opening a licence file is not a keystroke action.
+                &item(
+                    ID_THIRD_PARTY_NOTICES,
+                    tr(locale, "fileMenu.thirdPartyNotices"),
                     None,
                 ),
             ]);
@@ -426,6 +436,7 @@ mod backend {
                 ID_DESIGN_MD,
                 ID_COMPONENT_BROWSER,
                 ID_OPEN_PROJECT,
+                ID_THIRD_PARTY_NOTICES,
                 ID_QUIT,
                 ID_CHECK_UPDATES,
                 ID_GITHUB,

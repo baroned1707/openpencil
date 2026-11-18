@@ -616,6 +616,7 @@ pub fn lookup(key: &str) -> Option<&'static str> {
         "settings.fonts.autoDownload" => "Fehlende Schriftarten automatisch herunterladen",
         "settings.fonts.autoDownloadHint" => "Sendet nur die Namen fehlender Schriften an Fontsource und GitHub.",
         "fileMenu.copyImageCredits" => "Bildnachweise kopieren",
+        "fileMenu.thirdPartyNotices" => "Hinweise zu Drittanbietern",
         "imageCredits.copiedOne" => "1 Bildnachweis kopiert",
         "imageCredits.copied" => "{{count}} Bildnachweise kopiert",
         "imageCredits.none" => "Keine Bildnachweise in diesem Dokument",

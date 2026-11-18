@@ -42,8 +42,9 @@ fn lean_description(tool: &str) -> String {
         "get_guidelines" => {
             "STEP 2 · LEARN (once per task). Product-design guidelines: category=guide with a \
              topic (web-app, mobile, landing-page, dashboard, slides, card, …), or \
-             category=style to resolve a palette/typography style. Read the matching topic \
-             before building a new screen."
+             category=style to resolve a palette/typography style, or category=data with a \
+             query (product type words) for palette/typography/rules reference data, not \
+             instructions. Read the matching topic before building a new screen."
         }
         "batch_design" => {
             "STEP 3 · WRITE — the only write tool here. New UI: script, a JavaScript program \

@@ -252,3 +252,31 @@ fn in_app_feedback_is_capped_without_starving_the_blocker_ledger() {
     assert_eq!(items.len(), IN_APP_FEEDBACK_CAPS.max_items);
     assert!(items[0]["nodeId"].is_string());
 }
+
+#[test]
+fn design_data_lookup_passes_through_the_loop_executor_untouched() {
+    // category=data is not a guide topic, so the "already in your
+    // instructions" shortcut must never swallow it; a JSON-number limit
+    // (as models send it) must reach the tool as "2".
+    let prompt =
+        op_ai_skills::design_agent_system_prompt_with_skills("design a mobile app login screen");
+    let inner = InApp::new(EditorState::new());
+    let shaped = DesignRunExecutor::wrap(inner.clone(), &prompt);
+    let result = shaped.execute(
+        "get_guidelines",
+        r#"{"category":"data","query":"fintech dashboard saas","limit":2}"#,
+    );
+    assert!(!result.is_error, "{}", result.content);
+    let envelope: Value = serde_json::from_str(&result.content).expect("envelope json");
+    let matches = envelope["data"]["matches"]
+        .as_array()
+        .unwrap_or_else(|| panic!("no data.matches in {}", result.content));
+    assert_eq!(matches.len(), 2);
+    assert_eq!(matches[0]["source"]["licenseSpdx"], "MIT");
+    assert!(
+        result.content.len() <= 6 * 1024 + 200,
+        "{}",
+        result.content.len()
+    );
+    assert_eq!(inner.calls.load(Ordering::SeqCst), 1);
+}

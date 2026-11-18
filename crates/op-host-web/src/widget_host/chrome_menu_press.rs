@@ -66,6 +66,7 @@ impl WidgetHost {
                     FileMenuChoice::ExportPptx => FileAction::ExportPptx,
                     FileMenuChoice::Share => FileAction::Share,
                     FileMenuChoice::CopyImageCredits => FileAction::CopyImageCredits,
+                    FileMenuChoice::ThirdPartyNotices => FileAction::OpenThirdPartyNotices,
                     FileMenuChoice::OpenRecent(i) => FileAction::OpenRecent(i),
                     FileMenuChoice::ClearRecent => FileAction::ClearRecent,
                     // Handled above — it opens a panel, not a file action.

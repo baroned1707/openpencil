@@ -618,6 +618,7 @@ pub fn lookup(key: &str) -> Option<&'static str> {
         "settings.fonts.autoDownload" => "ดาวน์โหลดแบบอักษรที่ขาดโดยอัตโนมัติ",
         "settings.fonts.autoDownloadHint" => "ส่งเฉพาะชื่อแบบอักษรที่ขาดไปยัง Fontsource และ GitHub",
         "fileMenu.copyImageCredits" => "คัดลอกเครดิตรูปภาพ",
+        "fileMenu.thirdPartyNotices" => "ประกาศของบุคคลที่สาม",
         "imageCredits.copiedOne" => "คัดลอกเครดิตรูปภาพ 1 รายการแล้ว",
         "imageCredits.copied" => "คัดลอกเครดิตรูปภาพ {{count}} รายการแล้ว",
         "imageCredits.none" => "ไม่มีเครดิตรูปภาพในเอกสารนี้",

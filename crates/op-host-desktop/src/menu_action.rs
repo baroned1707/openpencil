@@ -123,6 +123,15 @@ impl DesktopApp {
                 );
                 true
             }
+            A::OpenThirdPartyNotices => {
+                persistence::run_action(
+                    op_editor_core::editor_ui_state::FileAction::OpenThirdPartyNotices,
+                    &mut self.host,
+                    &mut self.current_path,
+                    self.window.as_ref(),
+                );
+                false
+            }
             A::Export => {
                 self.host.commit_variable_row_focus_if_any_pub();
                 self.host

@@ -627,3 +627,22 @@ fn planning_resolves_the_mobile_screen_archetype_for_phone_briefs() {
         "mobile banking must resolve screen archetypes; got {names:?}"
     );
 }
+
+/// Size of `design-agent.md` before the design-data paragraph was added.
+const DESIGN_AGENT_BYTES_BEFORE_DATA_GUIDANCE: usize = 29_549;
+
+#[test]
+fn design_agent_prompt_grows_less_than_700_bytes() {
+    let file = crate::phase_corpus_dir()
+        .and_then(|dir| dir.get_file("phases/agent/design-agent.md"))
+        .expect("design-agent.md is embedded");
+    let text = file.contents_utf8().expect("utf-8");
+    assert!(
+        text.len() < DESIGN_AGENT_BYTES_BEFORE_DATA_GUIDANCE + 700,
+        "design-agent.md is {} bytes; the data paragraph may add under 700",
+        text.len()
+    );
+    // The paragraph is there, and keeps the user's own context in charge.
+    assert!(text.contains(r#"get_guidelines(category:"data""#));
+    assert!(text.contains("never overrides the user's design.md, pinned style or existing screens"));
+}

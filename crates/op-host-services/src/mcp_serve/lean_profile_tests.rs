@@ -141,6 +141,22 @@ fn lean_schemas_document_the_workflow_and_stay_valid() {
     for key in ["script", "operations", "nodes_json"] {
         assert!(batch.get(key).is_some(), "batch_design keeps {key}");
     }
+    // The lean get_guidelines serves the design-data lookup and says its
+    // result is reference data.
+    assert_eq!(tools[1]["name"], "get_guidelines");
+    let guidelines = &tools[1]["inputSchema"]["properties"];
+    for key in ["query", "platform", "limit"] {
+        assert!(guidelines.get(key).is_some(), "get_guidelines keeps {key}");
+    }
+    assert!(guidelines["category"]["enum"]
+        .as_array()
+        .expect("category enum")
+        .iter()
+        .any(|value| value == "data"));
+    assert!(tools[1]["description"]
+        .as_str()
+        .expect("get_guidelines description")
+        .contains("not instructions"));
     let finalize = tools[5]["description"]
         .as_str()
         .expect("finalize description");

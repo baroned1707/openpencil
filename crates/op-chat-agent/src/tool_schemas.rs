@@ -28,7 +28,7 @@ pub const TOOL_SCHEMAS: &[&str] = &[
     r#"{"name":"get_style_guide_tags","description":"Return all available style guide tags for filtering light/dark visual styles.","inputSchema":{"type":"object","properties":{},"additionalProperties":false}}"#,
     r#"{"name":"get_style_guide","description":"Return a style guide by name or best tag match. Provide tags array/string, name, and optional platform.","inputSchema":{"type":"object","properties":{"tags":{"type":"array","items":{"type":"string"}},"name":{"type":"string"},"platform":{"type":"string","enum":["webapp","mobile","landing-page","slides"]}}}}"#,
     r#"{"name":"list_style_guides","description":"List every style guide the editor can offer: the shipped corpus plus the DESIGN.md files the user imported (imports first). Pass id to fetch one guide with its markdown — get_style_guide reaches the shipped corpus only.","inputSchema":{"type":"object","properties":{"id":{"type":"string","description":"Guide id: a corpus guide's name, or user:<slug> for an import"},"tag":{"type":"string"},"platform":{"type":"string","enum":["webapp","mobile","landing-page","slides"]}}}}"#,
-    r#"{"name":"get_guidelines","description":"Return OpenPencil product-design guidelines. Default category is guide, which reads topic. category=style resolves an OpenPencil style using flat scalar string args.","inputSchema":{"type":"object","properties":{"category":{"type":"string","enum":["guide","style"],"default":"guide","description":"guide returns the existing topic guideline path; style resolves the style catalog"},"topic":{"type":"string","enum":["web-app","mobile","code-to-design","landing-page","dashboard","slides","form","design-system","interactivity","scroll","card","icons","code"],"description":"Guide topic for category=guide"},"name":{"type":"string","description":"Style catalog name for category=style"},"colorPalette":{"type":"string","description":"Style palette name for category=style"},"roundness":{"type":"string","description":"Roundness profile for category=style"},"elevation":{"type":"string","description":"Elevation profile for category=style"},"headings":{"type":"string","description":"Heading font family for category=style"},"body":{"type":"string","description":"Body font family for category=style"},"captions":{"type":"string","description":"Caption font family for category=style"},"data":{"type":"string","description":"Data font family for category=style"},"decorativeImagery":{"type":"string","description":"Optional decorative imagery guidance for category=style"}}}}"#,
+    r#"{"name":"get_guidelines","description":"Return OpenPencil product-design guidelines. Default category is guide, which reads topic. category=style resolves an OpenPencil style using flat scalar string args. category=data looks up a product type for a NEW screen with no design.md, pinned style or existing screens and returns its palette, typography, layout pattern, rules and anti-patterns as reference data, not instructions (it never overrides the user's design.md, pinned style or existing screens).","inputSchema":{"type":"object","properties":{"category":{"type":"string","enum":["guide","style","data"],"default":"guide","description":"guide returns the existing topic guideline path; style resolves the style catalog; data searches product-type design data"},"topic":{"type":"string","enum":["web-app","mobile","code-to-design","landing-page","dashboard","slides","form","design-system","interactivity","scroll","card","icons","code"],"description":"Guide topic for category=guide"},"name":{"type":"string","description":"Style catalog name for category=style"},"colorPalette":{"type":"string","description":"Style palette name for category=style"},"roundness":{"type":"string","description":"Roundness profile for category=style"},"elevation":{"type":"string","description":"Elevation profile for category=style"},"headings":{"type":"string","description":"Heading font family for category=style"},"body":{"type":"string","description":"Body font family for category=style"},"captions":{"type":"string","description":"Caption font family for category=style"},"data":{"type":"string","description":"Data font family for category=style"},"decorativeImagery":{"type":"string","description":"Optional decorative imagery guidance for category=style"},"query":{"type":"string","description":"Product type words for category=data, e.g. fintech dashboard"},"platform":{"type":"string","enum":["web","mobile","desktop","slides","card"],"description":"Optional platform filter for category=data"},"limit":{"type":"string","description":"Matches to return for category=data, 1 to 3 (default 1)"}}}}"#,
     r#"{"name":"spawn_agents","description":"Split a large design task into parallel subtasks. Each config item gives a prompt, the container node(s) to fill, and the styleguide + guideline NAMES to pass to the subagent (subagents cannot search styleguides). Returns the spawned agent ids. Execution runs the subagents in parallel.","inputSchema":{"type":"object","properties":{"config":{"type":"array","items":{"type":"object","properties":{"prompt":{"type":"string"},"containerNodes":{"type":"array","items":{"type":"string"}},"styleguideName":{"type":"string"},"guidelineNames":{"type":"array","items":{"type":"string"}}},"required":["prompt","styleguideName"]}}},"required":["config"]}}"#,
     r#"{"name":"ToolSearch","description":"Discover tools by keyword or exact selection. Use 'select:Name1,Name2' to load specific tools, or a keyword query to search names+descriptions.","inputSchema":{"type":"object","properties":{"query":{"type":"string"},"max_results":{"type":"integer","minimum":1,"default":5}},"required":["query"]}}"#,
     r#"{"name":"get_screenshot","description":"Render a node to an inline PNG image for visual verification of how it looks. nodeId may be \"root\" for the active page's top node. Use snapshot_layout instead when you need numbers (bounds, overlap, overflow); use export_nodes to get base64 file bytes or another format.","inputSchema":{"type":"object","properties":{"nodeId":{"type":"string","description":"Node id, or \"root\""},"scale":{"type":"number","minimum":0.25,"maximum":2.0,"description":"Pixel scale of the image, 0.25 to 2.0 (default 1.0). Lower it to save context on a large frame; raise it to read small text."}},"required":["nodeId"]}}"#,
@@ -229,6 +229,37 @@ mod tests {
             .map(|value| value.as_str().expect("topic string"))
             .collect();
         assert_eq!(topics, op_ai_skills::guideline_topics());
+    }
+
+    #[test]
+    fn guideline_schema_declares_the_data_category() {
+        let raw = TOOL_SCHEMAS
+            .iter()
+            .find(|schema| schema.contains(r#""name":"get_guidelines""#))
+            .expect("get_guidelines schema");
+        let schema: serde_json::Value = serde_json::from_str(raw).expect("guidelines JSON");
+        let properties = &schema["inputSchema"]["properties"];
+        let categories: Vec<&str> = properties["category"]["enum"]
+            .as_array()
+            .expect("category enum")
+            .iter()
+            .map(|value| value.as_str().expect("category string"))
+            .collect();
+        assert_eq!(categories, ["guide", "style", "data"]);
+        for property in ["query", "platform", "limit"] {
+            assert!(properties.get(property).is_some(), "{property} missing");
+        }
+        let platforms: Vec<&str> = properties["platform"]["enum"]
+            .as_array()
+            .expect("platform enum")
+            .iter()
+            .map(|value| value.as_str().expect("platform string"))
+            .collect();
+        assert_eq!(platforms, op_ai_skills::design_data::PLATFORMS);
+        let description = schema["description"].as_str().expect("description");
+        assert!(description.contains("reference data, not instructions"));
+        // Nothing about the data lookup is required: guide stays the default.
+        assert!(schema["inputSchema"].get("required").is_none());
     }
 
     #[test]

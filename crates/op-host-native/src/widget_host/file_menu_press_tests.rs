@@ -75,3 +75,30 @@ fn copy_image_credits_row_queues_the_file_action() {
     );
     assert!(!host.editor_state().editor_ui.file_menu_open);
 }
+
+#[test]
+fn third_party_notices_row_queues_the_file_action() {
+    let mut host = WidgetHostNative::new();
+    host.editor_state_mut().editor_ui.notices_supported = true;
+    host.editor_state_mut().editor_ui.file_menu_open = true;
+    let top_bar_rect = Rect {
+        origin: Point2D::new(0.0, 0.0),
+        size: Point2D::new(VIEWPORT_W, TOP_BAR_HEIGHT),
+    };
+    let top_bar = TopBar::for_editor_ui(&host.editor_state().editor_ui);
+    let anchor = top_bar.file_menu_rect_for(top_bar_rect);
+    let menu = FileMenu::from_editor_ui(&host.editor_state().editor_ui, 0);
+    let panel = menu.rect_at(anchor);
+    let point = (0..panel.size.y as usize)
+        .map(|dy| Point2D::new(panel.origin.x + 20.0, panel.origin.y + dy as f32))
+        .find(|point| menu.hit_test(panel, *point) == Some(FileMenuChoice::ThirdPartyNotices))
+        .expect("Third-party notices row was not present");
+
+    host.dispatch_file_menu_press(point.x, point.y, VIEWPORT_W);
+
+    assert_eq!(
+        host.editor_state().editor_ui.pending_file_action,
+        Some(op_editor_core::FileAction::OpenThirdPartyNotices)
+    );
+    assert!(!host.editor_state().editor_ui.file_menu_open);
+}

@@ -111,6 +111,10 @@ pub(crate) fn drain_pending_file_action<C: RepaintContext + 'static>(inner: &Inn
             // Gated on `image_credits_supported`, which web leaves at
             // `false`, so the File menu never paints the row that raises this.
         }
+        FileAction::OpenThirdPartyNotices => {
+            // Gated on `notices_supported`, which web leaves at `false`, so
+            // the File menu never paints the row that raises this.
+        }
         FileAction::ImportFigma => import_figma(inner),
         FileAction::FinishFigmaImport(_) => {
             // Desktop alone holds a PreparedFig between modal steps.

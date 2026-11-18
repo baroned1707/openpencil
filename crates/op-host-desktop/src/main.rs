@@ -100,6 +100,7 @@ mod mcp_serve;
 mod menu;
 mod menu_action;
 mod message_dialog;
+mod notices_host;
 mod persistence;
 mod persistence_error;
 mod persistence_export_batch;

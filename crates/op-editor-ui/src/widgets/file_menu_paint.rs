@@ -218,6 +218,19 @@ impl<'a> Widget for FileMenu<'a> {
             );
             y += ROW_HEIGHT;
         }
+        if self.has_notices_row() {
+            paint_row(
+                cx,
+                &self.theme,
+                rect.origin.x,
+                y,
+                Icon::FileText,
+                t(self.ui, "thirdPartyNotices"),
+                "",
+                h(self.notices_row()),
+            );
+            y += ROW_HEIGHT;
+        }
         y = paint_divider(cx, &self.theme, rect, y);
         paint_header(cx, &self.theme, rect.origin.x, y, t(self.ui, "recentFiles"));
         y += HEADER_HEIGHT;

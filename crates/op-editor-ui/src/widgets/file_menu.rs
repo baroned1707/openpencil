@@ -41,6 +41,8 @@ fn t(ui: &EditorUiState, key: &str) -> &'static str {
         "exportSlideshowHtml" => "fileMenu.exportSlideshowHtml",
         "exportPptx" => "fileMenu.exportPptx",
         "share" => "share.fileMenu",
+        "copyImageCredits" => "fileMenu.copyImageCredits",
+        "thirdPartyNotices" => "fileMenu.thirdPartyNotices",
         "recentFiles" => "fileMenu.recentFiles",
         "noRecentFiles" => "fileMenu.noRecentFiles",
         "clearHistory" => "fileMenu.clearHistory",
@@ -121,6 +123,10 @@ pub enum FileMenuChoice {
     /// host sets `EditorUiState::image_credits_supported`; it is the very last
     /// row of the export section, so no earlier row moves.
     CopyImageCredits,
+    /// Open the bundled third-party notices. Offered only when the host sets
+    /// `EditorUiState::notices_supported`; it is the very last row of the
+    /// export section, after Copy image credits, so no earlier row moves.
+    ThirdPartyNotices,
     OpenRecent(usize),
     ClearRecent,
 }
@@ -218,18 +224,24 @@ impl<'a> FileMenu<'a> {
         self.ui.image_credits_supported
     }
 
+    /// Whether the Third-party notices row closes the export section.
+    fn has_notices_row(&self) -> bool {
+        self.ui.notices_supported
+    }
+
     /// Rows in the export section (Export image, plus the optional
-    /// Export-all-frames row, the two deck-export rows, Share and Copy image
-    /// credits).
+    /// Export-all-frames row, the two deck-export rows, Share, Copy image
+    /// credits and Third-party notices).
     fn export_rows(&self) -> usize {
         1 + usize::from(self.has_export_all_row())
             + 2 * usize::from(self.has_deck_export_rows())
             + usize::from(self.has_share_row())
             + usize::from(self.has_copy_credits_row())
+            + usize::from(self.has_notices_row())
     }
 
-    /// Row index of the last row of the export section — Copy image credits
-    /// when offered, else Share.
+    /// Row index of the last row of the export section — Third-party notices
+    /// when offered, else Copy image credits, else Share.
     fn last_export_row(&self) -> usize {
         6 + self.top_shift() + usize::from(self.has_save_as_template_row()) + self.export_rows() - 1
     }
@@ -237,12 +249,18 @@ impl<'a> FileMenu<'a> {
     /// Row index of the Share row. Only meaningful when
     /// [`FileMenu::has_share_row`] holds.
     fn share_row(&self) -> usize {
-        self.last_export_row() - usize::from(self.has_copy_credits_row())
+        self.copy_credits_row() - usize::from(self.has_copy_credits_row())
     }
 
     /// Row index of the Copy image credits row. Only meaningful when
     /// [`FileMenu::has_copy_credits_row`] holds.
     fn copy_credits_row(&self) -> usize {
+        self.last_export_row() - usize::from(self.has_notices_row())
+    }
+
+    /// Row index of the Third-party notices row. Only meaningful when
+    /// [`FileMenu::has_notices_row`] holds.
+    fn notices_row(&self) -> usize {
         self.last_export_row()
     }
 
@@ -348,6 +366,9 @@ impl<'a> FileMenu<'a> {
             row if self.has_share_row() && row == self.share_row() => Some(FileMenuChoice::Share),
             row if self.has_copy_credits_row() && row == self.copy_credits_row() => {
                 Some(FileMenuChoice::CopyImageCredits)
+            }
+            row if self.has_notices_row() && row == self.notices_row() => {
+                Some(FileMenuChoice::ThirdPartyNotices)
             }
             row if row >= recent_start && row < recent_start + self.recent.len() => {
                 Some(FileMenuChoice::OpenRecent(row - recent_start))

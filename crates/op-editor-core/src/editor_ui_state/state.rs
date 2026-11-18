@@ -534,6 +534,9 @@ pub struct EditorUiState {
     /// Whether this host can put text on the clipboard and show a toast, so
     /// the File menu offers "Copy image credits". Desktop sets it.
     pub image_credits_supported: bool,
+    /// Whether this host can open a file or URL with the system opener, so
+    /// the File menu offers "Third-party notices". Desktop sets it.
+    pub notices_supported: bool,
     /// Rows of the post-import HTML diagnostics overlay, in the order the
     /// importer reported them. Empty means the last import degraded nothing.
     pub html_import_diagnostics: Vec<crate::html_import_diagnostics::HtmlImportDiagnostic>,

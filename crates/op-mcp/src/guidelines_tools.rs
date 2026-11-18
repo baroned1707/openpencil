@@ -15,6 +15,9 @@ use super::{McpTool, ToolErrorCode, ToolOutcome};
 
 /// Read tool that returns the product-design guidelines for `topic`.
 ///
+/// `category=data` looks a product type up in the embedded design-data table
+/// (see `guidelines_data`).
+///
 /// Supported topics are exactly `op_ai_skills::guideline_topics()` — the
 /// missing-argument and unknown-topic error hints below are generated from
 /// that list so they can never drift stale as topics are added (see
@@ -47,9 +50,10 @@ impl McpTool for GetGuidelines {
         match category.as_str() {
             "guide" => call_guide(args, self.surface),
             "style" => call_style(args),
+            "data" => super::guidelines_data::call_data(args),
             other => ToolOutcome::Err(
                 ToolErrorCode::InvalidArgument,
-                format!("category must be \"guide\" or \"style\", got {other:?}"),
+                format!("category must be \"guide\", \"style\" or \"data\", got {other:?}"),
             ),
         }
     }

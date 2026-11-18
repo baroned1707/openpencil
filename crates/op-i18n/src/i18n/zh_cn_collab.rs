@@ -616,6 +616,7 @@ pub fn lookup(key: &str) -> Option<&'static str> {
         "settings.fonts.autoDownload" => "自动下载缺失字体",
         "settings.fonts.autoDownloadHint" => "仅将缺失字体的名称发送到 Fontsource 和 GitHub。",
         "fileMenu.copyImageCredits" => "复制图片署名",
+        "fileMenu.thirdPartyNotices" => "第三方声明",
         "imageCredits.copiedOne" => "已复制 1 条图片署名",
         "imageCredits.copied" => "已复制 {{count}} 条图片署名",
         "imageCredits.none" => "此文档没有图片署名",

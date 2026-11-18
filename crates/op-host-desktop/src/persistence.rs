@@ -557,6 +557,10 @@ pub fn run_action(
             crate::image_credits_host::copy_image_credits(host);
             ActionOutcome::Noop
         }
+        FileAction::OpenThirdPartyNotices => {
+            crate::notices_host::open_third_party_notices();
+            ActionOutcome::Noop
+        }
         FileAction::OpenRecent(i) => {
             let Some(entry) = host.editor_state().editor_ui.recent_files.get(i).cloned() else {
                 return ActionOutcome::Noop;

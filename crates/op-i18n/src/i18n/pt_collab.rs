@@ -616,6 +616,7 @@ pub fn lookup(key: &str) -> Option<&'static str> {
         "settings.fonts.autoDownload" => "Baixar fontes ausentes automaticamente",
         "settings.fonts.autoDownloadHint" => "Envia só os nomes das fontes ausentes ao Fontsource e ao GitHub.",
         "fileMenu.copyImageCredits" => "Copiar créditos de imagens",
+        "fileMenu.thirdPartyNotices" => "Avisos de terceiros",
         "imageCredits.copiedOne" => "1 crédito de imagem copiado",
         "imageCredits.copied" => "{{count}} créditos de imagens copiados",
         "imageCredits.none" => "Nenhum crédito de imagem neste documento",

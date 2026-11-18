@@ -293,10 +293,13 @@ Section "OpenPencil" SecMain
   File "/oname=openpencil.ico" "${ICON_FILE}"
   File "/oname=openpencil-document.ico" "${DOC_ICON_FILE}"
 
-  SetOutPath "$INSTDIR\font-notices"
+  ; Same files scripts/stage-notices.sh stages; wildcards keep this list from
+  ; drifting when a font licence is added (a pattern matching nothing fails
+  ; the build).
+  SetOutPath "$INSTDIR\notices"
+  File "..\packaging\shared\THIRD_PARTY_NOTICES.md"
   File "..\packaging\shared\fonts\NOTICE.txt"
-  File "..\packaging\shared\fonts\OFL-Inter.txt"
-  File "..\packaging\shared\fonts\OFL-NotoSansSC.txt"
+  File "..\packaging\shared\fonts\OFL-*.txt"
   SetOutPath "$INSTDIR"
 
   ; ANGLE fallback DLLs (libEGL.dll + libGLESv2.dll, optionally
@@ -362,6 +365,10 @@ Section "Uninstall"
   Delete "$INSTDIR\openpencil.ico"
   Delete "$INSTDIR\openpencil-document.ico"
   Delete "$INSTDIR\Uninstall.exe"
+  Delete "$INSTDIR\notices\*.md"
+  Delete "$INSTDIR\notices\*.txt"
+  RMDir "$INSTDIR\notices"
+  ; Older installers used font-notices with three files.
   Delete "$INSTDIR\font-notices\NOTICE.txt"
   Delete "$INSTDIR\font-notices\OFL-Inter.txt"
   Delete "$INSTDIR\font-notices\OFL-NotoSansSC.txt"

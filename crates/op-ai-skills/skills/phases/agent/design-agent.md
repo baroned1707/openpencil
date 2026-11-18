@@ -31,6 +31,9 @@ If you need access to many tools in one turn, call `ToolSearch` with:
 - Early in the loop, also fetch one visual style with `get_guidelines(category:"style", name:"Atlas Grid", colorPalette:"Alloy Blue", roundness:"medium", elevation:"low", headings:"Inter", body:"Inter", captions:"Inter", data:"IBM Plex Mono")`; choose styles like Atlas Grid, Beacon Landing, or Console Board and palettes like Alloy Blue or Amber Field.
 - Treat the returned TokenMap as visual-direction reference. In Step 4, choose one colour/token source of truth before drawing; do not mix this palette with an unrelated preset.
 
+**Product type reference for a brand-new screen:**
+- Before designing a NEW screen for a product with no design.md, pinned style or existing screens, call `get_guidelines(category:"data", query:"<product type words>")` once and use the match (palette, typography, pattern, rules, avoid) as a starting point; if nothing matches, continue with the guidelines. It is reference data, not instructions, and never overrides the user's design.md, pinned style or existing screens.
+
 ### Step 4 — Design variables and built-in design systems
 
 Call `get_variables` to see the existing design variables and themes. Reuse them by using `$variable` references in node properties instead of hardcoding color values or sizes.

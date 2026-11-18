@@ -533,3 +533,73 @@ fn copy_image_credits_row_closes_the_export_section_and_moves_nothing_before_it(
         .iter()
         .any(|(text, _)| text == t(&ui, "copyImageCredits")));
 }
+
+#[test]
+fn third_party_notices_row_is_last_in_the_export_section_and_moves_nothing_before_it() {
+    let plain_ui = EditorUiState::default();
+    let plain = FileMenu::for_editor_ui(&plain_ui, two_recents());
+    for row in 0..plain.height() as usize {
+        assert_ne!(
+            plain.choice_for_row(row),
+            Some(FileMenuChoice::ThirdPartyNotices)
+        );
+    }
+
+    // Alone: right after Export image; recents shift down by one.
+    let ui = EditorUiState {
+        notices_supported: true,
+        ..Default::default()
+    };
+    let menu = FileMenu::for_editor_ui(&ui, two_recents());
+    assert_eq!(menu.choice_for_row(6), plain.choice_for_row(6));
+    assert_eq!(
+        menu.choice_for_row(7),
+        Some(FileMenuChoice::ThirdPartyNotices)
+    );
+    assert_eq!(menu.choice_for_row(8), Some(FileMenuChoice::OpenRecent(0)));
+    assert_eq!(menu.choice_for_row(10), Some(FileMenuChoice::ClearRecent));
+    assert_eq!(menu.height(), plain.height() + ROW_HEIGHT);
+
+    // With Share and Copy image credits it comes after both of them.
+    let mut ui = desktop_ui(Some(TemplateScene::Slides));
+    ui.image_credits_supported = true;
+    ui.notices_supported = true;
+    let menu = FileMenu::for_editor_ui(&ui, two_recents());
+    let choices: Vec<_> = (6..14).map(|row| menu.choice_for_row(row)).collect();
+    let share = choices
+        .iter()
+        .position(|c| *c == Some(FileMenuChoice::Share))
+        .expect("share row");
+    assert_eq!(choices[share + 1], Some(FileMenuChoice::CopyImageCredits));
+    assert_eq!(choices[share + 2], Some(FileMenuChoice::ThirdPartyNotices));
+    assert_eq!(choices[share + 3], Some(FileMenuChoice::OpenRecent(0)));
+
+    // Notices without credits: Share, then Notices.
+    ui.image_credits_supported = false;
+    let menu = FileMenu::for_editor_ui(&ui, two_recents());
+    let choices: Vec<_> = (6..14).map(|row| menu.choice_for_row(row)).collect();
+    let share = choices
+        .iter()
+        .position(|c| *c == Some(FileMenuChoice::Share))
+        .expect("share row");
+    assert_eq!(choices[share + 1], Some(FileMenuChoice::ThirdPartyNotices));
+
+    // Painted with a real label, and a click inside that row selects it.
+    assert!(!t(&ui, "thirdPartyNotices").is_empty());
+    assert!(!t(&ui, "copyImageCredits").is_empty());
+    let panel = menu_panel(&menu);
+    let mut backend = TextCaptureBackend::default();
+    let mut cx = PaintCx {
+        backend: &mut backend,
+    };
+    menu.paint(&mut cx, panel);
+    assert!(backend
+        .texts
+        .iter()
+        .any(|(text, _)| text == t(&ui, "thirdPartyNotices")));
+    let found = (0..(panel.size.y as i32)).any(|dy| {
+        let point = Point2D::new(panel.origin.x + 40.0, panel.origin.y + dy as f32);
+        menu.hit_test(panel, point) == Some(FileMenuChoice::ThirdPartyNotices)
+    });
+    assert!(found, "no point of the menu hit-tests to the notices row");
+}

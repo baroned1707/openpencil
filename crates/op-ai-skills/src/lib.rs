@@ -25,6 +25,8 @@ pub mod color;
 pub mod compose;
 #[cfg(test)]
 mod deck_corpus_tests;
+pub mod design_data;
+pub mod design_data_search;
 pub mod design_systems;
 pub mod frontmatter;
 pub mod loader;
@@ -44,6 +46,7 @@ mod table_interaction_corpus_tests;
 pub mod types;
 
 pub use compose::compose_system_prompt;
+pub use design_data_search::{design_data_json, search_design_data, DesignHit};
 pub use loader::{get_skill_by_name, get_skill_registry, get_skills_by_phase, SkillEntry};
 pub use resolve::resolve_skills;
 pub use types::{

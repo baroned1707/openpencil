@@ -93,7 +93,7 @@ op_install_usr_tree() {
     "$root/usr/share/pixmaps/openpencil.png"
   find "$root/usr/share/icons/hicolor" -type f -exec chmod 644 {} +
   find "$root/usr/share/icons/hicolor" -type d -exec chmod 755 {} +
-  bash "$script_dir/stage-font-notices.sh" "$root/usr/share/doc/openpencil/font-notices"
+  bash "$script_dir/stage-notices.sh" "$root/usr/share/doc/openpencil/notices"
 }
 
 # op_artifact_arch <amd64|arm64|x86_64|aarch64>

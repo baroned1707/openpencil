@@ -109,6 +109,11 @@ pub enum FileAction {
     /// credit lines to the clipboard and says how many it copied. Offered only
     /// when `EditorUiState::image_credits_supported` is set (desktop).
     CopyImageCredits,
+    /// File ▸ "Third-party notices" — the host opens the bundled
+    /// `THIRD_PARTY_NOTICES.md` with the system opener (or the repository's
+    /// copy when the bundle has none). Offered only when
+    /// `EditorUiState::notices_supported` is set (desktop).
+    OpenThirdPartyNotices,
     ImportFigma,
     /// Complete or cancel a prepared multi-page Figma import. Native
     /// desktop owns the prepared tree; web safely ignores this action.

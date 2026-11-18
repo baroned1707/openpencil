@@ -616,6 +616,7 @@ pub fn lookup(key: &str) -> Option<&'static str> {
         "settings.fonts.autoDownload" => "Eksik yazı tiplerini otomatik indir",
         "settings.fonts.autoDownloadHint" => "Yalnızca eksik yazı tipi adlarını Fontsource ve GitHub’a gönderir.",
         "fileMenu.copyImageCredits" => "Görsel atıflarını kopyala",
+        "fileMenu.thirdPartyNotices" => "Üçüncü taraf bildirimleri",
         "imageCredits.copiedOne" => "1 görsel atfı kopyalandı",
         "imageCredits.copied" => "{{count}} görsel atfı kopyalandı",
         "imageCredits.none" => "Bu belgede görsel atfı yok",

@@ -207,6 +207,7 @@ impl WidgetHostNative {
                     | FileMenuChoice::ExportPptx
                     | FileMenuChoice::Share
                     | FileMenuChoice::CopyImageCredits
+                    | FileMenuChoice::ThirdPartyNotices
                     | FileMenuChoice::ClearRecent
                     // Opening the centre only shows a panel; the document is
                     // replaced later, and that step re-runs the gate itself.
@@ -259,6 +260,7 @@ impl WidgetHostNative {
                     FileMenuChoice::ExportPptx => FileAction::ExportPptx,
                     FileMenuChoice::Share => FileAction::Share,
                     FileMenuChoice::CopyImageCredits => FileAction::CopyImageCredits,
+                    FileMenuChoice::ThirdPartyNotices => FileAction::OpenThirdPartyNotices,
                     FileMenuChoice::OpenRecent(i) => FileAction::OpenRecent(i),
                     FileMenuChoice::ClearRecent => FileAction::ClearRecent,
                     // Handled above — it opens a panel rather than queuing a
