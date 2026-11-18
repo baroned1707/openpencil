@@ -276,6 +276,8 @@ pub fn common_props(figma: &FigValue, id: String) -> PenNodeBase {
         animations: None,
         // Figma import never authors responsive size constraints.
         constraints: None,
+        // A Figma file carries no stock-image provenance to preserve.
+        image_credit: None,
     }
 }
 
