@@ -379,3 +379,131 @@ fn no_tooltip_label_overflows_its_own_bubble() {
         }
     }
 }
+
+fn ui_with_file(dirty: bool) -> EditorUiState {
+    EditorUiState {
+        file_name_display: Some("hero.op".to_string()),
+        document_dirty: dirty,
+        ..EditorUiState::default()
+    }
+}
+
+fn active_tab(status: op_editor_core::DocumentTabStatus) -> op_editor_core::DocumentTabView {
+    op_editor_core::DocumentTabView {
+        id: op_editor_core::DocumentId(1),
+        label: "hero.op".to_string(),
+        project: String::new(),
+        dirty: true,
+        status,
+        active: true,
+    }
+}
+
+#[test]
+fn the_save_marker_tooltip_names_the_save_state() {
+    let saved = ui_with_file(false);
+    assert_eq!(
+        top_bar_tooltip::tooltip_for(&saved, TopBarButton::SaveState).label,
+        translate(&saved, "topbar.saved")
+    );
+    let edited = ui_with_file(true);
+    assert_eq!(
+        top_bar_tooltip::tooltip_for(&edited, TopBarButton::SaveState).label,
+        translate(&edited, "topbar.unsavedChanges")
+    );
+    let untitled = EditorUiState::default();
+    assert_eq!(
+        top_bar_tooltip::tooltip_for(&untitled, TopBarButton::SaveState).label,
+        translate(&untitled, "topbar.notSavedYet")
+    );
+}
+
+#[test]
+fn the_save_after_run_tooltip_appears_only_during_a_run_with_the_setting_on() {
+    let mut ui = ui_with_file(true);
+    ui.document_tabs = vec![active_tab(op_editor_core::DocumentTabStatus::Running)];
+    ui.agent_settings.autosave_on_agent_run_end = true;
+    assert_eq!(
+        top_bar_tooltip::tooltip_for(&ui, TopBarButton::SaveState).label,
+        translate(&ui, "tooltip.topbar.saveAfterRun")
+    );
+    // The setting off: nothing is promised.
+    ui.agent_settings.autosave_on_agent_run_end = false;
+    assert_eq!(
+        top_bar_tooltip::tooltip_for(&ui, TopBarButton::SaveState).label,
+        translate(&ui, "topbar.unsavedChanges")
+    );
+    // No run: the plain state, never a promise of periodic saving.
+    ui.agent_settings.autosave_on_agent_run_end = true;
+    ui.document_tabs = vec![active_tab(op_editor_core::DocumentTabStatus::Idle)];
+    assert_eq!(
+        top_bar_tooltip::tooltip_for(&ui, TopBarButton::SaveState).label,
+        translate(&ui, "topbar.unsavedChanges")
+    );
+    // An untitled document is never auto-saved, run or not.
+    let untitled = EditorUiState {
+        document_tabs: vec![active_tab(op_editor_core::DocumentTabStatus::Running)],
+        ..EditorUiState::default()
+    };
+    assert_eq!(
+        top_bar_tooltip::tooltip_for(&untitled, TopBarButton::SaveState).label,
+        translate(&untitled, "topbar.notSavedYet")
+    );
+}
+
+#[test]
+fn the_save_marker_tooltip_hangs_under_the_marker_and_does_not_wait_for_a_menu() {
+    let ui = hovering(TopBarButton::SaveState, 0);
+    assert!(!top_bar_tooltip::suppressed(&ui, TopBarButton::SaveState));
+    let bar = TopBar::for_editor_ui(&ui);
+    let marker = bar
+        .button_rect(top_bar_rect(), TopBarButton::SaveState)
+        .expect("an untitled document shows its marker");
+    let bubble = paint_at(&ui, TOOLTIP_DWELL_MS).expect("due tooltip paints");
+    assert!(bubble.origin.y >= marker.origin.y + marker.size.y);
+}
+
+#[test]
+fn the_chips_have_their_own_labels_and_only_the_switcher_one_suppresses() {
+    let mut ui = EditorUiState::default();
+    for (button, key) in [
+        (TopBarButton::OtherUnsaved, "tooltip.topbar.otherUnsaved"),
+        (TopBarButton::AgentActivity, "tooltip.topbar.agentRunning"),
+    ] {
+        assert_eq!(
+            top_bar_tooltip::tooltip_for(&ui, button).label,
+            translate(&ui, key),
+            "{button:?}"
+        );
+        assert!(!top_bar_tooltip::suppressed(&ui, button), "{button:?}");
+    }
+    // The switcher it opens already says more than a tooltip would.
+    ui.projects_panel.switcher.open = true;
+    assert!(top_bar_tooltip::suppressed(&ui, TopBarButton::OtherUnsaved));
+    assert!(!top_bar_tooltip::suppressed(
+        &ui,
+        TopBarButton::AgentActivity
+    ));
+}
+
+#[test]
+fn the_page_chip_is_labelled_pages_and_steps_aside_for_its_own_menu() {
+    let mut ui = EditorUiState::default();
+    assert_eq!(
+        top_bar_tooltip::tooltip_for(&ui, TopBarButton::PageChip).label,
+        translate(&ui, "pages.title")
+    );
+    assert!(!top_bar_tooltip::suppressed(&ui, TopBarButton::PageChip));
+    ui.projects_panel.info_bar.open_page_menu(0);
+    assert!(top_bar_tooltip::suppressed(&ui, TopBarButton::PageChip));
+}
+
+#[test]
+fn the_breadcrumb_tooltip_says_where_the_press_goes() {
+    let ui = EditorUiState::default();
+    assert_eq!(
+        top_bar_tooltip::tooltip_for(&ui, TopBarButton::Breadcrumb).label,
+        translate(&ui, "tooltip.topbar.revealInDock")
+    );
+    assert!(!top_bar_tooltip::suppressed(&ui, TopBarButton::Breadcrumb));
+}

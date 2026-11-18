@@ -72,14 +72,12 @@ pub(super) fn pages_from_state(state: &EditorState, rename: &RenameView<'_>) -> 
             renaming,
         }
     };
-    match state.doc.pages.as_ref() {
-        Some(pages) if !pages.is_empty() => pages
-            .iter()
-            .enumerate()
-            .map(|(i, p)| build(i, &p.name))
-            .collect(),
-        _ => vec![build(0, "Page 1")],
-    }
+    state
+        .page_names()
+        .iter()
+        .enumerate()
+        .map(|(i, name)| build(i, name))
+        .collect()
 }
 
 /// Apply the active layer-rename draft onto the matching row.

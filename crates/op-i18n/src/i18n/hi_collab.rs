@@ -647,6 +647,16 @@ pub fn lookup(key: &str) -> Option<&'static str> {
         "projects.openNoProject" => "खुले हैं, प्रोजेक्ट में नहीं",
         "quickSwitcher.placeholder" => "फ़ाइल या प्रोजेक्ट पर जाएँ",
         "quickSwitcher.empty" => "कोई मेल खाती फ़ाइल नहीं",
+        "topbar.saved" => "सहेजा गया",
+        "topbar.notSavedYet" => "अभी तक सहेजा नहीं गया",
+        "topbar.unsavedChanges" => "बिना सहेजे बदलाव",
+        "tooltip.topbar.saveAfterRun" => "एजेंट का रन खत्म होने पर सहेजा जाता है",
+        "topbar.otherUnsaved" => "{{count}} और बिना सहेजे",
+        "topbar.runningIn" => "{{name}} में चल रहा है",
+        "topbar.runningElsewhere" => "चल रहा है · {{count}} और",
+        "tooltip.topbar.otherUnsaved" => "बिना सहेजे बदलाव वाली अन्य फ़ाइलें",
+        "tooltip.topbar.agentRunning" => "जिस फ़ाइल में एजेंट काम कर रहा है, वहाँ जाएँ",
+        "tooltip.topbar.revealInDock" => "फ़ाइल सूची में दिखाएँ",
         _ => return None,
     })
 }

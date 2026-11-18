@@ -61,6 +61,8 @@ mod refresh;
 mod rename;
 #[path = "projects_host_rename_fs.rs"]
 mod rename_fs;
+#[path = "projects_host_reveal.rs"]
+mod reveal;
 #[path = "projects_host_scan.rs"]
 mod scan;
 #[path = "projects_host_scan_tree.rs"]
@@ -137,6 +139,9 @@ pub(crate) struct ProjectsHostState {
     /// A design just created from the dock: its row gets the inline rename as
     /// soon as the tree that lists it is published.
     pending_rename: Option<PathBuf>,
+    /// The file the breadcrumb asked to show: its row is scrolled into view as
+    /// soon as the rows with the folds open are published.
+    pending_reveal: Option<String>,
     /// The last focus event; `None` until there is one (then the window is asked).
     focused: Option<bool>,
 }
@@ -175,6 +180,7 @@ impl ProjectsHostState {
             fig_rescans: BTreeSet::new(),
             trash: trash::default_backend(),
             pending_rename: None,
+            pending_reveal: None,
             focused: None,
         }
     }
@@ -513,6 +519,7 @@ impl DesktopApp {
             changed = true;
         }
         changed |= self.publish_projects();
+        changed |= self.finish_pending_reveal();
         changed | self.start_pending_rename()
     }
 
@@ -543,6 +550,7 @@ impl DesktopApp {
                     self.projects_host.collapsed.insert(root);
                 }
             }
+            ProjectRequest::RevealFile(path) => self.reveal_file_in_dock(&path),
             ProjectRequest::NewDesignIn(root) => self.create_design_in(Path::new(&root)),
             ProjectRequest::NewDesignHere(root, folder) => {
                 self.create_design_here(Path::new(&root), &folder);

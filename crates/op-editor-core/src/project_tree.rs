@@ -191,6 +191,10 @@ pub enum ProjectRequest {
     /// it: `(project root, relative folder)`, the folder `""` for the root. The
     /// file is not opened in a tab.
     NewDesignHere(String, String),
+    /// Show the row of the file at this path in the dock: open the dock, unfold
+    /// the project and the folders above it, scroll the row into view. Raised
+    /// by the info bar's breadcrumb; nothing is renamed or opened.
+    RevealFile(String),
 }
 
 /// What the cursor is over in the Projects dock. Indices point into

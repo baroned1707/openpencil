@@ -57,6 +57,8 @@ pub struct ProjectsPanelState {
     /// The Cmd+K quick switcher. App-level like the rest of the dock; while it
     /// is open it owns the keyboard (see `quick_switcher_keyboard`).
     pub switcher: crate::quick_switcher::QuickSwitcherState,
+    /// The info bar's own popups (the page chip's dropdown).
+    pub info_bar: crate::info_bar_state::InfoBarState,
 }
 
 impl Default for ProjectsPanelState {
@@ -76,6 +78,7 @@ impl Default for ProjectsPanelState {
             trash_confirm: None,
             trash_commit: None,
             switcher: crate::quick_switcher::QuickSwitcherState::default(),
+            info_bar: crate::info_bar_state::InfoBarState::default(),
         }
     }
 }
@@ -98,6 +101,12 @@ impl ProjectsPanelState {
         self.rename.is_some() || self.switcher.open
     }
 
+    /// Unfold the dock if it is folded, so a row in it can be seen.
+    pub fn open_dock(&mut self) {
+        self.dock_open = true;
+        self.empty_open = true;
+    }
+
     /// Fold or unfold the dock (the choice that applies right now).
     pub fn toggle_open(&mut self) {
         if self.projects.is_empty() {
@@ -111,7 +120,7 @@ impl ProjectsPanelState {
 impl EditorUiState {
     /// Whether the window offers the Projects dock at its right edge.
     ///
-    /// Gated exactly like the open-document tab strip: only on a host that
+    /// Gated like the open-document chips of the info bar: only on a host that
     /// can hold several documents, and never on touch chrome. With no project
     /// the dock is still there as a slim strip, because it is where a new user
     /// finds "Open project".
@@ -165,6 +174,26 @@ mod tests {
         );
         ui.projects_panel.toggle_open();
         assert!(ui.projects_panel.is_open());
+    }
+
+    #[test]
+    fn open_dock_unfolds_a_folded_dock_with_or_without_projects() {
+        let mut ui = EditorUiState::default();
+        ui.projects_panel.projects = vec![project()];
+        ui.projects_panel.toggle_open();
+        assert!(!ui.projects_panel.is_open());
+        ui.projects_panel.open_dock();
+        assert!(ui.projects_panel.is_open());
+        ui.projects_panel.open_dock();
+        assert!(
+            ui.projects_panel.is_open(),
+            "opening an open dock changes nothing"
+        );
+
+        let mut empty = EditorUiState::default();
+        assert!(!empty.projects_panel.is_open());
+        empty.projects_panel.open_dock();
+        assert!(empty.projects_panel.is_open());
     }
 
     #[test]

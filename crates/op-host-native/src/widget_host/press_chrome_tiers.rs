@@ -125,7 +125,7 @@ impl WidgetHostNative {
             origin: Point2D::new(0.0, 0.0),
             size: Point2D::new(viewport_width, TOP_BAR_HEIGHT),
         };
-        let mut top_bar = TopBar::for_editor_ui(&self.editor_state.editor_ui);
+        let mut top_bar = TopBar::for_editor_state(&self.editor_state);
         top_bar.chip_text_w = Some(self.topbar_chip_text_w(&top_bar));
         // Window-control dots first: they are painted at the bar's left edge
         // and overlap nothing the app owns, so resolving them before the
@@ -189,8 +189,11 @@ impl WidgetHostNative {
                 | TopBarHit::OpenExportMenu
                 | TopBarHit::OpenAssetCenter
                 | TopBarHit::OpenImportMenu
-                | TopBarHit::DocumentTab(_)
-                | TopBarHit::CloseDocumentTab(_)
+                | TopBarHit::SaveState
+                | TopBarHit::Breadcrumb
+                | TopBarHit::OtherUnsaved
+                | TopBarHit::AgentActivity
+                | TopBarHit::PageChip
                 | TopBarHit::Home => return Some(true),
                 TopBarHit::ToggleFullscreen => {
                     // The widget host doesn't own the winit window — raise

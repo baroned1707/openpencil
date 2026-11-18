@@ -88,6 +88,7 @@ pub mod editor_toast;
 pub mod quality_report;
 pub mod size_class;
 // Runtime-fetched product assets for the browser bundle (native embeds them).
+pub mod active_file_info;
 pub mod document_scope;
 pub mod document_tabs;
 pub mod editor_ui_state;
@@ -136,6 +137,7 @@ mod image_fill_upload;
 pub mod image_node_props;
 pub mod image_panel_state;
 pub mod ime_state;
+pub mod info_bar_state;
 mod instance_child_override;
 pub mod instance_override;
 pub mod missing_font_faces;
@@ -144,6 +146,7 @@ pub mod mutators;
 pub mod node_defaults;
 pub mod node_id;
 pub mod page_mutators;
+pub mod page_switch;
 pub mod path_bounds;
 pub mod path_edit;
 pub mod pen;
@@ -156,6 +159,7 @@ pub mod quick_switcher;
 pub mod quick_switcher_keyboard;
 pub mod quick_switcher_match;
 pub use quick_switcher::{QuickSwitcherRow, QuickSwitcherState, QuickSwitcherTarget};
+pub mod project_reveal;
 pub mod project_tree;
 pub mod prompt_center_catalog;
 pub mod prompt_center_keyboard;
@@ -178,6 +182,7 @@ pub mod selection_resolve;
 pub mod share_routes;
 pub mod square_chrome;
 pub use document_scope::{DocumentScope, SessionDocument};
+pub use active_file_info::{ActiveFileInfo, RunningElsewhere, SaveState};
 pub use document_tabs::{DocumentId, DocumentTabRequest, DocumentTabStatus, DocumentTabView};
 pub use image_credit::{
     node_image_credit, node_image_source, set_node_image_credit, ImageCredit,
@@ -485,6 +490,7 @@ pub use node_defaults::{
     DEFAULT_TEXT_NODE_WIDTH,
 };
 pub use node_id::NodeId;
+pub use page_switch::{switch_page, PageSummary, PageSwitch};
 pub use pen_node_ext::PenNodeExt;
 pub use quality_report::{
     QualityBoardSummary, QualityItem, QualityRepairRecord, QualityReport, QualityTopic,

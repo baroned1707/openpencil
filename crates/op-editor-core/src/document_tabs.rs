@@ -1,5 +1,6 @@
 //! Open-document tabs — the plain-data contract between the document
-//! registry (host) and the tab strip widget (UI).
+//! registry (host) and the widgets that show the open documents (the
+//! Projects dock, the quick switcher, the info bar's chips).
 //!
 //! The host owns the registry of open documents and mirrors it into
 //! [`DocumentTabView`] rows on `EditorUiState.document_tabs`; the widget only
@@ -36,7 +37,8 @@ pub struct DocumentTabView {
     pub active: bool,
 }
 
-/// A user request raised by the tab strip, executed by the host.
+/// A user request raised by the dock, the quick switcher, the info bar or a
+/// shortcut, executed by the host.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum DocumentTabRequest {
     Switch(DocumentId),

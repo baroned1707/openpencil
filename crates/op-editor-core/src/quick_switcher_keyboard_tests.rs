@@ -200,3 +200,36 @@ fn it_is_the_text_input_that_owns_the_keyboard() {
     assert_eq!(state.active_text_input().unwrap().text(), "hi");
     assert!(state.editor_ui.projects_panel.owns_keyboard());
 }
+
+#[test]
+fn opening_on_other_unsaved_highlights_the_first_dirty_document_but_not_the_active_one() {
+    let mut state = state();
+    state.editor_ui.document_tabs.push(tab(3, "icons.op"));
+    // The active document is dirty too, and sits first: it must be skipped.
+    state.editor_ui.document_tabs[0].dirty = true;
+    state.editor_ui.document_tabs[2].dirty = true;
+    assert!(open_on_other_unsaved(&mut state, 0));
+    assert!(is_active(&state));
+    let selected = state.editor_ui.projects_panel.switcher.selected;
+    let row = rows(&state).remove(selected);
+    assert_eq!(row.label, "icons.op");
+    assert!(confirm(&mut state).unwrap());
+    assert_eq!(
+        state.editor_ui.pending_document_request,
+        Some(crate::DocumentTabRequest::Switch(DocumentId(3)))
+    );
+}
+
+#[test]
+fn opening_on_other_unsaved_with_none_opens_on_the_first_row() {
+    let mut state = state();
+    state.editor_ui.document_tabs[0].dirty = true;
+    assert!(open_on_other_unsaved(&mut state, 0));
+    assert_eq!(state.editor_ui.projects_panel.switcher.selected, 0);
+    close(&mut state);
+    state.editor_ui.document_tabs_supported = false;
+    assert!(
+        !open_on_other_unsaved(&mut state, 0),
+        "no dock, no switcher"
+    );
+}

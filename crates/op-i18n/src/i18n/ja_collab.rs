@@ -659,6 +659,16 @@ pub fn lookup(key: &str) -> Option<&'static str> {
         "projects.openNoProject" => "開いている（プロジェクト外）",
         "quickSwitcher.placeholder" => "ファイルまたはプロジェクトへ移動",
         "quickSwitcher.empty" => "一致するファイルはありません",
+        "topbar.saved" => "保存済み",
+        "topbar.notSavedYet" => "まだ保存されていません",
+        "topbar.unsavedChanges" => "未保存の変更",
+        "tooltip.topbar.saveAfterRun" => "エージェントの実行が終わると保存されます",
+        "topbar.otherUnsaved" => "ほか {{count}} 件が未保存",
+        "topbar.runningIn" => "{{name}} で実行中",
+        "topbar.runningElsewhere" => "実行中 · ほか {{count}} 件",
+        "tooltip.topbar.otherUnsaved" => "未保存の変更があるほかのファイル",
+        "tooltip.topbar.agentRunning" => "エージェントが作業中のファイルへ移動",
+        "tooltip.topbar.revealInDock" => "ファイル一覧で表示",
         _ => return None,
     })
 }

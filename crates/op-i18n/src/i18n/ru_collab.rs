@@ -673,6 +673,16 @@ pub fn lookup(key: &str) -> Option<&'static str> {
         "projects.openNoProject" => "Открыты, вне проекта",
         "quickSwitcher.placeholder" => "Перейти к файлу или проекту",
         "quickSwitcher.empty" => "Нет подходящих файлов",
+        "topbar.saved" => "Сохранено",
+        "topbar.notSavedYet" => "Ещё не сохранено",
+        "topbar.unsavedChanges" => "Есть несохранённые изменения",
+        "tooltip.topbar.saveAfterRun" => "Сохраняется, когда агент закончит работу",
+        "topbar.otherUnsaved" => "Ещё {{count}} не сохранено",
+        "topbar.runningIn" => "Выполняется в {{name}}",
+        "topbar.runningElsewhere" => "Выполняется · ещё {{count}}",
+        "tooltip.topbar.otherUnsaved" => "Другие файлы с несохранёнными изменениями",
+        "tooltip.topbar.agentRunning" => "Перейти к файлу, в котором работает агент",
+        "tooltip.topbar.revealInDock" => "Показать в списке файлов",
         _ => return None,
     })
 }

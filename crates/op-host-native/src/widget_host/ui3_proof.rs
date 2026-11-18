@@ -65,13 +65,27 @@ pub(super) fn render_probes(
     name: &str,
     probes: &[(i32, i32)],
 ) -> Vec<[u8; 3]> {
+    render_probes_at(host, name, probes, PROOF_W, PROOF_H)
+}
+
+/// [`render_probes`] on a `width` × `height` window — for scenes about the
+/// window width (the info bar at 640 / 960 px) or a band of the chrome.
+pub(super) fn render_probes_at(
+    host: &mut WidgetHostNative,
+    name: &str,
+    probes: &[(i32, i32)],
+    width: f32,
+    height: f32,
+) -> Vec<[u8; 3]> {
+    host.last_viewport_w = width;
+    host.last_viewport_h = height;
     let mut backend = crate::backend::NativeBackend::with_dpi(1.0);
     let mut surface =
-        skia_safe::surfaces::raster_n32_premul((PROOF_W as i32, PROOF_H as i32)).unwrap();
+        skia_safe::surfaces::raster_n32_premul((width as i32, height as i32)).unwrap();
     // A few frames so first-frame work (fonts, layout caches) settles.
     for _ in 0..3 {
         let mut frame = crate::backend::NativeFrameBackend::new(&mut backend, surface.canvas());
-        host.paint(&mut frame, PROOF_W, PROOF_H);
+        host.paint(&mut frame, width, height);
     }
     if let Ok(dir) = std::env::var("OP_PROOF_DIR") {
         let suffix = match host.editor_state().editor_ui.theme_mode {

@@ -655,6 +655,16 @@ pub fn lookup(key: &str) -> Option<&'static str> {
         "projects.openNoProject" => "Đang mở, không thuộc dự án",
         "quickSwitcher.placeholder" => "Đi tới tệp hoặc dự án",
         "quickSwitcher.empty" => "Không có tệp phù hợp",
+        "topbar.saved" => "Đã lưu",
+        "topbar.notSavedYet" => "Chưa lưu",
+        "topbar.unsavedChanges" => "Có thay đổi chưa lưu",
+        "tooltip.topbar.saveAfterRun" => "Được lưu khi agent chạy xong",
+        "topbar.otherUnsaved" => "{{count}} tệp khác chưa lưu",
+        "topbar.runningIn" => "Đang chạy trong {{name}}",
+        "topbar.runningElsewhere" => "Đang chạy · {{count}} tệp khác",
+        "tooltip.topbar.otherUnsaved" => "Các tệp khác có thay đổi chưa lưu",
+        "tooltip.topbar.agentRunning" => "Chuyển đến tệp mà agent đang làm việc",
+        "tooltip.topbar.revealInDock" => "Hiện trong danh sách tệp",
         _ => return None,
     })
 }

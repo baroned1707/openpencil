@@ -643,6 +643,16 @@ pub fn lookup(key: &str) -> Option<&'static str> {
         "projects.openNoProject" => "Açık, projede değil",
         "quickSwitcher.placeholder" => "Bir dosyaya veya projeye git",
         "quickSwitcher.empty" => "Eşleşen dosya yok",
+        "topbar.saved" => "Kaydedildi",
+        "topbar.notSavedYet" => "Henüz kaydedilmedi",
+        "topbar.unsavedChanges" => "Kaydedilmemiş değişiklikler",
+        "tooltip.topbar.saveAfterRun" => "Ajan çalışması bitince kaydedilir",
+        "topbar.otherUnsaved" => "{{count}} dosya daha kaydedilmedi",
+        "topbar.runningIn" => "{{name}} içinde çalışıyor",
+        "topbar.runningElsewhere" => "Çalışıyor · {{count}} tane daha",
+        "tooltip.topbar.otherUnsaved" => "Kaydedilmemiş değişiklikleri olan diğer dosyalar",
+        "tooltip.topbar.agentRunning" => "Ajanın çalıştığı dosyaya git",
+        "tooltip.topbar.revealInDock" => "Dosya listesinde göster",
         _ => return None,
     })
 }

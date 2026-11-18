@@ -52,7 +52,7 @@ impl WidgetHostNative {
                 origin: Point2D::new(0.0, 0.0),
                 size: Point2D::new(self.last_viewport_w, TOP_BAR_HEIGHT),
             };
-            let mut top_bar = TopBar::for_editor_ui(&self.editor_state.editor_ui);
+            let mut top_bar = TopBar::for_editor_state(&self.editor_state);
             top_bar.chip_text_w = Some(self.topbar_chip_text_w(&top_bar));
             let new_hover = (!chat_surface_owns_point)
                 .then(|| self.topbar_hit_test(&top_bar, tb_rect, Point2D::new(x, y)))

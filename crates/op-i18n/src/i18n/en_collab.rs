@@ -683,6 +683,16 @@ pub fn lookup(key: &str) -> Option<&'static str> {
         "projects.openNoProject" => "Open, not in a project",
         "quickSwitcher.placeholder" => "Go to a file or project",
         "quickSwitcher.empty" => "No matching files",
+        "topbar.saved" => "Saved",
+        "topbar.notSavedYet" => "Not saved yet",
+        "topbar.unsavedChanges" => "Unsaved changes",
+        "tooltip.topbar.saveAfterRun" => "Saved when the agent run finishes",
+        "topbar.otherUnsaved" => "{{count}} other unsaved",
+        "topbar.runningIn" => "Running in {{name}}",
+        "topbar.runningElsewhere" => "Running · {{count}} others",
+        "tooltip.topbar.otherUnsaved" => "Other files with unsaved changes",
+        "tooltip.topbar.agentRunning" => "Go to the file the agent is working in",
+        "tooltip.topbar.revealInDock" => "Show in the file list",
         _ => return None,
     })
 }

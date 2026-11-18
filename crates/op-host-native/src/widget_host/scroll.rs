@@ -526,6 +526,9 @@ impl WidgetHostNative {
         if self.try_scroll_locale_picker(x, y, delta_y, viewport_width) {
             return true;
         }
+        if self.scroll_page_menu(x, y, delta_y) {
+            return true;
+        }
         if self.try_scroll_design_md_panel(x, y, delta_y, viewport_width, viewport_height) {
             return true;
         }

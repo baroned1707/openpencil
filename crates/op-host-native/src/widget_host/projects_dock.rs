@@ -163,6 +163,13 @@ impl WidgetHostNative {
 #[path = "project_rename_input.rs"]
 mod project_rename_input;
 // The Cmd+K quick switcher is the dock's keyboard-first twin.
+#[path = "page_menu_host.rs"]
+mod page_menu_host;
+#[path = "projects_dock_reveal.rs"]
+mod projects_dock_reveal;
+#[cfg(test)]
+#[path = "projects_dock_reveal_tests.rs"]
+mod projects_dock_reveal_tests;
 #[path = "quick_switcher_host.rs"]
 mod quick_switcher_host;
 #[cfg(test)]

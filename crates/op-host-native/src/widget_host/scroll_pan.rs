@@ -39,6 +39,9 @@ impl WidgetHostNative {
         if self.try_scroll_locale_picker(x, y, dy, viewport_width) {
             return true;
         }
+        if self.scroll_page_menu(x, y, dy) {
+            return true;
+        }
         if self.try_scroll_design_md_panel(x, y, dy, viewport_width, viewport_height) {
             return true;
         }

@@ -65,7 +65,7 @@ pub struct EditorUiState {
     /// Tab rows mirrored from the host's document registry (empty when the
     /// host has a single document or does not support tabs).
     pub document_tabs: Vec<crate::document_tabs::DocumentTabView>,
-    /// Set by the tab strip, drained by the host. Transient, never persisted.
+    /// Set by the dock, switcher, info bar or a shortcut; drained by the host.
     pub pending_document_request: Option<crate::document_tabs::DocumentTabRequest>,
     /// Whether this host can hold several documents (desktop only for now).
     pub document_tabs_supported: bool,

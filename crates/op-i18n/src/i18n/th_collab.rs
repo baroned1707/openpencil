@@ -645,6 +645,16 @@ pub fn lookup(key: &str) -> Option<&'static str> {
         "projects.openNoProject" => "เปิดอยู่ ไม่อยู่ในโปรเจกต์",
         "quickSwitcher.placeholder" => "ไปที่ไฟล์หรือโปรเจกต์",
         "quickSwitcher.empty" => "ไม่พบไฟล์ที่ตรงกัน",
+        "topbar.saved" => "บันทึกแล้ว",
+        "topbar.notSavedYet" => "ยังไม่ได้บันทึก",
+        "topbar.unsavedChanges" => "มีการเปลี่ยนแปลงที่ยังไม่ได้บันทึก",
+        "tooltip.topbar.saveAfterRun" => "บันทึกเมื่อเอเจนต์ทำงานเสร็จ",
+        "topbar.otherUnsaved" => "ยังไม่ได้บันทึกอีก {{count}} ไฟล์",
+        "topbar.runningIn" => "กำลังทำงานใน {{name}}",
+        "topbar.runningElsewhere" => "กำลังทำงาน · อีก {{count}} ไฟล์",
+        "tooltip.topbar.otherUnsaved" => "ไฟล์อื่นที่มีการเปลี่ยนแปลงที่ยังไม่ได้บันทึก",
+        "tooltip.topbar.agentRunning" => "ไปที่ไฟล์ที่เอเจนต์กำลังทำงานอยู่",
+        "tooltip.topbar.revealInDock" => "แสดงในรายการไฟล์",
         _ => return None,
     })
 }

@@ -1,5 +1,5 @@
 use super::top_bar::*;
-use super::top_bar_title::{elide_filename_to_width, TopBarTitleLayout};
+use super::top_bar_title::elide_filename_to_width;
 use crate::theme::Theme;
 use crate::widgets::icons::Icon;
 use crate::widgets::{PaintCx, Widget};
@@ -30,121 +30,9 @@ fn long_file_name_middle_elides_and_preserves_extension() {
     assert!(title_test_width(&output, 13.0) <= 92.0);
 }
 
-#[test]
-fn long_dirty_title_stays_between_left_and_right_controls() {
-    let mut bar = TopBar::new("openpencil-memory-repro (1).op");
-    bar.edited = true;
-    bar.label_edited = "— 已编辑";
-    bar.agent_count = 0;
-    bar.mcp_count = 0;
-    bar.label_agents_and_mcp = "Agents & MCP";
-    let rect = Rect {
-        origin: Point2D::ZERO,
-        size: Point2D::new(760.0, TOP_BAR_HEIGHT),
-    };
-
-    let layout = bar.title_layout(rect, title_test_width);
-    let slot_right = layout.slot.origin.x + layout.slot.size.x;
-    assert!(layout.file_name.ends_with(".op"));
-    assert!(layout.file_name.contains('…'));
-    assert!(
-        layout.edited_x.is_some(),
-        "dirty marker must remain allocated"
-    );
-    let git = layout.git_rect.expect("760px window still fits Git icon");
-    assert!(layout.file_x >= layout.slot.origin.x);
-    assert!(git.origin.x + git.size.x <= slot_right + 0.01);
-    assert_eq!(
-        bar.hit_test(
-            rect,
-            Point2D::new(
-                bar.git_button_rect(rect).origin.x + ICON_BUTTON / 2.0,
-                TOP_BAR_HEIGHT / 2.0,
-            ),
-        ),
-        Some(TopBarHit::ToggleGitPanel),
-    );
-}
-
-fn title_group_center_x(bar: &TopBar, layout: &TopBarTitleLayout) -> f32 {
-    let group_right = layout
-        .git_rect
-        .map(|git| git.origin.x + git.size.x)
-        .or_else(|| {
-            layout
-                .edited_x
-                .map(|edited_x| edited_x + title_test_width(bar.label_edited, 11.0))
-        })
-        .unwrap_or_else(|| layout.file_x + title_test_width(&layout.file_name, 13.0));
-    (layout.file_x + group_right) / 2.0
-}
-
-#[test]
-fn title_group_stays_at_window_center_for_short_and_long_names() {
-    let make_bar = |file_name: &str| {
-        let mut bar = TopBar::new(file_name);
-        bar.edited = true;
-        bar.label_edited = "— 已编辑";
-        bar.agent_count = 0;
-        bar.mcp_count = 0;
-        bar.label_agents_and_mcp = "Agents & MCP";
-        bar
-    };
-    let short = make_bar("test.op");
-    let long = make_bar("openpencil-super-long-project-file-name-for-title-overflow-check (1).op");
-    let rect = Rect {
-        origin: Point2D::new(37.0, 0.0),
-        size: Point2D::new(1_400.0, TOP_BAR_HEIGHT),
-    };
-    let short_layout = short.title_layout(rect, title_test_width);
-    let long_layout = long.title_layout(rect, title_test_width);
-    let window_center = rect.origin.x + rect.size.x / 2.0;
-
-    assert!(short_layout.git_rect.is_some());
-    assert!(long_layout.git_rect.is_some());
-    assert!(nearly_eq(
-        title_group_center_x(&short, &short_layout),
-        window_center
-    ));
-    assert!(nearly_eq(
-        title_group_center_x(&long, &long_layout),
-        window_center
-    ));
-    assert!(long_layout.file_name.contains('…'), "{long_layout:?}");
-    assert!(long_layout.file_name.ends_with(".op"));
-}
-
-#[test]
-fn title_group_center_is_independent_of_asymmetric_chrome() {
-    let rect = Rect {
-        origin: Point2D::ZERO,
-        size: Point2D::new(1_600.0, TOP_BAR_HEIGHT),
-    };
-    let mut compact = TopBar::new("Untitled");
-    compact.git_branch = Some("main".to_string());
-
-    let mut crowded = TopBar::new("Untitled");
-    crowded.git_branch = Some("main".to_string());
-    crowded.agent_count = 6;
-    crowded.connected = [true; 8];
-    crowded.mcp_count = 8;
-    crowded.account_button_visible = true;
-    crowded.collab.visible = true;
-    crowded.collab.label = "Connected".to_string();
-
-    for bar in [&compact, &crowded] {
-        let layout = bar.title_layout(rect, title_test_width);
-        assert!(layout.git_rect.is_some(), "{layout:?}");
-        assert!(nearly_eq(
-            title_group_center_x(bar, &layout),
-            rect.size.x / 2.0
-        ));
-    }
-}
-
 #[cfg(not(target_arch = "wasm32"))]
 #[test]
-fn measured_git_hit_tracks_the_painted_centered_group() {
+fn measured_git_hit_tracks_the_painted_group() {
     let bar = TopBar::new("centered-document.op");
     let rect = Rect {
         origin: Point2D::ZERO,
@@ -174,68 +62,9 @@ fn measured_git_hit_tracks_the_painted_centered_group() {
 }
 
 #[test]
-fn narrow_dirty_title_drops_git_before_filename_extension_or_status() {
-    let mut bar = TopBar::new("openpencil-memory-repro (1).op");
-    bar.edited = true;
-    bar.label_edited = "— 已编辑";
-    bar.agent_count = 0;
-    bar.mcp_count = 0;
-    bar.label_agents_and_mcp = "Agents & MCP";
-    // Wider than the original fixture by the right-cluster buttons that
-    // joined later (export + Asset Center) plus the Home button now sitting
-    // left of the title slot (icon + its leading divider). The title slot
-    // ends where chrome begins, so the window that produces "Git dropped,
-    // name intact" moves by exactly the width of those new controls.
-    let home_span = ICON_BUTTON + DIVIDER_GAP + DIVIDER_W + DIVIDER_GAP;
-    let rect = Rect {
-        origin: Point2D::ZERO,
-        size: Point2D::new(620.0 + ICON_BUTTON * 2.0 + home_span, TOP_BAR_HEIGHT),
-    };
-
-    let layout = bar.title_layout(rect, title_test_width);
-    assert!(layout.file_name.ends_with(".op"), "{layout:?}");
-    assert!(layout.edited_x.is_some());
-    assert!(
-        layout.git_rect.is_none(),
-        "Git yields before identity/status"
-    );
-}
-
-#[test]
-fn short_file_name_remains_unelided_and_keeps_exact_git_gap() {
-    let bar = TopBar::new("test.op");
-    let rect = Rect {
-        origin: Point2D::ZERO,
-        size: Point2D::new(1200.0, TOP_BAR_HEIGHT),
-    };
-    let layout = bar.title_layout(rect, title_test_width);
-    let file_w = title_test_width(&layout.file_name, 13.0);
-    let git = layout.git_rect.expect("wide title bar shows Git");
-
-    assert_eq!(layout.file_name, "test.op");
-    assert!(nearly_eq(git.origin.x - (layout.file_x + file_w), 10.0));
-}
-
-#[test]
-fn zero_width_title_slot_paints_no_filename_or_git_target() {
-    let mut bar = TopBar::new("very-long-file-name.op");
-    bar.edited = true;
-    bar.label_edited = "— Edited";
-    let rect = Rect {
-        origin: Point2D::ZERO,
-        size: Point2D::new(260.0, TOP_BAR_HEIGHT),
-    };
-    let layout = bar.title_layout(rect, title_test_width);
-
-    assert_eq!(layout.slot.size.x, 0.0);
-    assert!(layout.file_name.is_empty());
-    assert!(layout.git_rect.is_none());
-}
-
-#[test]
 fn new_carries_the_supplied_file_name() {
     let bar = TopBar::new("Untitled");
-    assert_eq!(bar.file_name, "Untitled");
+    assert_eq!(bar.info.file_name, "Untitled");
 }
 
 #[test]
@@ -502,7 +331,7 @@ fn preview_button_is_always_visible_regardless_of_experimental_toggle() {
 #[test]
 fn icon_only_git_button_centers_glyph_in_hover_rect() {
     let mut bar = TopBar::new("Untitled");
-    bar.git_branch = None;
+    bar.info.git_branch = None;
     let rect = Rect {
         origin: Point2D::new(0.0, 0.0),
         size: Point2D::new(1000.0, TOP_BAR_HEIGHT),

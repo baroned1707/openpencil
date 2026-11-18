@@ -39,7 +39,7 @@ impl WidgetHostNative {
             origin: Point2D::new(0.0, 0.0),
             size: Point2D::new(viewport_w, TOP_BAR_HEIGHT),
         };
-        let top_bar = TopBar::for_editor_ui(&self.editor_state.editor_ui);
+        let top_bar = TopBar::for_editor_state(&self.editor_state);
         let min_x = canvas_left + GIT_PANEL_INSET;
         let max_x = (canvas_left + canvas_w - pw - GIT_PANEL_INSET).max(min_x);
         let origin_x = match self.topbar_git_button_center_x(&top_bar, top_bar_rect) {
@@ -349,6 +349,9 @@ impl WidgetHostNative {
                 .file_menu_rect(viewport_w)
                 .is_some_and(|r| (r).contains(p))
             || (ui.export_quick_menu_open && (self.export_quick_menu_rect(viewport_w)).contains(p))
+            || self
+                .page_menu_popup_rect()
+                .is_some_and(|rect| rect.contains(p))
     }
 
     /// Painted bounds of the import dropdown — the overlay predicates

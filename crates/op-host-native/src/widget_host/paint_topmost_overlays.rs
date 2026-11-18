@@ -47,6 +47,8 @@ impl WidgetHostNative {
         // toast banner and the missing-font modal (its press tier sits first,
         // the switcher being modal while open).
         self.paint_quick_switcher(frame, viewport_width);
+        // The info bar's page menu hangs under its chip, above the chrome.
+        self.paint_page_menu(frame, viewport_width, viewport_height);
 
         // Transient notice banner — painted above every panel and the
         // diagnostics notice, but under the missing-font modal, so its press

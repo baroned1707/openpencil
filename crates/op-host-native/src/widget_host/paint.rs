@@ -173,7 +173,7 @@ impl WidgetHostNative {
         }
         // 2. TopBar — painted only on the desktop; mobile layout replaces
         //    it with the floating action cluster below.
-        let top_bar = TopBar::for_editor_ui(&self.editor_state.editor_ui);
+        let top_bar = TopBar::for_editor_state(&self.editor_state);
         let top_bar_rect = Rect {
             origin: Point2D::new(0.0, 0.0),
             size: Point2D::new(viewport_width, TOP_BAR_HEIGHT),

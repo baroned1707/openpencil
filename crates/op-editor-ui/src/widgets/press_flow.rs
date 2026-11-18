@@ -444,8 +444,22 @@ pub fn apply_shared_top_bar_hit(
             core_press::toggle_file_menu(&mut state.editor_ui);
             TopBarPress::FileMenuToggled
         }
-        TopBarHit::DocumentTab(_) | TopBarHit::CloseDocumentTab(_) => {
-            super::top_bar_document_tabs_flow::apply_document_tab_hit(&mut state.editor_ui, hit);
+        // The save marker only has a tooltip; a press on it does nothing.
+        TopBarHit::SaveState => TopBarPress::Handled,
+        TopBarHit::Breadcrumb => {
+            super::top_bar_info_flow::reveal_active_file(state);
+            TopBarPress::Handled
+        }
+        TopBarHit::PageChip => {
+            super::page_menu_flow::toggle(state);
+            TopBarPress::Handled
+        }
+        TopBarHit::OtherUnsaved => {
+            super::top_bar_info_flow::open_switcher_on_other_unsaved(state, now_ms);
+            TopBarPress::Handled
+        }
+        TopBarHit::AgentActivity => {
+            super::top_bar_info_flow::switch_to_running_document(state);
             TopBarPress::Handled
         }
         TopBarHit::ToggleFullscreen
@@ -507,17 +521,14 @@ pub fn apply_layer_panel_click(
     }
     match hit {
         LayerPanelHit::Page(idx) => {
-            let page_changed = idx != state.ui.active_page_index;
-            let _ = state.set_active_page(idx);
-            state.clear_selection();
-            if page_changed {
+            // Shared with the info bar's page chip: see `page_switch`.
+            match op_editor_core::switch_page(state, idx) {
                 // Land centered on the new page's content instead of
                 // keeping the previous page's pan/zoom.
-                LayerPanelClick::Refit
-            } else {
+                op_editor_core::PageSwitch::Refit => LayerPanelClick::Refit,
                 // Clicking the already-active page may clear selection,
                 // but must preserve the user's current canvas view.
-                LayerPanelClick::Dirty
+                op_editor_core::PageSwitch::Preserved => LayerPanelClick::Dirty,
             }
         }
         LayerPanelHit::Layer(node_id) => {

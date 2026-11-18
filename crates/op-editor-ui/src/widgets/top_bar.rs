@@ -100,6 +100,18 @@ pub enum TopBarHit {
     Collaboration,
     /// Git-branch button next to the file name — toggle the git panel.
     ToggleGitPanel,
+    /// The save-state marker beside the file name — hover only, it acts on
+    /// nothing; it is a hit so its tooltip can name the state.
+    SaveState,
+    /// The breadcrumb `project › folder › file` — reveal the file's row in the
+    /// Projects dock. Only a hit when the dock lists the file.
+    Breadcrumb,
+    /// "N other unsaved" chip — open the quick switcher on the first of them.
+    OtherUnsaved,
+    /// The agent-activity item — switch to the file the agent is running in.
+    AgentActivity,
+    /// The page chip — open the page menu.
+    PageChip,
     /// Maximize icon (rightmost of the right cluster) — toggle window
     /// fullscreen.
     ToggleFullscreen,
@@ -108,21 +120,14 @@ pub enum TopBarHit {
     /// User-avatar button — open the sign-in modal (signed out) or the
     /// account dropdown (signed in).
     Account,
-    /// A document tab (or the `+N` chip, standing for its first hidden tab)
-    /// — switch to the document at this index of `document_tabs`.
-    DocumentTab(usize),
-    /// The close (x) of the document tab at this index.
-    CloseDocumentTab(usize),
 }
 
 pub struct TopBar {
     pub id: WidgetId,
-    /// Centred file name. `String` rather than `&'static str` so an
-    /// opened doc can show its basename without leaking a static
-    /// slice on every Open.
-    pub file_name: String,
-    /// Whether to paint the unsaved-edit label next to the file name.
-    pub edited: bool,
+    /// The active file as the info bar describes it: breadcrumb, save state,
+    /// Git branch. Strings rather than `&'static str` so an opened doc can show
+    /// its basename without leaking a static slice on every Open.
+    pub info: op_editor_core::ActiveFileInfo,
     pub agent_count: u32,
     /// Per-provider connect state, indexed by `AgentProvider::ALL`.
     /// The active chip paints one brand icon per connected provider.
@@ -134,6 +139,16 @@ pub struct TopBar {
     pub collab: CollabTopBarModel,
     pub theme: Theme,
     pub label_edited: &'static str,
+    pub label_saved: &'static str,
+    pub label_not_saved_yet: &'static str,
+    pub label_not_on_disk: &'static str,
+    /// The page menu is open: its chip paints as pressed while it is.
+    pub page_menu_open: bool,
+    /// "3 other unsaved"; empty when no other document is unsaved.
+    pub text_other_unsaved: String,
+    /// "Running in hero.op" / "Running · 2 others"; empty when no run is live
+    /// in another document.
+    pub text_running: String,
     pub label_agents_and_mcp: &'static str,
     pub label_agent_singular: &'static str,
     pub label_agent_plural: &'static str,
@@ -151,10 +166,6 @@ pub struct TopBar {
     /// Dark mode (click to go light), a Moon glyph in Light mode
     /// (click to go dark).
     pub theme_mode: op_editor_core::ThemeMode,
-    /// Current git branch when the open document is in a repo — shown
-    /// beside the file name. `None` = no branch (the button still
-    /// paints, icon-only, as a toggle for the git panel).
-    pub git_branch: Option<String>,
     /// Whether the canvas is in Preview (Play) mode — drives the
     /// Play/Stop toggle glyph (Square when active, Play when idle).
     pub preview_active: bool,
@@ -183,24 +194,28 @@ pub struct TopBar {
     /// name/edited/git cluster) and the Maximize button — the host
     /// workbench already owns those affordances.
     pub embed: op_editor_core::EmbedHost,
-    /// Open-document tab rows. Empty unless the strip is shown — the host
-    /// supports tabs, more than one document is open, and the chrome is the
-    /// desktop one — so `len() > 1` is the whole visibility rule.
-    pub document_tabs: Vec<op_editor_core::DocumentTabView>,
 }
 
 impl TopBar {
     pub fn new(file_name: impl Into<String>) -> Self {
         Self {
             id: WidgetId::new(5000),
-            file_name: file_name.into(),
-            edited: false,
+            info: op_editor_core::ActiveFileInfo {
+                file_name: file_name.into(),
+                ..Default::default()
+            },
             agent_count: 1,
             connected: [false; 8],
             mcp_count: 0,
             collab: CollabTopBarModel::default(),
             theme: Theme::dark(),
             label_edited: "",
+            label_saved: "Saved",
+            label_not_saved_yet: "Not saved yet",
+            label_not_on_disk: "not on disk",
+            page_menu_open: false,
+            text_other_unsaved: String::new(),
+            text_running: String::new(),
             label_agents_and_mcp: "Agents & MCP",
             label_agent_singular: "agent",
             label_agent_plural: "agents",
@@ -208,7 +223,6 @@ impl TopBar {
             show_traffic_controls: true,
             fullscreen: false,
             theme_mode: op_editor_core::ThemeMode::Dark,
-            git_branch: None,
             preview_active: false,
             hover: None,
             pressed: None,
@@ -216,15 +230,12 @@ impl TopBar {
             account: op_editor_core::AccountState::Anonymous,
             account_button_visible: false,
             embed: op_editor_core::EmbedHost::None,
-            document_tabs: Vec::new(),
         }
     }
 
     pub fn for_editor_ui(ui: &EditorUiState) -> Self {
-        let file_name = ui
-            .file_name_display
-            .clone()
-            .unwrap_or_else(|| translate(ui, "common.untitled").to_string());
+        let info = op_editor_core::ActiveFileInfo::from_ui(ui, translate(ui, "common.untitled"));
+        let (text_other_unsaved, text_running) = info_bar_texts(ui, &info);
         // The chip reflects what the user set up in Settings: one
         // brand icon per connected provider, plus the enabled-MCP
         // count. All-zero paints the "Agents & MCP" set-up
@@ -248,14 +259,19 @@ impl TopBar {
             .count() as u32;
         Self {
             id: WidgetId::new(5000),
-            file_name,
-            edited: ui.document_dirty,
+            info,
             agent_count,
             connected,
             mcp_count,
             collab: CollabTopBarModel::for_editor_ui(ui),
             theme: theme_for(ui),
             label_edited: translate(ui, "topbar.edited"),
+            label_saved: translate(ui, "topbar.saved"),
+            label_not_saved_yet: translate(ui, "topbar.notSavedYet"),
+            label_not_on_disk: translate(ui, "projects.notOnDisk"),
+            page_menu_open: ui.projects_panel.info_bar.page_menu.open,
+            text_other_unsaved,
+            text_running,
             label_agents_and_mcp: if ui.embed == op_editor_core::EmbedHost::VsCode {
                 translate(ui, "topbar.mcp")
             } else {
@@ -267,7 +283,6 @@ impl TopBar {
             show_traffic_controls: true,
             fullscreen: ui.window_fullscreen,
             theme_mode: ui.effective_theme_mode(),
-            git_branch: ui.git_panel.branch.clone(),
             preview_active: ui.preview.mode,
             hover: ui.topbar_button_hover,
             pressed: match ui.pressed_button {
@@ -278,15 +293,18 @@ impl TopBar {
             account: ui.account.clone(),
             account_button_visible: ui.account_ui_available,
             embed: ui.embed,
-            document_tabs: if ui.document_tabs_supported
-                && !ui.touch_chrome()
-                && ui.embed != op_editor_core::EmbedHost::VsCode
-            {
-                ui.document_tabs.clone()
-            } else {
-                Vec::new()
-            },
         }
+    }
+
+    /// [`Self::for_editor_ui`] plus what only the editor state knows: the
+    /// pages for the page chip. Every site that lays the title out (paint,
+    /// hit-test, hover, tooltips, the Git popover anchor) builds the bar here,
+    /// so a page chip can never push the Git button away from where it is
+    /// drawn in one of them.
+    pub fn for_editor_state(state: &op_editor_core::EditorState) -> Self {
+        let mut bar = Self::for_editor_ui(&state.editor_ui);
+        bar.info = std::mem::take(&mut bar.info).with_pages_of(state);
+        bar
     }
 
     pub fn with_traffic_controls(mut self, show: bool) -> Self {
@@ -394,7 +412,7 @@ impl TopBar {
     /// Hit-test using the same font-family measurement as paint.
     ///
     /// Native hosts use this path for the centered title group's Git button
-    /// and the document tab strip so their hover/press targets follow what is
+    /// so its hover/press target follows what is
     /// painted even when the system font's advances differ from the
     /// cross-platform fallback estimator.
     pub fn hit_test_with_measure(
@@ -454,6 +472,10 @@ impl TopBar {
                 return Some(TopBarHit::Home);
             }
         }
+        // The info bar's own items, left of the Git button.
+        if let Some(hit) = title.and_then(|title| title.info.hit(point)) {
+            return Some(hit);
+        }
         // Git-panel toggle, just right of the centred file name (desktop
         // only — see `GIT_BUTTON_AVAILABLE`; also hidden inside a VS Code
         // embed alongside the rest of the file-scoped chrome — the file
@@ -464,12 +486,6 @@ impl TopBar {
             && git_rect.contains(point)
         {
             return Some(TopBarHit::ToggleGitPanel);
-        }
-        // Document tabs fill the title slot between Home and the agent chip.
-        if let Some(tabs) = title.and_then(|title| title.tabs.as_ref()) {
-            if let Some(hit) = tabs.hit(point) {
-                return Some(hit);
-            }
         }
         // Right cluster: Maximize / Play / Sun / Globe-with-chevron
         // (right→left). Maximize + Play + Sun are normal ICON_BUTTON
@@ -575,6 +591,32 @@ impl Widget for TopBar {
         node.set_label("Title bar");
         node
     }
+}
+
+/// The two localized strings of the info bar's chips.
+fn info_bar_texts(ui: &EditorUiState, info: &op_editor_core::ActiveFileInfo) -> (String, String) {
+    let locale = ui.effective_locale();
+    let other_unsaved = if info.other_unsaved > 0 {
+        crate::i18n::translate_with(
+            locale,
+            "topbar.otherUnsaved",
+            &[("count", &info.other_unsaved.to_string())],
+        )
+    } else {
+        String::new()
+    };
+    let running = match &info.running_elsewhere.first {
+        None => String::new(),
+        Some((_, name)) if info.running_elsewhere.count == 1 => {
+            crate::i18n::translate_with(locale, "topbar.runningIn", &[("name", name)])
+        }
+        Some(_) => crate::i18n::translate_with(
+            locale,
+            "topbar.runningElsewhere",
+            &[("count", &info.running_elsewhere.count.to_string())],
+        ),
+    };
+    (other_unsaved, running)
 }
 
 /// Paint shared ghost-button feedback behind a chrome button and return

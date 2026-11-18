@@ -584,6 +584,9 @@ impl WidgetHostNative {
         if let Some(changed) = self.cursor_move_quick_switcher(x, y) {
             return changed;
         }
+        if let Some(changed) = self.cursor_move_page_menu(x, y) {
+            return changed;
+        }
         if let Some(changed) = self.update_agent_settings_touch_gesture(x, y) {
             return changed;
         }

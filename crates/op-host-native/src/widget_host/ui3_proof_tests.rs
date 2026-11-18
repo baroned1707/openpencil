@@ -18,6 +18,8 @@ mod open_marks;
 mod open_project;
 #[path = "ui3_proof_open_project_actions_tests.rs"]
 mod open_project_actions;
+#[path = "ui3_proof_info_bar_tests.rs"]
+mod info_bar;
 #[path = "ui3_proof_panels_tests.rs"]
 mod panels;
 #[path = "ui3_proof_projects_tests.rs"]
@@ -30,8 +32,6 @@ mod settings;
 mod style_suggest;
 #[path = "document_swap_render_tests.rs"]
 mod swap_render;
-#[path = "ui3_proof_tabs_tests.rs"]
-mod tabs;
 #[path = "ui3_proof_usage_tests.rs"]
 mod usage;
 

@@ -35,6 +35,7 @@ impl WidgetHostNative {
             || ui.account_menu_open
             || ui.import_menu_open
             || ui.locale_picker.open
+            || ui.projects_panel.info_bar.page_menu.open
             || ui.missing_fonts_modal_open
             || ui.layer_context_menu.is_some()
             || ui.shape_picker.open

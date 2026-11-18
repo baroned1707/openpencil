@@ -180,36 +180,7 @@ impl TopBar {
                 cx.backend.save();
                 cx.backend.clip_rect(title.slot);
 
-                // With two or more documents open the tab strip stands in
-                // for the file name (and its edited marker, which each tab
-                // carries as its own unsaved bullet).
-                if let Some(tabs) = &title.tabs {
-                    self.paint_document_tabs(cx, tabs, center_y);
-                }
-
-                if !title.file_name.is_empty() {
-                    let name = TextLayout::single_run(
-                        &title.file_name,
-                        "system-ui",
-                        13.0,
-                        (self.theme.foreground).to_jian(),
-                        Point2D::new(0.0, 0.0),
-                    );
-                    cx.backend
-                        .draw_text(&name, Point2D::new(title.file_x, center_y + 5.0));
-                }
-
-                if let Some(edited_x) = title.edited_x {
-                    let edited = TextLayout::single_run(
-                        self.label_edited,
-                        "system-ui",
-                        11.0,
-                        (self.theme.muted_foreground).to_jian(),
-                        Point2D::new(0.0, 0.0),
-                    );
-                    cx.backend
-                        .draw_text(&edited, Point2D::new(edited_x, center_y + 4.0));
-                }
+                self.paint_info_items(cx, &title.info, center_y);
 
                 // Git-panel button just right of the file name (TS
                 // GitButton). It may collapse in an exceptionally narrow
@@ -233,10 +204,11 @@ impl TopBar {
                         git_color,
                         1.4,
                     );
-                    // The strip's Git button is icon-only: its slot has no
-                    // room for a branch name.
-                    if let Some(branch) =
-                        self.git_branch.as_deref().filter(|_| title.tabs.is_none())
+                    if let Some(branch) = self
+                        .info
+                        .git_branch
+                        .as_deref()
+                        .filter(|_| git_rect.size.x > GIT_BUTTON_PAD_X * 2.0 + ICON_SIZE)
                     {
                         let label = TextLayout::single_run(
                             branch,

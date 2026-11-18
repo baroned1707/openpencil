@@ -643,6 +643,16 @@ pub fn lookup(key: &str) -> Option<&'static str> {
         "projects.openNoProject" => "Ouverts, hors projet",
         "quickSwitcher.placeholder" => "Aller à un fichier ou un projet",
         "quickSwitcher.empty" => "Aucun fichier correspondant",
+        "topbar.saved" => "Enregistré",
+        "topbar.notSavedYet" => "Pas encore enregistré",
+        "topbar.unsavedChanges" => "Modifications non enregistrées",
+        "tooltip.topbar.saveAfterRun" => "Enregistré à la fin de l'exécution de l'agent",
+        "topbar.otherUnsaved" => "{{count}} autres non enregistrés",
+        "topbar.runningIn" => "En cours dans {{name}}",
+        "topbar.runningElsewhere" => "En cours · {{count}} autres",
+        "tooltip.topbar.otherUnsaved" => "Autres fichiers avec des modifications non enregistrées",
+        "tooltip.topbar.agentRunning" => "Aller au fichier où l'agent travaille",
+        "tooltip.topbar.revealInDock" => "Afficher dans la liste des fichiers",
         _ => return None,
     })
 }

@@ -247,12 +247,15 @@ fn stale_git_popover_flag_does_not_dead_end_input() {
 
 #[test]
 fn git_panel_hangs_centred_under_the_git_button() {
-    let host = host_with_git_panel_open();
+    let mut host = host_with_git_panel_open();
+    // The info bar puts the Git button just right of the file name, near the
+    // left edge, so the layer rail would clamp the panel: fold it away to see
+    // the un-clamped alignment.
+    host.editor_state_mut().editor_ui.sidebar_open = false;
     let (vw, vh) = (1400.0, 900.0);
     let r = host.git_panel_rect(vw, vh).expect("panel open => Some");
 
-    // Centre-x aligns with the Git button centre (a wide viewport
-    // leaves the centred panel un-clamped).
+    // Centre-x aligns with the Git button centre (no rail to clamp it).
     let top_bar_rect = Rect {
         origin: Point2D::new(0.0, 0.0),
         size: Point2D::new(vw, TOP_BAR_HEIGHT),

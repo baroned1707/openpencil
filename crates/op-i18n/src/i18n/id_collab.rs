@@ -643,6 +643,16 @@ pub fn lookup(key: &str) -> Option<&'static str> {
         "projects.openNoProject" => "Terbuka, di luar proyek",
         "quickSwitcher.placeholder" => "Buka file atau proyek",
         "quickSwitcher.empty" => "Tidak ada file yang cocok",
+        "topbar.saved" => "Tersimpan",
+        "topbar.notSavedYet" => "Belum disimpan",
+        "topbar.unsavedChanges" => "Perubahan belum disimpan",
+        "tooltip.topbar.saveAfterRun" => "Disimpan saat agen selesai berjalan",
+        "topbar.otherUnsaved" => "{{count}} lainnya belum disimpan",
+        "topbar.runningIn" => "Berjalan di {{name}}",
+        "topbar.runningElsewhere" => "Berjalan · {{count}} lainnya",
+        "tooltip.topbar.otherUnsaved" => "File lain dengan perubahan belum disimpan",
+        "tooltip.topbar.agentRunning" => "Buka file yang sedang dikerjakan agen",
+        "tooltip.topbar.revealInDock" => "Tampilkan di daftar file",
         _ => return None,
     })
 }

@@ -150,6 +150,14 @@ impl DesktopApp {
         }
         let before = op_host_services::settings_io::fingerprint(self.host.editor_state());
         let ui = &mut self.host.editor_state_mut().editor_ui;
+        // The page menu lists the pages of the document it opened on: another
+        // document on screen closes it.
+        let active_of = |tabs: &[op_editor_core::DocumentTabView]| {
+            tabs.iter().find(|tab| tab.active).map(|tab| tab.id)
+        };
+        if active_of(&ui.document_tabs) != active_of(&tabs) {
+            ui.projects_panel.info_bar.close_page_menu();
+        }
         ui.document_tabs = tabs;
         ui.session_documents = session;
         op_host_services::settings_io::save_if_changed(self.host.editor_state(), before);

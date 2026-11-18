@@ -313,11 +313,14 @@ pub fn topbar_button_hover(
         W::OpenAgentSettings => O::OpenAgentSettings,
         W::Collaboration => O::OpenCollaboration,
         W::ToggleGitPanel => O::ToggleGitPanel,
+        W::SaveState => O::SaveState,
+        W::Breadcrumb => O::Breadcrumb,
+        W::OtherUnsaved => O::OtherUnsaved,
+        W::AgentActivity => O::AgentActivity,
+        W::PageChip => O::PageChip,
         W::ToggleFullscreen => O::ToggleFullscreen,
         W::TogglePreview => O::TogglePreview,
         W::Account => O::OpenAccount,
-        W::DocumentTab(index) => O::DocumentTab(index),
-        W::CloseDocumentTab(index) => O::CloseDocumentTab(index),
     }
 }
 

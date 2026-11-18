@@ -418,6 +418,8 @@ pub mod mobile_chrome;
 #[cfg(test)]
 mod mobile_layout_tests;
 pub mod mobile_more_panel;
+pub mod page_menu;
+pub mod page_menu_flow;
 pub mod projects_dock;
 pub mod projects_dock_flow;
 pub mod projects_dock_layout;
@@ -439,14 +441,16 @@ pub mod slideshow_toolbar;
 pub mod status_bar;
 pub mod tooltip;
 pub mod top_bar;
-mod top_bar_document_tabs;
-pub mod top_bar_document_tabs_flow;
-#[cfg(test)]
-mod top_bar_document_tabs_flow_tests;
 mod top_bar_geometry;
 #[cfg(test)]
 #[path = "top_bar_home_tests.rs"]
 mod top_bar_home_tests;
+mod top_bar_info;
+pub mod top_bar_info_flow;
+mod top_bar_info_paint;
+mod top_bar_info_text;
+#[cfg(test)]
+mod top_bar_info_text_tests;
 mod top_bar_paint;
 #[cfg(test)]
 mod top_bar_tests;

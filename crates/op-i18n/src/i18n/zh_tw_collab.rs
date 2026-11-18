@@ -643,6 +643,16 @@ pub fn lookup(key: &str) -> Option<&'static str> {
         "projects.openNoProject" => "已開啟，不屬於任何專案",
         "quickSwitcher.placeholder" => "前往檔案或專案",
         "quickSwitcher.empty" => "沒有相符的檔案",
+        "topbar.saved" => "已儲存",
+        "topbar.notSavedYet" => "尚未儲存",
+        "topbar.unsavedChanges" => "有未儲存的變更",
+        "tooltip.topbar.saveAfterRun" => "Agent 執行結束後儲存",
+        "topbar.otherUnsaved" => "另有 {{count}} 個未儲存",
+        "topbar.runningIn" => "正在 {{name}} 中執行",
+        "topbar.runningElsewhere" => "正在執行 · 另外 {{count}} 個",
+        "tooltip.topbar.otherUnsaved" => "其他有未儲存變更的檔案",
+        "tooltip.topbar.agentRunning" => "前往 Agent 正在處理的檔案",
+        "tooltip.topbar.revealInDock" => "在檔案列表中顯示",
         _ => return None,
     })
 }

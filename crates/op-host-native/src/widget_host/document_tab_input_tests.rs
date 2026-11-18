@@ -1,12 +1,8 @@
-//! Keyboard and mouse input for the document tab strip: the chords and the
-//! middle-click must respect text focus, tab count and overlays.
+//! Keyboard chords that switch or close open documents (Cmd+1..9, Cmd+W,
+//! Cmd+Shift+[ ]): they must respect text focus and the document count.
 
 use crate::widget_host::WidgetHostNative;
-use op_editor_core::{
-    DocumentId, DocumentTabRequest, DocumentTabStatus, DocumentTabView, TopBarButton,
-};
-use op_editor_ui::widgets::{TopBar, TOP_BAR_HEIGHT};
-use op_editor_ui::{Point2D, Rect};
+use op_editor_core::{DocumentId, DocumentTabRequest, DocumentTabStatus, DocumentTabView};
 
 const VIEWPORT_W: f32 = 1400.0;
 
@@ -36,17 +32,6 @@ fn pending(host: &WidgetHostNative) -> Option<DocumentTabRequest> {
 
 fn clear_pending(host: &mut WidgetHostNative) {
     host.editor_state_mut().editor_ui.pending_document_request = None;
-}
-
-/// A point inside tab `index`, clear of its close button.
-fn inside_tab(host: &WidgetHostNative, index: usize) -> (f32, f32) {
-    let bar = TopBar::for_editor_ui(&host.editor_state().editor_ui);
-    let bar_rect = Rect::xywh(0.0, 0.0, VIEWPORT_W, TOP_BAR_HEIGHT);
-    let rect = bar
-        .button_rect(bar_rect, TopBarButton::DocumentTab(index))
-        .expect("the tab is on screen");
-    let at = Point2D::new(rect.origin.x + 4.0, rect.origin.y + 3.0);
-    (at.x, at.y)
 }
 
 #[test]
@@ -87,37 +72,5 @@ fn cmd_w_noop_with_single_document() {
     assert_eq!(
         pending(&several),
         Some(DocumentTabRequest::Close(DocumentId(10)))
-    );
-}
-
-#[test]
-fn middle_click_ignored_under_modal() {
-    let mut host = host_with_tabs(2);
-    let (x, y) = inside_tab(&host, 1);
-
-    // Nothing covers the strip: the middle-click closes the tab under it.
-    assert!(host.apply_pan_press(x, y));
-    assert_eq!(
-        pending(&host),
-        Some(DocumentTabRequest::Close(DocumentId(11)))
-    );
-    clear_pending(&mut host);
-
-    // A modal over the bar swallows the press; the tab underneath stays.
-    host.editor_state_mut().editor_ui.agent_settings_open = true;
-    host.apply_pan_press(x, y);
-    assert_eq!(pending(&host), None, "settings modal");
-    host.editor_state_mut().editor_ui.agent_settings_open = false;
-
-    host.editor_state_mut().editor_ui.file_menu_open = true;
-    host.apply_pan_press(x, y);
-    assert_eq!(pending(&host), None, "top-bar dropdown");
-    host.editor_state_mut().editor_ui.file_menu_open = false;
-
-    host.apply_pan_press(x, y);
-    assert_eq!(
-        pending(&host),
-        Some(DocumentTabRequest::Close(DocumentId(11))),
-        "closing the overlay re-enables it"
     );
 }

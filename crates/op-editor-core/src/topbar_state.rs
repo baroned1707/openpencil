@@ -35,6 +35,17 @@ pub enum TopBarButton {
     OpenCollaboration,
     /// Git-branch button beside the file name — toggles the git panel.
     ToggleGitPanel,
+    /// Save-state marker beside the file name — hover only (it names the
+    /// state in a tooltip and acts on nothing).
+    SaveState,
+    /// Breadcrumb — reveals the file's row in the Projects dock.
+    Breadcrumb,
+    /// "N other unsaved" chip — opens the quick switcher on the first of them.
+    OtherUnsaved,
+    /// Agent-activity item — switches to the file an agent is running in.
+    AgentActivity,
+    /// Page chip — opens the page menu.
+    PageChip,
     /// Maximize icon — toggles window fullscreen.
     ToggleFullscreen,
     /// Play / Stop icon — enters / exits canvas Preview (Play) mode.
@@ -42,9 +53,4 @@ pub enum TopBarButton {
     /// User-avatar button — opens the sign-in modal (signed out) or the
     /// account dropdown (signed in).
     OpenAccount,
-    /// Document tab at this index of `EditorUiState.document_tabs` — also
-    /// the trailing "+N" overflow chip, which stands for its first hidden tab.
-    DocumentTab(usize),
-    /// The close (x) of the document tab at this index.
-    CloseDocumentTab(usize),
 }

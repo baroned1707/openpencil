@@ -306,6 +306,9 @@ impl WidgetHostNative {
             self.mark_dirty();
             return true;
         }
+        if self.escape_page_menu() {
+            return true;
+        }
         if self.editor_state.editor_ui.escape_locale_picker() {
             self.mark_dirty();
             return true;

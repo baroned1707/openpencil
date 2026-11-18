@@ -43,6 +43,28 @@ pub fn open(state: &mut EditorState, now_ms: u64) -> bool {
     true
 }
 
+/// Open the switcher with the first OTHER open document that has unsaved
+/// changes highlighted, so Enter goes straight to it and the arrows reach the
+/// rest. Same refusals as [`open`]; with nothing unsaved it opens as usual.
+pub fn open_on_other_unsaved(state: &mut EditorState, now_ms: u64) -> bool {
+    if !open(state, now_ms) {
+        return false;
+    }
+    let active = state
+        .editor_ui
+        .document_tabs
+        .iter()
+        .find(|tab| tab.active)
+        .map(|tab| tab.id);
+    let first = rows(state).iter().position(|row| {
+        row.dirty && matches!(&row.target, QuickSwitcherTarget::Document(id) if Some(*id) != active)
+    });
+    if let Some(index) = first {
+        select_row(state, index);
+    }
+    true
+}
+
 /// Close the switcher. `true` when it was open.
 pub fn close(state: &mut EditorState) -> bool {
     state.editor_ui.projects_panel.switcher.close()

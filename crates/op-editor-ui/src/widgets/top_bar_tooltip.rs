@@ -117,13 +117,37 @@ pub fn tooltip_for(ui: &EditorUiState, button: TopBarButton) -> TopBarTooltip {
             DESKTOP_SHORTCUTS.then_some("⌘P"),
         ),
         TopBarButton::OpenAccount => (translate(ui, "tooltip.topbar.account"), None),
-        // A tab names itself; labelling it again would only repeat the text.
-        // `TopBarTooltip::label` is static, so an empty label is also the
-        // only thing a tab could say.
-        TopBarButton::DocumentTab(_) => ("", None),
-        TopBarButton::CloseDocumentTab(_) => (translate(ui, "common.close"), None),
+        TopBarButton::SaveState => (save_state_tooltip(ui), None),
+        TopBarButton::Breadcrumb => (translate(ui, "tooltip.topbar.revealInDock"), None),
+        TopBarButton::OtherUnsaved => (translate(ui, "tooltip.topbar.otherUnsaved"), None),
+        TopBarButton::AgentActivity => (translate(ui, "tooltip.topbar.agentRunning"), None),
+        TopBarButton::PageChip => (translate(ui, "pages.title"), None),
     };
     TopBarTooltip { label, shortcut }
+}
+
+/// What the save marker's tooltip says: the state in words. While an agent
+/// runs in the document, unsaved changes are saved when the run ends (the only
+/// automatic save there is), so that is what the tooltip promises, and only
+/// when the setting that does it is on.
+fn save_state_tooltip(ui: &EditorUiState) -> &'static str {
+    use op_editor_core::{DocumentTabStatus, SaveState};
+    match op_editor_core::ActiveFileInfo::from_ui(ui, "").save {
+        SaveState::Saved => translate(ui, "topbar.saved"),
+        SaveState::Untitled => translate(ui, "topbar.notSavedYet"),
+        SaveState::Missing => translate(ui, "projects.notOnDisk"),
+        SaveState::Edited => {
+            let running = ui
+                .document_tabs
+                .iter()
+                .any(|tab| tab.active && tab.status == DocumentTabStatus::Running);
+            if running && ui.agent_settings.autosave_on_agent_run_end {
+                translate(ui, "tooltip.topbar.saveAfterRun")
+            } else {
+                translate(ui, "topbar.unsavedChanges")
+            }
+        }
+    }
 }
 
 /// Whether `button`'s own surface is already open. Its dropdown or modal
@@ -144,12 +168,14 @@ pub fn suppressed(ui: &EditorUiState, button: TopBarButton) -> bool {
         TopBarButton::OpenCollaboration => ui.collab.panel.open,
         TopBarButton::ToggleGitPanel => ui.git_panel.open,
         TopBarButton::OpenAccount => ui.account_menu_open,
-        // Tabs have no tooltip, so they must not arm a dwell wake-up either.
-        TopBarButton::DocumentTab(_) => true,
-        TopBarButton::CloseDocumentTab(_) => false,
+        TopBarButton::OtherUnsaved => ui.projects_panel.switcher.open,
+        TopBarButton::PageChip => ui.projects_panel.info_bar.page_menu.open,
         // Sidebar / theme / fullscreen / preview act immediately — they
         // open no surface that could cover or repeat the tooltip.
         TopBarButton::ToggleSidebar
+        | TopBarButton::SaveState
+        | TopBarButton::Breadcrumb
+        | TopBarButton::AgentActivity
         | TopBarButton::Home
         | TopBarButton::ToggleTheme
         | TopBarButton::ToggleFullscreen
@@ -212,7 +238,7 @@ pub fn paint_top_bar_tooltip(
 }
 
 /// Every button the bar can hover, for exhaustive coverage checks.
-pub const ALL_TOP_BAR_BUTTONS: [TopBarButton; 14] = [
+pub const ALL_TOP_BAR_BUTTONS: [TopBarButton; 19] = [
     TopBarButton::ToggleSidebar,
     TopBarButton::ToggleFileMenu,
     TopBarButton::OpenImportMenu,
@@ -227,4 +253,9 @@ pub const ALL_TOP_BAR_BUTTONS: [TopBarButton; 14] = [
     TopBarButton::ToggleFullscreen,
     TopBarButton::TogglePreview,
     TopBarButton::OpenAccount,
+    TopBarButton::SaveState,
+    TopBarButton::OtherUnsaved,
+    TopBarButton::AgentActivity,
+    TopBarButton::PageChip,
+    TopBarButton::Breadcrumb,
 ];

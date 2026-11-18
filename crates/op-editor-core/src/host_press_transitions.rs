@@ -100,6 +100,19 @@ pub fn close_export_quick_menu(ui: &mut EditorUiState) {
     ui.export_quick_menu_hover = None;
 }
 
+/// Close every TopBar dropdown (file, import, locale, account, export) — for a
+/// press that opens something floating over them.
+pub fn close_top_bar_dropdowns(ui: &mut EditorUiState) {
+    ui.file_menu_open = false;
+    ui.file_menu.hover = None;
+    ui.import_menu_open = false;
+    ui.import_menu.open = false;
+    ui.import_menu.hover = None;
+    ui.account_menu_open = false;
+    close_locale_picker(ui);
+    close_export_quick_menu(ui);
+}
+
 // ─── Canvas ────────────────────────────────────────────────────────────
 
 /// Blank-canvas press with the Select tool: clear the selection and

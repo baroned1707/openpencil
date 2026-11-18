@@ -213,6 +213,10 @@ impl WidgetHostNative {
         if let Some(consumed) = self.press_quick_switcher(x, y, viewport_width) {
             return consumed;
         }
+        // An open page menu takes the press before anything it hangs over.
+        if let Some(consumed) = self.press_page_menu(x, y) {
+            return consumed;
+        }
         // Home is a full-surface first-launch entry and owns every pointer
         // event before document chrome or canvas tiers can see it — but the
         // overlays Home itself opens (agent settings, sign-in modal, the

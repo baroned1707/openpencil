@@ -659,6 +659,16 @@ pub fn lookup(key: &str) -> Option<&'static str> {
         "projects.openNoProject" => "열려 있음, 프로젝트 없음",
         "quickSwitcher.placeholder" => "파일 또는 프로젝트로 이동",
         "quickSwitcher.empty" => "일치하는 파일이 없습니다",
+        "topbar.saved" => "저장됨",
+        "topbar.notSavedYet" => "아직 저장되지 않음",
+        "topbar.unsavedChanges" => "저장되지 않은 변경 사항",
+        "tooltip.topbar.saveAfterRun" => "에이전트 실행이 끝나면 저장됩니다",
+        "topbar.otherUnsaved" => "저장되지 않은 파일 {{count}}개 더 있음",
+        "topbar.runningIn" => "{{name}}에서 실행 중",
+        "topbar.runningElsewhere" => "실행 중 · 외 {{count}}개",
+        "tooltip.topbar.otherUnsaved" => "저장되지 않은 변경 사항이 있는 다른 파일",
+        "tooltip.topbar.agentRunning" => "에이전트가 작업 중인 파일로 이동",
+        "tooltip.topbar.revealInDock" => "파일 목록에서 보기",
         _ => return None,
     })
 }

@@ -235,10 +235,6 @@ impl WidgetHostNative {
         if self.quick_switcher_active() {
             return true;
         }
-        // Middle-click on a document tab closes it instead of starting a pan.
-        if self.press_middle_document_tab(x, y) {
-            return true;
-        }
         // So does a middle-click on an open file's row in the Projects dock.
         if self.press_middle_projects_dock(x, y) {
             return true;
