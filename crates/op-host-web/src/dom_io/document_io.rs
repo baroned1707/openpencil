@@ -107,6 +107,10 @@ pub(crate) fn drain_pending_file_action<C: RepaintContext + 'static>(inner: &Inn
             // `deck_html_export_supported` at `false`, so neither the File
             // menu row nor the workspace button that raise this is shown.
         }
+        FileAction::CopyImageCredits => {
+            // Gated on `image_credits_supported`, which web leaves at
+            // `false`, so the File menu never paints the row that raises this.
+        }
         FileAction::ImportFigma => import_figma(inner),
         FileAction::FinishFigmaImport(_) => {
             // Desktop alone holds a PreparedFig between modal steps.

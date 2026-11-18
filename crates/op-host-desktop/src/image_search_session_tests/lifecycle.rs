@@ -24,7 +24,7 @@ fn poll_into_applies_finished_job_to_placeholder_frame() {
 
     let (tx, rx) = std::sync::mpsc::channel();
     tx.send(super::super::JobOutcome::Search(Some(
-        "https://example.com/photo.jpg".to_string(),
+        "https://example.com/photo.jpg".into(),
     )))
     .unwrap();
     let mut session = ImageSearchSession {
@@ -70,7 +70,7 @@ fn poll_discards_standalone_image_result_after_collaboration_binds() {
     // before the worker result reached the UI-thread sink.
     let (tx, rx) = std::sync::mpsc::channel();
     tx.send(super::super::JobOutcome::Search(Some(
-        "https://result.example.com/burger.jpg".to_string(),
+        "https://result.example.com/burger.jpg".into(),
     )))
     .unwrap();
     let mut session = ImageSearchSession {
@@ -131,7 +131,7 @@ fn successful_apply_does_not_suppress_later_unfilled_retry() {
 
     let (tx, rx) = std::sync::mpsc::channel();
     tx.send(super::super::JobOutcome::Search(Some(
-        "https://example.com/photo.jpg".to_string(),
+        "https://example.com/photo.jpg".into(),
     )))
     .unwrap();
     let mut session = ImageSearchSession {
@@ -249,7 +249,7 @@ fn poll_discards_a_result_when_the_nodes_image_intent_changed() {
 
     let (tx, rx) = std::sync::mpsc::channel();
     tx.send(super::super::JobOutcome::Search(Some(
-        "https://stale.example.com/burger.jpg".to_string(),
+        "https://stale.example.com/burger.jpg".into(),
     )))
     .unwrap();
     let mut session = ImageSearchSession {
@@ -352,7 +352,7 @@ fn poll_discards_a_result_when_only_provider_truncated_words_changed() {
 
     let (tx, rx) = std::sync::mpsc::channel();
     tx.send(super::super::JobOutcome::Search(Some(
-        "https://stale.example.com/blue-dome.jpg".to_string(),
+        "https://stale.example.com/blue-dome.jpg".into(),
     )))
     .unwrap();
     let mut session = ImageSearchSession {
@@ -406,9 +406,9 @@ fn poll_shares_one_stale_intent_scan_across_a_completed_batch() {
     let mut jobs = Vec::new();
     for id in ["img1", "img2"] {
         let (tx, rx) = std::sync::mpsc::channel();
-        tx.send(super::super::JobOutcome::Search(Some(format!(
-            "https://result.example.com/{id}.jpg"
-        ))))
+        tx.send(super::super::JobOutcome::Search(Some(
+            format!("https://result.example.com/{id}.jpg").into(),
+        )))
         .unwrap();
         jobs.push(ImageSearchJob {
             deadline: None,
@@ -643,7 +643,7 @@ fn document_replacement_reset_drops_stale_pending_job_so_it_cannot_apply_to_new_
     // The stale job resolves AFTER the replacement — its result must not land on
     // the new document's unrelated "photo" node.
     let _ = tx.send(super::super::JobOutcome::Search(Some(
-        "https://stale.example.com/old-document-photo.jpg".to_string(),
+        "https://stale.example.com/old-document-photo.jpg".into(),
     )));
 
     let changed = session.poll_into(&mut new_state);

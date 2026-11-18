@@ -226,10 +226,12 @@ fn apply_relink(host: &mut WidgetHostNative, path: &Path) {
         return;
     }
     state.commit_history();
-    if let Some(jian_ops_schema::node::PenNode::Image(image)) =
-        op_editor_core::walkers::find_node_mut(state.active_children_mut(), &id)
-    {
-        image.src = embedded.url.into();
+    if let Some(node) = op_editor_core::walkers::find_node_mut(state.active_children_mut(), &id) {
+        if let jian_ops_schema::node::PenNode::Image(image) = node {
+            image.src = embedded.url.into();
+            // A file from disk is not the stock photo the old credit named.
+            op_editor_core::set_node_image_credit(node, None);
+        }
     }
     // Drop the stale asset check so the warning row clears on the
     // next pump (it re-probes the new src).
@@ -282,6 +284,49 @@ mod relink_tests {
             "relink must embed as a data: URL, not store the picked path: {}",
             image.src
         );
+    }
+
+    /// Invariant: importing a local file over a credited stock photo drops
+    /// the credit with the photo; a failed read keeps both.
+    #[test]
+    fn local_import_clears_a_stale_credit() {
+        let credit = op_editor_core::ImageCredit {
+            provider: "openverse".into(),
+            creator: Some("Jane Doe".into()),
+            ..Default::default()
+        };
+        let mut host = WidgetHostNative::new();
+        let id = host
+            .editor_state_mut()
+            .insert_image_node_at_viewport("Photo", "https://example.test/stock.jpg")
+            .expect("image node inserted and selected");
+        let credit_of = |host: &WidgetHostNative| {
+            op_editor_core::walkers::find_node(host.editor_state().active_children(), &id)
+                .and_then(|node| op_editor_core::node_image_credit(node).cloned())
+        };
+        op_editor_core::set_node_image_credit(
+            op_editor_core::walkers::find_node_mut(
+                host.editor_state_mut().active_children_mut(),
+                &id,
+            )
+            .expect("node"),
+            Some(credit.clone()),
+        );
+
+        let missing = std::env::temp_dir().join("op-relink-credit-does-not-exist.png");
+        apply_relink(&mut host, &missing);
+        assert_eq!(
+            credit_of(&host),
+            Some(credit),
+            "a failed read changes nothing"
+        );
+
+        let path =
+            std::env::temp_dir().join(format!("op-relink-credit-{}.png", std::process::id()));
+        std::fs::write(&path, b"local bytes").expect("write temp file");
+        apply_relink(&mut host, &path);
+        let _ = std::fs::remove_file(&path);
+        assert_eq!(credit_of(&host), None);
     }
 
     /// A read failure (file vanished between pick and read, unreadable

@@ -166,6 +166,7 @@ impl Default for EditorUiState {
             font_import_supported: false,
             batch_frame_export_supported: false,
             deck_html_export_supported: false,
+            image_credits_supported: false,
             slide_thumbnails_supported: false,
             scene_template_generate_supported: false,
             style_import_file_picker_supported: false,

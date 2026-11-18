@@ -336,6 +336,7 @@ async fn run_search(query: &str, credentials: Option<&OpenverseCredentials>) -> 
                 id: hit.id,
                 thumb_data_url: Arc::new(hit.thumb_data_url),
                 attribution: hit.attribution,
+                credit: hit.credit,
             })
             .collect(),
         source: outcome.source.map(|source| match source {

@@ -37,8 +37,8 @@ use std::time::{Duration, Instant};
 
 use op_editor_core::{walkers, EditorCommand, EditorState, NodeId, PenNodeExt as _};
 use op_image_enrich::{
-    apply_result, collect_targets, is_failed_image_slot_for_host, ImageRequestMode,
-    ImageSearchTarget, SEARCH_FAILED_PLACEHOLDER_SRC,
+    apply_result_with_credit, collect_targets, is_failed_image_slot_for_host, FoundImage,
+    ImageRequestMode, ImageSearchTarget, SEARCH_FAILED_PLACEHOLDER_SRC,
 };
 use op_mcp::{McpTool, ToolErrorCode, ToolOutcome};
 
@@ -57,15 +57,16 @@ const MAX_PARALLEL_SEARCHES: usize = 3;
 /// without touching the network. The production implementation wraps the
 /// shared `web_image_search` ladder.
 pub(crate) trait ImageSearchBackend: Send + Sync {
-    /// Resolve one target to a landed url, or `None` when every provider
-    /// avenue failed. The caller decides what `None` means (the failed-search
-    /// sentinel, per the enrichment contract).
-    fn search(&self, target: &ImageSearchTarget) -> Option<String>;
+    /// Resolve one target to a landed image (url + the credit that goes onto
+    /// the node), or `None` when every provider avenue failed. The caller
+    /// decides what `None` means (the failed-search sentinel, per the
+    /// enrichment contract).
+    fn search(&self, target: &ImageSearchTarget) -> Option<FoundImage>;
 
     /// Deadline-aware entry point used by the enrichment loop. Injected test
     /// backends retain the original synchronous seam through this default;
     /// production overrides it to bound the complete async provider ladder.
-    fn search_before(&self, target: &ImageSearchTarget, _deadline: Instant) -> Option<String> {
+    fn search_before(&self, target: &ImageSearchTarget, _deadline: Instant) -> Option<FoundImage> {
         self.search(target)
     }
 
@@ -93,7 +94,7 @@ pub(crate) trait ImageSearchBackend: Send + Sync {
 #[derive(Debug, PartialEq, Eq)]
 pub(crate) enum ImageSearchAttempt {
     NotStarted,
-    Completed(Option<String>),
+    Completed(Option<FoundImage>),
 }
 
 pub(crate) fn search_parallel_before(
@@ -161,18 +162,21 @@ impl WebSearchBackend {
     }
 }
 
+fn found_image(hit: crate::web_image_search::WebImageSearchHit) -> FoundImage {
+    FoundImage {
+        url: hit.thumb_data_url,
+        credit: hit.credit,
+    }
+}
+
 impl ImageSearchBackend for WebSearchBackend {
-    fn search(&self, target: &ImageSearchTarget) -> Option<String> {
+    fn search(&self, target: &ImageSearchTarget) -> Option<FoundImage> {
         let outcome =
             crate::web_image_search::run_search_blocking(&target.query, self.credentials.as_ref());
-        outcome
-            .results
-            .into_iter()
-            .next()
-            .map(|hit| hit.thumb_data_url)
+        outcome.results.into_iter().next().map(found_image)
     }
 
-    fn search_before(&self, target: &ImageSearchTarget, deadline: Instant) -> Option<String> {
+    fn search_before(&self, target: &ImageSearchTarget, deadline: Instant) -> Option<FoundImage> {
         let remaining = deadline.saturating_duration_since(Instant::now());
         if remaining.is_zero() {
             return None;
@@ -185,7 +189,7 @@ impl ImageSearchBackend for WebSearchBackend {
         .results
         .into_iter()
         .next()
-        .map(|hit| hit.thumb_data_url)
+        .map(found_image)
     }
 
     fn search_many_before(
@@ -388,7 +392,7 @@ pub(crate) fn run_enrich_sync(
             record_apply(
                 state,
                 &target.node_id,
-                SEARCH_FAILED_PLACEHOLDER_SRC,
+                &FoundImage::from(SEARCH_FAILED_PLACEHOLDER_SRC),
                 &mut run.commands,
             );
             acted.push(target.node_id);
@@ -404,9 +408,9 @@ pub(crate) fn run_enrich_sync(
     let deadline = Instant::now() + budget;
     let attempts = backend.search_many_before(&searchable, deadline);
     for (target, attempt) in searchable.into_iter().zip(attempts) {
-        if let ImageSearchAttempt::Completed(url) = attempt {
-            let url = url.unwrap_or_else(|| SEARCH_FAILED_PLACEHOLDER_SRC.to_string());
-            record_apply(state, &target.node_id, &url, &mut run.commands);
+        if let ImageSearchAttempt::Completed(found) = attempt {
+            let found = found.unwrap_or_else(|| FoundImage::from(SEARCH_FAILED_PLACEHOLDER_SRC));
+            record_apply(state, &target.node_id, &found, &mut run.commands);
             acted.push(target.node_id);
         }
     }
@@ -458,20 +462,23 @@ fn collect_subtree_ids(node: &PenNode, out: &mut std::collections::HashSet<Strin
     }
 }
 
-/// Land `url` on `node_id` through the shared `apply_result`, then record the
-/// change as a `PatchNodeData` carrying exactly the top-level keys that
-/// changed — so the host's replay of the batch reproduces the clone's end
-/// state without any parallel write path.
+/// Land `found` on `node_id` through the shared `apply_result_with_credit`,
+/// then record the change as a `PatchNodeData` carrying exactly the top-level
+/// keys that changed — so the host's replay of the batch reproduces the
+/// clone's end state without any parallel write path. The credit is a
+/// top-level key of the node (`imageCredit`), so it travels in the same patch
+/// as the url and lands in the same undo step; a credit that was REMOVED is
+/// sent as `null`, because the shallow merge would otherwise keep it.
 fn record_apply(
     state: &mut EditorState,
     node_id: &NodeId,
-    url: &str,
+    found: &FoundImage,
     commands: &mut Vec<EditorCommand>,
 ) {
     let Some(before) = walkers::find_node(state.active_children(), node_id).cloned() else {
         return;
     };
-    if !apply_result(state, node_id, url) {
+    if !apply_result_with_credit(state, node_id, &found.url, found.credit.as_ref()) {
         return;
     }
     let Some(after) = walkers::find_node(state.active_children(), node_id) else {
@@ -492,6 +499,9 @@ fn record_apply(
             patch.insert(key.clone(), value.clone());
         }
     }
+    if before_obj.contains_key(IMAGE_CREDIT_KEY) && !after_obj.contains_key(IMAGE_CREDIT_KEY) {
+        patch.insert(IMAGE_CREDIT_KEY.into(), serde_json::Value::Null);
+    }
     if patch.is_empty() {
         return;
     }
@@ -501,6 +511,9 @@ fn record_apply(
         page_id: None,
     });
 }
+
+/// Wire key of `PenNodeBase::image_credit`.
+const IMAGE_CREDIT_KEY: &str = "imageCredit";
 
 /// Whether a node carries the failed-search sentinel — the CLI's
 /// `node_contains_failure_sentinel`, on image nodes and image fills alike.

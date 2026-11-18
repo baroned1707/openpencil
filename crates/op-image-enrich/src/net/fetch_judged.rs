@@ -37,7 +37,7 @@ pub(super) struct JudgedImage {
     pub identity: Option<String>,
     pub attribution: String,
     pub original: Option<crate::net::providers::OriginalImageSource>,
-    pub provenance: Option<crate::ImageProvenance>,
+    pub provenance: Option<crate::ImageCredit>,
 }
 
 pub(super) fn claim_ranked_image(

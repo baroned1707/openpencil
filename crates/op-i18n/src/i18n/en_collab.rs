@@ -655,6 +655,10 @@ pub fn lookup(key: &str) -> Option<&'static str> {
         "missingFonts.notice.downloading" => "Downloading missing fonts…",
         "settings.fonts.autoDownload" => "Download missing fonts automatically",
         "settings.fonts.autoDownloadHint" => "Sends only missing font names to Fontsource and GitHub.",
+        "fileMenu.copyImageCredits" => "Copy image credits",
+        "imageCredits.copiedOne" => "1 image credit copied",
+        "imageCredits.copied" => "{{count}} image credits copied",
+        "imageCredits.none" => "No image credits in this document",
         _ => return None,
     })
 }

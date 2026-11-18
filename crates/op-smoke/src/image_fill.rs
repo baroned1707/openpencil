@@ -240,11 +240,19 @@ fn fill_images_with_fetch(
             "{}",
             image_provenance_line(target.node_id.as_str(), &target.query, hit.as_ref())
         );
-        let url = hit.map(|hit| hit.src);
+        let (url, credit) = match hit {
+            Some(hit) => (Some(hit.src), hit.provenance),
+            None => (None, None),
+        };
         let resolved = url
             .as_deref()
             .unwrap_or(op_image_enrich::SEARCH_FAILED_PLACEHOLDER_SRC);
-        if op_image_enrich::apply_result(state, &target.node_id, resolved) {
+        if op_image_enrich::apply_result_with_credit(
+            state,
+            &target.node_id,
+            resolved,
+            credit.as_ref(),
+        ) {
             // Match the desktop's late-image callback: contrast cannot be
             // established while the original photo slot is still empty.
             let repaired = op_orchestrator::repair_photo_caption_for_image(state, &target.node_id);

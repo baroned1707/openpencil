@@ -21,7 +21,7 @@ fn a_repeat_query_gets_the_same_photo_back_not_a_dedup_downgrade() {
     let good = "https://example.org/bali-temple.jpg".to_string();
     resolved.lock().unwrap().insert(
         search_intent_key("Bali, Indonesia", None, None, None),
-        SearchMemoEntry::Ready(good.clone()),
+        SearchMemoEntry::Ready(good.clone().into()),
     );
     used_urls.lock().unwrap().insert(good.clone());
 
@@ -59,7 +59,7 @@ fn a_repeat_query_gets_the_same_photo_back_not_a_dedup_downgrade() {
         .expect("the memo answers without touching the network");
     assert_eq!(
         answer,
-        JobOutcome::Search(Some(good)),
+        JobOutcome::Search(Some(good.into())),
         "the rebuilt card gets ITS photo back, not the next-best junk result"
     );
 }

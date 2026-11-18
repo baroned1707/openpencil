@@ -271,6 +271,7 @@ pub fn preserve_app_preferences(previous: &EditorState, next: &mut EditorState) 
         .scene_template_center
         .save_current_supported;
     next.editor_ui.deck_html_export_supported = previous.editor_ui.deck_html_export_supported;
+    next.editor_ui.image_credits_supported = previous.editor_ui.image_credits_supported;
     next.editor_ui.slide_thumbnails_supported = previous.editor_ui.slide_thumbnails_supported;
     next.editor_ui.scene_template_generate_supported =
         previous.editor_ui.scene_template_generate_supported;

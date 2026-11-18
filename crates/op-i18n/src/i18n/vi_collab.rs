@@ -627,6 +627,10 @@ pub fn lookup(key: &str) -> Option<&'static str> {
         "missingFonts.notice.downloading" => "Đang tải xuống các phông còn thiếu…",
         "settings.fonts.autoDownload" => "Tự động tải xuống các phông còn thiếu",
         "settings.fonts.autoDownloadHint" => "Chỉ gửi tên các phông còn thiếu tới Fontsource và GitHub.",
+        "fileMenu.copyImageCredits" => "Sao chép ghi công hình ảnh",
+        "imageCredits.copiedOne" => "Đã sao chép 1 ghi công hình ảnh",
+        "imageCredits.copied" => "Đã sao chép {{count}} ghi công hình ảnh",
+        "imageCredits.none" => "Tài liệu này không có ghi công hình ảnh",
         _ => return None,
     })
 }

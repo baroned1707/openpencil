@@ -788,6 +788,8 @@ mod empty_file_tests;
 #[cfg(test)]
 mod enrich_images_tool_tests;
 #[cfg(test)]
+mod image_credits_catalog_tests;
+#[cfg(test)]
 mod finalize_tool_advisory_tests;
 #[cfg(test)]
 mod finalize_tool_tests;

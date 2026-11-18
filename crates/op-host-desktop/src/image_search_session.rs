@@ -30,12 +30,26 @@ use op_host_services::web_image_generate::ImageGenerateError;
 use op_image_enrich::net::{ImageRelevanceJudge, NoJudge};
 pub(crate) use op_image_enrich::{
     collaboration_image_result_gate, collect_targets, collect_targets_with_scene,
-    image_request_mode, is_image_fallback, ImageAspectRatio, ImageRequestMode, ImageSearchTarget,
-    SEARCH_FAILED_PLACEHOLDER_SRC,
+    image_request_mode, is_image_fallback, FoundImage, ImageAspectRatio, ImageRequestMode,
+    ImageSearchTarget, SEARCH_FAILED_PLACEHOLDER_SRC,
 };
 
+/// The credit-less form: only the tests land a bare url; production lands
+/// results through [`apply_result_with_credit`].
+#[cfg(test)]
 pub(crate) fn apply_result(state: &mut EditorState, node_id: &NodeId, url: &str) -> bool {
-    let changed = op_image_enrich::apply_result(state, node_id, url);
+    apply_result_with_credit(state, node_id, url, None)
+}
+
+/// Land `url` and its credit in one node mutation (see
+/// `op_image_enrich::apply_result_with_credit`), then repair the caption.
+pub(crate) fn apply_result_with_credit(
+    state: &mut EditorState,
+    node_id: &NodeId,
+    url: &str,
+    credit: Option<&op_image_enrich::ImageCredit>,
+) -> bool {
+    let changed = op_image_enrich::apply_result_with_credit(state, node_id, url, credit);
     if changed {
         op_orchestrator::repair_photo_caption_for_image(state, node_id);
     }
@@ -76,7 +90,7 @@ impl OpenverseCredentials {
 /// its typed error so the fallback policy can classify it.
 #[derive(Debug, PartialEq)]
 enum JobOutcome {
-    Search(Option<String>),
+    Search(Option<FoundImage>),
     Generate(Result<String, ImageGenerateError>),
 }
 
@@ -110,7 +124,9 @@ enum SearchMemoEntry {
         request_id: u64,
         waiters: Vec<mpsc::Sender<JobOutcome>>,
     },
-    Ready(String),
+    /// The resolved photo with its credit: a repeat query must land the same
+    /// credit, not only the same url.
+    Ready(FoundImage),
 }
 
 /// Which relevance judge a session resolved — logged once per session as
@@ -581,11 +597,11 @@ impl ImageSearchSession {
                     }
                     let is_stock_result = matches!(outcome, JobOutcome::Search(_));
                     let is_search_hit = matches!(outcome, JobOutcome::Search(Some(_)));
-                    let url = match outcome {
-                        JobOutcome::Search(url) => url,
+                    let found = match outcome {
+                        JobOutcome::Search(found) => found,
                         JobOutcome::Generate(Ok(url)) => {
                             self.stats.generated += 1;
-                            Some(url)
+                            Some(FoundImage::from(url))
                         }
                         JobOutcome::Generate(Err(error)) => {
                             // A non-degradable failure (configuration) ends
@@ -663,8 +679,9 @@ impl ImageSearchSession {
                     }
                     // Ours: a failed search lands the theme-adaptive dashed
                     // placeholder (sentinel src) instead of a bare grey box.
-                    let url = url.unwrap_or_else(|| SEARCH_FAILED_PLACEHOLDER_SRC.to_string());
-                    if apply_result(state, &job.node_id, &url) {
+                    let FoundImage { url, credit } =
+                        found.unwrap_or_else(|| FoundImage::from(SEARCH_FAILED_PLACEHOLDER_SRC));
+                    if apply_result_with_credit(state, &job.node_id, &url, credit.as_ref()) {
                         changed = true;
                         if url == SEARCH_FAILED_PLACEHOLDER_SRC
                             && walkers::find_node(state.active_children(), &job.node_id)
@@ -711,7 +728,7 @@ mod progress;
 use jobs::publish_search_result;
 use jobs::{spawn_gen_job, spawn_job, spawn_unavailable_gen_job};
 
-use fetch::fetch_first_image_url_blocking_with_judge_for_view;
+use fetch::fetch_first_image_resolved_blocking_with_judge_for_view;
 pub(crate) use fetch::fetch_image_data_url;
 use intent::current_intent_snapshot;
 pub(crate) use intent::{intent_fingerprint, search_intent_key};

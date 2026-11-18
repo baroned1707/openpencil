@@ -108,6 +108,7 @@ fn popover_hits_resolve_controls() {
         id: "1".into(),
         thumb_data_url: Arc::new("data:image/png;base64,AA==".into()),
         attribution: String::new(),
+        credit: None,
     });
     ips.search_source = Some(ImageSearchSource::Openverse);
     let layout = search_popover_layout(rect, visible, &ips).expect("layout");

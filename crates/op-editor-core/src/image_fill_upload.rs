@@ -2,7 +2,7 @@
 
 use crate::fills::node_fills_mut;
 use crate::walkers::find_node_mut;
-use crate::{EditorState, ImageFillMode, NodeId};
+use crate::{set_node_image_credit, EditorState, ImageFillMode, NodeId};
 use jian_ops_schema::node::PenNode;
 use jian_ops_schema::style::{ImageFillBody, ImageOriginalSize, PenFill};
 
@@ -58,8 +58,11 @@ impl EditorState {
             let Some(node) = find_node_mut(self.active_children_mut(), &sel) else {
                 return false;
             };
+            // A local file, a drop or a pasted picture replaces whatever the
+            // node showed; the stock-photo credit described that old picture.
             if let PenNode::Image(image) = node {
                 image.src = src.into();
+                set_node_image_credit(node, None);
                 true
             } else {
                 let Some(fills) = node_fills_mut(node) else {
@@ -87,6 +90,7 @@ impl EditorState {
                 } else {
                     fills[0] = body;
                 }
+                set_node_image_credit(node, None);
                 true
             }
         };

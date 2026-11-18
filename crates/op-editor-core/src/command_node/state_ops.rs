@@ -154,6 +154,7 @@ impl EditorState {
         else {
             return false;
         };
+        let patch_names_image_credit = patch.contains_key("imageCredit");
         let Some(current) = walkers::find_node(self.active_children(), node_id) else {
             return false;
         };
@@ -166,11 +167,21 @@ impl EditorState {
         for (key, value) in patch {
             obj.insert(key, value);
         }
-        let Ok(replacement) = serde_json::from_value::<PenNode>(value) else {
+        let Ok(mut replacement) = serde_json::from_value::<PenNode>(value) else {
             return false;
         };
         if replacement.id_str().is_empty() {
             return false;
+        }
+        // A patch that swaps the picture (`src`, an image fill url) without
+        // speaking about `imageCredit` is an edit by someone who is not a
+        // provider (the `update_node` / `batch_design` U(...) path), so the
+        // credit of the old picture must not stay on the new one. A patch that
+        // carries `imageCredit` itself (enrich_images) states the credit.
+        if !patch_names_image_credit
+            && crate::node_image_source(current) != crate::node_image_source(&replacement)
+        {
+            crate::set_node_image_credit(&mut replacement, None);
         }
         let mut slot = Some(replacement);
         replace_node_in_children(self.active_children_mut(), node_id, &mut slot)

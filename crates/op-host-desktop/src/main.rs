@@ -47,6 +47,7 @@ mod document_runs_host;
 mod document_tabs_host;
 mod drag_cursor;
 mod empty_file_notice;
+mod image_credits_host;
 mod figma_import_session;
 mod font_download_host;
 mod font_download_source;

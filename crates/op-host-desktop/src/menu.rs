@@ -35,6 +35,8 @@ pub enum MenuAction {
     SaveAs,
     /// Save the open document as a reusable `user:` scene template.
     SaveAsTemplate,
+    /// Copy the document's stock-image credit lines to the clipboard.
+    CopyImageCredits,
     Export,
     Undo,
     Redo,
@@ -92,6 +94,7 @@ mod backend {
     const ID_SAVE: &str = "save";
     const ID_SAVE_AS: &str = "save-as";
     const ID_SAVE_AS_TEMPLATE: &str = "save-as-template";
+    const ID_COPY_IMAGE_CREDITS: &str = "copy-image-credits";
     const ID_EXPORT: &str = "export";
     const ID_UNDO: &str = "undo";
     const ID_REDO: &str = "redo";
@@ -129,6 +132,7 @@ mod backend {
             ID_SAVE => MenuAction::Save,
             ID_SAVE_AS => MenuAction::SaveAs,
             ID_SAVE_AS_TEMPLATE => MenuAction::SaveAsTemplate,
+            ID_COPY_IMAGE_CREDITS => MenuAction::CopyImageCredits,
             ID_EXPORT => MenuAction::Export,
             ID_UNDO => MenuAction::Undo,
             ID_REDO => MenuAction::Redo,
@@ -253,6 +257,12 @@ mod backend {
                     ID_EXPORT,
                     tr(locale, "menu.exportImage"),
                     Some(accel_shift(Code::KeyP)),
+                ),
+                // No accelerator: an occasional action, like saving a template.
+                &item(
+                    ID_COPY_IMAGE_CREDITS,
+                    tr(locale, "fileMenu.copyImageCredits"),
+                    None,
                 ),
             ]);
             let _ = menu.append(&file);

@@ -132,6 +132,9 @@ pub struct WebImageSearchHit {
     pub id: String,
     pub thumb_data_url: String,
     pub attribution: String,
+    /// Creator / licence record persisted on the node when the hit is chosen;
+    /// `None` for a hand-built hit that names no provider.
+    pub credit: Option<crate::ImageCredit>,
 }
 
 pub struct WebImageSearchOutcome {
@@ -209,11 +212,17 @@ pub fn search_outcome_to_json(outcome: &WebImageSearchOutcome) -> String {
         .results
         .iter()
         .map(|hit| {
-            serde_json::json!({
+            let mut value = serde_json::json!({
                 "id": hit.id,
                 "thumb_data_url": hit.thumb_data_url,
                 "attribution": hit.attribution,
-            })
+            });
+            // Only present when a provider reported one, so a reply without
+            // credits stays byte-identical to the previous shape.
+            if let Some(credit) = &hit.credit {
+                value["credit"] = serde_json::to_value(credit).unwrap_or_default();
+            }
+            value
         })
         .collect();
     serde_json::json!({
@@ -560,6 +569,7 @@ async fn materialize_judged_first(
         id: candidate.hit.id.clone(),
         thumb_data_url: candidate.data_url.clone(),
         attribution: candidate.hit.attribution.clone(),
+        credit: candidate.hit.provenance(),
     })
 }
 

@@ -8,7 +8,7 @@ use std::time::{Duration, Instant};
 use jian_ops_schema::node::PenNode;
 use jian_ops_schema::style::PenFill;
 use op_editor_core::{EditorCommand, EditorState, NodeId};
-use op_image_enrich::ImageSearchTarget;
+use op_image_enrich::{FoundImage, ImageCredit, ImageSearchTarget};
 use op_mcp::{McpTool, ToolOutcome};
 
 use super::enrich_images_tool::{
@@ -21,6 +21,7 @@ use super::enrich_images_tool::{
 #[derive(Default)]
 struct StubBackend {
     urls: HashMap<String, String>,
+    credits: HashMap<String, ImageCredit>,
     calls: Mutex<Vec<String>>,
 }
 
@@ -33,10 +34,21 @@ impl StubBackend {
     }
 }
 
+impl StubBackend {
+    fn with_credit(mut self, query: &str, credit: ImageCredit) -> Self {
+        self.credits.insert(query.to_string(), credit);
+        self
+    }
+}
+
 impl ImageSearchBackend for StubBackend {
-    fn search(&self, target: &ImageSearchTarget) -> Option<String> {
+    fn search(&self, target: &ImageSearchTarget) -> Option<FoundImage> {
         self.calls.lock().unwrap().push(target.query.clone());
-        self.urls.get(&target.query).cloned()
+        let url = self.urls.get(&target.query).cloned()?;
+        Some(FoundImage {
+            url,
+            credit: self.credits.get(&target.query).cloned(),
+        })
     }
 }
 
@@ -55,12 +67,12 @@ struct ParallelProbeBackend {
 }
 
 impl ImageSearchBackend for ParallelProbeBackend {
-    fn search(&self, _target: &ImageSearchTarget) -> Option<String> {
+    fn search(&self, _target: &ImageSearchTarget) -> Option<FoundImage> {
         let active = self.active.fetch_add(1, Ordering::SeqCst) + 1;
         self.peak.fetch_max(active, Ordering::SeqCst);
         std::thread::sleep(Duration::from_millis(30));
         self.active.fetch_sub(1, Ordering::SeqCst);
-        Some("data:image/jpeg;base64,AQ==".to_string())
+        Some("data:image/jpeg;base64,AQ==".into())
     }
 
     fn search_many_before(
@@ -73,16 +85,16 @@ impl ImageSearchBackend for ParallelProbeBackend {
 }
 
 impl ImageSearchBackend for SleepingBackend {
-    fn search(&self, _target: &ImageSearchTarget) -> Option<String> {
-        Some(self.url.clone())
+    fn search(&self, _target: &ImageSearchTarget) -> Option<FoundImage> {
+        Some(self.url.as_str().into())
     }
 
-    fn search_before(&self, _target: &ImageSearchTarget, deadline: Instant) -> Option<String> {
+    fn search_before(&self, _target: &ImageSearchTarget, deadline: Instant) -> Option<FoundImage> {
         // Overshoot the deadline by a margin regardless of the budget size.
         std::thread::sleep(
             deadline.saturating_duration_since(Instant::now()) + Duration::from_millis(150),
         );
-        Some(self.url.clone())
+        Some(self.url.as_str().into())
     }
 }
 
@@ -415,4 +427,93 @@ fn enrich_scopes_to_requested_roots() {
         panic!("img_a must stay an image node");
     };
     assert_eq!(img_a.src, "", "the out-of-scope slot must stay untouched");
+}
+
+fn stock_credit() -> ImageCredit {
+    ImageCredit {
+        provider: "wikimedia".into(),
+        creator: Some("Jane Doe".into()),
+        license: Some("CC BY 4.0".into()),
+        license_url: Some("https://creativecommons.org/licenses/by/4.0/".into()),
+        source_page_url: Some("https://commons.wikimedia.org/wiki/File:Lake.jpg".into()),
+    }
+}
+
+fn credit_of(state: &EditorState, id: &str) -> Option<ImageCredit> {
+    find(state.active_children(), id)
+        .and_then(|node| op_editor_core::node_image_credit(node).cloned())
+}
+
+fn run_batch(live: &EditorState, backend: StubBackend) -> Vec<EditorCommand> {
+    let tool = EnrichImagesTool::for_test(live, Arc::new(backend));
+    match tool.call(&BTreeMap::new()) {
+        ToolOutcome::OkJsonWithCommand(_, EditorCommand::Batch { commands }) => commands,
+        other => panic!("expected a batch outcome, got {other:?}"),
+    }
+}
+
+#[test]
+fn enrich_images_command_carries_the_credit_and_applies_to_a_live_state() {
+    // An image node and a frame whose image FILL receives the picture.
+    for (fixture, query, id) in [
+        (MIXED_FIXTURE, "mountain lake", "photo"),
+        (EMPTY_FILL_FIXTURE, "forest trail", "slot"),
+    ] {
+        let live = load(fixture);
+        let backend = StubBackend::with(query, "data:image/png;base64,AA==")
+            .with_credit(query, stock_credit());
+        let commands = run_batch(&live, backend);
+
+        // The credit is IN the command, next to the url, not applied beside it.
+        let patches: Vec<&str> = commands
+            .iter()
+            .filter_map(|command| match command {
+                EditorCommand::PatchNodeData {
+                    node_id,
+                    patch_json,
+                    ..
+                } if node_id.as_str() == id => Some(patch_json.as_str()),
+                _ => None,
+            })
+            .collect();
+        assert_eq!(patches.len(), 1, "{id}: one patch for the slot");
+        let patch: serde_json::Value = serde_json::from_str(patches[0]).unwrap();
+        assert_eq!(patch["imageCredit"]["creator"], "Jane Doe", "{id}");
+        assert_eq!(patch["imageCredit"]["provider"], "wikimedia", "{id}");
+
+        // Applied through the pump's unit (one Batch): url and credit land
+        // together, and one undo removes both.
+        let mut live = live;
+        assert!(live.apply(EditorCommand::Batch { commands }));
+        assert_eq!(credit_of(&live, id), Some(stock_credit()), "{id}");
+        assert!(live.undo(), "{id}: the batch is one undo step");
+        assert_eq!(credit_of(&live, id), None, "{id}");
+    }
+}
+
+#[test]
+fn enrich_images_without_a_credit_clears_a_stale_one_on_the_live_state() {
+    let source = EMPTY_FILL_FIXTURE.replace(
+        r#""imageSearchQuery": "forest trail","#,
+        r#""imageSearchQuery": "forest trail", "imageCredit": {"provider": "openverse", "creator": "Old Creator"},"#,
+    );
+    let live = load(&source);
+    assert!(credit_of(&live, "slot").is_some(), "fixture carries a credit");
+    let backend = StubBackend::with("forest trail", "data:image/jpeg;base64,AQ==");
+    let commands = run_batch(&live, backend);
+
+    // The removal is explicit (`null`): a shallow merge would keep the old key.
+    let patch = commands
+        .iter()
+        .find_map(|command| match command {
+            EditorCommand::PatchNodeData { patch_json, .. } => Some(patch_json.clone()),
+            _ => None,
+        })
+        .expect("patch");
+    let patch: serde_json::Value = serde_json::from_str(&patch).unwrap();
+    assert!(patch["imageCredit"].is_null(), "{patch}");
+
+    let mut live = live;
+    assert!(live.apply(EditorCommand::Batch { commands }));
+    assert_eq!(credit_of(&live, "slot"), None);
 }

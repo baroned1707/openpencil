@@ -74,6 +74,9 @@ pub struct GetDocumentInfo {
     pub page_count: usize,
     pub active_page_index: usize,
     pub total_nodes: usize,
+    /// Stock-image credits of the whole document. Empty for a document with
+    /// none, in which case the reply keeps its original, credit-free shape.
+    pub image_credits: Vec<op_image_enrich::CreditLine>,
 }
 
 impl McpTool for GetDocumentInfo {
@@ -88,7 +91,29 @@ impl McpTool for GetDocumentInfo {
             self.active_page_index.to_string(),
         );
         out.insert("total_nodes".into(), self.total_nodes.to_string());
-        ToolOutcome::Ok(out)
+        if self.image_credits.is_empty() {
+            return ToolOutcome::Ok(out);
+        }
+        // Same string-valued keys as above, plus one native array: each entry
+        // is the node title and the stored `imageCredit` fields.
+        let mut value = serde_json::Map::new();
+        for (key, text) in out {
+            value.insert(key, serde_json::Value::String(text));
+        }
+        let credits: Vec<serde_json::Value> = self
+            .image_credits
+            .iter()
+            .map(|line| {
+                let mut entry = serde_json::Map::new();
+                entry.insert("title".into(), line.title.clone().into());
+                if let Ok(serde_json::Value::Object(fields)) = serde_json::to_value(&line.credit) {
+                    entry.extend(fields);
+                }
+                serde_json::Value::Object(entry)
+            })
+            .collect();
+        value.insert("imageCredits".into(), serde_json::Value::Array(credits));
+        ToolOutcome::OkJson(serde_json::Value::Object(value).to_string())
     }
 }
 
@@ -113,6 +138,7 @@ pub fn document_info_snapshot(state: &EditorState) -> GetDocumentInfo {
         page_count: state.page_count(),
         active_page_index: state.ui.active_page_index,
         total_nodes,
+        image_credits: op_image_enrich::collect_image_credits(&state.doc),
     }
 }
 

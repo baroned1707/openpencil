@@ -86,6 +86,7 @@ pub(super) fn apply_copy_overrides(node: &mut PenNode, overrides_json: Option<&s
         return false;
     };
     overrides.remove("id");
+    let names_image_credit = overrides.contains_key("imageCredit");
 
     let Ok(mut node_value) = serde_json::to_value(&*node) else {
         return false;
@@ -96,9 +97,16 @@ pub(super) fn apply_copy_overrides(node: &mut PenNode, overrides_json: Option<&s
     for (key, value) in overrides {
         node_object.insert(key, value);
     }
-    let Ok(overridden) = serde_json::from_value::<PenNode>(node_value) else {
+    let Ok(mut overridden) = serde_json::from_value::<PenNode>(node_value) else {
         return false;
     };
+    // The copy keeps its source's credit, unless the override swaps the
+    // picture for one the credit does not describe.
+    if !names_image_credit
+        && crate::node_image_source(node) != crate::node_image_source(&overridden)
+    {
+        crate::set_node_image_credit(&mut overridden, None);
+    }
     *node = overridden;
     true
 }

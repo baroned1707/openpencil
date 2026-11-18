@@ -73,6 +73,10 @@ mod batch_program_test_support;
 mod batch_program_tests;
 #[cfg(test)]
 mod batch_program_update_tests;
+#[cfg(test)]
+mod document_info_credits_tests;
+#[cfg(test)]
+mod update_image_credit_tests;
 pub mod bulk_vars;
 #[cfg(test)]
 mod bulk_vars_tests;

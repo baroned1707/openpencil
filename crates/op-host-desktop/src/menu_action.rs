@@ -114,6 +114,15 @@ impl DesktopApp {
                 self.request_background_save_as()
             }
             A::SaveAsTemplate => self.save_current_as_template(),
+            A::CopyImageCredits => {
+                persistence::run_action(
+                    op_editor_core::editor_ui_state::FileAction::CopyImageCredits,
+                    &mut self.host,
+                    &mut self.current_path,
+                    self.window.as_ref(),
+                );
+                true
+            }
             A::Export => {
                 self.host.commit_variable_row_focus_if_any_pub();
                 self.host

@@ -160,6 +160,9 @@ pub(crate) fn parse_search_reply(
                             .and_then(serde_json::Value::as_str)
                             .unwrap_or_default()
                             .to_string(),
+                        credit: hit
+                            .get("credit")
+                            .and_then(|credit| serde_json::from_value(credit.clone()).ok()),
                     })
                 })
                 .collect()

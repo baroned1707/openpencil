@@ -268,7 +268,7 @@ struct PreparedJudgeCandidate {
     identity: Option<String>,
     attribution: String,
     original: Option<crate::net::providers::OriginalImageSource>,
-    provenance: Option<crate::ImageProvenance>,
+    provenance: Option<crate::ImageCredit>,
 }
 
 async fn fetch_judged_openverse(

@@ -40,8 +40,8 @@ pub(super) fn spawn_job(
     {
         let mut memo = search_memo.lock().unwrap();
         match memo.get_mut(&key) {
-            Some(SearchMemoEntry::Ready(url)) => {
-                let _ = tx.send(JobOutcome::Search(Some(url.clone())));
+            Some(SearchMemoEntry::Ready(found)) => {
+                let _ = tx.send(JobOutcome::Search(Some(found.clone())));
                 return ImageSearchJob {
                     node_id,
                     deadline,
@@ -74,8 +74,8 @@ pub(super) fn spawn_job(
         }
     }
     std::thread::spawn(move || {
-        let url = if judge_enabled {
-            fetch_first_image_url_blocking_with_judge_for_view(
+        let found = if judge_enabled {
+            fetch_first_image_resolved_blocking_with_judge_for_view(
                 &target.query,
                 aspect_ratio,
                 credentials.as_ref().map(OpenverseCredentials::as_web),
@@ -85,6 +85,7 @@ pub(super) fn spawn_job(
                 deadline,
                 target.judge_view,
             )
+            .map(found_image)
         } else {
             // No configured judge: the unjudged ladder, still fenced for
             // relevance. The slot's image prompt is passed as intent so a
@@ -98,9 +99,9 @@ pub(super) fn spawn_job(
                 &used_urls,
                 deadline,
             )
-            .map(|resolved| resolved.src)
+            .map(found_image)
         };
-        publish_search_result(&search_memo, key, request_id, url);
+        publish_search_result(&search_memo, key, request_id, found);
     });
     ImageSearchJob {
         node_id,
@@ -112,6 +113,13 @@ pub(super) fn spawn_job(
     }
 }
 
+fn found_image(resolved: op_image_enrich::net::resolve::ResolvedImage) -> FoundImage {
+    FoundImage {
+        url: resolved.src,
+        credit: resolved.provenance,
+    }
+}
+
 /// Publish only into the exact Pending entry that launched this request. A
 /// reset may remove it and a new document may insert the same key before the
 /// old thread returns; the request id keeps that old result isolated.
@@ -119,7 +127,7 @@ pub(super) fn publish_search_result(
     search_memo: &Arc<Mutex<HashMap<SearchIntentKey, SearchMemoEntry>>>,
     key: SearchIntentKey,
     request_id: u64,
-    url: Option<String>,
+    found: Option<FoundImage>,
 ) -> bool {
     let waiters = {
         let mut memo = search_memo.lock().unwrap();
@@ -136,13 +144,13 @@ pub(super) fn publish_search_result(
         let Some(SearchMemoEntry::Pending { waiters, .. }) = memo.remove(&key) else {
             unreachable!("request identity was checked under the same lock")
         };
-        if let Some(found) = url.as_ref() {
+        if let Some(found) = found.as_ref() {
             memo.insert(key, SearchMemoEntry::Ready(found.clone()));
         }
         waiters
     };
     for waiter in waiters {
-        let _ = waiter.send(JobOutcome::Search(url.clone()));
+        let _ = waiter.send(JobOutcome::Search(found.clone()));
     }
     true
 }

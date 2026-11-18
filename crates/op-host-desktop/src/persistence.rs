@@ -553,6 +553,10 @@ pub fn run_action(
             crate::persistence_share::handle_share(host, current_path.as_deref());
             ActionOutcome::Noop
         }
+        FileAction::CopyImageCredits => {
+            crate::image_credits_host::copy_image_credits(host);
+            ActionOutcome::Noop
+        }
         FileAction::OpenRecent(i) => {
             let Some(entry) = host.editor_state().editor_ui.recent_files.get(i).cloned() else {
                 return ActionOutcome::Noop;

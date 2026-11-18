@@ -205,6 +205,19 @@ impl<'a> Widget for FileMenu<'a> {
             );
             y += ROW_HEIGHT;
         }
+        if self.has_copy_credits_row() {
+            paint_row(
+                cx,
+                &self.theme,
+                rect.origin.x,
+                y,
+                Icon::Copy,
+                t(self.ui, "copyImageCredits"),
+                "",
+                h(self.copy_credits_row()),
+            );
+            y += ROW_HEIGHT;
+        }
         y = paint_divider(cx, &self.theme, rect, y);
         paint_header(cx, &self.theme, rect.origin.x, y, t(self.ui, "recentFiles"));
         y += HEADER_HEIGHT;

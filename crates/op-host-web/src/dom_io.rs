@@ -416,10 +416,15 @@ fn relink_image<C: RepaintContext + 'static>(inner: &InnerRc<C>) {
                         return;
                     }
                     state.commit_history();
-                    if let Some(jian_ops_schema::node::PenNode::Image(image)) =
+                    if let Some(node) =
                         op_editor_core::walkers::find_node_mut(state.active_children_mut(), &id)
                     {
-                        image.src = url.into();
+                        if let jian_ops_schema::node::PenNode::Image(image) = node {
+                            image.src = url.into();
+                            // A relinked local file is not the stock photo the
+                            // old credit described.
+                            op_editor_core::set_node_image_credit(node, None);
+                        }
                     }
                     state.editor_ui.image_panel.asset_check = None;
                     b.host_mut().mark_editor_state_dirty();

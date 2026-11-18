@@ -631,6 +631,10 @@ pub fn lookup(key: &str) -> Option<&'static str> {
         "missingFonts.notice.downloading" => "不足しているフォントをダウンロード中…",
         "settings.fonts.autoDownload" => "不足しているフォントを自動でダウンロード",
         "settings.fonts.autoDownloadHint" => "不足フォント名だけを Fontsource と GitHub に送信します。",
+        "fileMenu.copyImageCredits" => "画像クレジットをコピー",
+        "imageCredits.copiedOne" => "画像クレジット 1 件をコピーしました",
+        "imageCredits.copied" => "画像クレジット {{count}} 件をコピーしました",
+        "imageCredits.none" => "このドキュメントに画像クレジットはありません",
         _ => return None,
     })
 }

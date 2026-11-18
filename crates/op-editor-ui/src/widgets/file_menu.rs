@@ -117,6 +117,10 @@ pub enum FileMenuChoice {
     /// `EditorUiState::deck_html_export_supported` — any document, not
     /// only decks — as the last row of the export section.
     Share,
+    /// Copy the document's stock-image credits as text. Offered only when the
+    /// host sets `EditorUiState::image_credits_supported`; it is the very last
+    /// row of the export section, so no earlier row moves.
+    CopyImageCredits,
     OpenRecent(usize),
     ClearRecent,
 }
@@ -209,18 +213,37 @@ impl<'a> FileMenu<'a> {
         self.ui.deck_html_export_supported
     }
 
+    /// Whether the copy-image-credits row closes the export section.
+    fn has_copy_credits_row(&self) -> bool {
+        self.ui.image_credits_supported
+    }
+
     /// Rows in the export section (Export image, plus the optional
-    /// Export-all-frames row, the two deck-export rows and Share).
+    /// Export-all-frames row, the two deck-export rows, Share and Copy image
+    /// credits).
     fn export_rows(&self) -> usize {
         1 + usize::from(self.has_export_all_row())
             + 2 * usize::from(self.has_deck_export_rows())
             + usize::from(self.has_share_row())
+            + usize::from(self.has_copy_credits_row())
     }
 
-    /// Row index of the Share row — the last row of the export section.
-    /// Only meaningful when [`FileMenu::has_share_row`] holds.
-    fn share_row(&self) -> usize {
+    /// Row index of the last row of the export section — Copy image credits
+    /// when offered, else Share.
+    fn last_export_row(&self) -> usize {
         6 + self.top_shift() + usize::from(self.has_save_as_template_row()) + self.export_rows() - 1
+    }
+
+    /// Row index of the Share row. Only meaningful when
+    /// [`FileMenu::has_share_row`] holds.
+    fn share_row(&self) -> usize {
+        self.last_export_row() - usize::from(self.has_copy_credits_row())
+    }
+
+    /// Row index of the Copy image credits row. Only meaningful when
+    /// [`FileMenu::has_copy_credits_row`] holds.
+    fn copy_credits_row(&self) -> usize {
+        self.last_export_row()
     }
 
     /// Row index of the deck-slideshow row — directly under whichever
@@ -323,6 +346,9 @@ impl<'a> FileMenu<'a> {
                 Some(FileMenuChoice::ExportPptx)
             }
             row if self.has_share_row() && row == self.share_row() => Some(FileMenuChoice::Share),
+            row if self.has_copy_credits_row() && row == self.copy_credits_row() => {
+                Some(FileMenuChoice::CopyImageCredits)
+            }
             row if row >= recent_start && row < recent_start + self.recent.len() => {
                 Some(FileMenuChoice::OpenRecent(row - recent_start))
             }

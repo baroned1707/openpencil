@@ -44,8 +44,8 @@ pub struct RawHit {
 impl RawHit {
     /// The creator / licence record to persist when this hit is chosen.
     /// `None` for hand-built hits that name no provider.
-    pub(crate) fn provenance(&self) -> Option<crate::ImageProvenance> {
-        (!self.provider.is_empty()).then(|| crate::ImageProvenance {
+    pub(crate) fn provenance(&self) -> Option<crate::ImageCredit> {
+        (!self.provider.is_empty()).then(|| crate::ImageCredit {
             provider: self.provider.to_string(),
             creator: self.creator.clone(),
             license: self.license.clone(),
@@ -299,6 +299,7 @@ where
     for hit in hits {
         if let Some(data_url) = fetch_data_url(hit.thumb_url.clone()).await {
             out.push(WebImageSearchHit {
+                credit: hit.provenance(),
                 id: hit.id,
                 thumb_data_url: data_url,
                 attribution: hit.attribution,
@@ -322,8 +323,10 @@ where
     Fut: std::future::Future<Output = Option<String>>,
 {
     for hit in hits {
+        let credit = hit.provenance();
         if let Some(data_url) = fetch_data_url(hit.thumb_url).await {
             return Some(WebImageSearchHit {
+                credit,
                 id: hit.id,
                 thumb_data_url: data_url,
                 attribution: hit.attribution,

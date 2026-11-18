@@ -139,6 +139,21 @@ pub fn image_search_result_url(state: &EditorState, index: usize) -> Option<Stri
         .map(|hit| hit.thumb_data_url.as_ref().clone())
 }
 
+/// The clicked result's creator / licence record, `None` for a hit that
+/// carries none. Written together with the url so the credit lands in the
+/// same undo step as the picture.
+pub fn image_search_result_credit(
+    state: &EditorState,
+    index: usize,
+) -> Option<crate::ImageCredit> {
+    state
+        .editor_ui
+        .image_panel
+        .search_results
+        .get(index)
+        .and_then(|hit| hit.credit.clone())
+}
+
 /// The generated preview's URL, if the popover is showing one.
 pub fn generated_preview_url(state: &EditorState) -> Option<String> {
     state
@@ -186,16 +201,25 @@ pub fn open_image_gen_settings(state: &mut EditorState) {
 
 /// Commit `src` onto the selected image node (with history). Returns
 /// `true` when the write ran, i.e. the host should mark dirty.
-pub fn write_selected_image_src(state: &mut EditorState, src: &str) -> bool {
+///
+/// `credit` is the stock-photo record of the picture being written: a search
+/// hit passes its own, a generated image passes `None`, which clears the
+/// credit of the picture it replaces. Both land in the one history step.
+pub fn write_selected_image_src(
+    state: &mut EditorState,
+    src: &str,
+    credit: Option<crate::ImageCredit>,
+) -> bool {
     let id = state.selection.anchor.clone();
     if !id.is_real() || src.is_empty() {
         return false;
     }
     state.commit_history();
-    if let Some(PenNode::Image(image)) =
-        crate::walkers::find_node_mut(state.active_children_mut(), &id)
-    {
-        image.src = src.into();
+    if let Some(node) = crate::walkers::find_node_mut(state.active_children_mut(), &id) {
+        if let PenNode::Image(image) = node {
+            image.src = src.into();
+            crate::set_node_image_credit(node, credit);
+        }
     }
     true
 }

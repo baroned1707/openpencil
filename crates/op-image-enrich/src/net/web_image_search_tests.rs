@@ -218,6 +218,7 @@ fn search_outcome_json_shape() {
             id: "a".into(),
             thumb_data_url: "data:image/png;base64,AA==".into(),
             attribution: "By A".into(),
+            credit: None,
         }],
         source: Some("openverse"),
     };

@@ -20,14 +20,16 @@
 //! container, gated by the collaboration external-assets rule.
 
 mod apply;
+mod credits;
 mod fallback_policy;
+mod found_image;
 mod generation_prompt;
 mod judge_view;
+mod license_policy;
 #[cfg(feature = "net")]
 pub mod net;
 #[cfg(feature = "pixels")]
 pub mod pixels;
-mod provenance;
 mod targets;
 
 /// User-Agent of every outbound HTTP client that fetches images or image
@@ -39,7 +41,8 @@ pub const HTTP_USER_AGENT: &str = concat!(
     " (+https://github.com/baroned1707/openpencil)"
 );
 
-pub use apply::{apply_result, apply_result_with_provenance, collaboration_image_result_gate};
+pub use apply::{apply_result, apply_result_with_credit, collaboration_image_result_gate};
+pub use credits::{collect_image_credits, format_credits_text, CreditLine};
 pub use fallback_policy::{
     apply_image_fallback_policy_to_node, fallback_request_mode, fallback_search_query_for_host,
     icon_name_for_query, image_fallback_policy, image_fallback_policy_with_widths,
@@ -47,9 +50,11 @@ pub use fallback_policy::{
     ImageFallbackBranch, ImageFallbackPatch, IMAGE_FALLBACK_NAME_SUFFIX,
     SEARCH_FAILED_PLACEHOLDER_SRC,
 };
+pub use found_image::FoundImage;
 pub use generation_prompt::compose_generation_prompt;
 pub use judge_view::{ImageJudgeFit, ImageJudgeView};
-pub use provenance::ImageProvenance;
+pub use license_policy::{license_policy, license_policy_with, LicensePolicy};
+pub use op_editor_core::ImageCredit;
 pub use targets::{
     collect_targets, collect_targets_with_scene, has_empty_image_fill, image_request_mode,
     is_frame_placeholder_still_unfilled, is_image_area_rectangle_by_heuristic,

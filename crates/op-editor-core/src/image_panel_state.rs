@@ -32,6 +32,9 @@ pub struct ImageSearchHit {
     pub thumb_data_url: Arc<String>,
     /// Attribution / license line used as the cell tooltip in TS.
     pub attribution: String,
+    /// Creator / licence record persisted on the node when this hit is
+    /// chosen; `None` for a provider that reports none.
+    pub credit: Option<crate::ImageCredit>,
 }
 
 /// Generate-popover phase (TS `type State = 'idle' | 'loading' |
@@ -195,6 +198,7 @@ mod tests {
             id: "1".into(),
             thumb_data_url: Arc::new("data:image/png;base64,AA==".into()),
             attribution: String::new(),
+            credit: None,
         });
         s.close_popovers();
         assert!(!s.search_open && !s.generate_open);

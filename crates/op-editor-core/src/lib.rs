@@ -37,7 +37,7 @@ mod chat_design_apply;
 mod chat_model_mutators;
 pub mod chat_sessions;
 mod chat_title;
-mod image_provenance;
+mod image_credit;
 pub mod table_filter_contract;
 pub mod table_pagination;
 pub mod text_effect_overlay;
@@ -173,7 +173,9 @@ pub mod share_routes;
 pub mod square_chrome;
 pub use document_scope::{DocumentScope, SessionDocument};
 pub use document_tabs::{DocumentId, DocumentTabRequest, DocumentTabStatus, DocumentTabView};
-pub use image_provenance::{ImageProvenance, PROVENANCE_KEYS};
+pub use image_credit::{
+    node_image_credit, node_image_source, set_node_image_credit, ImageCredit,
+};
 pub use project_rename::{
     ProjectRenameRequest, ProjectRenameState, RenameConfirm, RenameNameError,
 };

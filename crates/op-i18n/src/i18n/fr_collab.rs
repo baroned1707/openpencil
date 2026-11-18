@@ -615,6 +615,10 @@ pub fn lookup(key: &str) -> Option<&'static str> {
         "missingFonts.notice.downloading" => "Téléchargement des polices manquantes…",
         "settings.fonts.autoDownload" => "Télécharger automatiquement les polices manquantes",
         "settings.fonts.autoDownloadHint" => "N’envoie que les noms des polices manquantes à Fontsource et GitHub.",
+        "fileMenu.copyImageCredits" => "Copier les crédits d'images",
+        "imageCredits.copiedOne" => "1 crédit d'image copié",
+        "imageCredits.copied" => "{{count}} crédits d'images copiés",
+        "imageCredits.none" => "Aucun crédit d'image dans ce document",
         _ => return None,
     })
 }

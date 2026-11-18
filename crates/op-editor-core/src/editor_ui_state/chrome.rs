@@ -105,6 +105,10 @@ pub enum FileAction {
     /// plus the `.op` itself carrying its sanitized share recipe (see the
     /// host's `export_share` module).
     Share,
+    /// File ▸ "Copy image credits" — the host copies the document's stock-image
+    /// credit lines to the clipboard and says how many it copied. Offered only
+    /// when `EditorUiState::image_credits_supported` is set (desktop).
+    CopyImageCredits,
     ImportFigma,
     /// Complete or cancel a prepared multi-page Figma import. Native
     /// desktop owns the prepared tree; web safely ignores this action.

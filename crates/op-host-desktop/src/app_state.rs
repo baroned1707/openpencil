@@ -98,6 +98,9 @@ impl DesktopApp {
         // And for the deck-slideshow row: same save picker + offscreen
         // exporter. The row still only appears on a deck document.
         host.editor_state_mut().editor_ui.deck_html_export_supported = true;
+        // Desktop has a clipboard and toasts, so the File menu can copy the
+        // document's image credits.
+        host.editor_state_mut().editor_ui.image_credits_supported = true;
         // And for the slides tab's board thumbnails: desktop owns the
         // offscreen renderer they are painted with.
         host.editor_state_mut().editor_ui.slide_thumbnails_supported = true;

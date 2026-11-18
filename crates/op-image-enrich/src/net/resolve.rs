@@ -43,8 +43,8 @@ pub struct ResolvedImage {
     pub attribution: String,
     pub original: Option<crate::net::providers::OriginalImageSource>,
     /// Who made the artwork and under which licence; `None` for hand-built
-    /// values. Persisted on the node by `apply_result_with_provenance`.
-    pub provenance: Option<crate::ImageProvenance>,
+    /// values. Persisted on the node by `apply_result_with_credit`.
+    pub provenance: Option<crate::ImageCredit>,
 }
 
 impl ResolvedImage {

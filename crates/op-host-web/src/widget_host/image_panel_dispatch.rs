@@ -50,7 +50,8 @@ impl WidgetHost {
         let Some(url) = image_ops::image_search_result_url(&self.editor_state, index) else {
             return;
         };
-        self.write_selected_image_src(&url);
+        let credit = image_ops::image_search_result_credit(&self.editor_state, index);
+        self.write_selected_image_src(&url, credit);
         self.clear_image_input_selection_drag();
         self.editor_state.editor_ui.image_panel.close_popovers();
     }
@@ -63,7 +64,7 @@ impl WidgetHost {
         let Some(url) = image_ops::generated_preview_url(&self.editor_state) else {
             return;
         };
-        self.write_selected_image_src(&url);
+        self.write_selected_image_src(&url, None);
         self.clear_image_input_selection_drag();
         self.editor_state.editor_ui.image_panel.close_popovers();
     }
@@ -77,8 +78,12 @@ impl WidgetHost {
         image_ops::open_image_gen_settings(&mut self.editor_state);
     }
 
-    pub(in crate::widget_host) fn write_selected_image_src(&mut self, src: &str) {
-        if image_ops::write_selected_image_src(&mut self.editor_state, src) {
+    pub(in crate::widget_host) fn write_selected_image_src(
+        &mut self,
+        src: &str,
+        credit: Option<op_editor_core::ImageCredit>,
+    ) {
+        if image_ops::write_selected_image_src(&mut self.editor_state, src, credit) {
             self.mark_dirty();
         }
     }

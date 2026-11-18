@@ -531,6 +531,9 @@ pub struct EditorUiState {
     /// at the row's gate: presenting is the only reading of the export,
     /// so a document that is not a deck must not offer it.
     pub deck_html_export_supported: bool,
+    /// Whether this host can put text on the clipboard and show a toast, so
+    /// the File menu offers "Copy image credits". Desktop sets it.
+    pub image_credits_supported: bool,
     /// Rows of the post-import HTML diagnostics overlay, in the order the
     /// importer reported them. Empty means the last import degraded nothing.
     pub html_import_diagnostics: Vec<crate::html_import_diagnostics::HtmlImportDiagnostic>,

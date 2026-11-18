@@ -615,6 +615,10 @@ pub fn lookup(key: &str) -> Option<&'static str> {
         "missingFonts.notice.downloading" => "正在下載缺少的字型…",
         "settings.fonts.autoDownload" => "自動下載缺少的字型",
         "settings.fonts.autoDownloadHint" => "僅將缺少字型的名稱傳送到 Fontsource 和 GitHub。",
+        "fileMenu.copyImageCredits" => "複製圖片署名",
+        "imageCredits.copiedOne" => "已複製 1 則圖片署名",
+        "imageCredits.copied" => "已複製 {{count}} 則圖片署名",
+        "imageCredits.none" => "此文件沒有圖片署名",
         _ => return None,
     })
 }

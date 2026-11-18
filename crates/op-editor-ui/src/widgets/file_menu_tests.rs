@@ -474,3 +474,62 @@ fn measured_truncation_stays_inside_its_budget() {
     assert!(measure(&output) <= 98.0, "{output:?}");
     assert_eq!(truncate_to_width_measured("abc", 0.0, measure), "");
 }
+
+#[test]
+fn copy_image_credits_row_closes_the_export_section_and_moves_nothing_before_it() {
+    let plain_ui = EditorUiState::default();
+    let plain = FileMenu::for_editor_ui(&plain_ui, two_recents());
+    // Without the host flag the menu is exactly what it was.
+    for row in 0..plain.height() as usize {
+        assert_ne!(
+            plain.choice_for_row(row),
+            Some(FileMenuChoice::CopyImageCredits)
+        );
+    }
+
+    let ui = EditorUiState {
+        image_credits_supported: true,
+        ..Default::default()
+    };
+    let menu = FileMenu::for_editor_ui(&ui, two_recents());
+    // Rows 0..=5 are unchanged; Export image stays at 6, the new row follows
+    // it and the recent files shift down by one.
+    assert_eq!(menu.choice_for_row(6), plain.choice_for_row(6));
+    assert_eq!(
+        menu.choice_for_row(7),
+        Some(FileMenuChoice::CopyImageCredits)
+    );
+    assert_eq!(menu.choice_for_row(8), Some(FileMenuChoice::OpenRecent(0)));
+    assert_eq!(menu.choice_for_row(10), Some(FileMenuChoice::ClearRecent));
+    assert_eq!(menu.height(), plain.height() + ROW_HEIGHT);
+
+    // With the deck rows and Share the new row is last, after Share.
+    let mut ui = desktop_ui(Some(TemplateScene::Slides));
+    ui.image_credits_supported = true;
+    let menu = FileMenu::for_editor_ui(&ui, two_recents());
+    let choices: Vec<_> = (6..12).map(|row| menu.choice_for_row(row)).collect();
+    assert_eq!(
+        choices
+            .iter()
+            .filter(|c| **c == Some(FileMenuChoice::Share))
+            .count(),
+        1
+    );
+    let share = choices
+        .iter()
+        .position(|c| *c == Some(FileMenuChoice::Share))
+        .unwrap();
+    assert_eq!(choices[share + 1], Some(FileMenuChoice::CopyImageCredits));
+
+    // Painted, hit-testable, labelled.
+    let panel = menu_panel(&menu);
+    let mut backend = TextCaptureBackend::default();
+    let mut cx = PaintCx {
+        backend: &mut backend,
+    };
+    menu.paint(&mut cx, panel);
+    assert!(backend
+        .texts
+        .iter()
+        .any(|(text, _)| text == t(&ui, "copyImageCredits")));
+}

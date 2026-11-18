@@ -619,6 +619,10 @@ pub fn lookup(key: &str) -> Option<&'static str> {
         "missingFonts.notice.downloading" => "अनुपस्थित फ़ॉन्ट डाउनलोड हो रहे हैं…",
         "settings.fonts.autoDownload" => "अनुपस्थित फ़ॉन्ट अपने आप डाउनलोड करें",
         "settings.fonts.autoDownloadHint" => "केवल अनुपस्थित फ़ॉन्ट के नाम Fontsource और GitHub को भेजता है।",
+        "fileMenu.copyImageCredits" => "छवि क्रेडिट कॉपी करें",
+        "imageCredits.copiedOne" => "1 छवि क्रेडिट कॉपी किया गया",
+        "imageCredits.copied" => "{{count}} छवि क्रेडिट कॉपी किए गए",
+        "imageCredits.none" => "इस दस्तावेज़ में कोई छवि क्रेडिट नहीं है",
         _ => return None,
     })
 }

@@ -631,6 +631,10 @@ pub fn lookup(key: &str) -> Option<&'static str> {
         "missingFonts.notice.downloading" => "누락된 글꼴을 다운로드하는 중…",
         "settings.fonts.autoDownload" => "누락된 글꼴 자동 다운로드",
         "settings.fonts.autoDownloadHint" => "누락된 글꼴 이름만 Fontsource와 GitHub로 보냅니다.",
+        "fileMenu.copyImageCredits" => "이미지 크레딧 복사",
+        "imageCredits.copiedOne" => "이미지 크레딧 1개를 복사했습니다",
+        "imageCredits.copied" => "이미지 크레딧 {{count}}개를 복사했습니다",
+        "imageCredits.none" => "이 문서에는 이미지 크레딧이 없습니다",
         _ => return None,
     })
 }

@@ -615,6 +615,10 @@ pub fn lookup(key: &str) -> Option<&'static str> {
         "missingFonts.notice.downloading" => "Fehlende Schriftarten werden heruntergeladen…",
         "settings.fonts.autoDownload" => "Fehlende Schriftarten automatisch herunterladen",
         "settings.fonts.autoDownloadHint" => "Sendet nur die Namen fehlender Schriften an Fontsource und GitHub.",
+        "fileMenu.copyImageCredits" => "Bildnachweise kopieren",
+        "imageCredits.copiedOne" => "1 Bildnachweis kopiert",
+        "imageCredits.copied" => "{{count}} Bildnachweise kopiert",
+        "imageCredits.none" => "Keine Bildnachweise in diesem Dokument",
         _ => return None,
     })
 }

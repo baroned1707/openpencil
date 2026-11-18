@@ -9,8 +9,8 @@
 use jian_ops_schema::node::PenNode;
 use jian_ops_schema::style::{ImageFillBody, ImageFillMode, PenFill};
 use op_editor_core::{
-    walkers, CollabDocumentMutation, CollabEditSource, CollabGateAction, CollabGateReason,
-    CollabUnsupportedFeature, EditorState, NodeId,
+    set_node_image_credit, walkers, CollabDocumentMutation, CollabEditSource, CollabGateAction,
+    CollabGateReason, CollabUnsupportedFeature, EditorState, NodeId,
 };
 
 use crate::fallback_policy::apply_image_fallback_policy_to_node;
@@ -18,6 +18,7 @@ use crate::targets::{
     has_empty_image_fill, has_saved_image_fallback_intent, is_frame_placeholder_still_unfilled,
     is_image_area_rectangle_by_heuristic,
 };
+use crate::ImageCredit;
 
 /// Sentinel `src` written when EVERY search avenue failed (junk-only
 /// results, network error, empty corpus). The canvas paints it as the
@@ -38,40 +39,21 @@ pub fn collaboration_image_result_gate(state: &EditorState) -> Result<(), Collab
     )
 }
 
-/// [`apply_result`] plus the creator / licence record of the chosen image.
-///
-/// The record is stored in `EditorState::image_provenance` under the node id
-/// only when the url actually landed. It is NOT persisted to the `.op` file:
-/// TODO(jian schema): `PenNodeBase` (so image nodes AND the image fills of
-/// frames / rectangles can carry it) needs an optional provenance field with
-/// the keys of `ImageProvenance::to_json`; until then the record is lost on
-/// save/load, and the MCP `enrich_images` tool (which applies on a clone and
-/// returns node patches) cannot carry it to the live document at all.
-pub fn apply_result_with_provenance(
-    state: &mut EditorState,
-    node_id: &NodeId,
-    url: &str,
-    provenance: Option<&crate::ImageProvenance>,
-) -> bool {
-    let changed = apply_result(state, node_id, url);
-    if changed && url.trim() != SEARCH_FAILED_PLACEHOLDER_SRC {
-        match provenance {
-            Some(provenance) => {
-                state
-                    .image_provenance
-                    .insert(node_id.as_str().to_string(), provenance.clone());
-            }
-            // A new image without a record must not keep the previous
-            // image's credit.
-            None => {
-                state.image_provenance.remove(node_id.as_str());
-            }
-        }
-    }
-    changed
+/// [`apply_result_with_credit`] for a result that is not a provider hit
+/// (the failed-search sentinel, a generated image): any credit the slot held
+/// belongs to the picture that was just replaced, so it is cleared.
+pub fn apply_result(state: &mut EditorState, node_id: &NodeId, url: &str) -> bool {
+    apply_result_with_credit(state, node_id, url, None)
 }
 
-/// Land a resolved stock-search url onto the target node in place.
+/// Land a resolved stock-search url onto the target node in place, together
+/// with the creator / licence record of the chosen image.
+///
+/// The credit is written to `base.image_credit` of the node that OWNS the
+/// picture (the `image` node, or the frame / rectangle whose image fill
+/// received the url), inside the same mutation as the url. `None` clears a
+/// stale credit; so does the failed-search sentinel, whatever `credit` says.
+/// A refused or no-op write leaves the node, credit included, untouched.
 ///
 /// `Image` nodes get their `src`; a still-unfilled placeholder frame or
 /// rectangle (or a container whose only fill is an image fill with an empty
@@ -79,7 +61,12 @@ pub fn apply_result_with_provenance(
 /// mode / crop / adjustments, a slot without one gets a fresh crop-mode image
 /// fill and its children cleared. Returns `false` when the write was refused
 /// (collaboration gate), the node vanished, or the url was already there.
-pub fn apply_result(state: &mut EditorState, node_id: &NodeId, url: &str) -> bool {
+pub fn apply_result_with_credit(
+    state: &mut EditorState,
+    node_id: &NodeId,
+    url: &str,
+    credit: Option<&ImageCredit>,
+) -> bool {
     if let Err(reason) = collaboration_image_result_gate(state) {
         state.editor_ui.collab.set_notice(reason.notice_kind(), 0);
         return false;
@@ -99,7 +86,7 @@ pub fn apply_result(state: &mut EditorState, node_id: &NodeId, url: &str) -> boo
     let is_unfilled_placeholder_frame = is_frame_placeholder_still_unfilled(node);
     let is_unfilled_placeholder_rectangle = is_image_area_rectangle_by_heuristic(node);
     let has_empty_image_fill = has_empty_image_fill(node);
-    let changed = match node {
+    let changed = match &mut *node {
         PenNode::Image(image) => {
             if image.src == url {
                 return false;
@@ -170,6 +157,12 @@ pub fn apply_result(state: &mut EditorState, node_id: &NodeId, url: &str) -> boo
         _ => false,
     };
     if changed {
+        // The credit rides the same node mutation as the url. The failed-search
+        // placeholder is not a picture anyone made, so it never carries one.
+        let credit = (url != SEARCH_FAILED_PLACEHOLDER_SRC)
+            .then(|| credit.cloned())
+            .flatten();
+        set_node_image_credit(node, credit);
         // This writes document content through raw `active_children_mut()`
         // outside the command/history path, so bump the revision. The
         // layer-panel row cache + save-dirty tracking key on

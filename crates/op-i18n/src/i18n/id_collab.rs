@@ -615,6 +615,10 @@ pub fn lookup(key: &str) -> Option<&'static str> {
         "missingFonts.notice.downloading" => "Mengunduh font yang hilang…",
         "settings.fonts.autoDownload" => "Unduh font yang hilang secara otomatis",
         "settings.fonts.autoDownloadHint" => "Hanya mengirim nama font yang hilang ke Fontsource dan GitHub.",
+        "fileMenu.copyImageCredits" => "Salin kredit gambar",
+        "imageCredits.copiedOne" => "1 kredit gambar disalin",
+        "imageCredits.copied" => "{{count}} kredit gambar disalin",
+        "imageCredits.none" => "Tidak ada kredit gambar di dokumen ini",
         _ => return None,
     })
 }

@@ -615,6 +615,10 @@ pub fn lookup(key: &str) -> Option<&'static str> {
         "missingFonts.notice.downloading" => "Descargando fuentes que faltan…",
         "settings.fonts.autoDownload" => "Descargar automáticamente las fuentes que faltan",
         "settings.fonts.autoDownloadHint" => "Solo envía los nombres de las fuentes que faltan a Fontsource y GitHub.",
+        "fileMenu.copyImageCredits" => "Copiar créditos de imágenes",
+        "imageCredits.copiedOne" => "1 crédito de imagen copiado",
+        "imageCredits.copied" => "{{count}} créditos de imágenes copiados",
+        "imageCredits.none" => "No hay créditos de imágenes en este documento",
         _ => return None,
     })
 }

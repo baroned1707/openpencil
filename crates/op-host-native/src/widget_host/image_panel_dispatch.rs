@@ -53,7 +53,8 @@ impl WidgetHostNative {
         let Some(url) = image_ops::image_search_result_url(&self.editor_state, index) else {
             return;
         };
-        self.write_selected_image_src(&url);
+        let credit = image_ops::image_search_result_credit(&self.editor_state, index);
+        self.write_selected_image_src(&url, credit);
         self.clear_image_input_selection_drag();
         self.editor_state.editor_ui.image_panel.close_popovers();
     }
@@ -66,7 +67,7 @@ impl WidgetHostNative {
         let Some(url) = image_ops::generated_preview_url(&self.editor_state) else {
             return;
         };
-        self.write_selected_image_src(&url);
+        self.write_selected_image_src(&url, None);
         self.clear_image_input_selection_drag();
         self.editor_state.editor_ui.image_panel.close_popovers();
     }
@@ -83,7 +84,11 @@ impl WidgetHostNative {
     }
 
     /// Commit `src` onto the selected image node (with history).
-    pub(in crate::widget_host) fn write_selected_image_src(&mut self, src: &str) {
+    pub(in crate::widget_host) fn write_selected_image_src(
+        &mut self,
+        src: &str,
+        credit: Option<op_editor_core::ImageCredit>,
+    ) {
         if !self.collab_allows_document_mutation(
             op_editor_core::CollabDocumentMutation::Unsupported(
                 op_editor_core::CollabUnsupportedFeature::ExternalAssets,
@@ -91,7 +96,7 @@ impl WidgetHostNative {
         ) {
             return;
         }
-        if image_ops::write_selected_image_src(&mut self.editor_state, src) {
+        if image_ops::write_selected_image_src(&mut self.editor_state, src, credit) {
             self.mark_dirty();
         }
     }
@@ -288,6 +293,7 @@ mod tests {
                 id: "1".into(),
                 thumb_data_url: Arc::new("data:image/png;base64,AA==".into()),
                 attribution: String::new(),
+                credit: None,
             });
         host.apply_property_action(A::SelectImageSearchResult(0));
         let node = host.editor_state().selected_node().expect("image");
