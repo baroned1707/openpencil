@@ -1,5 +1,7 @@
 //! Lexical search over the design-data table, and the compact JSON the
-//! `get_guidelines` tool returns for it.
+//! `get_guidelines` tool returns for it. Each match also carries short
+//! `styleSummaries` for the `external:` styles it cites (see
+//! [`crate::design_styles_search`]).
 //!
 //! Scoring is deterministic and dependency-free: keywords weigh most, then
 //! the id/name, then single words of multi-word keywords; pattern words only
@@ -19,6 +21,7 @@ use std::cmp::Reverse;
 use serde_json::{json, Value};
 
 use crate::design_data::{design_records, DesignRecord, IMPORTED_ID_PREFIX};
+use crate::design_styles_search::style_summaries;
 use crate::resolver::match_keyword;
 
 /// Lowest primary score that counts as a match.
@@ -28,13 +31,13 @@ pub const MAX_RESPONSE_BYTES: usize = 6 * 1024;
 /// Most matches one call can return.
 pub const MAX_LIMIT: usize = 3;
 
-const MAX_QUERY_CHARS: usize = 300;
-const KEYWORD_WEIGHT: u32 = 10;
-const EXTRA_KEYWORD_WORD_WEIGHT: u32 = 2;
+pub(crate) const MAX_QUERY_CHARS: usize = 300;
+pub(crate) const KEYWORD_WEIGHT: u32 = 10;
+pub(crate) const EXTRA_KEYWORD_WORD_WEIGHT: u32 = 2;
 const ID_PHRASE_WEIGHT: u32 = 12;
-const NAME_PHRASE_WEIGHT: u32 = 12;
-const NAME_WORD_WEIGHT: u32 = 6;
-const KEYWORD_WORD_WEIGHT: u32 = 3;
+pub(crate) const NAME_PHRASE_WEIGHT: u32 = 12;
+pub(crate) const NAME_WORD_WEIGHT: u32 = 6;
+pub(crate) const KEYWORD_WORD_WEIGHT: u32 = 3;
 const PATTERN_WORD_WEIGHT: u32 = 1;
 const MAX_PATTERN_BONUS: u32 = 3;
 
@@ -195,14 +198,14 @@ fn pattern_bonus(record: &DesignRecord, words: &[String]) -> u32 {
 }
 
 /// Distinct words of `left` that also occur in `right`.
-fn count_shared(left: &[String], right: &[String]) -> u32 {
+pub(crate) fn count_shared(left: &[String], right: &[String]) -> u32 {
     left.iter().filter(|word| right.contains(word)).count() as u32
 }
 
 /// ASCII words of at least three letters, minus generic ones, with a plural
 /// `s` removed, de-duplicated. CJK text has no words here; it is matched as a
 /// substring by `match_keyword`.
-fn significant_words(text: &str) -> Vec<String> {
+pub(crate) fn significant_words(text: &str) -> Vec<String> {
     let mut out: Vec<String> = Vec::new();
     for raw in text.split(|c: char| !c.is_ascii_alphanumeric()) {
         if raw.len() < 3 || GENERIC_WORDS.contains(&raw) {
@@ -260,7 +263,7 @@ fn hit_json(hit: &DesignHit) -> Value {
     })
 }
 
-fn envelope(matches: &[Value]) -> String {
+pub(crate) fn envelope(matches: &[Value]) -> String {
     json!({
         "matches": matches,
         "source": "OpenPencil design-data table; each match names its own source and licence",
@@ -282,8 +285,13 @@ fn no_match_message() -> String {
 /// so it is always valid JSON. If even the best match alone is too large
 /// (multi-byte text at the field limits) its `avoid`, `rules` and `styles`
 /// lists are trimmed from the end first.
+///
+/// `styleSummaries` are added AFTER that choice and never change it: when they
+/// push the text over the cap, summaries are dropped from the end (last match
+/// first) until it fits again.
 pub fn hits_to_json(hits: &[DesignHit]) -> String {
     let mut matches: Vec<Value> = Vec::new();
+    let mut kept: Vec<&DesignHit> = Vec::new();
     for hit in hits {
         let mut value = hit_json(hit);
         let mut candidate = matches.clone();
@@ -298,11 +306,40 @@ pub fn hits_to_json(hits: &[DesignHit]) -> String {
             break;
         }
         matches = candidate;
+        kept.push(hit);
     }
     if matches.is_empty() {
         return no_match_message();
     }
+    attach_style_summaries(&mut matches, &kept);
     envelope(&matches)
+}
+
+/// Add `styleSummaries` (only when a match cites resolvable styles), then
+/// drop trailing summaries until the envelope fits the cap.
+fn attach_style_summaries(matches: &mut [Value], hits: &[&DesignHit]) {
+    for (value, hit) in matches.iter_mut().zip(hits) {
+        let summaries = style_summaries(&hit.record.styles);
+        if let (Some(object), false) = (value.as_object_mut(), summaries.is_empty()) {
+            object.insert("styleSummaries".to_string(), Value::Array(summaries));
+        }
+    }
+    while envelope(matches).len() > MAX_RESPONSE_BYTES {
+        let Some(object) = matches
+            .iter_mut()
+            .rev()
+            .filter_map(Value::as_object_mut)
+            .find(|object| object.contains_key("styleSummaries"))
+        else {
+            return;
+        };
+        if let Some(Value::Array(items)) = object.get_mut("styleSummaries") {
+            items.pop();
+            if items.is_empty() {
+                object.remove("styleSummaries");
+            }
+        }
+    }
 }
 
 /// Remove the last entry of `avoid`, then `rules`, then `styles`.

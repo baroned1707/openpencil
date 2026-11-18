@@ -280,3 +280,40 @@ fn design_data_lookup_passes_through_the_loop_executor_untouched() {
     );
     assert_eq!(inner.calls.load(Ordering::SeqCst), 1);
 }
+
+#[test]
+fn design_style_lookup_passes_through_the_loop_executor_untouched() {
+    // category=data with kind=style is not a guide topic either: the loop
+    // executor hands it to the same tool, once, and returns its JSON.
+    let prompt =
+        op_ai_skills::design_agent_system_prompt_with_skills("design a mobile app login screen");
+    let inner = InApp::new(EditorState::new());
+    let shaped = DesignRunExecutor::wrap(inner.clone(), &prompt);
+    let result = shaped.execute(
+        "get_guidelines",
+        r#"{"category":"data","kind":"style","query":"glassmorphism"}"#,
+    );
+    assert!(!result.is_error, "{}", result.content);
+    let envelope: Value = serde_json::from_str(&result.content).expect("envelope json");
+    assert_eq!(envelope["data"]["matches"][0]["ref"], "glassmorphism");
+    assert_eq!(
+        envelope["data"]["matches"][0]["source"]["licenseSpdx"],
+        "MIT"
+    );
+    assert!(
+        result.content.len() <= 6 * 1024 + 200,
+        "{}",
+        result.content.len()
+    );
+    assert_eq!(inner.calls.load(Ordering::SeqCst), 1);
+
+    let named = shaped.execute(
+        "get_guidelines",
+        r#"{"category":"data","kind":"style","query":"external:minimalism-and-swiss-style"}"#,
+    );
+    let named: Value = serde_json::from_str(&named.content).expect("envelope json");
+    assert_eq!(
+        named["data"]["matches"][0]["ref"],
+        "minimalism-and-swiss-style"
+    );
+}

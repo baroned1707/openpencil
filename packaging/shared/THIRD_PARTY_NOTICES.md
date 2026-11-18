@@ -28,7 +28,7 @@ Rules for maintainers:
 | Content | Origin | Licence | Notice files |
 | --- | --- | --- | --- |
 | Design fonts (Inter, Noto Sans SC, Noto Serif SC, Plus Jakarta Sans, Cormorant Garamond, DM Mono, DM Sans, DM Serif Display, Instrument Serif, JetBrains Mono, Manrope, Outfit, Space Grotesk, Archivo, Libre Caslon Text) | Google Fonts and the upstream font projects, see `NOTICE.txt` for each source | SIL Open Font License 1.1 | `NOTICE.txt`, `OFL-*.txt` |
-| Design data: UI UX Pro Max (product types, palettes, rules, font pairings, style names) | https://github.com/nextlevelbuilder/ui-ux-pro-max-skill at commit `7436a6e0b6dc3add7c12d5b6ef1ccd3d410dd7fd` | MIT, Copyright (c) 2024 Next Level Builder | section "UI UX Pro Max (MIT)" below |
+| Design data: UI UX Pro Max (product types, palettes, rules, font pairings, style names, style definitions) | https://github.com/nextlevelbuilder/ui-ux-pro-max-skill at commit `7436a6e0b6dc3add7c12d5b6ef1ccd3d410dd7fd` | MIT, Copyright (c) 2024 Next Level Builder | section "UI UX Pro Max (MIT)" below |
 | Prompt skills `design-craft`, `design-brief` (adapted, condensed, modified): Anthropic frontend-design and write-spec | https://github.com/anthropics/skills and https://github.com/anthropics/knowledge-work-plugins | Apache-2.0 | sections "Anthropic skills (frontend-design) and knowledge-work-plugins (write-spec) (Apache-2.0)" and "Apache License 2.0 (full text)" |
 | Prompt skill `design-craft` (adapted, condensed, modified): Impeccable | https://github.com/pbakaus/impeccable, Copyright 2025 Paul Bakaus | Apache-2.0 | section "Impeccable (Apache-2.0)", with its NOTICE text |
 | Prompt skill `design-brief` (adapted, condensed, modified): designer-skills | https://github.com/Owl-Listener/designer-skills | MIT, Copyright (c) 2026 MC Dean | section "Owl-Listener designer-skills (MIT)" |
@@ -53,23 +53,30 @@ Max** skill data set, retrieved from its public repository:
 
 What was used: product types (names and search keywords), colour palettes (ten
 colour roles per product type), reasoning rules and anti-patterns, font
-pairings (family names only) and style names. These records are in
-`crates/op-ai-skills/data/design-data-uiuxpm.json`; each carries the source
-name `UI UX Pro Max (MIT)`, the repository URL, the pinned commit and the
-licence `MIT`.
+pairings (family names only), style names and style definitions (for each
+style: its aliases and keywords, what it is best and not for, effects, accessibility notes, complexity,
+light and dark mode support, era and the colour values named in the upstream
+colour cells). The product records are in
+`crates/op-ai-skills/data/design-data-uiuxpm.json` and the style definitions in
+`crates/op-ai-skills/data/design-styles-uiuxpm.json`; each record in both files
+carries the source name `UI UX Pro Max (MIT)`, the repository URL, the pinned
+commit and the licence `MIT`.
 
 Modifications: the upstream CSV files were converted to JSON by
 `scripts/import-ui-ux-pro-max.py`; columns were dropped (CSS, URL, code and
-checklist columns, and the colour roles On Secondary, On Accent, Card
+checklist columns, the AI-prompt, framework and design-system-variable columns, and the colour roles On Secondary, On Accent, Card
 Foreground, Muted Foreground, On Destructive and Ring); the three per-product-type files were joined by product type; text was
 normalised (control and invisible characters removed, whitespace collapsed,
 long fields shortened at a word boundary); and records or list items that did
-not pass validation were filtered out. Style names are kept only as
-references, never as style descriptions.
+not pass validation were filtered out. Style rows marked deprecated
+upstream were not imported, and in the style definitions the colour values were
+read out of the upstream colour cells as `#rrggbb`.
 
 Deliberately NOT included: any row or sentence that refers to Apple
 documentation or the Human Interface Guidelines (the styles Liquid Glass,
-Apple Native Experience and Spatial UI (VisionOS) are not referenced), the
+Apple Native Experience and Spatial UI (VisionOS) are not imported or
+referenced, and list items that mention Apple were removed from the remaining
+style definitions), the
 Google Fonts and icon catalogs, the per-framework stack rules, and the other
 upstream data files (charts, landing pages, UX guidelines, icons, motion).
 

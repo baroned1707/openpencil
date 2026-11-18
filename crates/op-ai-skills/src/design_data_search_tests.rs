@@ -286,3 +286,105 @@ fn every_record_renders_a_source_and_licence() {
         }
     }
 }
+
+fn cited_styles() -> Vec<String> {
+    [
+        "external:glassmorphism",
+        "external:flat-design",
+        "external:soft-ui-evolution",
+    ]
+    .map(String::from)
+    .to_vec()
+}
+
+#[test]
+fn product_matches_carry_summaries_of_the_styles_they_cite() {
+    // `uiuxpm-saas-general` cites external styles; each summary has exactly
+    // ref, name, bestFor and doNotUseFor, at most three, in citation order.
+    let hits = search_design_data("saas general", None, 1);
+    assert_eq!(hits[0].record.id, "uiuxpm-saas-general");
+    let value: Value = serde_json::from_str(&hits_to_json(&hits)).expect("json");
+    let summaries = value["matches"][0]["styleSummaries"]
+        .as_array()
+        .expect("styleSummaries");
+    assert_eq!(summaries.len(), 3, "the first three of four cited styles");
+    let cited: Vec<&str> = hits[0]
+        .record
+        .styles
+        .iter()
+        .filter_map(|style| style.strip_prefix("external:"))
+        .collect();
+    for (summary, expected) in summaries.iter().zip(&cited) {
+        assert_eq!(summary["ref"], *expected);
+        let mut keys: Vec<&str> = summary
+            .as_object()
+            .expect("object")
+            .keys()
+            .map(String::as_str)
+            .collect();
+        keys.sort_unstable();
+        assert_eq!(keys, ["bestFor", "doNotUseFor", "name", "ref"]);
+        for field in ["bestFor", "doNotUseFor"] {
+            let text = summary[field].as_str().expect("text");
+            assert!(text.chars().count() <= 120, "{expected}.{field}: {text}");
+            assert!(!text.ends_with([',', ' ']), "{expected}.{field}: {text:?}");
+        }
+    }
+}
+
+#[test]
+fn product_matches_without_resolvable_styles_have_no_style_summaries_key() {
+    // Seed records cite embedded style guides, not `external:` names.
+    let seed = seed_json("fintech dashboard", None, 1);
+    assert!(!seed.contains("styleSummaries"));
+    // An `external:` name with no style record is skipped, not invented.
+    let mut record = max_record("a");
+    record.styles = vec!["external:no-such-style".to_string()];
+    let text = hits_to_json(&[DesignHit {
+        record: leak(vec![record]).first().expect("one"),
+        score: 10,
+    }]);
+    assert!(!text.contains("styleSummaries"));
+}
+
+#[test]
+fn style_summaries_are_dropped_from_the_end_never_cut_and_never_cost_a_match() {
+    let record = leak(vec![{
+        let mut record = max_record("a");
+        record.styles = cited_styles();
+        record
+    }]);
+    let hit = DesignHit {
+        record: &record[0],
+        score: 10,
+    };
+    let full = style_summaries(&hit.record.styles);
+    assert_eq!(full.len(), 3);
+    let filler = |pad: usize| json!({ "id": "x", "pattern": "p".repeat(pad) });
+    let per_match = {
+        let mut one = vec![filler(0)];
+        let before = envelope(&one).len();
+        attach_style_summaries(&mut one, &[&hit]);
+        envelope(&one).len() - before
+    };
+    // Two matches that fit without summaries but not with both sets.
+    let pad = MAX_RESPONSE_BYTES - per_match - 5 - envelope(&[filler(0), filler(0)]).len();
+    let mut matches = vec![filler(pad / 2 + pad % 2), filler(pad / 2)];
+    assert!(envelope(&matches).len() <= MAX_RESPONSE_BYTES - per_match);
+    attach_style_summaries(&mut matches, &[&hit, &hit]);
+    assert!(envelope(&matches).len() <= MAX_RESPONSE_BYTES);
+    assert_eq!(matches.len(), 2, "no match is dropped for a summary");
+    assert_eq!(
+        matches[0]["styleSummaries"].as_array().map(Vec::len),
+        Some(3),
+        "the first match keeps all its summaries"
+    );
+    let last = matches[1]["styleSummaries"]
+        .as_array()
+        .map_or(0, |items| items.len());
+    assert!(last < 3, "the last match gave summaries up first");
+    // What is left is whole: a leading run of the full list, untouched.
+    if let Some(items) = matches[1]["styleSummaries"].as_array() {
+        assert_eq!(items.as_slice(), &full[..items.len()]);
+    }
+}

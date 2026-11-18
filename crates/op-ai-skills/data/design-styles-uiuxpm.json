@@ -1,0 +1,2939 @@
+[
+  {
+    "id": "uiuxpm-style-3d-and-hyperrealism",
+    "ref": "3d-and-hyperrealism",
+    "name": "3D & Hyperrealism",
+    "keywords": [
+      "depth",
+      "realistic textures",
+      "3d models",
+      "spatial navigation",
+      "tactile",
+      "skeuomorphic elements",
+      "rich detail",
+      "immersive"
+    ],
+    "category": "General",
+    "bestFor": "Gaming, product showcase, immersive experiences, high-end e-commerce, architectural viz, VR/AR",
+    "doNotUseFor": "Low-end mobile, performance-limited, critical accessibility, data tables/forms",
+    "effects": "WebGL/Three.js 3D, realistic shadows (layers), physics lighting, parallax (3-5 layers), smooth 3D (300-400ms)",
+    "era": "2020s Modern",
+    "complexity": "High",
+    "accessibility": "risk high; requires contrast-text-4.5, keyboard, visible-focus, reduced-motion",
+    "lightDarkMode": "light conditional, dark conditional",
+    "status": "active",
+    "primaryColors": [
+      "#001f3f",
+      "#228b22",
+      "#800020",
+      "#ffd700",
+      "#c0c0c0"
+    ],
+    "source": {
+      "name": "UI UX Pro Max (MIT)",
+      "url": "https://github.com/nextlevelbuilder/ui-ux-pro-max-skill",
+      "commit": "7436a6e0b6dc3add7c12d5b6ef1ccd3d410dd7fd",
+      "licenseSpdx": "MIT",
+      "retrieved": "2026-11-18"
+    }
+  },
+  {
+    "id": "uiuxpm-style-3d-product-preview",
+    "ref": "3d-product-preview",
+    "name": "3D Product Preview",
+    "keywords": [
+      "360 product view",
+      "rotatable",
+      "zoomable",
+      "touch-to-spin",
+      "ar preview",
+      "product configurator",
+      "interactive 3d model"
+    ],
+    "category": "General",
+    "bestFor": "E-commerce, furniture, fashion, automotive, electronics, jewelry, product configurators",
+    "doNotUseFor": "Content-heavy sites, blogs, dashboards, low-bandwidth, accessibility-critical",
+    "effects": "Drag-to-rotate, pinch-to-zoom, spin animation, AR placement, material switching, smooth orbit controls",
+    "era": "2025+ E-commerce 3D",
+    "complexity": "High",
+    "accessibility": "risk low; requires contrast-text-4.5, keyboard, visible-focus, reduced-motion",
+    "lightDarkMode": "light conditional, dark conditional",
+    "status": "active",
+    "primaryColors": [
+      "#e8e8e8",
+      "#ffffff"
+    ],
+    "source": {
+      "name": "UI UX Pro Max (MIT)",
+      "url": "https://github.com/nextlevelbuilder/ui-ux-pro-max-skill",
+      "commit": "7436a6e0b6dc3add7c12d5b6ef1ccd3d410dd7fd",
+      "licenseSpdx": "MIT",
+      "retrieved": "2026-11-18"
+    }
+  },
+  {
+    "id": "uiuxpm-style-academia-scholarly-mobile",
+    "ref": "academia-scholarly-mobile",
+    "name": "Academia (Scholarly Mobile)",
+    "keywords": [
+      "academia",
+      "library",
+      "mahogany",
+      "parchment",
+      "brass",
+      "crimson",
+      "serif",
+      "drop cap",
+      "arch-top",
+      "vignette",
+      "leather",
+      "scholarly",
+      "tactile"
+    ],
+    "category": "Mobile",
+    "bestFor": "Knowledge management apps, deep reading tools, ritual-heavy personal brands, lore-heavy RPG/roleplay apps, culture-specific community platforms",
+    "doNotUseFor": "Hyper-modern tech dashboards, neon/glassmorphism, playful Gen Z branding",
+    "effects": "Deep mahogany backgrounds, oak surface cards, brass accented CTAs, arch-top hero/imagery, heavy vignette overlays, sepia-tinted images, drop caps with brass Cinzel, Roman numeral volume headings, slow timing-based animations (Easing.out poly(4)), zero neon or modern tech cues",
+    "era": "Timeless Scholarly",
+    "complexity": "High",
+    "accessibility": "risk low; requires contrast-text-4.5, keyboard, visible-focus, reduced-motion",
+    "lightDarkMode": "light supported, dark conditional, prefers dark",
+    "status": "supplemental",
+    "primaryColors": [
+      "#1c1714",
+      "#251e19"
+    ],
+    "secondaryColors": [
+      "#e8dfd4",
+      "#3d332b",
+      "#9c8b7a",
+      "#c9a962",
+      "#8b2635"
+    ],
+    "source": {
+      "name": "UI UX Pro Max (MIT)",
+      "url": "https://github.com/nextlevelbuilder/ui-ux-pro-max-skill",
+      "commit": "7436a6e0b6dc3add7c12d5b6ef1ccd3d410dd7fd",
+      "licenseSpdx": "MIT",
+      "retrieved": "2026-11-18"
+    }
+  },
+  {
+    "id": "uiuxpm-style-accessible-and-ethical",
+    "ref": "accessible-and-ethical",
+    "name": "Accessible & Ethical",
+    "keywords": [
+      "accessible",
+      "inclusive interface",
+      "high contrast",
+      "large text 16px",
+      "keyboard navigation",
+      "screen reader friendly",
+      "accessibility standards aware",
+      "focus state",
+      "semantic"
+    ],
+    "category": "General",
+    "bestFor": "Government, healthcare, education, inclusive products, large audience, legal compliance, public",
+    "doNotUseFor": "None - accessibility universal",
+    "effects": "Clear focus rings (3-4px), ARIA labels, skip links, responsive design, reduced motion, 44x44px touch targets",
+    "era": "Universal",
+    "complexity": "Low",
+    "accessibility": "risk low; requires contrast-text-4.5, keyboard, visible-focus, reduced-motion",
+    "lightDarkMode": "light supported, dark supported",
+    "status": "active",
+    "source": {
+      "name": "UI UX Pro Max (MIT)",
+      "url": "https://github.com/nextlevelbuilder/ui-ux-pro-max-skill",
+      "commit": "7436a6e0b6dc3add7c12d5b6ef1ccd3d410dd7fd",
+      "licenseSpdx": "MIT",
+      "retrieved": "2026-11-18"
+    }
+  },
+  {
+    "id": "uiuxpm-style-ai-native-ui",
+    "ref": "ai-native-ui",
+    "name": "AI-Native UI",
+    "keywords": [
+      "chatbot",
+      "conversational",
+      "voice",
+      "assistant",
+      "agentic",
+      "ambient",
+      "minimal chrome",
+      "streaming text",
+      "ai interactions"
+    ],
+    "category": "General",
+    "bestFor": "AI products, chatbots, voice assistants, copilots, AI-powered tools, conversational interfaces",
+    "doNotUseFor": "Traditional forms, data-heavy dashboards, print-first content",
+    "effects": "Typing indicators (3-dot pulse), streaming text animations, pulse animations, context cards, smooth reveals",
+    "era": "2020s AI-Era",
+    "complexity": "Low",
+    "accessibility": "risk low; requires contrast-text-4.5, keyboard, visible-focus, reduced-motion",
+    "lightDarkMode": "light supported, dark supported",
+    "status": "active",
+    "primaryColors": [
+      "#6366f1",
+      "#10b981",
+      "#f5f5f5"
+    ],
+    "source": {
+      "name": "UI UX Pro Max (MIT)",
+      "url": "https://github.com/nextlevelbuilder/ui-ux-pro-max-skill",
+      "commit": "7436a6e0b6dc3add7c12d5b6ef1ccd3d410dd7fd",
+      "licenseSpdx": "MIT",
+      "retrieved": "2026-11-18"
+    }
+  },
+  {
+    "id": "uiuxpm-style-anti-polish-raw-aesthetic",
+    "ref": "anti-polish-raw-aesthetic",
+    "name": "Anti-Polish / Raw Aesthetic",
+    "keywords": [
+      "anti-polish raw",
+      "hand-drawn",
+      "collage",
+      "scanned textures",
+      "unfinished",
+      "imperfect",
+      "authentic",
+      "human",
+      "sketch",
+      "raw marks",
+      "creative process"
+    ],
+    "category": "General",
+    "bestFor": "Creative portfolios, artist sites, indie brands, handmade products, authentic storytelling, editorial",
+    "doNotUseFor": "Corporate enterprise, fintech, healthcare, government, polished SaaS",
+    "effects": "No smooth transitions, hand-drawn animations, paper texture overlays, jitter effects, sketch reveal",
+    "era": "2025+ Anti-Digital",
+    "complexity": "Low",
+    "accessibility": "risk low; requires contrast-text-4.5, keyboard, visible-focus, reduced-motion",
+    "lightDarkMode": "light supported, dark supported",
+    "status": "active",
+    "primaryColors": [
+      "#fafaf8",
+      "#4a4a4a",
+      "#1a1a1a",
+      "#c4a77d"
+    ],
+    "source": {
+      "name": "UI UX Pro Max (MIT)",
+      "url": "https://github.com/nextlevelbuilder/ui-ux-pro-max-skill",
+      "commit": "7436a6e0b6dc3add7c12d5b6ef1ccd3d410dd7fd",
+      "licenseSpdx": "MIT",
+      "retrieved": "2026-11-18"
+    }
+  },
+  {
+    "id": "uiuxpm-style-aurora-ui",
+    "ref": "aurora-ui",
+    "name": "Aurora UI",
+    "keywords": [
+      "vibrant gradients",
+      "smooth blend",
+      "northern lights effect",
+      "mesh gradient",
+      "luminous",
+      "atmospheric",
+      "abstract"
+    ],
+    "category": "General",
+    "bestFor": "Modern SaaS, creative agencies, branding, music platforms, lifestyle, premium products, hero sections",
+    "doNotUseFor": "Data-heavy dashboards, critical accessibility, content-heavy where distraction issues",
+    "effects": "Large flowing CSS/SVG gradients, subtle 8-12s animations, depth via color layering, smooth morph",
+    "era": "2020s Modern",
+    "complexity": "Medium",
+    "accessibility": "risk conditional; requires contrast-text-4.5, keyboard, visible-focus, reduced-motion",
+    "lightDarkMode": "light supported, dark supported",
+    "status": "active",
+    "primaryColors": [
+      "#0080ff",
+      "#ff1493",
+      "#00ffff"
+    ],
+    "source": {
+      "name": "UI UX Pro Max (MIT)",
+      "url": "https://github.com/nextlevelbuilder/ui-ux-pro-max-skill",
+      "commit": "7436a6e0b6dc3add7c12d5b6ef1ccd3d410dd7fd",
+      "licenseSpdx": "MIT",
+      "retrieved": "2026-11-18"
+    }
+  },
+  {
+    "id": "uiuxpm-style-bauhaus",
+    "ref": "bauhaus",
+    "name": "Bauhaus (包豪斯)",
+    "keywords": [
+      "bauhaus",
+      "geometric",
+      "constructivist",
+      "primary colors",
+      "hard shadow",
+      "bold",
+      "tactile",
+      "functional",
+      "poster",
+      "mechanical",
+      "architectural"
+    ],
+    "category": "Mobile",
+    "bestFor": "Mobile-first apps needing high personality, onboarding flows, branding-forward product screens, artisan/design brands, editorial mobile experiences",
+    "doNotUseFor": "Enterprise dashboards, accessibility-critical contexts (requires extra a11y work), data-heavy screens, conservative industries",
+    "effects": "Hard offset shadows (4px 4px 0px black), mechanical press active:translate, no smooth hover — instant 0ms transitions, dot grid pattern on sections, slide-over transitions",
+    "era": "1919 Bauhaus Movement",
+    "complexity": "Medium",
+    "accessibility": "risk conditional; requires contrast-text-4.5, keyboard, visible-focus, reduced-motion",
+    "lightDarkMode": "light supported, dark conditional",
+    "status": "active",
+    "primaryColors": [
+      "#d02020",
+      "#1040c0",
+      "#f0c020"
+    ],
+    "secondaryColors": [
+      "#f0f0f0",
+      "#121212",
+      "#e0e0e0"
+    ],
+    "source": {
+      "name": "UI UX Pro Max (MIT)",
+      "url": "https://github.com/nextlevelbuilder/ui-ux-pro-max-skill",
+      "commit": "7436a6e0b6dc3add7c12d5b6ef1ccd3d410dd7fd",
+      "licenseSpdx": "MIT",
+      "retrieved": "2026-11-18"
+    }
+  },
+  {
+    "id": "uiuxpm-style-bento-box-grid",
+    "ref": "bento-box-grid",
+    "name": "Bento Box Grid",
+    "keywords": [
+      "bento grids",
+      "masonry grid",
+      "modular cards",
+      "asymmetric grid",
+      "varied sizes",
+      "dashboard tiles",
+      "negative space",
+      "clean hierarchy",
+      "cards"
+    ],
+    "category": "General",
+    "bestFor": "Dashboards, product pages, portfolios, feature showcases, SaaS",
+    "doNotUseFor": "Dense data tables, text-heavy content, real-time monitoring",
+    "effects": "grid-template with varied spans, rounded-xl (16px), subtle shadows, hover scale (1.02), smooth transitions",
+    "complexity": "Low",
+    "accessibility": "risk low; requires contrast-text-4.5, keyboard, visible-focus, reduced-motion",
+    "lightDarkMode": "light supported, dark supported",
+    "status": "active",
+    "primaryColors": [
+      "#ffffff",
+      "#f5f5f5"
+    ],
+    "source": {
+      "name": "UI UX Pro Max (MIT)",
+      "url": "https://github.com/nextlevelbuilder/ui-ux-pro-max-skill",
+      "commit": "7436a6e0b6dc3add7c12d5b6ef1ccd3d410dd7fd",
+      "licenseSpdx": "MIT",
+      "retrieved": "2026-11-18"
+    }
+  },
+  {
+    "id": "uiuxpm-style-biomimetic-organic-2-0",
+    "ref": "biomimetic-organic-2-0",
+    "name": "Biomimetic / Organic 2.0",
+    "keywords": [
+      "biomimeticorganic 20",
+      "nature-inspired",
+      "cellular",
+      "fluid",
+      "breathing",
+      "generative",
+      "algorithms",
+      "life-like"
+    ],
+    "category": "General",
+    "bestFor": "Sustainability tech, biotech, advanced health, meditation, generative art platforms",
+    "doNotUseFor": "Standard SaaS, data grids, strict corporate, accounting",
+    "effects": "Breathing animations, fluid morphing, generative growth, physics-based movement",
+    "era": "2024+ Generative",
+    "complexity": "High",
+    "accessibility": "risk low; requires contrast-text-4.5, keyboard, visible-focus, reduced-motion",
+    "lightDarkMode": "light supported, dark supported",
+    "status": "active",
+    "primaryColors": [
+      "#ff9999",
+      "#00ff41"
+    ],
+    "secondaryColors": [
+      "#001e3c",
+      "#ff7f50"
+    ],
+    "source": {
+      "name": "UI UX Pro Max (MIT)",
+      "url": "https://github.com/nextlevelbuilder/ui-ux-pro-max-skill",
+      "commit": "7436a6e0b6dc3add7c12d5b6ef1ccd3d410dd7fd",
+      "licenseSpdx": "MIT",
+      "retrieved": "2026-11-18"
+    }
+  },
+  {
+    "id": "uiuxpm-style-bitcoin-defi-mobile",
+    "ref": "bitcoin-defi-mobile",
+    "name": "Bitcoin DeFi (Mobile)",
+    "keywords": [
+      "web3",
+      "bitcoin",
+      "defi",
+      "digital gold",
+      "fintech",
+      "wallet",
+      "orange",
+      "glassmorphism",
+      "gradient",
+      "blur",
+      "holographic",
+      "trust",
+      "precision"
+    ],
+    "category": "Mobile",
+    "bestFor": "DeFi dashboards, wallets, NFT marketplaces, Web3 social, metaverse utilities, high-tech fintech brands",
+    "doNotUseFor": "Playful casual apps, low-tech brands, ultra-minimal editorial apps",
+    "effects": "Deep void + dark matter surfaces, Bitcoin orange/gold gradients for CTAs, pill buttons with glowing shadows, glassmorphic BlurView nav, monospace data rows, gradient text balances + masked orange-gold, pulsing status indicators and vertical ledger timelines, ultra-thin borders, high-precision typography",
+    "era": "Fintech/Web3",
+    "complexity": "High",
+    "accessibility": "risk conditional; requires contrast-text-4.5, keyboard, visible-focus, reduced-motion",
+    "lightDarkMode": "light not recommended, dark supported, prefers dark",
+    "status": "supplemental",
+    "primaryColors": [
+      "#f7931a",
+      "#ea580c",
+      "#ffd600"
+    ],
+    "secondaryColors": [
+      "#030304",
+      "#0f1115",
+      "#ffffff",
+      "#94a3b8"
+    ],
+    "source": {
+      "name": "UI UX Pro Max (MIT)",
+      "url": "https://github.com/nextlevelbuilder/ui-ux-pro-max-skill",
+      "commit": "7436a6e0b6dc3add7c12d5b6ef1ccd3d410dd7fd",
+      "licenseSpdx": "MIT",
+      "retrieved": "2026-11-18"
+    }
+  },
+  {
+    "id": "uiuxpm-style-bold-typography-mobile-poster",
+    "ref": "bold-typography-mobile-poster",
+    "name": "Bold Typography (Mobile Poster)",
+    "keywords": [
+      "bold typography",
+      "editorial",
+      "poster",
+      "broadsheet",
+      "vermillion",
+      "negative space",
+      "edge-to-edge type",
+      "underline cta",
+      "near-black",
+      "warm white"
+    ],
+    "category": "Mobile",
+    "bestFor": "Creative brand heroes, reading-focused apps, event/exhibition pages, editorial mobile experiences, landing hero sections",
+    "doNotUseFor": "Utility dashboards, kids apps, playful consumer products, contexts needing many icons or heavy imagery",
+    "effects": "Hero headlines 48–72px (5:1 vs body size), tight tracking (-1.5px), edge-to-edge type, massive vertical spacing (60px+), underline CTAs (2–3px accent line), instant 200ms transitions (no bounce), strictly 0px radius containers, color shifts for active state instead of elevation",
+    "era": "Editorial 2020s",
+    "complexity": "Medium",
+    "accessibility": "risk conditional; requires contrast-text-4.5, keyboard, visible-focus, reduced-motion",
+    "lightDarkMode": "light supported, dark conditional, prefers dark",
+    "status": "supplemental",
+    "primaryColors": [
+      "#0a0a0a",
+      "#fafafa"
+    ],
+    "secondaryColors": [
+      "#1a1a1a",
+      "#737373",
+      "#ff3d00",
+      "#262626"
+    ],
+    "source": {
+      "name": "UI UX Pro Max (MIT)",
+      "url": "https://github.com/nextlevelbuilder/ui-ux-pro-max-skill",
+      "commit": "7436a6e0b6dc3add7c12d5b6ef1ccd3d410dd7fd",
+      "licenseSpdx": "MIT",
+      "retrieved": "2026-11-18"
+    }
+  },
+  {
+    "id": "uiuxpm-style-brutalism",
+    "ref": "brutalism",
+    "name": "Brutalism",
+    "keywords": [
+      "raw",
+      "unpolished",
+      "stark",
+      "high contrast",
+      "plain text",
+      "default fonts",
+      "visible borders",
+      "asymmetric",
+      "anti-design"
+    ],
+    "category": "General",
+    "bestFor": "Design portfolios, artistic projects, counter-culture brands, editorial/media sites, tech blogs",
+    "doNotUseFor": "Corporate environments, conservative industries, critical accessibility, customer-facing professional",
+    "effects": "No smooth transitions (instant), sharp corners (0px), bold typography (700+), visible grid, large blocks",
+    "era": "1950s Brutalist",
+    "complexity": "Low",
+    "accessibility": "risk low; requires contrast-text-4.5, keyboard, visible-focus, reduced-motion",
+    "lightDarkMode": "light supported, dark supported",
+    "status": "active",
+    "primaryColors": [
+      "#ff0000",
+      "#0000ff",
+      "#ffff00",
+      "#000000",
+      "#ffffff"
+    ],
+    "secondaryColors": [
+      "#00ff00",
+      "#ff00ff"
+    ],
+    "source": {
+      "name": "UI UX Pro Max (MIT)",
+      "url": "https://github.com/nextlevelbuilder/ui-ux-pro-max-skill",
+      "commit": "7436a6e0b6dc3add7c12d5b6ef1ccd3d410dd7fd",
+      "licenseSpdx": "MIT",
+      "retrieved": "2026-11-18"
+    }
+  },
+  {
+    "id": "uiuxpm-style-chromatic-aberration-rgb-split",
+    "ref": "chromatic-aberration-rgb-split",
+    "name": "Chromatic Aberration / RGB Split",
+    "keywords": [
+      "rgb split",
+      "color fringing",
+      "glitch",
+      "retro tech",
+      "vhs",
+      "analog error",
+      "distortion",
+      "lens effect"
+    ],
+    "category": "General",
+    "bestFor": "Music platforms, gaming, tech brands, creative portfolios, nightlife, entertainment, video platforms",
+    "doNotUseFor": "Corporate, healthcare, finance, accessibility-critical, elderly users",
+    "effects": "RGB offset animation, glitch timing, scan line movement, noise flicker, distortion on hover",
+    "era": "2020s Retro-Tech",
+    "complexity": "Medium",
+    "accessibility": "risk high; requires contrast-text-4.5, keyboard, visible-focus, reduced-motion",
+    "lightDarkMode": "light supported, dark supported, prefers dark",
+    "status": "supplemental",
+    "primaryColors": [
+      "#ff0000",
+      "#00ff00",
+      "#0000ff",
+      "#000000"
+    ],
+    "source": {
+      "name": "UI UX Pro Max (MIT)",
+      "url": "https://github.com/nextlevelbuilder/ui-ux-pro-max-skill",
+      "commit": "7436a6e0b6dc3add7c12d5b6ef1ccd3d410dd7fd",
+      "licenseSpdx": "MIT",
+      "retrieved": "2026-11-18"
+    }
+  },
+  {
+    "id": "uiuxpm-style-claymorphism",
+    "ref": "claymorphism",
+    "name": "Claymorphism",
+    "keywords": [
+      "claymorphism for patients",
+      "soft 3d",
+      "chunky",
+      "playful",
+      "toy-like",
+      "bubbly",
+      "thick borders 3-4px",
+      "double shadows",
+      "rounded 16-24px"
+    ],
+    "category": "General",
+    "bestFor": "Educational apps, children's apps, SaaS platforms, creative tools, fun-focused, onboarding, casual games",
+    "doNotUseFor": "Formal corporate, professional services, data-critical, serious/medical, legal apps, finance",
+    "effects": "Inner+outer shadows (subtle, no hard lines), soft press (200ms ease-out), fluffy elements, smooth transitions",
+    "era": "2020s Modern",
+    "complexity": "Medium",
+    "accessibility": "risk conditional; requires contrast-text-4.5, keyboard, visible-focus, reduced-motion",
+    "lightDarkMode": "light supported, dark conditional",
+    "status": "active",
+    "primaryColors": [
+      "#fdbcb4",
+      "#add8e6",
+      "#98ff98",
+      "#e6e6fa"
+    ],
+    "source": {
+      "name": "UI UX Pro Max (MIT)",
+      "url": "https://github.com/nextlevelbuilder/ui-ux-pro-max-skill",
+      "commit": "7436a6e0b6dc3add7c12d5b6ef1ccd3d410dd7fd",
+      "licenseSpdx": "MIT",
+      "retrieved": "2026-11-18"
+    }
+  },
+  {
+    "id": "uiuxpm-style-claymorphism-mobile",
+    "ref": "claymorphism-mobile",
+    "name": "Claymorphism (Mobile)",
+    "keywords": [
+      "claymorphism",
+      "clay",
+      "3d",
+      "soft",
+      "bubbly",
+      "candy",
+      "playful",
+      "rounded",
+      "squish",
+      "tactile",
+      "inflate",
+      "silicone",
+      "haptic",
+      "spring"
+    ],
+    "category": "Mobile",
+    "bestFor": "Children education apps, teen social products, crypto gamification, creative tools, brand mascot-led apps",
+    "doNotUseFor": "Serious enterprise, high-density data, editorial reading apps, fintech trust signals",
+    "effects": "Multi-layer shadow stacks (nested View) to simulate clay depth, LinearGradient #A78BFA→#7C3AED buttons, borderRadius 40–50 outer / 32 cards / 20 buttons, Reanimated spring squish (scale 0.92 on press), BlurView glass-clay hybrid cards, floating blobs with slow ±20px drift, Haptics Light on every press",
+    "era": "Consumer/Education",
+    "complexity": "High",
+    "accessibility": "risk conditional; requires contrast-text-4.5, keyboard, visible-focus, reduced-motion",
+    "lightDarkMode": "light supported, dark supported",
+    "status": "supplemental",
+    "primaryColors": [
+      "#7c3aed",
+      "#db2777"
+    ],
+    "secondaryColors": [
+      "#f4f1fa",
+      "#332f3a",
+      "#10b981",
+      "#f59e0b",
+      "#635f69"
+    ],
+    "source": {
+      "name": "UI UX Pro Max (MIT)",
+      "url": "https://github.com/nextlevelbuilder/ui-ux-pro-max-skill",
+      "commit": "7436a6e0b6dc3add7c12d5b6ef1ccd3d410dd7fd",
+      "licenseSpdx": "MIT",
+      "retrieved": "2026-11-18"
+    }
+  },
+  {
+    "id": "uiuxpm-style-comparative-analysis-dashboard",
+    "ref": "comparative-analysis-dashboard",
+    "name": "Comparative Analysis Dashboard",
+    "keywords": [
+      "side-by-side comparisons",
+      "period-over-period metrics",
+      "ab test results",
+      "regional comparisons",
+      "performance benchmarks"
+    ],
+    "category": "BI/Analytics",
+    "bestFor": "Period-over-period reporting, A/B test dashboards, market comparison, competitive analysis, regional performance",
+    "doNotUseFor": "Single metric dashboards, future projections (use forecasting), real-time only (no historical)",
+    "effects": "Comparison bar animations (grow to value), delta indicator animations (direction arrows), highlight on compare",
+    "era": "2020s Modern",
+    "complexity": "Medium",
+    "accessibility": "risk low; requires contrast-text-4.5, keyboard, visible-focus, reduced-motion",
+    "lightDarkMode": "light supported, dark supported",
+    "status": "supplemental",
+    "source": {
+      "name": "UI UX Pro Max (MIT)",
+      "url": "https://github.com/nextlevelbuilder/ui-ux-pro-max-skill",
+      "commit": "7436a6e0b6dc3add7c12d5b6ef1ccd3d410dd7fd",
+      "licenseSpdx": "MIT",
+      "retrieved": "2026-11-18"
+    }
+  },
+  {
+    "id": "uiuxpm-style-cyberpunk-mobile-hud",
+    "ref": "cyberpunk-mobile-hud",
+    "name": "Cyberpunk Mobile HUD",
+    "keywords": [
+      "cyberpunk",
+      "neon",
+      "glitch",
+      "chamfered",
+      "orbitron",
+      "jetbrains",
+      "scanlines",
+      "crt",
+      "hud",
+      "matrix",
+      "military",
+      "decker"
+    ],
+    "category": "Mobile",
+    "bestFor": "Gaming dashboards, crypto/cyberpunk apps, sci-fi companion tools, hacker OS skins, data-heavy monitoring HUDs",
+    "doNotUseFor": "Serious enterprise, health/finance requiring calm trust, minimal editorial apps",
+    "effects": "Deep void background with neon radiance, chamfered 45° corners via SVG/Skia, scanline overlay, CRT flicker opacity oscillation, glitch animations (translateX ±2), neon pulses around buttons, HUD corner brackets, terminal prompt text inputs, heavy use of blurView holographic panels",
+    "era": "Cyber-Noir",
+    "complexity": "High",
+    "accessibility": "risk conditional; requires contrast-text-4.5, keyboard, visible-focus, reduced-motion",
+    "lightDarkMode": "light not recommended, dark supported, prefers dark",
+    "status": "supplemental",
+    "primaryColors": [
+      "#0a0a0f",
+      "#12121a"
+    ],
+    "secondaryColors": [
+      "#00ff88",
+      "#ff00ff",
+      "#00d4ff",
+      "#e0e0e0",
+      "#ff3366",
+      "#2a2a3a"
+    ],
+    "source": {
+      "name": "UI UX Pro Max (MIT)",
+      "url": "https://github.com/nextlevelbuilder/ui-ux-pro-max-skill",
+      "commit": "7436a6e0b6dc3add7c12d5b6ef1ccd3d410dd7fd",
+      "licenseSpdx": "MIT",
+      "retrieved": "2026-11-18"
+    }
+  },
+  {
+    "id": "uiuxpm-style-cyberpunk-ui",
+    "ref": "cyberpunk-ui",
+    "name": "Cyberpunk UI",
+    "keywords": [
+      "neon",
+      "dark mode",
+      "terminal",
+      "hud",
+      "sci-fi",
+      "glitch",
+      "dystopian",
+      "futuristic",
+      "matrix",
+      "tech noir"
+    ],
+    "category": "General",
+    "bestFor": "Gaming platforms, tech products, crypto apps, sci-fi applications, developer tools, entertainment",
+    "doNotUseFor": "Corporate enterprise, healthcare, family apps, conservative brands, elderly users",
+    "effects": "Neon glow (text-shadow), glitch animations (skew/offset), scanlines (::before overlay), terminal fonts",
+    "era": "2020s Cyberpunk",
+    "complexity": "Medium",
+    "accessibility": "risk low; requires contrast-text-4.5, keyboard, visible-focus, reduced-motion",
+    "lightDarkMode": "light not recommended, dark supported",
+    "status": "active",
+    "primaryColors": [
+      "#00ff00",
+      "#ff00ff",
+      "#00ffff",
+      "#0d0d0d"
+    ],
+    "source": {
+      "name": "UI UX Pro Max (MIT)",
+      "url": "https://github.com/nextlevelbuilder/ui-ux-pro-max-skill",
+      "commit": "7436a6e0b6dc3add7c12d5b6ef1ccd3d410dd7fd",
+      "licenseSpdx": "MIT",
+      "retrieved": "2026-11-18"
+    }
+  },
+  {
+    "id": "uiuxpm-style-dark-mode-oled",
+    "ref": "dark-mode-oled",
+    "name": "Dark Mode (OLED)",
+    "keywords": [
+      "dark mode",
+      "dark theme",
+      "low light",
+      "high contrast",
+      "deep black",
+      "midnight blue",
+      "eye-friendly",
+      "oled",
+      "night mode",
+      "power efficient"
+    ],
+    "category": "General",
+    "bestFor": "Night-mode apps, coding platforms, entertainment, eye-strain prevention, OLED devices, low-light",
+    "doNotUseFor": "Print-first content, high-brightness outdoor, color-accuracy-critical",
+    "effects": "Minimal glow (text-shadow: 0 0 10px), dark-to-light transitions, low white emission, high readability, visible focus",
+    "era": "2020s Modern",
+    "complexity": "Low",
+    "accessibility": "risk low; requires contrast-text-4.5, keyboard, visible-focus, reduced-motion",
+    "lightDarkMode": "light not recommended, dark supported",
+    "status": "active",
+    "primaryColors": [
+      "#000000",
+      "#121212",
+      "#0a0e27"
+    ],
+    "secondaryColors": [
+      "#39ff14",
+      "#0080ff",
+      "#ffd700",
+      "#bf00ff"
+    ],
+    "source": {
+      "name": "UI UX Pro Max (MIT)",
+      "url": "https://github.com/nextlevelbuilder/ui-ux-pro-max-skill",
+      "commit": "7436a6e0b6dc3add7c12d5b6ef1ccd3d410dd7fd",
+      "licenseSpdx": "MIT",
+      "retrieved": "2026-11-18"
+    }
+  },
+  {
+    "id": "uiuxpm-style-data-dense-dashboard",
+    "ref": "data-dense-dashboard",
+    "name": "Data-Dense Dashboard",
+    "keywords": [
+      "data-dense",
+      "multiple chartswidgets",
+      "data tables",
+      "kpi cards",
+      "minimal padding",
+      "grid layout",
+      "space-efficient",
+      "maximum data visibility"
+    ],
+    "category": "BI/Analytics",
+    "bestFor": "Business intelligence dashboards, financial analytics, enterprise reporting, operational dashboards, data warehousing",
+    "doNotUseFor": "Marketing dashboards, consumer-facing analytics, simple reporting",
+    "effects": "Hover tooltips, chart zoom on click, row highlighting on hover, smooth filter animations, data loading spinners",
+    "era": "2020s Modern",
+    "complexity": "Medium",
+    "accessibility": "risk low; requires contrast-text-4.5, keyboard, visible-focus, reduced-motion",
+    "lightDarkMode": "light supported, dark supported",
+    "status": "active",
+    "primaryColors": [
+      "#f5f5f5",
+      "#333333"
+    ],
+    "secondaryColors": [
+      "#22c55e",
+      "#f59e0b",
+      "#ef4444"
+    ],
+    "source": {
+      "name": "UI UX Pro Max (MIT)",
+      "url": "https://github.com/nextlevelbuilder/ui-ux-pro-max-skill",
+      "commit": "7436a6e0b6dc3add7c12d5b6ef1ccd3d410dd7fd",
+      "licenseSpdx": "MIT",
+      "retrieved": "2026-11-18"
+    }
+  },
+  {
+    "id": "uiuxpm-style-dimensional-layering",
+    "ref": "dimensional-layering",
+    "name": "Dimensional Layering",
+    "keywords": [
+      "depth",
+      "overlapping",
+      "z-index",
+      "layers",
+      "3d",
+      "shadows",
+      "elevation",
+      "floating",
+      "cards",
+      "spatial hierarchy"
+    ],
+    "category": "General",
+    "bestFor": "Dashboards, card layouts, modals, navigation, product showcases, SaaS interfaces",
+    "doNotUseFor": "Print-style layouts, simple blogs, low-end devices, flat design requirements",
+    "effects": "z-index stacking, box-shadow elevation (4 levels), transform: translateZ(), backdrop-filter, parallax",
+    "era": "2020s Modern",
+    "complexity": "Medium",
+    "accessibility": "risk high; requires contrast-text-4.5, keyboard, visible-focus, reduced-motion",
+    "lightDarkMode": "light supported, dark supported",
+    "status": "active",
+    "primaryColors": [
+      "#ffffff",
+      "#f5f5f5",
+      "#e0e0e0"
+    ],
+    "source": {
+      "name": "UI UX Pro Max (MIT)",
+      "url": "https://github.com/nextlevelbuilder/ui-ux-pro-max-skill",
+      "commit": "7436a6e0b6dc3add7c12d5b6ef1ccd3d410dd7fd",
+      "licenseSpdx": "MIT",
+      "retrieved": "2026-11-18"
+    }
+  },
+  {
+    "id": "uiuxpm-style-drill-down-analytics",
+    "ref": "drill-down-analytics",
+    "name": "Drill-Down Analytics",
+    "keywords": [
+      "hierarchical data exploration",
+      "expandable sections",
+      "interactive drill-down paths",
+      "summary-to-detail flow",
+      "context preservation"
+    ],
+    "category": "BI/Analytics",
+    "bestFor": "Sales analytics, product analytics, funnel analysis, multi-dimensional data exploration, business intelligence",
+    "doNotUseFor": "Simple linear data, single-metric dashboards, streaming real-time dashboards",
+    "effects": "Drill-down expand animations, breadcrumb click transitions, smooth detail reveal, level change smooth, data reload animation",
+    "era": "2020s Modern",
+    "complexity": "Medium",
+    "accessibility": "risk low; requires contrast-text-4.5, keyboard, visible-focus, reduced-motion",
+    "lightDarkMode": "light supported, dark supported",
+    "status": "supplemental",
+    "source": {
+      "name": "UI UX Pro Max (MIT)",
+      "url": "https://github.com/nextlevelbuilder/ui-ux-pro-max-skill",
+      "commit": "7436a6e0b6dc3add7c12d5b6ef1ccd3d410dd7fd",
+      "licenseSpdx": "MIT",
+      "retrieved": "2026-11-18"
+    }
+  },
+  {
+    "id": "uiuxpm-style-e-ink-paper",
+    "ref": "e-ink-paper",
+    "name": "E-Ink / Paper",
+    "keywords": [
+      "e-ink paper",
+      "e-inkpaper",
+      "paper-like",
+      "matte",
+      "high contrast",
+      "texture",
+      "reading",
+      "calm",
+      "slow tech",
+      "monochrome"
+    ],
+    "category": "General",
+    "bestFor": "Reading apps, digital newspapers, minimal journals, distraction-free writing, slow-living brands",
+    "doNotUseFor": "Gaming, video platforms, high-energy marketing, dark mode dependent apps",
+    "effects": "No motion blur, distinct page turns, grain/noise texture, sharp transitions (no fade)",
+    "era": "2020s Digital Well-being",
+    "complexity": "Low",
+    "accessibility": "risk low; requires contrast-text-4.5, keyboard, visible-focus, reduced-motion",
+    "lightDarkMode": "light supported, dark not recommended",
+    "status": "active",
+    "primaryColors": [
+      "#fdfbf7",
+      "#f5f5f5",
+      "#1a1a1a"
+    ],
+    "secondaryColors": [
+      "#4a4a4a",
+      "#ffff00"
+    ],
+    "source": {
+      "name": "UI UX Pro Max (MIT)",
+      "url": "https://github.com/nextlevelbuilder/ui-ux-pro-max-skill",
+      "commit": "7436a6e0b6dc3add7c12d5b6ef1ccd3d410dd7fd",
+      "licenseSpdx": "MIT",
+      "retrieved": "2026-11-18"
+    }
+  },
+  {
+    "id": "uiuxpm-style-editorial-grid-magazine",
+    "ref": "editorial-grid-magazine",
+    "name": "Editorial Grid / Magazine",
+    "keywords": [
+      "editorial grid",
+      "magazine layout",
+      "asymmetric grid",
+      "editorial typography",
+      "pull quotes",
+      "drop caps",
+      "column layout",
+      "print-inspired"
+    ],
+    "category": "General",
+    "bestFor": "News sites, blogs, magazines, editorial content, long-form articles, journalism, publishing",
+    "doNotUseFor": "Dashboards, apps, e-commerce catalogs, real-time data, short-form content",
+    "effects": "Smooth scroll, reveal on scroll, parallax images, text animations, page-flip transitions",
+    "era": "2020s Editorial Digital",
+    "complexity": "Low",
+    "accessibility": "risk low; requires contrast-text-4.5, keyboard, visible-focus, reduced-motion",
+    "lightDarkMode": "light supported, dark supported",
+    "status": "active",
+    "primaryColors": [
+      "#000000",
+      "#ffffff"
+    ],
+    "source": {
+      "name": "UI UX Pro Max (MIT)",
+      "url": "https://github.com/nextlevelbuilder/ui-ux-pro-max-skill",
+      "commit": "7436a6e0b6dc3add7c12d5b6ef1ccd3d410dd7fd",
+      "licenseSpdx": "MIT",
+      "retrieved": "2026-11-18"
+    }
+  },
+  {
+    "id": "uiuxpm-style-enterprise-saas-mobile",
+    "ref": "enterprise-saas-mobile",
+    "name": "Enterprise SaaS (Mobile)",
+    "keywords": [
+      "enterprise",
+      "saas",
+      "b2b",
+      "professional",
+      "indigo",
+      "violet",
+      "gradient",
+      "polished",
+      "trustworthy",
+      "clean",
+      "approachable",
+      "spring",
+      "haptic"
+    ],
+    "category": "Mobile",
+    "bestFor": "B2B backend management, productivity tools, government and finance mobile apps, SaaS companion apps, enterprise dashboards",
+    "doNotUseFor": "Pure consumer entertainment, Gen-Z youth apps, gaming UI, ultra-minimal editorial",
+    "effects": "Indigo→Violet gradient primary CTAs + active tab highlights, colored card shadows rgba(79,70,229,0.08), pill buttons or 12pt radius, full-width CTA at screen bottom, spring press scale 0.97, floating label inputs with animated focus border, skeletal loading pulses (Indigo/Slate tint), Bottom Sheets with drag dismiss, swipe-to-action list cards, scroll-linked title collapse",
+    "era": "Enterprise/SaaS",
+    "complexity": "High",
+    "accessibility": "risk low; requires contrast-text-4.5, keyboard, visible-focus, reduced-motion",
+    "lightDarkMode": "light supported, dark supported",
+    "status": "supplemental",
+    "primaryColors": [
+      "#4f46e5",
+      "#7c3aed"
+    ],
+    "secondaryColors": [
+      "#f8fafc",
+      "#ffffff",
+      "#0f172a",
+      "#64748b",
+      "#10b981",
+      "#e2e8f0"
+    ],
+    "source": {
+      "name": "UI UX Pro Max (MIT)",
+      "url": "https://github.com/nextlevelbuilder/ui-ux-pro-max-skill",
+      "commit": "7436a6e0b6dc3add7c12d5b6ef1ccd3d410dd7fd",
+      "licenseSpdx": "MIT",
+      "retrieved": "2026-11-18"
+    }
+  },
+  {
+    "id": "uiuxpm-style-exaggerated-minimalism",
+    "ref": "exaggerated-minimalism",
+    "name": "Exaggerated Minimalism",
+    "keywords": [
+      "bold minimalism",
+      "oversized typography",
+      "high contrast",
+      "negative space",
+      "loud minimal",
+      "statement design"
+    ],
+    "category": "General",
+    "bestFor": "Fashion, architecture, portfolios, agency landing pages, luxury brands, editorial",
+    "doNotUseFor": "E-commerce catalogs, dashboards, forms, data-heavy, elderly users, complex apps",
+    "effects": "font-size: clamp(3rem 10vw 12rem), font-weight: 900, letter-spacing: -0.05em, massive whitespace",
+    "era": "2020s Modern",
+    "complexity": "Low",
+    "accessibility": "risk low; requires contrast-text-4.5, keyboard, visible-focus, reduced-motion",
+    "lightDarkMode": "light supported, dark supported",
+    "status": "active",
+    "primaryColors": [
+      "#000000",
+      "#ffffff"
+    ],
+    "source": {
+      "name": "UI UX Pro Max (MIT)",
+      "url": "https://github.com/nextlevelbuilder/ui-ux-pro-max-skill",
+      "commit": "7436a6e0b6dc3add7c12d5b6ef1ccd3d410dd7fd",
+      "licenseSpdx": "MIT",
+      "retrieved": "2026-11-18"
+    }
+  },
+  {
+    "id": "uiuxpm-style-executive-dashboard",
+    "ref": "executive-dashboard",
+    "name": "Executive Dashboard",
+    "keywords": [
+      "high-level kpis",
+      "large key metrics",
+      "minimal detail",
+      "summary view",
+      "trend indicators",
+      "at-a-glance insights",
+      "executive summary"
+    ],
+    "category": "BI/Analytics",
+    "bestFor": "C-suite dashboards, business summary reports, decision-maker dashboards, strategic planning views",
+    "doNotUseFor": "Detailed analyst dashboards, technical deep-dives, operational monitoring",
+    "effects": "KPI value animations (count-up), trend arrow direction animations, metric card hover lift, alert pulse effect",
+    "era": "2020s Modern",
+    "complexity": "Medium",
+    "accessibility": "risk low; requires contrast-text-4.5, keyboard, visible-focus, reduced-motion",
+    "lightDarkMode": "light supported, dark supported",
+    "status": "supplemental",
+    "source": {
+      "name": "UI UX Pro Max (MIT)",
+      "url": "https://github.com/nextlevelbuilder/ui-ux-pro-max-skill",
+      "commit": "7436a6e0b6dc3add7c12d5b6ef1ccd3d410dd7fd",
+      "licenseSpdx": "MIT",
+      "retrieved": "2026-11-18"
+    }
+  },
+  {
+    "id": "uiuxpm-style-financial-dashboard",
+    "ref": "financial-dashboard",
+    "name": "Financial Dashboard",
+    "keywords": [
+      "revenue metrics",
+      "profitloss visualization",
+      "budget tracking",
+      "financial ratios",
+      "portfolio performance",
+      "cash flow",
+      "audit trail"
+    ],
+    "category": "BI/Analytics",
+    "bestFor": "Financial reporting, accounting dashboards, portfolio tracking, budget monitoring, banking analytics",
+    "doNotUseFor": "Simple business dashboards, entertainment/social metrics, non-financial data",
+    "effects": "Number animations (count-up), trend direction indicators, percentage change animations, profit/loss color transitions",
+    "era": "2020s Modern",
+    "complexity": "Medium",
+    "accessibility": "risk low; requires contrast-text-4.5, keyboard, visible-focus, reduced-motion",
+    "lightDarkMode": "light supported, dark supported",
+    "status": "supplemental",
+    "primaryColors": [
+      "#22c55e",
+      "#ef4444",
+      "#003366"
+    ],
+    "source": {
+      "name": "UI UX Pro Max (MIT)",
+      "url": "https://github.com/nextlevelbuilder/ui-ux-pro-max-skill",
+      "commit": "7436a6e0b6dc3add7c12d5b6ef1ccd3d410dd7fd",
+      "licenseSpdx": "MIT",
+      "retrieved": "2026-11-18"
+    }
+  },
+  {
+    "id": "uiuxpm-style-flat-design",
+    "ref": "flat-design",
+    "name": "Flat Design",
+    "keywords": [
+      "2d",
+      "minimalist",
+      "bold colors",
+      "no shadows",
+      "clean lines",
+      "simple shapes",
+      "typography-focused",
+      "icon-heavy"
+    ],
+    "category": "General",
+    "bestFor": "Web apps, mobile apps, cross-platform, startup MVPs, user-friendly, SaaS, dashboards, corporate",
+    "doNotUseFor": "Complex 3D, premium/luxury, artistic portfolios, immersive experiences, high-detail",
+    "effects": "No gradients/shadows, simple hover (color/opacity shift), fast loading, clean transitions (150-200ms ease), minimal icons",
+    "era": "2010s Modern",
+    "complexity": "Low",
+    "accessibility": "risk low; requires contrast-text-4.5, keyboard, visible-focus, reduced-motion",
+    "lightDarkMode": "light supported, dark supported",
+    "status": "active",
+    "source": {
+      "name": "UI UX Pro Max (MIT)",
+      "url": "https://github.com/nextlevelbuilder/ui-ux-pro-max-skill",
+      "commit": "7436a6e0b6dc3add7c12d5b6ef1ccd3d410dd7fd",
+      "licenseSpdx": "MIT",
+      "retrieved": "2026-11-18"
+    }
+  },
+  {
+    "id": "uiuxpm-style-flat-design-mobile-touch-first",
+    "ref": "flat-design-mobile-touch-first",
+    "name": "Flat Design Mobile (Touch-First)",
+    "keywords": [
+      "flat",
+      "2d",
+      "no shadow",
+      "color blocking",
+      "geometric",
+      "bold",
+      "poster",
+      "icon",
+      "touch-first",
+      "minimal",
+      "clean",
+      "tailored",
+      "cross-platform"
+    ],
+    "category": "Mobile",
+    "bestFor": "Cross-platform apps (iOS+Android parity), information-dense dashboards, system UI, brand illustration, onboarding flows, marketing pages, icon design",
+    "doNotUseFor": "Ultra-premium contexts needing depth/shadow, dark-mode-first products, contexts where flat design reads as unfinished or sterile",
+    "effects": "Immediate press feedback (scale 0.97, no delay), color section blocking (full-width contrasting View), zero elevation/shadow, solid icon containers (colored squares/circles), geometric low-opacity shape overlays, bottom tabs solid fill (no floating)",
+    "era": "2010s–2020s Flat Mobile",
+    "complexity": "Low",
+    "accessibility": "risk low; requires contrast-text-4.5, keyboard, visible-focus, reduced-motion",
+    "lightDarkMode": "light supported, dark conditional",
+    "status": "supplemental",
+    "primaryColors": [
+      "#3b82f6",
+      "#10b981"
+    ],
+    "secondaryColors": [
+      "#ffffff",
+      "#f3f4f6",
+      "#111827",
+      "#f59e0b",
+      "#e5e7eb"
+    ],
+    "source": {
+      "name": "UI UX Pro Max (MIT)",
+      "url": "https://github.com/nextlevelbuilder/ui-ux-pro-max-skill",
+      "commit": "7436a6e0b6dc3add7c12d5b6ef1ccd3d410dd7fd",
+      "licenseSpdx": "MIT",
+      "retrieved": "2026-11-18"
+    }
+  },
+  {
+    "id": "uiuxpm-style-fluent-2",
+    "ref": "fluent-2",
+    "name": "Fluent 2",
+    "keywords": [
+      "fluent ui",
+      "microsoft fluent 2",
+      "fluent 2",
+      "microsoft",
+      "enterprise",
+      "calm",
+      "rounded",
+      "tokenized",
+      "cross-platform",
+      "copilot"
+    ],
+    "category": "Platform/System",
+    "bestFor": "Microsoft 365, Windows, Copilot, and enterprise line-of-business tools",
+    "doNotUseFor": "Products that should not inherit Microsoft platform conventions",
+    "effects": "Subtle depth, calm transitions, platform-adaptive motion",
+    "era": "Microsoft Fluent 2, current",
+    "complexity": "Medium",
+    "accessibility": "risk conditional; requires contrast-text-4.5, keyboard, visible-focus, reduced-motion",
+    "lightDarkMode": "light supported, dark supported",
+    "status": "active",
+    "source": {
+      "name": "UI UX Pro Max (MIT)",
+      "url": "https://github.com/nextlevelbuilder/ui-ux-pro-max-skill",
+      "commit": "7436a6e0b6dc3add7c12d5b6ef1ccd3d410dd7fd",
+      "licenseSpdx": "MIT",
+      "retrieved": "2026-11-18"
+    }
+  },
+  {
+    "id": "uiuxpm-style-gen-z-chaos-maximalism",
+    "ref": "gen-z-chaos-maximalism",
+    "name": "Gen Z Chaos / Maximalism",
+    "keywords": [
+      "gen z chaos",
+      "chaos",
+      "clutter",
+      "stickers",
+      "raw",
+      "collage",
+      "mixed media",
+      "loud",
+      "internet culture",
+      "ironic"
+    ],
+    "category": "General",
+    "bestFor": "Gen Z lifestyle brands, music artists, creative portfolios, viral marketing, fashion",
+    "doNotUseFor": "Corporate, government, healthcare, banking, serious tools",
+    "effects": "Marquee scrolls, jitter, sticker layering, GIF overload, random placement, drag-and-drop",
+    "era": "2023+ Internet Core",
+    "complexity": "High",
+    "accessibility": "risk high; requires contrast-text-4.5, keyboard, visible-focus, reduced-motion",
+    "lightDarkMode": "light supported, dark supported",
+    "status": "active",
+    "primaryColors": [
+      "#ff00ff",
+      "#00ff00",
+      "#ffff00",
+      "#0000ff"
+    ],
+    "source": {
+      "name": "UI UX Pro Max (MIT)",
+      "url": "https://github.com/nextlevelbuilder/ui-ux-pro-max-skill",
+      "commit": "7436a6e0b6dc3add7c12d5b6ef1ccd3d410dd7fd",
+      "licenseSpdx": "MIT",
+      "retrieved": "2026-11-18"
+    }
+  },
+  {
+    "id": "uiuxpm-style-glassmorphism",
+    "ref": "glassmorphism",
+    "name": "Glassmorphism",
+    "keywords": [
+      "frosted glass",
+      "transparent",
+      "blurred background",
+      "layered",
+      "vibrant background",
+      "light source",
+      "depth",
+      "multi-layer"
+    ],
+    "category": "General",
+    "bestFor": "Modern SaaS, financial dashboards, high-end corporate, lifestyle apps, modal overlays, navigation",
+    "doNotUseFor": "Low-contrast backgrounds, critical accessibility, performance-limited, dark text on dark",
+    "effects": "Backdrop blur (10-20px), subtle border (1px solid rgba white 0.2), light reflection, Z-depth",
+    "era": "2020s Modern",
+    "complexity": "Medium",
+    "accessibility": "risk conditional; requires contrast-text-4.5, keyboard, visible-focus, reduced-motion",
+    "lightDarkMode": "light supported, dark supported",
+    "status": "active",
+    "secondaryColors": [
+      "#0080ff",
+      "#8b00ff",
+      "#ff1493",
+      "#20b2aa"
+    ],
+    "source": {
+      "name": "UI UX Pro Max (MIT)",
+      "url": "https://github.com/nextlevelbuilder/ui-ux-pro-max-skill",
+      "commit": "7436a6e0b6dc3add7c12d5b6ef1ccd3d410dd7fd",
+      "licenseSpdx": "MIT",
+      "retrieved": "2026-11-18"
+    }
+  },
+  {
+    "id": "uiuxpm-style-gradient-mesh-aurora-evolved",
+    "ref": "gradient-mesh-aurora-evolved",
+    "name": "Gradient Mesh / Aurora Evolved",
+    "keywords": [
+      "complex gradients",
+      "mesh gradients",
+      "multi-color blend",
+      "aurora effect",
+      "flowing colors",
+      "iridescent",
+      "holographic",
+      "prismatic"
+    ],
+    "category": "General",
+    "bestFor": "Hero sections, backgrounds, creative brands, music platforms, fashion, lifestyle, premium products",
+    "doNotUseFor": "Data interfaces, text-heavy content, accessibility-critical, conservative brands",
+    "effects": "CSS mesh-gradient (experimental), SVG gradients, canvas gradients, smooth color morphing, flowing animation",
+    "era": "2025+ Gradient Evolution",
+    "complexity": "Medium",
+    "accessibility": "risk conditional; requires contrast-text-4.5, keyboard, visible-focus, reduced-motion",
+    "lightDarkMode": "light supported, dark supported",
+    "status": "supplemental",
+    "primaryColors": [
+      "#00ffff",
+      "#ff00ff",
+      "#ffff00",
+      "#0066ff",
+      "#00ff66"
+    ],
+    "source": {
+      "name": "UI UX Pro Max (MIT)",
+      "url": "https://github.com/nextlevelbuilder/ui-ux-pro-max-skill",
+      "commit": "7436a6e0b6dc3add7c12d5b6ef1ccd3d410dd7fd",
+      "licenseSpdx": "MIT",
+      "retrieved": "2026-11-18"
+    }
+  },
+  {
+    "id": "uiuxpm-style-heat-map-and-heatmap-style",
+    "ref": "heat-map-and-heatmap-style",
+    "name": "Heat Map & Heatmap Style",
+    "keywords": [
+      "heat map",
+      "heat map heatmap",
+      "color-coded gridmatrix",
+      "data intensity visualization",
+      "geographical heat maps",
+      "correlation matrices",
+      "cell-based representation",
+      "gradient coloring"
+    ],
+    "category": "BI/Analytics",
+    "bestFor": "Geographical analysis, performance matrices, correlation analysis, user behavior heatmaps, temperature/intensity data",
+    "doNotUseFor": "Linear data representation, categorical comparisons (use bar charts), small datasets",
+    "effects": "Color gradient transitions on data change, cell highlighting on hover, tooltip reveal on click, smooth color animation",
+    "era": "2020s Modern",
+    "complexity": "Medium",
+    "accessibility": "risk low; requires contrast-text-4.5, keyboard, visible-focus, reduced-motion",
+    "lightDarkMode": "light supported, dark supported",
+    "status": "supplemental",
+    "primaryColors": [
+      "#0080ff",
+      "#ff0000"
+    ],
+    "source": {
+      "name": "UI UX Pro Max (MIT)",
+      "url": "https://github.com/nextlevelbuilder/ui-ux-pro-max-skill",
+      "commit": "7436a6e0b6dc3add7c12d5b6ef1ccd3d410dd7fd",
+      "licenseSpdx": "MIT",
+      "retrieved": "2026-11-18"
+    }
+  },
+  {
+    "id": "uiuxpm-style-hud-sci-fi-fui",
+    "ref": "hud-sci-fi-fui",
+    "name": "HUD / Sci-Fi FUI",
+    "keywords": [
+      "hud",
+      "fui",
+      "sci-fi hud",
+      "hudsci-fi fui",
+      "holographic hud",
+      "holographichud",
+      "futuristic",
+      "technical",
+      "wireframe",
+      "neon",
+      "data",
+      "transparency",
+      "iron man",
+      "sci-fi"
+    ],
+    "category": "General",
+    "bestFor": "Sci-fi games, space tech, cybersecurity, movie props, immersive dashboards",
+    "doNotUseFor": "Standard corporate, reading heavy content, accessible public services",
+    "effects": "Glow effects, scanning animations, ticker text, blinking markers, fine line drawing",
+    "era": "2010s Sci-Fi",
+    "complexity": "High",
+    "accessibility": "risk high; requires contrast-text-4.5, keyboard, visible-focus, reduced-motion",
+    "lightDarkMode": "light supported, dark supported",
+    "status": "active",
+    "primaryColors": [
+      "#00ffff",
+      "#0080ff",
+      "#ff0000"
+    ],
+    "secondaryColors": [
+      "#333333"
+    ],
+    "source": {
+      "name": "UI UX Pro Max (MIT)",
+      "url": "https://github.com/nextlevelbuilder/ui-ux-pro-max-skill",
+      "commit": "7436a6e0b6dc3add7c12d5b6ef1ccd3d410dd7fd",
+      "licenseSpdx": "MIT",
+      "retrieved": "2026-11-18"
+    }
+  },
+  {
+    "id": "uiuxpm-style-inclusive-design",
+    "ref": "inclusive-design",
+    "name": "Inclusive Design",
+    "keywords": [
+      "accessible",
+      "color-blind friendly",
+      "high contrast",
+      "haptic feedback",
+      "voice interaction",
+      "screen reader",
+      "enhanced contrast targets",
+      "universal"
+    ],
+    "category": "General",
+    "bestFor": "Public services, education, healthcare, finance, government, accessible consumer, inclusive",
+    "doNotUseFor": "None - accessibility universal",
+    "effects": "Haptic feedback (vibration), voice guidance, focus indicators (4px+ ring), motion options, alt content, semantic",
+    "era": "Universal",
+    "complexity": "Low",
+    "accessibility": "risk low; requires contrast-text-4.5, keyboard, visible-focus, reduced-motion",
+    "lightDarkMode": "light supported, dark supported",
+    "status": "active",
+    "source": {
+      "name": "UI UX Pro Max (MIT)",
+      "url": "https://github.com/nextlevelbuilder/ui-ux-pro-max-skill",
+      "commit": "7436a6e0b6dc3add7c12d5b6ef1ccd3d410dd7fd",
+      "licenseSpdx": "MIT",
+      "retrieved": "2026-11-18"
+    }
+  },
+  {
+    "id": "uiuxpm-style-interactive-cursor-design",
+    "ref": "interactive-cursor-design",
+    "name": "Interactive Cursor Design",
+    "keywords": [
+      "custom cursor",
+      "cursor as tool",
+      "hover effects",
+      "cursor feedback",
+      "pointer transformation",
+      "cursor trail",
+      "magnetic cursor"
+    ],
+    "category": "General",
+    "bestFor": "Creative portfolios, interactive experiences, agency sites, product showcases, gaming, entertainment",
+    "doNotUseFor": "Mobile-first (no cursor), accessibility-critical, data-heavy dashboards, forms",
+    "effects": "Cursor scale on hover, magnetic pull to elements, cursor morphing, trail effects, blend mode cursors, click feedback",
+    "era": "2025+ Interactive",
+    "complexity": "Medium",
+    "accessibility": "risk high; requires contrast-text-4.5, keyboard, visible-focus, reduced-motion",
+    "lightDarkMode": "light supported, dark supported",
+    "status": "active",
+    "source": {
+      "name": "UI UX Pro Max (MIT)",
+      "url": "https://github.com/nextlevelbuilder/ui-ux-pro-max-skill",
+      "commit": "7436a6e0b6dc3add7c12d5b6ef1ccd3d410dd7fd",
+      "licenseSpdx": "MIT",
+      "retrieved": "2026-11-18"
+    }
+  },
+  {
+    "id": "uiuxpm-style-kinetic-brutalism-mobile",
+    "ref": "kinetic-brutalism-mobile",
+    "name": "Kinetic Brutalism (Mobile)",
+    "keywords": [
+      "kinetic",
+      "brutalism",
+      "motion",
+      "marquee",
+      "acid yellow",
+      "uppercase",
+      "oversized",
+      "aggressive typography",
+      "street",
+      "zine",
+      "high contrast",
+      "scroll-driven",
+      "haptic",
+      "reanimated"
+    ],
+    "category": "Mobile",
+    "bestFor": "Immersive storytelling apps, brand flagship mobile, music/culture platforms, sports apps, underground zines, limited-edition product drops, performance dashboards",
+    "doNotUseFor": "Calm informational apps, healthcare, finance contexts needing trust, children's, any context where aggressive typography feels inappropriate",
+    "effects": "Infinite marquee (Reanimated, Linear easing, 5s loop, hard clip), hero parallax (scale 1.0→1.3 + fade), sticky section header push, card flood inversion on press (bg→#DFE104, text→#000000), haptic Medium on every press, scroll-triggered interpolate transforms, 0px radius, 2px borders, 100ms color transitions",
+    "era": "2020s Mobile Brutalism",
+    "complexity": "High",
+    "accessibility": "risk low; requires contrast-text-4.5, keyboard, visible-focus, reduced-motion",
+    "lightDarkMode": "light supported, dark conditional, prefers dark",
+    "status": "supplemental",
+    "primaryColors": [
+      "#dfe104",
+      "#09090b"
+    ],
+    "secondaryColors": [
+      "#fafafa",
+      "#27272a",
+      "#a1a1aa",
+      "#3f3f46"
+    ],
+    "source": {
+      "name": "UI UX Pro Max (MIT)",
+      "url": "https://github.com/nextlevelbuilder/ui-ux-pro-max-skill",
+      "commit": "7436a6e0b6dc3add7c12d5b6ef1ccd3d410dd7fd",
+      "licenseSpdx": "MIT",
+      "retrieved": "2026-11-18"
+    }
+  },
+  {
+    "id": "uiuxpm-style-kinetic-typography",
+    "ref": "kinetic-typography",
+    "name": "Kinetic Typography",
+    "keywords": [
+      "motion text",
+      "animated type",
+      "moving letters",
+      "dynamic",
+      "typing effect",
+      "morphing",
+      "scroll-triggered text"
+    ],
+    "category": "General",
+    "bestFor": "Hero sections, marketing sites, video platforms, storytelling, creative portfolios, landing pages",
+    "doNotUseFor": "Long-form content, accessibility-critical, data interfaces, forms, elderly users",
+    "effects": "@keyframes text animation, typing effect, background-clip: text, GSAP ScrollTrigger, split text",
+    "era": "2020s Modern",
+    "complexity": "High",
+    "accessibility": "risk high; requires contrast-text-4.5, keyboard, visible-focus, reduced-motion",
+    "lightDarkMode": "light supported, dark supported",
+    "status": "active",
+    "source": {
+      "name": "UI UX Pro Max (MIT)",
+      "url": "https://github.com/nextlevelbuilder/ui-ux-pro-max-skill",
+      "commit": "7436a6e0b6dc3add7c12d5b6ef1ccd3d410dd7fd",
+      "licenseSpdx": "MIT",
+      "retrieved": "2026-11-18"
+    }
+  },
+  {
+    "id": "uiuxpm-style-material-you-md3-mobile",
+    "ref": "material-you-md3-mobile",
+    "name": "Material 3 Expressive (Mobile)",
+    "keywords": [
+      "material you",
+      "material you md3 mobile",
+      "md3 mobile",
+      "m3 expressive",
+      "material design 3 expressive",
+      "material 3 expressive",
+      "vibrant color",
+      "spring motion",
+      "adaptive components",
+      "flexible typography",
+      "contrasting shapes",
+      "android"
+    ],
+    "category": "Mobile",
+    "bestFor": "Android, Wear OS, and Pixel-aligned products using Material 3 components",
+    "doNotUseFor": "Ultra-minimal brutalist brands, terminal/hacker aesthetics, monochrome editorial apps",
+    "effects": "Tonal elevation (overlay colors instead of strong shadows), pill-shaped buttons and chips (borderRadius 999), emphasized easing Easing.bezier(0.2,0,0,1), state layers (pressed overlays 10–15% opacity), Reanimated-filled label float for inputs, HapticFeedback on FAB/toggles",
+    "era": "Google Material Design 3",
+    "complexity": "Medium",
+    "accessibility": "risk low; requires contrast-text-4.5, keyboard, visible-focus, reduced-motion",
+    "lightDarkMode": "light supported, dark supported",
+    "status": "active",
+    "primaryColors": [
+      "#6750a4",
+      "#e8def8",
+      "#7d5260"
+    ],
+    "secondaryColors": [
+      "#fffbfe",
+      "#1c1b1f",
+      "#f3edf7",
+      "#79747e"
+    ],
+    "source": {
+      "name": "UI UX Pro Max (MIT)",
+      "url": "https://github.com/nextlevelbuilder/ui-ux-pro-max-skill",
+      "commit": "7436a6e0b6dc3add7c12d5b6ef1ccd3d410dd7fd",
+      "licenseSpdx": "MIT",
+      "retrieved": "2026-11-18"
+    }
+  },
+  {
+    "id": "uiuxpm-style-memphis-design",
+    "ref": "memphis-design",
+    "name": "Memphis Design",
+    "keywords": [
+      "80s",
+      "geometric",
+      "playful",
+      "postmodern",
+      "shapes",
+      "patterns",
+      "squiggles",
+      "triangles",
+      "neon",
+      "abstract",
+      "bold"
+    ],
+    "category": "General",
+    "bestFor": "Creative agencies, music sites, youth brands, event promotion, artistic portfolios, entertainment",
+    "doNotUseFor": "Corporate finance, healthcare, legal, elderly users, conservative brands",
+    "effects": "transform: rotate(), clip-path: polygon(), mix-blend-mode, repeating patterns, bold shapes",
+    "era": "1980s Postmodern",
+    "complexity": "Medium",
+    "accessibility": "risk conditional; requires contrast-text-4.5, keyboard, visible-focus, reduced-motion",
+    "lightDarkMode": "light supported, dark supported",
+    "status": "active",
+    "primaryColors": [
+      "#ff71ce",
+      "#ffce5c",
+      "#86ccca",
+      "#6a7bb4"
+    ],
+    "source": {
+      "name": "UI UX Pro Max (MIT)",
+      "url": "https://github.com/nextlevelbuilder/ui-ux-pro-max-skill",
+      "commit": "7436a6e0b6dc3add7c12d5b6ef1ccd3d410dd7fd",
+      "licenseSpdx": "MIT",
+      "retrieved": "2026-11-18"
+    }
+  },
+  {
+    "id": "uiuxpm-style-micro-interactions",
+    "ref": "micro-interactions",
+    "name": "Micro-interactions",
+    "keywords": [
+      "small animations",
+      "gesture-based",
+      "tactile feedback",
+      "subtle animations",
+      "contextual interactions",
+      "responsive"
+    ],
+    "category": "General",
+    "bestFor": "Mobile apps, touchscreen UIs, productivity tools, user-friendly, consumer apps, interactive components",
+    "doNotUseFor": "Desktop-only, critical performance, accessibility-first (alternatives needed)",
+    "effects": "Small hover (50-100ms), loading spinners, success/error state anim, gesture-triggered (swipe/pinch), haptic",
+    "era": "2020s Modern",
+    "complexity": "Medium",
+    "accessibility": "risk low; requires contrast-text-4.5, keyboard, visible-focus, reduced-motion",
+    "lightDarkMode": "light supported, dark supported",
+    "status": "active",
+    "primaryColors": [
+      "#22c55e",
+      "#ef4444",
+      "#f59e0b"
+    ],
+    "source": {
+      "name": "UI UX Pro Max (MIT)",
+      "url": "https://github.com/nextlevelbuilder/ui-ux-pro-max-skill",
+      "commit": "7436a6e0b6dc3add7c12d5b6ef1ccd3d410dd7fd",
+      "licenseSpdx": "MIT",
+      "retrieved": "2026-11-18"
+    }
+  },
+  {
+    "id": "uiuxpm-style-minimalism-and-swiss-style",
+    "ref": "minimalism-and-swiss-style",
+    "name": "Minimalism & Swiss Style",
+    "keywords": [
+      "minimal",
+      "minimalism",
+      "minimalism frame",
+      "clean",
+      "spacious",
+      "functional",
+      "white space",
+      "high contrast",
+      "geometric",
+      "sans-serif",
+      "grid-based",
+      "essential"
+    ],
+    "category": "General",
+    "bestFor": "Enterprise apps, dashboards, documentation sites, SaaS platforms, professional tools",
+    "doNotUseFor": "Creative portfolios, entertainment, playful brands, artistic experiments",
+    "effects": "Subtle hover (200-250ms), smooth transitions, sharp shadows if any, clear type hierarchy, fast loading",
+    "era": "1950s Swiss",
+    "complexity": "Low",
+    "accessibility": "risk low; requires contrast-text-4.5, keyboard, visible-focus, reduced-motion",
+    "lightDarkMode": "light supported, dark supported",
+    "status": "active",
+    "primaryColors": [
+      "#000000",
+      "#ffffff"
+    ],
+    "secondaryColors": [
+      "#f5f1e8",
+      "#808080",
+      "#b38b6d"
+    ],
+    "source": {
+      "name": "UI UX Pro Max (MIT)",
+      "url": "https://github.com/nextlevelbuilder/ui-ux-pro-max-skill",
+      "commit": "7436a6e0b6dc3add7c12d5b6ef1ccd3d410dd7fd",
+      "licenseSpdx": "MIT",
+      "retrieved": "2026-11-18"
+    }
+  },
+  {
+    "id": "uiuxpm-style-minimalist-monochrome",
+    "ref": "minimalist-monochrome",
+    "name": "Minimalist Monochrome",
+    "keywords": [
+      "monochrome",
+      "black white",
+      "editorial",
+      "austere",
+      "typographic",
+      "sharp",
+      "zero radius",
+      "high contrast",
+      "brutalist",
+      "pocket editorial",
+      "serif",
+      "mechanical"
+    ],
+    "category": "Mobile",
+    "bestFor": "Luxury fashion e-commerce mobile, editorial publications, high-end portfolio apps, experimental/avant-garde brands, digital exhibitions",
+    "doNotUseFor": "Entertainment, colorful brands, friendly consumer apps, anything requiring visual warmth or gradient",
+    "effects": "Instant inversion active state (tap → bg-black text-white, zero transition-none), no shadows (strictly 2D), full-bleed horizontal rules (4px black section dividers), subtle paper noise texture (opacity: 0.03), slide-in page transitions with hard edge",
+    "era": "2020s Editorial Mobile",
+    "complexity": "Medium",
+    "accessibility": "risk low; requires contrast-text-4.5, keyboard, visible-focus, reduced-motion",
+    "lightDarkMode": "light supported, dark conditional",
+    "status": "supplemental",
+    "primaryColors": [
+      "#000000",
+      "#ffffff"
+    ],
+    "secondaryColors": [
+      "#f5f5f5",
+      "#525252",
+      "#e5e5e5"
+    ],
+    "source": {
+      "name": "UI UX Pro Max (MIT)",
+      "url": "https://github.com/nextlevelbuilder/ui-ux-pro-max-skill",
+      "commit": "7436a6e0b6dc3add7c12d5b6ef1ccd3d410dd7fd",
+      "licenseSpdx": "MIT",
+      "retrieved": "2026-11-18"
+    }
+  },
+  {
+    "id": "uiuxpm-style-modern-dark-cinema-mobile",
+    "ref": "modern-dark-cinema-mobile",
+    "name": "Modern Dark (Cinema Mobile)",
+    "keywords": [
+      "dark mode",
+      "cinematic",
+      "ambient light",
+      "glassmorphism",
+      "deep black",
+      "indigo",
+      "glow",
+      "blur",
+      "atmospheric",
+      "reanimated",
+      "haptic",
+      "premium",
+      "layered",
+      "frosted glass",
+      "linear gradient"
+    ],
+    "category": "Mobile",
+    "bestFor": "Developer tools, pro productivity apps, fintech/trading dashboards, media/streaming platforms, AI tool interfaces, high-end gaming companion apps",
+    "doNotUseFor": "Consumer apps needing warmth, children's apps, health/medical contexts where dark feels harsh, high-accessibility contexts needing maximum contrast",
+    "effects": "Expo.out Bezier(0.16,1,0.3,1) easing; spring modals (damping:20 stiffness:90); haptic-linked press (Impact Light/Medium); animated ambient light blobs (Reanimated translateX/Y slow oscillation); BlurView glassmorphism headers/nav (intensity 20); scale press 0.97 → 1.0; avoid pure #000000 (OLED smear)",
+    "era": "2020s Cinematic Mobile",
+    "complexity": "High",
+    "accessibility": "risk conditional; requires contrast-text-4.5, keyboard, visible-focus, reduced-motion",
+    "lightDarkMode": "light supported, dark supported, prefers dark",
+    "status": "supplemental",
+    "primaryColors": [
+      "#020203",
+      "#050506",
+      "#0a0a0c",
+      "#5e6ad2"
+    ],
+    "secondaryColors": [
+      "#ededef",
+      "#8a8f98"
+    ],
+    "source": {
+      "name": "UI UX Pro Max (MIT)",
+      "url": "https://github.com/nextlevelbuilder/ui-ux-pro-max-skill",
+      "commit": "7436a6e0b6dc3add7c12d5b6ef1ccd3d410dd7fd",
+      "licenseSpdx": "MIT",
+      "retrieved": "2026-11-18"
+    }
+  },
+  {
+    "id": "uiuxpm-style-motion-driven",
+    "ref": "motion-driven",
+    "name": "Motion-Driven",
+    "keywords": [
+      "animation-heavy",
+      "microinteractions",
+      "smooth transitions",
+      "scroll effects",
+      "parallax",
+      "entrance anim",
+      "page transitions"
+    ],
+    "category": "General",
+    "bestFor": "Portfolio sites, storytelling platforms, interactive experiences, entertainment apps, creative, SaaS",
+    "doNotUseFor": "Data dashboards, critical accessibility, low-power devices, content-heavy, motion-sensitive",
+    "effects": "Scroll anim (Intersection Observer), hover (300-400ms), entrance, parallax (3-5 layers), page transitions",
+    "era": "2020s Modern",
+    "complexity": "High",
+    "accessibility": "risk conditional; requires contrast-text-4.5, keyboard, visible-focus, reduced-motion",
+    "lightDarkMode": "light supported, dark supported",
+    "status": "active",
+    "secondaryColors": [
+      "#22c55e",
+      "#ef4444"
+    ],
+    "source": {
+      "name": "UI UX Pro Max (MIT)",
+      "url": "https://github.com/nextlevelbuilder/ui-ux-pro-max-skill",
+      "commit": "7436a6e0b6dc3add7c12d5b6ef1ccd3d410dd7fd",
+      "licenseSpdx": "MIT",
+      "retrieved": "2026-11-18"
+    }
+  },
+  {
+    "id": "uiuxpm-style-nature-distilled",
+    "ref": "nature-distilled",
+    "name": "Nature Distilled",
+    "keywords": [
+      "muted earthy",
+      "skin tones",
+      "wood",
+      "soil",
+      "sand",
+      "terracotta",
+      "warmth",
+      "organic materials",
+      "handmade warmth"
+    ],
+    "category": "General",
+    "bestFor": "Wellness brands, sustainable products, artisan goods, organic food, spa/beauty, home decor",
+    "doNotUseFor": "Tech startups, gaming, nightlife, corporate finance, high-energy brands",
+    "effects": "Subtle parallax, natural easing (ease-out), texture overlays, grain effects, soft shadows",
+    "era": "2025+ Handmade Warmth",
+    "complexity": "Low",
+    "accessibility": "risk low; requires contrast-text-4.5, keyboard, visible-focus, reduced-motion",
+    "lightDarkMode": "light supported, dark conditional",
+    "status": "active",
+    "primaryColors": [
+      "#c67b5c",
+      "#d4c4a8",
+      "#b5651d",
+      "#f5f0e1"
+    ],
+    "secondaryColors": [
+      "#8b4513",
+      "#6b7b3c",
+      "#9c8b7a"
+    ],
+    "source": {
+      "name": "UI UX Pro Max (MIT)",
+      "url": "https://github.com/nextlevelbuilder/ui-ux-pro-max-skill",
+      "commit": "7436a6e0b6dc3add7c12d5b6ef1ccd3d410dd7fd",
+      "licenseSpdx": "MIT",
+      "retrieved": "2026-11-18"
+    }
+  },
+  {
+    "id": "uiuxpm-style-neo-brutalism-mobile",
+    "ref": "neo-brutalism-mobile",
+    "name": "Neo Brutalism (Mobile)",
+    "keywords": [
+      "neo brutalism",
+      "pop art",
+      "stickers",
+      "thick borders",
+      "cream background",
+      "hot red",
+      "vivid yellow",
+      "soft violet",
+      "hard offset shadow",
+      "mechanical press",
+      "collage"
+    ],
+    "category": "Mobile",
+    "bestFor": "Creative tools, collab platforms, Gen Z marketing & e-commerce, portfolio sites, sticker-book style content apps",
+    "doNotUseFor": "Serious enterprise apps, conservative industries, sober fintech, accessibility-first contexts (must tune contrast)",
+    "effects": "Thick 4px black borders on all major elements, hard offset shadows (4–8px, no blur), mechanical press: translateX/Y equal to shadow offset, slightly rotated cards/badges (-2deg/2deg), high-saturation color blocking, spring/linear animations only",
+    "era": "2020s Neo-Brutalism",
+    "complexity": "High",
+    "accessibility": "risk conditional; requires contrast-text-4.5, keyboard, visible-focus, reduced-motion",
+    "lightDarkMode": "light supported, dark not recommended",
+    "status": "supplemental",
+    "primaryColors": [
+      "#fffdf5",
+      "#ff6b6b",
+      "#ffd93d"
+    ],
+    "secondaryColors": [
+      "#c4b5fd",
+      "#000000",
+      "#ffffff"
+    ],
+    "source": {
+      "name": "UI UX Pro Max (MIT)",
+      "url": "https://github.com/nextlevelbuilder/ui-ux-pro-max-skill",
+      "commit": "7436a6e0b6dc3add7c12d5b6ef1ccd3d410dd7fd",
+      "licenseSpdx": "MIT",
+      "retrieved": "2026-11-18"
+    }
+  },
+  {
+    "id": "uiuxpm-style-neubrutalism",
+    "ref": "neubrutalism",
+    "name": "Neubrutalism",
+    "keywords": [
+      "bold borders",
+      "black outlines",
+      "primary colors",
+      "thick shadows",
+      "no gradients",
+      "flat colors",
+      "45 shadows",
+      "playful",
+      "gen z"
+    ],
+    "category": "General",
+    "bestFor": "Gen Z brands, startups, creative agencies, Figma-style apps, Notion-style interfaces, tech blogs",
+    "doNotUseFor": "Luxury brands, finance, healthcare, conservative industries (too playful)",
+    "effects": "box-shadow: 4px 4px 0 #000, border: 3px solid #000, no gradients, sharp corners (0px), bold typography",
+    "era": "2020s Modern",
+    "complexity": "Low",
+    "accessibility": "risk low; requires contrast-text-4.5, keyboard, visible-focus, reduced-motion",
+    "lightDarkMode": "light supported, dark supported",
+    "status": "active",
+    "primaryColors": [
+      "#ffeb3b",
+      "#ff5252",
+      "#2196f3",
+      "#000000"
+    ],
+    "source": {
+      "name": "UI UX Pro Max (MIT)",
+      "url": "https://github.com/nextlevelbuilder/ui-ux-pro-max-skill",
+      "commit": "7436a6e0b6dc3add7c12d5b6ef1ccd3d410dd7fd",
+      "licenseSpdx": "MIT",
+      "retrieved": "2026-11-18"
+    }
+  },
+  {
+    "id": "uiuxpm-style-neumorphism",
+    "ref": "neumorphism",
+    "name": "Neumorphism",
+    "keywords": [
+      "soft ui",
+      "embossed",
+      "debossed",
+      "convex",
+      "concave",
+      "light source",
+      "subtle depth",
+      "rounded 12-16px",
+      "monochromatic"
+    ],
+    "category": "General",
+    "bestFor": "Health/wellness apps, meditation platforms, fitness trackers, minimal interaction UIs",
+    "doNotUseFor": "Complex apps, critical accessibility, data-heavy dashboards, high-contrast required",
+    "effects": "Soft box-shadow (multiple: -5px -5px 15px, 5px 5px 15px), smooth press (150ms), inner subtle shadow",
+    "era": "2020s Modern",
+    "complexity": "Medium",
+    "accessibility": "risk high; requires contrast-text-4.5, keyboard, visible-focus, reduced-motion",
+    "lightDarkMode": "light supported, dark conditional",
+    "status": "active",
+    "primaryColors": [
+      "#c8e0f4",
+      "#f5e0e8",
+      "#e8e8e8"
+    ],
+    "source": {
+      "name": "UI UX Pro Max (MIT)",
+      "url": "https://github.com/nextlevelbuilder/ui-ux-pro-max-skill",
+      "commit": "7436a6e0b6dc3add7c12d5b6ef1ccd3d410dd7fd",
+      "licenseSpdx": "MIT",
+      "retrieved": "2026-11-18"
+    }
+  },
+  {
+    "id": "uiuxpm-style-neumorphism-mobile",
+    "ref": "neumorphism-mobile",
+    "name": "Neumorphism (Mobile)",
+    "keywords": [
+      "neumorphism",
+      "soft ui",
+      "dual shadow",
+      "extruded",
+      "inset",
+      "clay surface",
+      "monochromatic",
+      "cool grey",
+      "haptic",
+      "ceramic",
+      "physical",
+      "depth"
+    ],
+    "category": "Mobile",
+    "bestFor": "Minimal hardware controls, smart home apps, aesthetic utility tools, health monitors, brand showcase pages",
+    "doNotUseFor": "High-density data, bright multi-color apps, apps needing strong visual hierarchy via color, dark-mode-only products",
+    "effects": "Full-screen #E0E5EC base, dual-layer shadow via nested View (light top-left + dark bottom-right), extruded convex resting state, inset concave pressed/input state, Reanimated scale 0.97 on press, shadow opacity interpolates 1→0.4 on press, Haptics Light on every interaction, 8pt grid, no blur shadows (no shadowRadius blend), nested depth (extruded card contains inset icon slot)",
+    "era": "Tools/Lifestyle",
+    "complexity": "Medium",
+    "accessibility": "risk conditional; requires contrast-text-4.5, keyboard, visible-focus, reduced-motion",
+    "lightDarkMode": "light supported, dark not recommended",
+    "status": "supplemental",
+    "primaryColors": [
+      "#6c63ff",
+      "#e0e5ec"
+    ],
+    "secondaryColors": [
+      "#3d4852",
+      "#6b7280",
+      "#d1d9e6"
+    ],
+    "source": {
+      "name": "UI UX Pro Max (MIT)",
+      "url": "https://github.com/nextlevelbuilder/ui-ux-pro-max-skill",
+      "commit": "7436a6e0b6dc3add7c12d5b6ef1ccd3d410dd7fd",
+      "licenseSpdx": "MIT",
+      "retrieved": "2026-11-18"
+    }
+  },
+  {
+    "id": "uiuxpm-style-organic-biophilic",
+    "ref": "organic-biophilic",
+    "name": "Organic Biophilic",
+    "keywords": [
+      "nature",
+      "organic shapes",
+      "green",
+      "sustainable",
+      "rounded",
+      "flowing",
+      "wellness",
+      "earthy",
+      "natural textures"
+    ],
+    "category": "General",
+    "bestFor": "Wellness apps, sustainability brands, eco products, health apps, meditation, organic food brands",
+    "doNotUseFor": "Tech-focused products, gaming, industrial, urban brands",
+    "effects": "Rounded corners (16-24px), organic curves (border-radius variations), natural shadows, flowing SVG shapes",
+    "era": "2020s Sustainable",
+    "complexity": "Low",
+    "accessibility": "risk low; requires contrast-text-4.5, keyboard, visible-focus, reduced-motion",
+    "lightDarkMode": "light supported, dark supported",
+    "status": "active",
+    "primaryColors": [
+      "#228b22",
+      "#8b4513",
+      "#87ceeb",
+      "#f5f5dc"
+    ],
+    "source": {
+      "name": "UI UX Pro Max (MIT)",
+      "url": "https://github.com/nextlevelbuilder/ui-ux-pro-max-skill",
+      "commit": "7436a6e0b6dc3add7c12d5b6ef1ccd3d410dd7fd",
+      "licenseSpdx": "MIT",
+      "retrieved": "2026-11-18"
+    }
+  },
+  {
+    "id": "uiuxpm-style-parallax-storytelling",
+    "ref": "parallax-storytelling",
+    "name": "Parallax Storytelling",
+    "keywords": [
+      "parallax",
+      "scroll-driven",
+      "narrative",
+      "layered scrolling",
+      "immersive",
+      "progressive disclosure",
+      "cinematic",
+      "scroll-triggered"
+    ],
+    "category": "General",
+    "bestFor": "Brand storytelling, product launches, case studies, portfolios, annual reports, marketing campaigns",
+    "doNotUseFor": "E-commerce, dashboards, mobile-first, SEO-critical, accessibility-required",
+    "effects": "transform: translateY(scroll), position: fixed/sticky, perspective: 1px, scroll-triggered animations",
+    "era": "2020s Modern",
+    "complexity": "High",
+    "accessibility": "risk high; requires contrast-text-4.5, keyboard, visible-focus, reduced-motion",
+    "lightDarkMode": "light supported, dark supported",
+    "status": "active",
+    "source": {
+      "name": "UI UX Pro Max (MIT)",
+      "url": "https://github.com/nextlevelbuilder/ui-ux-pro-max-skill",
+      "commit": "7436a6e0b6dc3add7c12d5b6ef1ccd3d410dd7fd",
+      "licenseSpdx": "MIT",
+      "retrieved": "2026-11-18"
+    }
+  },
+  {
+    "id": "uiuxpm-style-pixel-art",
+    "ref": "pixel-art",
+    "name": "Pixel Art",
+    "keywords": [
+      "retro",
+      "8-bit",
+      "16-bit",
+      "gaming",
+      "blocky",
+      "nostalgic",
+      "pixelated",
+      "arcade"
+    ],
+    "category": "General",
+    "bestFor": "Indie games, retro tools, creative portfolios, nostalgia marketing, Web3/NFT",
+    "doNotUseFor": "Professional corporate, modern SaaS, high-res photography sites",
+    "effects": "Frame-by-frame sprite animation, blinking cursor, instant transitions, marquee text",
+    "era": "1980s Arcade",
+    "complexity": "Medium",
+    "accessibility": "risk conditional; requires contrast-text-4.5, keyboard, visible-focus, reduced-motion",
+    "lightDarkMode": "light supported, dark supported",
+    "status": "active",
+    "source": {
+      "name": "UI UX Pro Max (MIT)",
+      "url": "https://github.com/nextlevelbuilder/ui-ux-pro-max-skill",
+      "commit": "7436a6e0b6dc3add7c12d5b6ef1ccd3d410dd7fd",
+      "licenseSpdx": "MIT",
+      "retrieved": "2026-11-18"
+    }
+  },
+  {
+    "id": "uiuxpm-style-predictive-analytics",
+    "ref": "predictive-analytics",
+    "name": "Predictive Analytics",
+    "keywords": [
+      "forecast lines",
+      "confidence intervals",
+      "trend projections",
+      "scenario modeling",
+      "ai-driven insights",
+      "anomaly detection visualization"
+    ],
+    "category": "BI/Analytics",
+    "bestFor": "Forecasting dashboards, anomaly detection systems, trend prediction dashboards, AI-powered analytics, budget planning",
+    "doNotUseFor": "Historical-only dashboards, simple reporting, real-time operational dashboards",
+    "effects": "Forecast line animation on draw, confidence band fade-in, anomaly pulse alert, smoothing function animations",
+    "era": "2020s Modern",
+    "complexity": "Medium",
+    "accessibility": "risk low; requires contrast-text-4.5, keyboard, visible-focus, reduced-motion",
+    "lightDarkMode": "light supported, dark supported",
+    "status": "supplemental",
+    "source": {
+      "name": "UI UX Pro Max (MIT)",
+      "url": "https://github.com/nextlevelbuilder/ui-ux-pro-max-skill",
+      "commit": "7436a6e0b6dc3add7c12d5b6ef1ccd3d410dd7fd",
+      "licenseSpdx": "MIT",
+      "retrieved": "2026-11-18"
+    }
+  },
+  {
+    "id": "uiuxpm-style-real-time-monitoring",
+    "ref": "real-time-monitoring",
+    "name": "Real-Time Monitoring",
+    "keywords": [
+      "real-time",
+      "real-time monitor",
+      "live data updates",
+      "status indicators",
+      "alert notifications",
+      "streaming data visualization",
+      "active monitoring",
+      "streaming charts"
+    ],
+    "category": "BI/Analytics",
+    "bestFor": "System monitoring dashboards, DevOps dashboards, real-time analytics, stock market dashboards, live event tracking",
+    "doNotUseFor": "Historical analysis, long-term trend reports, archived data dashboards",
+    "effects": "Real-time chart animations, alert pulse/glow, status indicator blink animation, smooth data stream updates, loading effect",
+    "era": "2020s Modern",
+    "complexity": "Medium",
+    "accessibility": "risk low; requires contrast-text-4.5, keyboard, visible-focus, reduced-motion",
+    "lightDarkMode": "light supported, dark supported",
+    "status": "supplemental",
+    "primaryColors": [
+      "#ff0000",
+      "#ffa500",
+      "#22c55e"
+    ],
+    "source": {
+      "name": "UI UX Pro Max (MIT)",
+      "url": "https://github.com/nextlevelbuilder/ui-ux-pro-max-skill",
+      "commit": "7436a6e0b6dc3add7c12d5b6ef1ccd3d410dd7fd",
+      "licenseSpdx": "MIT",
+      "retrieved": "2026-11-18"
+    }
+  },
+  {
+    "id": "uiuxpm-style-retro-futurism",
+    "ref": "retro-futurism",
+    "name": "Retro-Futurism",
+    "keywords": [
+      "vintage sci-fi",
+      "80s aesthetic",
+      "neon glow",
+      "geometric patterns",
+      "crt scanlines",
+      "pixel art",
+      "cyberpunk",
+      "synthwave"
+    ],
+    "category": "General",
+    "bestFor": "Gaming, entertainment, music platforms, tech brands, artistic projects, nostalgic, cyberpunk",
+    "doNotUseFor": "Conservative industries, critical accessibility, professional/corporate, elderly, legal/finance",
+    "effects": "CRT scanlines (::before overlay), neon glow (text-shadow+box-shadow), glitch effects (skew/offset keyframes)",
+    "era": "1980s Retro",
+    "complexity": "Medium",
+    "accessibility": "risk high; requires contrast-text-4.5, keyboard, visible-focus, reduced-motion",
+    "lightDarkMode": "light supported, dark supported, prefers dark",
+    "status": "active",
+    "primaryColors": [
+      "#0080ff",
+      "#ff006e",
+      "#00ffff",
+      "#1a1a2e",
+      "#5d34d0"
+    ],
+    "secondaryColors": [
+      "#c0c0c0",
+      "#ffd700",
+      "#ff10f0"
+    ],
+    "source": {
+      "name": "UI UX Pro Max (MIT)",
+      "url": "https://github.com/nextlevelbuilder/ui-ux-pro-max-skill",
+      "commit": "7436a6e0b6dc3add7c12d5b6ef1ccd3d410dd7fd",
+      "licenseSpdx": "MIT",
+      "retrieved": "2026-11-18"
+    }
+  },
+  {
+    "id": "uiuxpm-style-saas-mobile-high-tech-boutique",
+    "ref": "saas-mobile-high-tech-boutique",
+    "name": "SaaS Mobile (High-Tech Boutique)",
+    "keywords": [
+      "saas",
+      "electric blue",
+      "gradient",
+      "fintech",
+      "spring animation",
+      "dual font",
+      "glassmorphism",
+      "boutique",
+      "premium",
+      "calistoga",
+      "inter",
+      "mono",
+      "tactile",
+      "haptic",
+      "bento"
+    ],
+    "category": "Mobile",
+    "bestFor": "B2B SaaS mobile dashboards, fintech apps, developer tool mobile companions, marketing analytics apps, HR/operations apps, modern business productivity",
+    "doNotUseFor": "Pure consumer entertainment, children's apps, highly decorative lifestyle apps, contexts where Electric Blue feels too corporate",
+    "effects": "Spring animations (mass:1 damping:15 stiffness:120); gradient buttons (0052FF→4D7CFF); scale press 0.96→1.0 with haptics; floating FAB with gentle bobbing (Reanimated); glassmorphism BlurView navigation bars; staggered fade-in entrance (Y:20→0 + opacity:0→1); pulsing status dot on section badges; layout transitions (LayoutAnimation or Reanimated entering)",
+    "era": "2020s SaaS Mobile",
+    "complexity": "Medium",
+    "accessibility": "risk low; requires contrast-text-4.5, keyboard, visible-focus, reduced-motion",
+    "lightDarkMode": "light supported, dark conditional",
+    "status": "supplemental",
+    "primaryColors": [
+      "#0052ff",
+      "#4d7cff"
+    ],
+    "secondaryColors": [
+      "#fafafa",
+      "#0f172a",
+      "#f1f5f9",
+      "#ffffff",
+      "#e2e8f0"
+    ],
+    "source": {
+      "name": "UI UX Pro Max (MIT)",
+      "url": "https://github.com/nextlevelbuilder/ui-ux-pro-max-skill",
+      "commit": "7436a6e0b6dc3add7c12d5b6ef1ccd3d410dd7fd",
+      "licenseSpdx": "MIT",
+      "retrieved": "2026-11-18"
+    }
+  },
+  {
+    "id": "uiuxpm-style-sales-intelligence-dashboard",
+    "ref": "sales-intelligence-dashboard",
+    "name": "Sales Intelligence Dashboard",
+    "keywords": [
+      "deal pipeline",
+      "sales metrics",
+      "territory performance",
+      "sales rep leaderboard",
+      "win-loss analysis",
+      "quota tracking",
+      "forecast accuracy"
+    ],
+    "category": "BI/Analytics",
+    "bestFor": "CRM dashboards, sales management, opportunity tracking, performance management, quota planning",
+    "doNotUseFor": "Marketing analytics, customer support metrics, HR dashboards",
+    "effects": "Deal movement animations, metric updates, leaderboard ranking changes, gauge needle movements, status change highlights",
+    "era": "2020s Modern",
+    "complexity": "Medium",
+    "accessibility": "risk low; requires contrast-text-4.5, keyboard, visible-focus, reduced-motion",
+    "lightDarkMode": "light supported, dark supported",
+    "status": "supplemental",
+    "source": {
+      "name": "UI UX Pro Max (MIT)",
+      "url": "https://github.com/nextlevelbuilder/ui-ux-pro-max-skill",
+      "commit": "7436a6e0b6dc3add7c12d5b6ef1ccd3d410dd7fd",
+      "licenseSpdx": "MIT",
+      "retrieved": "2026-11-18"
+    }
+  },
+  {
+    "id": "uiuxpm-style-shopify-polaris",
+    "ref": "shopify-polaris",
+    "name": "Shopify Polaris",
+    "keywords": [
+      "polaris",
+      "polaris web components",
+      "shopify polaris",
+      "merchant admin",
+      "commerce",
+      "checkout",
+      "web components",
+      "app home"
+    ],
+    "category": "Platform/System",
+    "bestFor": "Shopify admin apps, merchant tools, checkout, customer accounts, POS, and extensions",
+    "doNotUseFor": "Generic marketing sites or products outside Shopify surfaces",
+    "effects": "Purposeful admin feedback and restrained transitions",
+    "era": "Shopify Polaris, current",
+    "complexity": "Medium",
+    "accessibility": "risk conditional; requires contrast-text-4.5, keyboard, visible-focus, reduced-motion",
+    "lightDarkMode": "light supported, dark supported",
+    "status": "active",
+    "source": {
+      "name": "UI UX Pro Max (MIT)",
+      "url": "https://github.com/nextlevelbuilder/ui-ux-pro-max-skill",
+      "commit": "7436a6e0b6dc3add7c12d5b6ef1ccd3d410dd7fd",
+      "licenseSpdx": "MIT",
+      "retrieved": "2026-11-18"
+    }
+  },
+  {
+    "id": "uiuxpm-style-sketch-hand-drawn-mobile",
+    "ref": "sketch-hand-drawn-mobile",
+    "name": "Sketch Hand-Drawn (Mobile)",
+    "keywords": [
+      "sketch hand-drawn",
+      "sketch",
+      "hand-drawn",
+      "handwriting",
+      "wobbly",
+      "imperfect",
+      "paper",
+      "kalam",
+      "organic",
+      "collage",
+      "post-it",
+      "tape",
+      "offset shadow",
+      "scribble"
+    ],
+    "category": "Mobile",
+    "bestFor": "Low-fidelity prototyping, creative brands, children/picturebook apps, education tools, journaling apps, gamified puzzles",
+    "doNotUseFor": "Enterprise dashboards, high-density data tables, fintech precision tools, medical or legal apps",
+    "effects": "Wobbly borderRadius (unique per corner: 15/25/20/10), borderWidth 2–3 solid/dashed, hard offset shadow via rear View (4px,4px) #2D2D2D, Kalam Bold headings, PatrickHand Regular body, slight rotation (-1deg/1deg) on cards, absolute SVG scribble overlays (arrows/tape/tacks), jiggle -2deg↔2deg on error, LayoutAnimation spring on layout changes, Haptics on press, paper texture repeating background",
+    "era": "Creative/Education",
+    "complexity": "Medium",
+    "accessibility": "risk low; requires contrast-text-4.5, keyboard, visible-focus, reduced-motion",
+    "lightDarkMode": "light supported, dark supported",
+    "status": "supplemental",
+    "primaryColors": [
+      "#ff4d4d",
+      "#2d2d2d"
+    ],
+    "secondaryColors": [
+      "#fdfbf7",
+      "#e5e0d8",
+      "#2d5da1",
+      "#fff9c4"
+    ],
+    "source": {
+      "name": "UI UX Pro Max (MIT)",
+      "url": "https://github.com/nextlevelbuilder/ui-ux-pro-max-skill",
+      "commit": "7436a6e0b6dc3add7c12d5b6ef1ccd3d410dd7fd",
+      "licenseSpdx": "MIT",
+      "retrieved": "2026-11-18"
+    }
+  },
+  {
+    "id": "uiuxpm-style-skeuomorphism",
+    "ref": "skeuomorphism",
+    "name": "Skeuomorphism",
+    "keywords": [
+      "realistic",
+      "texture",
+      "depth",
+      "3d appearance",
+      "real-world metaphors",
+      "shadows",
+      "gradients",
+      "tactile",
+      "detailed",
+      "material"
+    ],
+    "category": "General",
+    "bestFor": "Legacy apps, gaming, immersive storytelling, premium products, luxury, realistic simulations, education",
+    "doNotUseFor": "Modern enterprise, critical accessibility, low-performance, web (use Flat/Modern)",
+    "effects": "Realistic shadows (layers), depth (perspective), texture details (noise, grain), realistic animations (300-500ms)",
+    "era": "2007-2012 iOS",
+    "complexity": "High",
+    "accessibility": "risk low; requires contrast-text-4.5, keyboard, visible-focus, reduced-motion",
+    "lightDarkMode": "light conditional, dark conditional",
+    "status": "active",
+    "source": {
+      "name": "UI UX Pro Max (MIT)",
+      "url": "https://github.com/nextlevelbuilder/ui-ux-pro-max-skill",
+      "commit": "7436a6e0b6dc3add7c12d5b6ef1ccd3d410dd7fd",
+      "licenseSpdx": "MIT",
+      "retrieved": "2026-11-18"
+    }
+  },
+  {
+    "id": "uiuxpm-style-soft-ui-evolution",
+    "ref": "soft-ui-evolution",
+    "name": "Soft UI Evolution",
+    "keywords": [
+      "evolved soft ui",
+      "better contrast",
+      "modern aesthetics",
+      "subtle depth",
+      "accessibility-focused",
+      "improved shadows",
+      "hybrid"
+    ],
+    "category": "General",
+    "bestFor": "Modern enterprise apps, SaaS platforms, health/wellness, modern business tools, professional, hybrid",
+    "doNotUseFor": "Extreme minimalism, critical performance, systems without modern OS",
+    "effects": "Improved shadows (softer than flat, clearer than neumorphism), modern (200-300ms), focus visible, measured contrast targets",
+    "era": "2020s Modern",
+    "complexity": "Medium",
+    "accessibility": "risk low; requires contrast-text-4.5, keyboard, visible-focus, reduced-motion",
+    "lightDarkMode": "light supported, dark supported",
+    "status": "active",
+    "primaryColors": [
+      "#87ceeb",
+      "#ffb6c1",
+      "#90ee90"
+    ],
+    "source": {
+      "name": "UI UX Pro Max (MIT)",
+      "url": "https://github.com/nextlevelbuilder/ui-ux-pro-max-skill",
+      "commit": "7436a6e0b6dc3add7c12d5b6ef1ccd3d410dd7fd",
+      "licenseSpdx": "MIT",
+      "retrieved": "2026-11-18"
+    }
+  },
+  {
+    "id": "uiuxpm-style-spectrum-2",
+    "ref": "spectrum-2",
+    "name": "Spectrum 2",
+    "keywords": [
+      "adobe spectrum 2",
+      "s2",
+      "spectrum 2",
+      "adobe",
+      "expressive",
+      "approachable",
+      "adaptive",
+      "inclusive",
+      "creative tools"
+    ],
+    "category": "Platform/System",
+    "bestFor": "New Adobe-style creative and document surfaces adopting Spectrum 2",
+    "doNotUseFor": "Products not aligned with Adobe professional workflows",
+    "effects": "Updated depth, expressive illustration, adaptive motion",
+    "era": "Adobe Spectrum 2, 2023+",
+    "complexity": "Medium",
+    "accessibility": "risk conditional; requires contrast-text-4.5, keyboard, visible-focus, reduced-motion",
+    "lightDarkMode": "light supported, dark supported",
+    "status": "supplemental",
+    "source": {
+      "name": "UI UX Pro Max (MIT)",
+      "url": "https://github.com/nextlevelbuilder/ui-ux-pro-max-skill",
+      "commit": "7436a6e0b6dc3add7c12d5b6ef1ccd3d410dd7fd",
+      "licenseSpdx": "MIT",
+      "retrieved": "2026-11-18"
+    }
+  },
+  {
+    "id": "uiuxpm-style-spectrum-design-system",
+    "ref": "spectrum-design-system",
+    "name": "Adobe Spectrum",
+    "keywords": [
+      "spectrum",
+      "adobe spectrum design system",
+      "adobe spectrum",
+      "creative tools",
+      "enterprise",
+      "content creation",
+      "tokenized",
+      "cross-platform"
+    ],
+    "category": "Platform/System",
+    "bestFor": "Creative tools, media workflows, document products, and Adobe-adjacent enterprise software",
+    "doNotUseFor": "Consumer brands that do not need dense professional-tool conventions",
+    "effects": "Layered depth and restrained professional motion",
+    "era": "Adobe Spectrum",
+    "complexity": "Medium",
+    "accessibility": "risk conditional; requires contrast-text-4.5, keyboard, visible-focus, reduced-motion",
+    "lightDarkMode": "light supported, dark supported",
+    "status": "active",
+    "source": {
+      "name": "UI UX Pro Max (MIT)",
+      "url": "https://github.com/nextlevelbuilder/ui-ux-pro-max-skill",
+      "commit": "7436a6e0b6dc3add7c12d5b6ef1ccd3d410dd7fd",
+      "licenseSpdx": "MIT",
+      "retrieved": "2026-11-18"
+    }
+  },
+  {
+    "id": "uiuxpm-style-swiss-modernism-2-0",
+    "ref": "swiss-modernism-2-0",
+    "name": "Swiss Modernism 2.0",
+    "keywords": [
+      "swiss modernism",
+      "grid system",
+      "helvetica",
+      "modular",
+      "asymmetric",
+      "international style",
+      "rational",
+      "clean",
+      "mathematical spacing"
+    ],
+    "category": "General",
+    "bestFor": "Corporate sites, architecture, editorial, SaaS, museums, professional services, documentation",
+    "doNotUseFor": "Playful brands, children's sites, entertainment, gaming, emotional storytelling",
+    "effects": "display: grid, grid-template-columns: repeat(12 1fr), gap: 1rem, mathematical ratios, clear hierarchy",
+    "era": "1950s Swiss + 2020s",
+    "complexity": "Low",
+    "accessibility": "risk low; requires contrast-text-4.5, keyboard, visible-focus, reduced-motion",
+    "lightDarkMode": "light supported, dark supported",
+    "status": "supplemental",
+    "primaryColors": [
+      "#000000",
+      "#ffffff",
+      "#f5f5f5"
+    ],
+    "source": {
+      "name": "UI UX Pro Max (MIT)",
+      "url": "https://github.com/nextlevelbuilder/ui-ux-pro-max-skill",
+      "commit": "7436a6e0b6dc3add7c12d5b6ef1ccd3d410dd7fd",
+      "licenseSpdx": "MIT",
+      "retrieved": "2026-11-18"
+    }
+  },
+  {
+    "id": "uiuxpm-style-tactile-digital-deformable-ui",
+    "ref": "tactile-digital-deformable-ui",
+    "name": "Tactile Digital / Deformable UI",
+    "keywords": [
+      "jelly buttons",
+      "chrome",
+      "clay",
+      "squishy",
+      "deformable",
+      "bouncy",
+      "physical",
+      "tactile feedback",
+      "press response"
+    ],
+    "category": "General",
+    "bestFor": "Modern mobile apps, playful brands, entertainment, gaming UI, consumer products, interactive demos",
+    "doNotUseFor": "Enterprise software, data dashboards, accessibility-critical, professional tools",
+    "effects": "Press deformation (scale + squish), bounce-back (cubic-bezier), material response, haptic-like feedback, spring physics",
+    "era": "2025+ Tactile Era",
+    "complexity": "Medium",
+    "accessibility": "risk conditional; requires contrast-text-4.5, keyboard, visible-focus, reduced-motion",
+    "lightDarkMode": "light supported, dark supported",
+    "status": "active",
+    "primaryColors": [
+      "#c0c0c0",
+      "#ff9ecd",
+      "#87ceeb"
+    ],
+    "source": {
+      "name": "UI UX Pro Max (MIT)",
+      "url": "https://github.com/nextlevelbuilder/ui-ux-pro-max-skill",
+      "commit": "7436a6e0b6dc3add7c12d5b6ef1ccd3d410dd7fd",
+      "licenseSpdx": "MIT",
+      "retrieved": "2026-11-18"
+    }
+  },
+  {
+    "id": "uiuxpm-style-terminal-cli-mobile",
+    "ref": "terminal-cli-mobile",
+    "name": "Terminal CLI (Mobile)",
+    "keywords": [
+      "terminal",
+      "cli",
+      "matrix green",
+      "monospace",
+      "hacker",
+      "ascii",
+      "command line",
+      "developer",
+      "web3",
+      "crypto",
+      "sci-fi",
+      "oled",
+      "retro-future",
+      "field operative"
+    ],
+    "category": "Mobile",
+    "bestFor": "Developer tools, Web3/blockchain apps, geek-culture apps, ARG games, sci-fi/noir gaming companions, hacker/security tools, creative studio portfolios",
+    "doNotUseFor": "Consumer products, health apps, anything requiring approachability or warmth, children's apps, standard enterprise contexts",
+    "effects": "Blinking cursor (500ms opacity loop), typewriter text reveal hook, scanline overlay (repeating lines 0.05 opacity), ASCII art headers, instant color inversion on press (bg-green text-black), haptic on every keystroke, boot sequence splash on launch",
+    "era": "Retro-Future 1980s–2020s",
+    "complexity": "Medium",
+    "accessibility": "risk conditional; requires contrast-text-4.5, keyboard, visible-focus, reduced-motion",
+    "lightDarkMode": "light not recommended, dark supported, prefers dark",
+    "status": "supplemental",
+    "primaryColors": [
+      "#33ff00",
+      "#050505"
+    ],
+    "secondaryColors": [
+      "#ffb000",
+      "#1a3d1a",
+      "#ff3333",
+      "#33ff00"
+    ],
+    "source": {
+      "name": "UI UX Pro Max (MIT)",
+      "url": "https://github.com/nextlevelbuilder/ui-ux-pro-max-skill",
+      "commit": "7436a6e0b6dc3add7c12d5b6ef1ccd3d410dd7fd",
+      "licenseSpdx": "MIT",
+      "retrieved": "2026-11-18"
+    }
+  },
+  {
+    "id": "uiuxpm-style-user-behavior-analytics",
+    "ref": "user-behavior-analytics",
+    "name": "User Behavior Analytics",
+    "keywords": [
+      "funnel visualization",
+      "user flow diagrams",
+      "conversion tracking",
+      "engagement metrics",
+      "user journey mapping",
+      "cohort analysis"
+    ],
+    "category": "BI/Analytics",
+    "bestFor": "Conversion funnel analysis, user journey tracking, engagement analytics, cohort analysis, retention tracking",
+    "doNotUseFor": "Real-time operational metrics, technical system monitoring, financial transactions",
+    "effects": "Funnel animation (fill-down), flow diagram animations (connection draw), conversion pulse, engagement bar fill",
+    "era": "2020s Modern",
+    "complexity": "Medium",
+    "accessibility": "risk low; requires contrast-text-4.5, keyboard, visible-focus, reduced-motion",
+    "lightDarkMode": "light supported, dark supported",
+    "status": "supplemental",
+    "source": {
+      "name": "UI UX Pro Max (MIT)",
+      "url": "https://github.com/nextlevelbuilder/ui-ux-pro-max-skill",
+      "commit": "7436a6e0b6dc3add7c12d5b6ef1ccd3d410dd7fd",
+      "licenseSpdx": "MIT",
+      "retrieved": "2026-11-18"
+    }
+  },
+  {
+    "id": "uiuxpm-style-vaporwave",
+    "ref": "vaporwave",
+    "name": "Vaporwave",
+    "keywords": [
+      "synthwave",
+      "retro-futuristic",
+      "80s-90s",
+      "neon",
+      "glitch",
+      "nostalgic",
+      "sunset gradient",
+      "dreamy",
+      "aesthetic"
+    ],
+    "category": "General",
+    "bestFor": "Music platforms, gaming, creative portfolios, tech startups, entertainment, artistic projects",
+    "doNotUseFor": "Business apps, e-commerce, education, healthcare, enterprise software",
+    "effects": "text-shadow glow, linear-gradient, filter: hue-rotate(), glitch animations, retro scan lines",
+    "era": "1980s-90s Retro",
+    "complexity": "Medium",
+    "accessibility": "risk high; requires contrast-text-4.5, keyboard, visible-focus, reduced-motion",
+    "lightDarkMode": "light supported, dark supported, prefers dark",
+    "status": "supplemental",
+    "primaryColors": [
+      "#ff71ce",
+      "#01cdfe",
+      "#05ffa1",
+      "#b967ff"
+    ],
+    "source": {
+      "name": "UI UX Pro Max (MIT)",
+      "url": "https://github.com/nextlevelbuilder/ui-ux-pro-max-skill",
+      "commit": "7436a6e0b6dc3add7c12d5b6ef1ccd3d410dd7fd",
+      "licenseSpdx": "MIT",
+      "retrieved": "2026-11-18"
+    }
+  },
+  {
+    "id": "uiuxpm-style-vibrant-and-block-based",
+    "ref": "vibrant-and-block-based",
+    "name": "Vibrant & Block-based",
+    "keywords": [
+      "vibrant block",
+      "bold",
+      "energetic",
+      "playful",
+      "block layout",
+      "geometric shapes",
+      "high color contrast",
+      "duotone"
+    ],
+    "category": "General",
+    "bestFor": "Startups, creative agencies, gaming, social media, youth-focused, entertainment, consumer",
+    "doNotUseFor": "Financial institutions, healthcare, formal business, government, conservative, elderly",
+    "effects": "Large sections (48px+ gaps), animated patterns, bold hover (color shift), scroll-snap, large type (32px+), 200-300ms",
+    "era": "2020s Modern",
+    "complexity": "Medium",
+    "accessibility": "risk conditional; requires contrast-text-4.5, keyboard, visible-focus, reduced-motion",
+    "lightDarkMode": "light supported, dark supported",
+    "status": "active",
+    "primaryColors": [
+      "#39ff14",
+      "#bf00ff",
+      "#ff1493",
+      "#00ffff",
+      "#ffaa00"
+    ],
+    "secondaryColors": [
+      "#ff7f00",
+      "#ff006e",
+      "#ccff00"
+    ],
+    "source": {
+      "name": "UI UX Pro Max (MIT)",
+      "url": "https://github.com/nextlevelbuilder/ui-ux-pro-max-skill",
+      "commit": "7436a6e0b6dc3add7c12d5b6ef1ccd3d410dd7fd",
+      "licenseSpdx": "MIT",
+      "retrieved": "2026-11-18"
+    }
+  },
+  {
+    "id": "uiuxpm-style-vintage-analog-retro-film",
+    "ref": "vintage-analog-retro-film",
+    "name": "Vintage Analog / Retro Film",
+    "keywords": [
+      "film grain",
+      "vhs",
+      "cassette tape",
+      "polaroid",
+      "analog warmth",
+      "faded colors",
+      "light leaks",
+      "vintage photography"
+    ],
+    "category": "General",
+    "bestFor": "Photography portfolios, music/vinyl brands, vintage fashion, nostalgia marketing, film industry, cafes",
+    "doNotUseFor": "Modern tech, SaaS, healthcare, children's apps, corporate enterprise",
+    "effects": "Film grain overlay, VHS tracking effect, polaroid shake, fade-in transitions, light leak animations",
+    "era": "1970s-90s Analog Revival",
+    "complexity": "Medium",
+    "accessibility": "risk low; requires contrast-text-4.5, keyboard, visible-focus, reduced-motion",
+    "lightDarkMode": "light supported, dark conditional",
+    "status": "active",
+    "primaryColors": [
+      "#f5e6c8",
+      "#d4a574",
+      "#4a7b7c",
+      "#e8b4b8"
+    ],
+    "source": {
+      "name": "UI UX Pro Max (MIT)",
+      "url": "https://github.com/nextlevelbuilder/ui-ux-pro-max-skill",
+      "commit": "7436a6e0b6dc3add7c12d5b6ef1ccd3d410dd7fd",
+      "licenseSpdx": "MIT",
+      "retrieved": "2026-11-18"
+    }
+  },
+  {
+    "id": "uiuxpm-style-voice-first-multimodal",
+    "ref": "voice-first-multimodal",
+    "name": "Voice-First Multimodal",
+    "keywords": [
+      "voice ui",
+      "multimodal",
+      "audio feedback",
+      "conversational",
+      "hands-free",
+      "ambient",
+      "contextual",
+      "speech recognition"
+    ],
+    "category": "General",
+    "bestFor": "Voice assistants, accessibility apps, hands-free tools, smart home, automotive UI, cooking apps",
+    "doNotUseFor": "Visual-heavy content, data entry, complex forms, noisy environments",
+    "effects": "Voice waveform visualization, listening pulse, processing spinner, speak animation, smooth transitions",
+    "era": "2025+ Voice Era",
+    "complexity": "Medium",
+    "accessibility": "risk low; requires contrast-text-4.5, keyboard, visible-focus, reduced-motion",
+    "lightDarkMode": "light supported, dark supported",
+    "status": "active",
+    "primaryColors": [
+      "#fafafa",
+      "#6b8faf",
+      "#9b8fbb"
+    ],
+    "source": {
+      "name": "UI UX Pro Max (MIT)",
+      "url": "https://github.com/nextlevelbuilder/ui-ux-pro-max-skill",
+      "commit": "7436a6e0b6dc3add7c12d5b6ef1ccd3d410dd7fd",
+      "licenseSpdx": "MIT",
+      "retrieved": "2026-11-18"
+    }
+  },
+  {
+    "id": "uiuxpm-style-y2k-aesthetic",
+    "ref": "y2k-aesthetic",
+    "name": "Y2K Aesthetic",
+    "keywords": [
+      "neon pink",
+      "chrome",
+      "metallic",
+      "bubblegum",
+      "iridescent",
+      "glossy",
+      "retro-futurism",
+      "2000s",
+      "futuristic nostalgia"
+    ],
+    "category": "General",
+    "bestFor": "Fashion brands, music platforms, Gen Z brands, nostalgia marketing, entertainment, youth-focused",
+    "doNotUseFor": "B2B enterprise, healthcare, finance, conservative industries, elderly users",
+    "effects": "linear-gradient metallic, glossy buttons, 3D chrome effects, glow animations, bubble shapes",
+    "era": "Y2K 2000s",
+    "complexity": "Medium",
+    "accessibility": "risk conditional; requires contrast-text-4.5, keyboard, visible-focus, reduced-motion",
+    "lightDarkMode": "light supported, dark conditional",
+    "status": "active",
+    "primaryColors": [
+      "#ff69b4",
+      "#00ffff",
+      "#c0c0c0",
+      "#9400d3"
+    ],
+    "source": {
+      "name": "UI UX Pro Max (MIT)",
+      "url": "https://github.com/nextlevelbuilder/ui-ux-pro-max-skill",
+      "commit": "7436a6e0b6dc3add7c12d5b6ef1ccd3d410dd7fd",
+      "licenseSpdx": "MIT",
+      "retrieved": "2026-11-18"
+    }
+  },
+  {
+    "id": "uiuxpm-style-zero-interface",
+    "ref": "zero-interface",
+    "name": "Zero Interface",
+    "keywords": [
+      "minimal visible ui",
+      "voice-first",
+      "gesture-based",
+      "ai-driven",
+      "invisible controls",
+      "predictive",
+      "context-aware",
+      "ambient"
+    ],
+    "category": "General",
+    "bestFor": "Voice assistants, AI platforms, future-forward UX, smart home, contextual computing, ambient experiences",
+    "doNotUseFor": "Complex workflows, data-entry heavy, traditional systems, legacy support, explicit control",
+    "effects": "Voice recognition UI, gesture detection, AI predictions (smooth reveal), progressive disclosure, smart suggestions",
+    "era": "2020s AI-Era",
+    "complexity": "Low",
+    "accessibility": "risk low; requires contrast-text-4.5, keyboard, visible-focus, reduced-motion",
+    "lightDarkMode": "light supported, dark supported",
+    "status": "active",
+    "primaryColors": [
+      "#fafafa",
+      "#f0f0f0",
+      "#f5f1e8"
+    ],
+    "source": {
+      "name": "UI UX Pro Max (MIT)",
+      "url": "https://github.com/nextlevelbuilder/ui-ux-pro-max-skill",
+      "commit": "7436a6e0b6dc3add7c12d5b6ef1ccd3d410dd7fd",
+      "licenseSpdx": "MIT",
+      "retrieved": "2026-11-18"
+    }
+  }
+]

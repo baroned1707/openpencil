@@ -10,9 +10,11 @@ DIR holds the five upstream CSV files at the pinned commit below
 products.csv, colors.csv, ui-reasoning.csv, typography.csv, styles.csv.
 The script refuses to run on any other bytes (sha256 pinned below), writes
 crates/op-ai-skills/data/design-data-uiuxpm.json (a SEPARATE file; the seed
-file design-data.json is never touched) and prints a summary. --check
-regenerates in memory and exits 1 if the committed JSON differs. Output is
-deterministic: sorted by id, no timestamps, fixed `retrieved` date.
+file design-data.json is never touched) and the style definitions file
+crates/op-ai-skills/data/design-styles-uiuxpm.json (see "Style records"
+below), and prints a summary. --check regenerates both in memory and exits 1
+if either committed JSON differs. Output is deterministic: sorted by id, no
+timestamps, fixed `retrieved` date.
 
 Mapping (one OpenPencil record per upstream product type; the three
 per-product-type CSVs are joined by normalised name, every one of the 192
@@ -63,6 +65,32 @@ joins must succeed or the script stops):
               licenseSpdx "MIT", retrieved}
   notes       Key Considerations cut to 600 chars
 
+Style records (design-styles-uiuxpm.json; one record per kept styles.csv row,
+so every `external:<style-id>` of a product record names exactly one record):
+
+  id          "uiuxpm-style-" + Style ID (a slug; anything else stops the script)
+  ref         the Style ID itself: the text after `external:` in product records
+  name        Style Category, at most 80 chars
+  keywords    Aliases then Keywords, cleaned like product keywords, at most 20
+  category    Type (General, Mobile, BI/Analytics, ...)
+  bestFor, doNotUseFor, effects (Effects & Animation), era (Era/Origin),
+  complexity, accessibility (risk and required checks, as words),
+  lightDarkMode (Light/Dark Mode columns plus Preferred Mode), status
+              prose fields, at most 400 chars each, an empty one is omitted
+  primaryColors, secondaryColors
+              the #rrggbb values found in the colour cells (at most 8 each);
+              omitted when the cell holds no hex value
+  source      as for product records
+  Never read: CSS/Technical Keywords, Design System Variables, Implementation
+  Checklist, Framework Compatibility, AI Prompt Keywords (code, or imperative
+  prompt text), the performance / mobile / conversion / RTL columns and the
+  Parent / Replacement columns.
+  Skipped: status `deprecated`, the Apple-derived styles (APPLE_STYLE_IDS or an
+  Apple name), a row without Best For text, instruction-like text. Apple
+  mentions inside a kept row are removed per list item or sentence, as for
+  product records. A product style that names no kept style record is removed
+  from the product record.
+
 Safety applied to every text field: control and zero-width/bidi format
 characters are removed (Unicode Cc and Cf, which include U+200B-U+200F,
 U+202A-U+202E, U+2066-U+2069), whitespace is collapsed, and a record whose
@@ -90,6 +118,7 @@ from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 OUTPUT = REPO_ROOT / "crates/op-ai-skills/data/design-data-uiuxpm.json"
+STYLES_OUTPUT = REPO_ROOT / "crates/op-ai-skills/data/design-styles-uiuxpm.json"
 STYLE_GUIDES = REPO_ROOT / "crates/op-ai-skills/skills/style-guides"
 
 PINNED_COMMIT = "7436a6e0b6dc3add7c12d5b6ef1ccd3d410dd7fd"
@@ -123,6 +152,11 @@ MAX_AVOID_ITEM = 160
 MAX_NOTES = 600
 MAX_FONT = 80
 MAX_MOOD = 120
+# Style records (crates/op-ai-skills/src/design_styles.rs).
+STYLE_ID_PREFIX = "uiuxpm-style-"
+EXTERNAL_PREFIX = "external:"
+MAX_STYLE_PROSE = 400
+MAX_STYLE_COLORS = 8
 
 PALETTE_COLUMNS = [
     ("primary", "Primary"),
@@ -346,9 +380,12 @@ def build_platforms(name, raw_keywords, dashboard_style):
 
 
 class StyleResolver:
-    def __init__(self, guide_names, lookup):
+    def __init__(self, guide_names, lookup, kept_style_ids):
         self.guide_names = guide_names
         self.lookup = lookup
+        # Ids that have a style record: a product only names these.
+        self.kept_style_ids = kept_style_ids
+        self.unlinked = {}
         self.unresolved = {}
         self.apple_dropped = 0
         self.external = 0
@@ -370,7 +407,10 @@ class StyleResolver:
         if style_id in APPLE_STYLE_IDS:
             self.apple_dropped += 1
             return None
-        value = "external:" + style_id
+        if style_id not in self.kept_style_ids:
+            self.unlinked[style_id] = self.unlinked.get(style_id, 0) + 1
+            return None
+        value = EXTERNAL_PREFIX + style_id
         if len(value) > MAX_STYLE:
             return None
         self.external += 1
@@ -410,7 +450,7 @@ def humanise_action(resolver, action):
     if not value:
         return None
     if kind == "style":
-        if value in APPLE_STYLE_IDS:
+        if value in APPLE_STYLE_IDS or value not in resolver.kept_style_ids:
             return None
         display = resolver.display_name(value)
         if display is None:
@@ -488,6 +528,126 @@ def contrast(first, second):
     return (high + 0.05) / (low + 0.05)
 
 
+# --------------------------------------------------------------- style records
+
+HEX_IN_TEXT_RE = re.compile(r"#[0-9a-fA-F]{3}(?:[0-9a-fA-F]{3})?(?![0-9a-zA-Z])")
+STYLE_ID_RE = re.compile(r"[a-z0-9-]+")
+SUPPORT_WORDS = {
+    "supported": "supported",
+    "conditional": "conditional",
+    "not-recommended": "not recommended",
+}
+
+
+def scrub_apple(text):
+    """Remove the Apple / HIG / VisionOS list items of each sentence (a sentence
+    with nothing else left disappears); "" if nothing is left."""
+    kept = []
+    for sentence in re.split(r"(?<=[.!?])\s+", clean(text)):
+        if mentions_apple(sentence):
+            items = [item.strip() for item in re.split(r"[,;]", sentence)]
+            sentence = ", ".join(item for item in items if item and not mentions_apple(item))
+        if sentence:
+            kept.append(sentence)
+    return " ".join(kept)
+
+
+def style_prose(raw, limit=MAX_STYLE_PROSE):
+    return truncate(scrub_apple(raw), limit)
+
+
+def style_colors(raw):
+    out = []
+    for match in HEX_IN_TEXT_RE.finditer(raw):
+        value = normalise_hex(match.group(0))
+        if value and value not in out:
+            out.append(value)
+    return out[:MAX_STYLE_COLORS]
+
+
+def style_light_dark(row):
+    light = SUPPORT_WORDS.get(row["Light Mode \u2713"].strip())
+    dark = SUPPORT_WORDS.get(row["Dark Mode \u2713"].strip())
+    if not light or not dark:
+        return ""
+    text = f"light {light}, dark {dark}"
+    if row["Preferred Mode"].strip() == "dark":
+        text += ", prefers dark"
+    return text
+
+
+def style_accessibility(raw):
+    """`risk:low|requires:a,b` -> `risk low; requires a, b`."""
+    parts = [part.replace(":", " ", 1).replace(",", ", ") for part in raw.split("|")]
+    return clean("; ".join(part for part in parts if part.strip()))
+
+
+def build_style_records(style_rows, retrieved):
+    """One record per kept styles.csv row: (records, skipped [(id, why)])."""
+    records, skipped, seen = [], [], set()
+    for row in style_rows:
+        style_id = row["Style ID"].strip()
+        if (
+            not STYLE_ID_RE.fullmatch(style_id)
+            or len(EXTERNAL_PREFIX + style_id) > MAX_STYLE
+            or style_id in seen
+        ):
+            fail(f"styles.csv Style ID {style_id!r} is not a unique slug that fits a product style entry")
+        seen.add(style_id)
+        name = truncate(clean(row["Style Category"]), MAX_NAME)
+
+        def skip(why):
+            skipped.append((style_id, why))
+
+        if row["Status"].strip() == "deprecated":
+            skip("status deprecated")
+            continue
+        if style_id in APPLE_STYLE_IDS or mentions_apple(name) or not name:
+            skip("Apple-derived style")
+            continue
+        keywords = build_keywords(",".join(row["Aliases"].split("|") + [row["Keywords"]]))
+        fields = {
+            "category": style_prose(row["Type"], 40),
+            "bestFor": style_prose(row["Best For"]),
+            "doNotUseFor": style_prose(row["Do Not Use For"]),
+            "effects": style_prose(row["Effects & Animation"]),
+            "era": style_prose(row["Era/Origin"], 60),
+            "complexity": style_prose(row["Complexity"], 40),
+            "accessibility": style_prose(style_accessibility(row["Accessibility"])),
+            "lightDarkMode": style_light_dark(row),
+            "status": clean(row["Status"]),
+        }
+        if not fields["bestFor"]:
+            skip("empty Best For after the Apple scrub")
+            continue
+        if not keywords:
+            skip("no usable keyword")
+            continue
+        record = {
+            "id": STYLE_ID_PREFIX + style_id,
+            "ref": style_id,
+            "name": name,
+            "keywords": keywords,
+        }
+        record.update({key: value for key, value in fields.items() if value})
+        for key, column in (("primaryColors", "Primary Colors"), ("secondaryColors", "Secondary Colors")):
+            colors = style_colors(row[column])
+            if colors:
+                record[key] = colors
+        record["source"] = dict(SOURCE, retrieved=retrieved)
+        flattened = json.dumps(record, ensure_ascii=False)
+        hit = INSTRUCTION_RE.search(flattened)
+        if hit:
+            skip(f"instruction-like text {hit.group(0)!r}")
+            continue
+        if mentions_apple(flattened):
+            skip("Apple-related text survived the scrub")
+            continue
+        records.append(record)
+    records.sort(key=lambda r: r["id"])
+    return records, skipped
+
+
 # ---------------------------------------------------------------- the importer
 
 
@@ -511,7 +671,12 @@ def build(src, retrieved):
     if unmatched or len(products) != len(colors) or len(products) != len(reasoning):
         fail(f"product join failed ({len(products)}/{len(colors)}/{len(reasoning)}): {unmatched}")
 
-    resolver = StyleResolver(embedded_style_guide_names(), style_lookup(style_rows))
+    style_records, style_skipped = build_style_records(style_rows, retrieved)
+    resolver = StyleResolver(
+        embedded_style_guide_names(),
+        style_lookup(style_rows),
+        {record["ref"] for record in style_records},
+    )
     records, skipped, used_ids = [], [], set()
     below_aa = 0
     composited = 0
@@ -626,7 +791,7 @@ def build(src, retrieved):
         records.append(record)
 
     records.sort(key=lambda r: r["id"])
-    return records, skipped, resolver, below_aa, fallback_pairings, composited
+    return records, skipped, resolver, below_aa, fallback_pairings, composited, style_records, style_skipped
 
 
 def render(records):
@@ -641,7 +806,7 @@ def main():
         help="fixed retrieval date, YYYY-MM-DD (required to write; --check defaults "
         "to the date in the committed JSON)",
     )
-    parser.add_argument("--check", action="store_true", help="exit 1 if the committed JSON differs")
+    parser.add_argument("--check", action="store_true", help="exit 1 if a committed JSON differs")
     args = parser.parse_args()
     retrieved = args.retrieved
     if retrieved is None and args.check and OUTPUT.is_file():
@@ -649,8 +814,18 @@ def main():
     if not retrieved or not re.fullmatch(r"\d{4}-\d{2}-\d{2}", retrieved):
         fail("--retrieved YYYY-MM-DD is required")
 
-    records, skipped, resolver, below_aa, fallback_pairings, composited = build(args.src, retrieved)
+    (
+        records,
+        skipped,
+        resolver,
+        below_aa,
+        fallback_pairings,
+        composited,
+        style_records,
+        style_skipped,
+    ) = build(args.src, retrieved)
     text = render(records)
+    styles_text = render(style_records)
 
     print(f"pinned commit      {PINNED_COMMIT}")
     print(f"records written    {len(records)}")
@@ -660,24 +835,39 @@ def main():
     print(
         f"styles             {resolver.external} external, {resolver.embedded} embedded, "
         f"{resolver.apple_dropped} Apple-derived dropped, "
+        f"{sum(resolver.unlinked.values())} without a style record dropped, "
         f"{sum(resolver.unresolved.values())} unresolved"
     )
+    for name, count in sorted(resolver.unlinked.items()):
+        print(f"  style without record {name!r} x{count}")
     for name, count in sorted(resolver.unresolved.items()):
         print(f"  unresolved style {name!r} x{count}")
+    print(f"style records      {len(style_records)} written, {len(style_skipped)} skipped")
+    for style_id, why in style_skipped:
+        print(f"  skip style {style_id}: {why}")
     print(f"font pairing       {fallback_pairings} records matched through `Best For` (no mood word shared)")
     print(f"palette            {composited} borders composited over Background")
     print(f"below WCAG AA 4.5  {below_aa} records (onPrimary/primary or foreground/background)")
-    print(f"output size        {len(text.encode('utf-8')) / 1024:.1f} KiB")
+    print(
+        f"output size        {len(text.encode('utf-8')) / 1024:.1f} KiB products, "
+        f"{len(styles_text.encode('utf-8')) / 1024:.1f} KiB styles"
+    )
 
+    outputs = [(OUTPUT, text), (STYLES_OUTPUT, styles_text)]
     if args.check:
-        committed = OUTPUT.read_bytes() if OUTPUT.is_file() else b""
-        if committed != text.encode("utf-8"):
-            print(f"DRIFT: {OUTPUT} differs from the regenerated output", file=sys.stderr)
+        drift = False
+        for path, content in outputs:
+            committed = path.read_bytes() if path.is_file() else b""
+            if committed != content.encode("utf-8"):
+                print(f"DRIFT: {path} differs from the regenerated output", file=sys.stderr)
+                drift = True
+        if drift:
             return 1
-        print("checked: committed JSON matches the pinned source")
+        print("checked: both committed JSON files match the pinned source")
         return 0
-    OUTPUT.write_text(text, encoding="utf-8")
-    print(f"wrote {OUTPUT}")
+    for path, content in outputs:
+        path.write_text(content, encoding="utf-8")
+        print(f"wrote {path}")
     return 0
 
 

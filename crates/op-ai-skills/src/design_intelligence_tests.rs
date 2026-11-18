@@ -165,6 +165,22 @@ fn design_brief_names_its_tool_call() {
 }
 
 #[test]
+fn design_brief_mentions_kind_style() {
+    // The one sentence that tells the loop how to read a style named in a
+    // product match, and the skill still fits its own 1,100-token budget.
+    let text = skill_text("design-brief");
+    assert!(text.contains(
+        "To read a style named in a match, call `get_guidelines` with category data, kind style and the style name."
+    ));
+    assert!(!text.contains("Step 3"));
+    assert!(
+        estimate_tokens(&text) <= 1_100,
+        "{} tokens",
+        estimate_tokens(&text)
+    );
+}
+
+#[test]
 fn loop_prompt_growth_is_within_budget() {
     // Static bound: all three skills together, were every one to load.
     let all_three: u32 = NEW_SKILLS
