@@ -31,6 +31,8 @@ fn an_unnamed_existing_work_can_use_its_chat_title() {
     let source = include_str!("../../op-editor-core/assets/scene_templates/daily-sign-card.op");
     let document = jian_ops_schema::load_str(source).unwrap().value;
     let mut state = EditorState::from_document(document);
+    // The fallback name is localized: pin Chinese instead of the app default.
+    state.editor_ui.locale = op_editor_core::Locale::ZhCn;
     assert_eq!(
         seed_name(&state),
         "未命名",
@@ -43,6 +45,8 @@ fn an_unnamed_existing_work_can_use_its_chat_title() {
 #[test]
 fn blank_work_and_default_chat_titles_keep_the_localized_fallback() {
     let mut state = EditorState::starter();
+    // The fallback name is localized: pin Chinese instead of the app default.
+    state.editor_ui.locale = op_editor_core::Locale::ZhCn;
     assert_eq!(seed_name(&state), "未命名");
     state.editor_ui.home.set_draft("还没有开始的咖啡设计");
     state.chat.title = "关于设计的一般问题".into();
