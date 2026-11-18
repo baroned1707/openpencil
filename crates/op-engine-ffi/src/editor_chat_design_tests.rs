@@ -632,3 +632,57 @@ fn real_deepseek_design_turn_inserts_nodes() {
         );
     }
 }
+
+/// A model that calls `spawn_agents` on mobile (it is not advertised, but a
+/// model can still emit the name) must read a tool ERROR, never a success
+/// that says sub-agents are working.
+#[test]
+fn mobile_spawn_returns_an_error_not_success() {
+    let args = serde_json::json!({
+        "config": [{ "prompt": "Build the cart screen", "containerNodes": ["1"], "styleguideName": "brand" }]
+    })
+    .to_string();
+    let call = serde_json::json!({
+        "choices": [{
+            "delta": {
+                "tool_calls": [{
+                    "index": 0,
+                    "id": "call_spawn_1",
+                    "function": { "name": "spawn_agents", "arguments": args },
+                }],
+            },
+        }],
+    });
+    let turn_one = [
+        call.to_string(),
+        r#"{"choices":[{"delta":{},"finish_reason":"tool_calls"}]}"#.to_string(),
+        "[DONE]".to_string(),
+    ];
+    let mut responses = vec![sse_ok_response(
+        &turn_one.iter().map(String::as_str).collect::<Vec<_>>(),
+    )];
+    responses.extend(std::iter::repeat_with(stop_response).take(7));
+    let (base_url, requests) = spawn_sequential_chat_server(responses);
+    let mut host = host_with_builtin_provider(&base_url);
+    send_user_message(&mut host, "design a shopping app with three screens");
+
+    let mut chat_host = MobileChatHost::default();
+    pump_to_completion(&mut chat_host, &mut host);
+
+    let card = last_assistant(&host)
+        .tool_calls
+        .iter()
+        .find(|call| call.name == "spawn_agents")
+        .cloned()
+        .expect("the spawn_agents call rides the transcript as a tool card");
+    let envelope: serde_json::Value = serde_json::from_str(&card.args).expect("card envelope");
+    assert_eq!(envelope["status"], "error", "{envelope}");
+    assert_eq!(envelope["result"]["success"], false);
+    let error = envelope["result"]["error"].as_str().expect("error text");
+    assert!(error.contains("not available on this device"), "{error}");
+    assert!(error.contains("batch_design"), "{error}");
+    // The model reads the same refusal on its next turn.
+    let requests = requests.lock().expect("request log lock");
+    assert!(requests[1].contains("call_spawn_1"));
+    assert!(requests[1].contains("nothing was started"));
+}

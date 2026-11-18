@@ -12,6 +12,28 @@ use op_editor_core::ChatState;
 /// variables, `ToolSearch` — is the shared implementation.
 const MOBILE_UNAVAILABLE_TOOLS: &[&str] = &["get_screenshot", "export_nodes", "spawn_agents"];
 
+/// The tool-error text a `spawn_agents` call gets on this device. Mobile has
+/// no sub-agent session host, so nothing is ever started; the text names the
+/// fallback so the model builds the sections itself. (`op-mcp` has the same
+/// idea in `SPAWN_AGENTS_UNSUPPORTED`, but its wording is about MCP
+/// connections, and this crate does not depend on `op-mcp` directly.)
+const SPAWN_AGENTS_UNAVAILABLE_ON_MOBILE: &str = "spawn_agents is not available on this device; \
+nothing was started. Build the remaining sections yourself with batch_design (one section per \
+call), then call finalize_design.";
+
+/// The result of a `spawn_agents` call on mobile: a tool ERROR, never a
+/// success that implies sub-agents are working.
+pub(crate) fn spawn_agents_refusal() -> ChatToolResult {
+    ChatToolResult {
+        content: serde_json::json!({
+            "success": false,
+            "error": SPAWN_AGENTS_UNAVAILABLE_ON_MOBILE,
+        })
+        .to_string(),
+        is_error: true,
+    }
+}
+
 /// Tool definitions the mobile design loop advertises — the shared defs
 /// filtered to what this host can execute. Installing the matching
 /// `ToolSearch` catalog here (rather than at some startup site) keeps the
@@ -156,5 +178,16 @@ mod tests {
         // equal to the MCP catalog the desktop advertises.
         let batch = defs.iter().find(|d| d.name == "batch_design").unwrap();
         assert!(batch.input_schema_json.contains("\"script\""));
+    }
+
+    #[test]
+    fn spawn_agents_refusal_is_an_error_with_the_fallback() {
+        let result = spawn_agents_refusal();
+        assert!(result.is_error, "a refused spawn must be a tool error");
+        let value: serde_json::Value = serde_json::from_str(&result.content).unwrap();
+        assert_eq!(value["success"], false);
+        let text = value["error"].as_str().unwrap();
+        assert!(text.contains("not available on this device"), "{text}");
+        assert!(text.contains("batch_design"), "{text}");
     }
 }

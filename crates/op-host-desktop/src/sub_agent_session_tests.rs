@@ -217,31 +217,24 @@ fn parse_args_invalid_json_errors() {
 }
 
 // ---------------------------------------------------------------------------
-// Nested-spawn guard + stash
+// Pending-spawn stash
 // ---------------------------------------------------------------------------
 
 #[test]
-fn stash_top_level_succeeds_nested_refused() {
+fn stash_is_consumed_once() {
     let _guard = crate::agent_indicator_test_lock::LOCK
         .lock()
         .unwrap_or_else(|e| e.into_inner());
     // Clear any leftover stash.
     let _ = take_pending_spawn();
 
-    // Nested (a sub calling spawn_agents) is refused, leaves no stash.
-    let refused = stash_pending_spawn(vec![spec("X", &[], "brand", &[])], true);
-    assert!(!refused, "nested spawn must be refused");
-    assert!(
-        take_pending_spawn().is_none(),
-        "a refused nested spawn must not stash specs"
-    );
-
     // Top-level stashes; the host picks it up exactly once.
-    let ok = stash_pending_spawn(
-        vec![spec("A", &[], "brand", &[]), spec("B", &[], "brand", &[])],
-        false,
-    );
-    assert!(ok, "top-level spawn must stash");
+    assert!(!pending_spawn_queued());
+    stash_pending_spawn(vec![
+        spec("A", &[], "brand", &[]),
+        spec("B", &[], "brand", &[]),
+    ]);
+    assert!(pending_spawn_queued());
     let taken = take_pending_spawn().expect("specs were stashed");
     assert_eq!(taken.len(), 2);
     assert!(take_pending_spawn().is_none(), "the stash is consumed once");
@@ -566,5 +559,40 @@ fn build_prompt_injects_team_consistency_brief_when_canvas_has_screens() {
     assert!(
         prompt.contains("never rebuild or duplicate"),
         "chrome-is-final rule attached"
+    );
+}
+
+/// A sub-agent calling `spawn_agents` reads a tool ERROR, never `success:true`
+/// with `spawned:0`, and nothing is queued.
+#[test]
+fn nested_spawn_returns_an_error_not_success() {
+    use crate::chat_session::handle_spawn_agents;
+    use crate::sub_agent_launch_plan::{LaunchConditions, SPAWN_AGENTS_NESTED};
+    let _guard = crate::agent_indicator_test_lock::LOCK
+        .lock()
+        .unwrap_or_else(|e| e.into_inner());
+    let _ = take_pending_spawn();
+    let host = op_host_native::WidgetHostNative::new();
+
+    SUB_AGENT_ACTIVE.store(true, Ordering::SeqCst);
+    // Everything else is launchable, so only the nested guard can refuse.
+    let conditions = LaunchConditions {
+        model_ready: true,
+        ..LaunchConditions::observe(&host)
+    };
+    assert!(conditions.nested);
+    let ack = handle_spawn_agents(
+        r#"{"config":[{"prompt":"x","containerNodes":["a"],"styleguideName":"brand"}]}"#,
+        &conditions,
+    );
+    SUB_AGENT_ACTIVE.store(false, Ordering::SeqCst);
+
+    assert!(ack.is_error, "{}", ack.content);
+    let value: serde_json::Value = serde_json::from_str(&ack.content).unwrap();
+    assert_eq!(value["success"], false);
+    assert_eq!(value["error"], SPAWN_AGENTS_NESTED);
+    assert!(
+        take_pending_spawn().is_none(),
+        "a nested spawn queues nothing"
     );
 }

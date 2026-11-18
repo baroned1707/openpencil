@@ -133,6 +133,7 @@ mod settings_io;
 mod single_instance;
 mod site_import_host;
 mod style_import_host;
+mod sub_agent_launch_plan;
 mod sub_agent_session;
 mod sub_agent_spawn_error;
 mod tcc_selftest;

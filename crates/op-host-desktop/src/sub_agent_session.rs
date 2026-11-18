@@ -27,13 +27,14 @@
 //! and [`pump_sub_agents`] `std::mem::take`s the active session out before
 //! pumping so `host` and the session are never borrowed simultaneously.
 //!
-//! ## Nested-spawn guard
+//! ## Launchability
 //!
-//! Only the top-level loop spawns. While subs are running (or a stash is
-//! pending), a sub calling `spawn_agents` again is a no-op: the stash
-//! refuses new specs whenever the host already owns sub-agents. The
-//! interception caller passes `nested = host_has_sub_agents` so the
-//! refusal is decided at the call site.
+//! Whether sub-agents can start (nested call, no ready model, a batch already
+//! running, a call already queued) is decided ONCE, by
+//! [`crate::sub_agent_launch_plan::plan_launch`]. The tool ack and
+//! [`launch_sub_agents`] both call it, so the parent model is never told N
+//! agents are starting when the host would skip them, and a refused call
+//! returns a tool error instead of a success.
 
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Mutex;
@@ -52,6 +53,7 @@ use crate::chat_session::{self, builtin_provider_with_design_tools, ChatSession}
 use crate::design_loop_indicator::{
     collect_top_level_frame_ids, register_new_frames, DesignLoopIndicator,
 };
+use crate::sub_agent_launch_plan::{plan_launch, LaunchConditions};
 use crate::sub_agent_spawn_error::SpawnArgsError;
 
 /// One launched sub-agent: its scoped design `ChatSession`, its assigned
@@ -95,9 +97,14 @@ static PENDING_SPAWN: Mutex<Option<Vec<SpawnSpec>>> = Mutex::new(None);
 
 /// Set while [`pump_sub_agents`] is pumping a sub's turn. The spawn
 /// interception in `chat_session::execute_tool_requests` reads it via
-/// [`nested_spawn_active`] to drop a SUB's `spawn_agents` call (only the
+/// [`nested_spawn_active`] to refuse a SUB's `spawn_agents` call (only the
 /// top-level loop spawns). UI-thread-only, so a plain atomic suffices.
 static SUB_AGENT_ACTIVE: AtomicBool = AtomicBool::new(false);
+
+/// Whether the document whose parent turn is being pumped already owns a
+/// running sub-agent batch. `document_runs::pump_runs` sets it right before it
+/// pumps each document's parent turn (the spawn ack cannot see `DocumentRuns`).
+static SUB_BATCH_LIVE: AtomicBool = AtomicBool::new(false);
 
 /// True while a sub-agent turn is being pumped — used by the spawn
 /// interception to refuse nested spawns.
@@ -105,19 +112,29 @@ pub(crate) fn nested_spawn_active() -> bool {
     SUB_AGENT_ACTIVE.load(Ordering::SeqCst)
 }
 
-/// Stash `specs` for the host to launch after the parent pump.
-///
-/// `nested` is true when the host already owns sub-agents — i.e. the
-/// caller is a SUB-agent calling `spawn_agents` again. In that case the
-/// stash is refused (nested spawns are a no-op; only the top-level loop
-/// spawns) and this returns `false`. Otherwise the specs replace any
-/// prior stash (last-writer-wins within a frame) and it returns `true`.
-pub(crate) fn stash_pending_spawn(specs: Vec<SpawnSpec>, nested: bool) -> bool {
-    if nested {
-        return false;
-    }
+/// Record whether the document about to be pumped has a running batch.
+pub(crate) fn set_sub_batch_live(live: bool) {
+    SUB_BATCH_LIVE.store(live, Ordering::SeqCst);
+}
+
+/// True when the document being pumped already has a running sub-agent batch.
+pub(crate) fn sub_batch_live() -> bool {
+    SUB_BATCH_LIVE.load(Ordering::SeqCst)
+}
+
+/// True when a `spawn_agents` call is stashed and not yet launched.
+pub(crate) fn pending_spawn_queued() -> bool {
+    PENDING_SPAWN
+        .lock()
+        .unwrap_or_else(|p| p.into_inner())
+        .is_some()
+}
+
+/// Stash `specs` for the host to launch after the parent pump. The caller has
+/// already passed [`plan_launch`], which refuses while a stash is pending, so
+/// this never overwrites a queued batch.
+pub(crate) fn stash_pending_spawn(specs: Vec<SpawnSpec>) {
     *PENDING_SPAWN.lock().unwrap_or_else(|p| p.into_inner()) = Some(specs);
-    true
 }
 
 /// Take the stashed specs, if any. Called by `app_handler` each frame
@@ -200,9 +217,10 @@ pub(crate) fn build_sub_agent_prompt(spec: &SpawnSpec, context_brief: Option<&st
 /// [`pump_sub_agents`] when each sub becomes active (sequential execution
 /// keeps exactly one epoch live at a time; see [`SubAgentSession`]).
 ///
-/// Returns the launched sessions. Subs whose provider can't be built (no
-/// ready builtin model) are skipped; `agents_running` reflects the number
-/// actually launched. Returns an empty `Vec` when nothing launched.
+/// Returns the launched sessions. Which specs launch is decided by
+/// [`plan_launch`], the same call the tool ack made, so `agents_running`
+/// reflects exactly the count the parent was told. Returns an empty `Vec`
+/// when nothing launched.
 pub(crate) fn launch_sub_agents(
     host: &mut WidgetHostNative,
     specs: Vec<SpawnSpec>,
@@ -218,9 +236,15 @@ pub(crate) fn launch_sub_agents(
     let context_brief = op_host_services::design_context::design_context_brief(host.editor_state());
     let existing_mobile_screen = canvas_has_mobile_screen(host.editor_state());
 
-    for (spec, identity) in specs.into_iter().zip(identities) {
-        // A fresh provider + tool channel per sub; skip if no ready
-        // builtin model is configured (same gate as the parent loop).
+    let plan = plan_launch(specs.len(), &LaunchConditions::observe(host));
+
+    for (index, (spec, identity)) in specs.into_iter().zip(identities).enumerate() {
+        if !plan.launches(index) {
+            continue;
+        }
+        // A fresh provider + tool channel per sub. The plan already checked
+        // the model is ready (same builder), so `None` here is a lost race
+        // with a settings change; skip rather than panic.
         let Some((provider, tool_rx)) = builtin_provider_with_design_tools(host) else {
             continue;
         };

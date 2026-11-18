@@ -597,8 +597,8 @@ fn pump_executes_scripted_tool_call_against_live_state() {
 /// the call is intercepted (it never reaches the MCP tool), the specs are
 /// stashed for the host to launch one after another after the parent pump, and
 /// the ack returns at once with the agent ids — it does not wait for, or carry,
-/// any sub-agent result. A nested call and a malformed call are not acked as
-/// launched.
+/// any sub-agent result. A malformed call is not acked as launched; calls that
+/// cannot launch are errors (see `sub_agent_launch_plan_tests`).
 #[test]
 fn in_app_spawn_agents_stashes_specs_and_acks_without_waiting() {
     use crate::sub_agent_session::take_pending_spawn;
@@ -614,7 +614,13 @@ fn in_app_spawn_agents_stashes_specs_and_acks_without_waiting() {
         ]
     })
     .to_string();
-    let ack = handle_spawn_agents(&args);
+    let all_ready = crate::sub_agent_launch_plan::LaunchConditions {
+        nested: false,
+        model_ready: true,
+        batch_live: false,
+        queued: false,
+    };
+    let ack = handle_spawn_agents(&args, &all_ready);
     assert!(!ack.is_error, "{}", ack.content);
     let value: serde_json::Value = serde_json::from_str(&ack.content).unwrap();
     assert_eq!(value["data"]["spawned"], 2);
@@ -629,7 +635,10 @@ fn in_app_spawn_agents_stashes_specs_and_acks_without_waiting() {
     assert!(take_pending_spawn().is_none(), "the stash is consumed once");
 
     // A malformed call is an error and stashes nothing.
-    let bad = handle_spawn_agents(r#"{"config":[{"prompt":"x","styleguideName":""}]}"#);
+    let bad = handle_spawn_agents(
+        r#"{"config":[{"prompt":"x","styleguideName":""}]}"#,
+        &all_ready,
+    );
     assert!(bad.is_error, "{}", bad.content);
     assert!(bad.content.contains("styleguideName must be non-empty"));
     assert!(take_pending_spawn().is_none());

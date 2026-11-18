@@ -158,6 +158,9 @@ pub(crate) fn pump_runs(
     let was_live = runs.is_live();
     let mut changed = false;
     runs.drop_stale_checkpoint(host);
+    // Tell the `spawn_agents` ack whether THIS document's batch is running, so
+    // a second call is refused instead of acked and then dropped below.
+    sub_agent_session::set_sub_batch_live(!runs.sub_agents.is_empty());
     // Deltas land in the tab the turn was bound to, not the active tab.
     changed |= chat_session::pump(
         host,

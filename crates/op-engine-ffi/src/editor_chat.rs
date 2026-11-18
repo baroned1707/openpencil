@@ -59,7 +59,9 @@ use crate::editor_chat_design::{
     mobile_design_system_prompt, reconcile_starter_ghost, root_seed_hints,
     DESIGN_LOOP_MAX_OUTPUT_TOKENS,
 };
-use crate::editor_chat_design_tools::{attach_tool_result_to_transcript, mobile_design_tool_defs};
+use crate::editor_chat_design_tools::{
+    attach_tool_result_to_transcript, mobile_design_tool_defs, spawn_agents_refusal,
+};
 use crate::editor_chat_turn::{run_builtin_turn, BuiltinChatTurn};
 use crate::editor_chat_workspace as run_ws;
 use crate::lifecycle::Session;
@@ -594,20 +596,9 @@ fn execute_tool_requests(
             continue;
         }
         // `spawn_agents` is not advertised on mobile (no sub-agent session
-        // host); refuse honestly if a model calls it anyway.
+        // host); a model that calls it anyway gets a tool error, not a success.
         if req.name == "spawn_agents" {
-            let result = op_ai::chat_provider::ChatToolResult {
-                content: serde_json::json!({
-                    "success": true,
-                    "data": {
-                        "spawned": 0,
-                        "agentIds": [],
-                        "note": "sub-agents are not available on this device — design every screen yourself"
-                    }
-                })
-                .to_string(),
-                is_error: false,
-            };
+            let result = spawn_agents_refusal();
             let state = host.editor_state_mut();
             outcome.state_changed |= attach_tool_result_to_transcript(
                 state.chat.run_tab_mut(Some(running_tab)),

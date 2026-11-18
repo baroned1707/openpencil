@@ -4,6 +4,7 @@
 //! channel live in `op-editor-host-core::chat`. This module keeps desktop
 //! provider routing plus UI-thread tool execution against `WidgetHostNative`.
 
+use crate::sub_agent_launch_plan::LaunchConditions;
 use op_ai::chat_provider::ChatToolResult;
 use op_editor_core::{ChatMessage, ChatRole, ChatState};
 pub use op_editor_host_core::chat::ChatSession;
@@ -34,7 +35,7 @@ pub(crate) use launch::{provider_for_selected_model, selected_cli_model_id};
 // Sub-agent launcher (Task 3.1) reuses the design-toolset provider builder
 // and the design-turn thinking policy.
 pub(crate) use launch::launch_design::{
-    builtin_provider_with_design_tools, design_turn_thinking_mode,
+    builtin_design_ready, builtin_provider_with_design_tools, design_turn_thinking_mode,
 };
 
 pub(crate) fn hosted_epoch_is_current(epoch: Option<u64>) -> bool {
@@ -447,14 +448,14 @@ fn execute_tool_requests(
             let _ = req.ack.send(result);
             continue;
         }
-        let state = host.editor_state_mut();
         // Intercept `spawn_agents`: parse the specs, stash them for the
         // host to launch after this (parent) pump, and ack immediately
-        // (fire-and-forget). A SUB calling `spawn_agents` is refused —
-        // only the top-level loop spawns. Keeps `pump`'s signature
-        // unchanged; the launch happens in `app_handler` post-pump.
+        // (fire-and-forget). A call that cannot launch (a SUB calling it,
+        // no ready model, ...) gets a tool error instead. Keeps `pump`'s
+        // signature unchanged; the launch happens in `app_handler` post-pump.
         if req.name == "spawn_agents" {
-            let result = handle_spawn_agents(&req.args_json);
+            let result = handle_spawn_agents(&req.args_json, &LaunchConditions::observe(host));
+            let state = host.editor_state_mut();
             if attach_tool_result_to_transcript_with(
                 state.chat.run_tab_mut(running_tab),
                 &req.name,
@@ -466,6 +467,7 @@ fn execute_tool_requests(
             let _ = req.ack.send(result);
             continue;
         }
+        let state = host.editor_state_mut();
         if req.name == op_host_services::chat_intent::APPLY_MODIFICATION_OP {
             let nodes = op_host_services::chat_canvas_tools::parse_design_modification_ops_arg(
                 &req.args_json,
@@ -506,20 +508,26 @@ fn execute_tool_requests(
 }
 
 /// Handle a `spawn_agents` tool call from the design loop: parse the
-/// specs, stash them for the host to launch after the parent pump, and
-/// return the fire-and-forget ack.
+/// specs, decide whether they can launch, stash them for the host to launch
+/// after the parent pump, and return the fire-and-forget ack.
 ///
-/// - Top-level loop → stash N specs, ack `{spawned, agentIds}` (the
-///   Phase-0 result shape; the host launches the sub-loops post-pump).
-/// - A SUB calling `spawn_agents` again → refused (nested spawns no-op);
-///   acks `{spawned: 0}` so the sub doesn't keep retrying.
+/// - Launchable → stash the specs, ack `{spawned, agentIds}` with the REAL
+///   count and ids (plus `skipped` with reasons when some do not launch).
+/// - Nothing can launch (a sub-agent calling again, no ready model, a batch
+///   already running, a call already queued) → a tool ERROR naming why and
+///   what to do instead; nothing is stashed.
 /// - Parse error → an error result so the model can correct.
 ///
+/// The launch decision is `sub_agent_launch_plan::plan_launch`, the same call
+/// `launch_sub_agents` makes, so the ack cannot promise what the host skips.
 /// The ack rides the same `{success, data}` / `{success, error}` envelope
-/// the design-tool surface uses (`execute_with_registry`) so the model
-/// sees a consistent shape regardless of which path handled the call.
-fn handle_spawn_agents(args_json: &str) -> ChatToolResult {
-    use crate::sub_agent_session::{nested_spawn_active, parse_spawn_args, stash_pending_spawn};
+/// the design-tool surface uses (`execute_with_registry`).
+pub(crate) fn handle_spawn_agents(
+    args_json: &str,
+    conditions: &LaunchConditions,
+) -> ChatToolResult {
+    use crate::sub_agent_launch_plan::{plan_launch, spawn_ack};
+    use crate::sub_agent_session::{parse_spawn_args, stash_pending_spawn};
 
     let specs = match parse_spawn_args(args_json) {
         Ok(specs) => specs,
@@ -531,31 +539,12 @@ fn handle_spawn_agents(args_json: &str) -> ChatToolResult {
             };
         }
     };
-    let n = specs.len();
-    if !stash_pending_spawn(specs, nested_spawn_active()) {
-        // Nested spawn — a sub-agent tried to spawn again. No-op.
-        return ChatToolResult {
-            content: serde_json::json!({
-                "success": true,
-                "data": {
-                    "spawned": 0,
-                    "agentIds": [],
-                    "note": "nested spawn_agents ignored — only the top-level design loop spawns sub-agents"
-                }
-            })
-            .to_string(),
-            is_error: false,
-        };
+    let plan = plan_launch(specs.len(), conditions);
+    let (content, is_error) = spawn_ack(&plan);
+    if !plan.launch.is_empty() {
+        stash_pending_spawn(specs);
     }
-    let agent_ids: Vec<String> = (0..n).map(|i| format!("agent-{i}")).collect();
-    ChatToolResult {
-        content: serde_json::json!({
-            "success": true,
-            "data": { "spawned": n, "agentIds": agent_ids }
-        })
-        .to_string(),
-        is_error: false,
-    }
+    ChatToolResult { content, is_error }
 }
 
 /// Record an executed tool call's result on its transcript card.

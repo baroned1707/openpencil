@@ -208,15 +208,28 @@ pub(super) fn stamp_design_turn_scenario(state: &mut op_editor_core::EditorState
 pub(crate) fn builtin_provider_with_design_tools(
     host: &WidgetHostNative,
 ) -> Option<(Box<dyn ChatProvider>, Receiver<ChatToolRequest>)> {
-    let state = host.editor_state();
-    let entry = state.chat.selected_model_entry()?;
-    let config = selected_builtin_agent_config(state, entry)?;
-    let provider = ConfiguredBuiltinProvider::from_builtin_agent(&config)?;
+    let provider = ready_builtin_design_provider(host)?;
     let (executor, tool_rx) = chat_tool_channel();
     let provider = provider
         .with_canvas_tools(design_tool_defs(), Arc::new(executor))
         .with_loop_finalize();
     Some((Box::new(provider), tool_rx))
+}
+
+/// The selected built-in model's provider, before tools are attached. The one
+/// place that decides "is a built-in model ready": both the provider builder
+/// above and [`builtin_design_ready`] go through it.
+fn ready_builtin_design_provider(host: &WidgetHostNative) -> Option<ConfiguredBuiltinProvider> {
+    let state = host.editor_state();
+    let entry = state.chat.selected_model_entry()?;
+    let config = selected_builtin_agent_config(state, entry)?;
+    ConfiguredBuiltinProvider::from_builtin_agent(&config)
+}
+
+/// Whether [`builtin_provider_with_design_tools`] would build a provider now —
+/// what the `spawn_agents` launch plan asks before it promises sub-agents.
+pub(crate) fn builtin_design_ready(host: &WidgetHostNative) -> bool {
+    ready_builtin_design_provider(host).is_some()
 }
 
 /// Effective thinking mode for a design turn (design-agent loop and
