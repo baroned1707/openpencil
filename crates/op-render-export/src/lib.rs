@@ -224,6 +224,64 @@ pub fn render_node_on_page_raster_bytes(
     scale: f32,
 ) -> Result<Vec<u8>, ExportError> {
     format.ensure_supported()?;
+    let (node, bounds) = visible_node_bounds(page, node_id)?;
+    render_raster_bytes(bounds, format, clamp_scale(scale), MARGIN, |canvas| {
+        paint_node(canvas, node);
+    })
+}
+
+/// A node render together with what was really drawn: the scale the pixels
+/// were produced at and their size. The file-export entry points clamp the
+/// scale to @0.5x..@8x, so a caller that reports the scale it asked for can
+/// be wrong; this result is the truth.
+#[derive(Debug, Clone, PartialEq)]
+pub struct NodeRaster {
+    pub bytes: Vec<u8>,
+    pub scale: f32,
+    pub width_px: u32,
+    pub height_px: u32,
+}
+
+/// Render one node from the active page at a scale the CALLER picks from the
+/// node's painted size, without the export clamp.
+///
+/// `choose_scale` receives the painted width and height in document px (the
+/// size at scale 1) and returns the scale to draw at; a non-finite or
+/// non-positive result is refused. The inline `get_screenshot` uses this to
+/// keep the longest edge within a vision-model budget, which can need a scale
+/// below the export floor of 0.5. Errors match [`render_node_raster_bytes`].
+pub fn render_node_raster_at_chosen_scale(
+    scene: &LayoutScene,
+    node_id: &str,
+    format: RasterFormat,
+    choose_scale: impl FnOnce(f32, f32) -> f32,
+) -> Result<NodeRaster, ExportError> {
+    format.ensure_supported()?;
+    let page = scene.active_page().ok_or(ExportError::NoActivePage)?;
+    let (node, bounds) = visible_node_bounds(page, node_id)?;
+    let scale = choose_scale(bounds.size.x + MARGIN * 2.0, bounds.size.y + MARGIN * 2.0);
+    if !scale.is_finite() || scale <= 0.0 {
+        return Err(ExportError::NonFiniteOutputSize);
+    }
+    let bytes = render_raster_bytes(bounds, format, scale, MARGIN, |canvas| {
+        paint_node(canvas, node);
+    })?;
+    // Same rounding `render_raster_bytes` sizes the surface with.
+    let pixels = |extent: f32| (((extent + MARGIN * 2.0) * scale).round() as i64).max(1) as u32;
+    Ok(NodeRaster {
+        bytes,
+        scale,
+        width_px: pixels(bounds.size.x),
+        height_px: pixels(bounds.size.y),
+    })
+}
+
+/// The node on `page` plus its painted bounds; errors on an unknown id, a
+/// hidden node, or a node that paints nothing.
+fn visible_node_bounds<'a>(
+    page: &'a ScenePage,
+    node_id: &str,
+) -> Result<(&'a SceneNode, Rect), ExportError> {
     let node = page
         .find(node_id)
         .ok_or_else(|| ExportError::NodeNotFoundOnPage {
@@ -242,9 +300,7 @@ pub fn render_node_on_page_raster_bytes(
         .ok_or_else(|| ExportError::NodePaintsNothing {
             node_id: node_id.to_string(),
         })?;
-    render_raster_bytes(bounds, format, clamp_scale(scale), MARGIN, |canvas| {
-        paint_node(canvas, node);
-    })
+    Ok((node, bounds))
 }
 
 /// Clamp a caller-supplied export scale to the @0.5x..@8x range,
@@ -461,3 +517,5 @@ pub mod test_support {
 mod svg_icon_tests;
 #[cfg(test)]
 mod tests;
+#[cfg(test)]
+mod chosen_scale_tests;

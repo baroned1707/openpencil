@@ -57,6 +57,10 @@ pub struct DesignQualityDiagnostics {
     pub geometry_issues: Vec<String>,
     pub layout_issues: Vec<String>,
     pub contrast_issues: Vec<ContrastIssue>,
+    /// Text over an image, gradient, translucent or unresolved backdrop: not a
+    /// pass or a fail, a prompt to look at a screenshot. Absent when empty.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub contrast_uncertain: Vec<ContrastUncertain>,
     pub icon_issues: Vec<String>,
     pub structure_issues: Vec<String>,
     pub empty_shells: Vec<String>,
@@ -89,12 +93,16 @@ fn collect_design_quality_with_structure_cap(
         &state.doc,
         &state.ui.variables.active_theme,
     );
-    let mut contrast_issues = scan_contrast_issues(
+    let ContrastScan {
+        issues: mut contrast_issues,
+        uncertain: mut contrast_uncertain,
+    } = contrast_scan::scan_contrast(
         state.active_children(),
         state.doc.variables.as_ref(),
         &effective_theme,
     );
     contrast_issues.truncate(MAX_CONTRAST_ISSUES);
+    contrast_uncertain.truncate(MAX_CONTRAST_ISSUES);
     let icon_issues = scan_icon_issues(state.active_children());
     let mut structure_issues = scan_duplicate_root_issues(state.active_children());
     structure_issues.extend(scan_ring_issues(state.active_children()));
@@ -107,6 +115,7 @@ fn collect_design_quality_with_structure_cap(
         geometry_issues,
         layout_issues: diagnostics.layout_issues,
         contrast_issues,
+        contrast_uncertain,
         icon_issues,
         structure_issues,
         empty_shells,
@@ -498,6 +507,7 @@ fn extract_from_schema_entry(entry: &str) -> Option<(String, String)> {
     Some((description, input_schema.to_string()))
 }
 
+mod contrast_scan;
 mod font_catalog_file;
 mod font_issues;
 mod icon_names;
@@ -505,6 +515,7 @@ mod post_write_diagnostics;
 mod quality_scans;
 mod root_seed;
 
+pub use contrast_scan::*;
 pub use font_catalog_file::with_font_catalog_file;
 pub use post_write_diagnostics::*;
 pub use quality_scans::*;
@@ -529,6 +540,10 @@ mod continuation_tests;
 #[cfg(test)]
 #[path = "mobile_normalize_tests.rs"]
 mod mobile_normalize_tests;
+
+#[cfg(test)]
+#[path = "design_agent_tools_contrast_uncertain_tests.rs"]
+mod contrast_uncertain_tests;
 
 #[cfg(test)]
 #[path = "design_agent_tools_feedback_tests.rs"]

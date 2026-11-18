@@ -3,7 +3,9 @@
 //! One function, [`post_write_diagnostics`], turns the detect-only quality scans
 //! into the JSON keys the in-app design agent has always received after a
 //! `batch_design` (`layoutIssues`, `iconIssues`, `fontIssues`,
-//! `structureIssues`, `contrastIssues`, `shellsRemaining`, `intentQuestions`, `variableIssues`,
+//! `structureIssues`, `contrastIssues`, `contrastUncertain` (text over an image,
+//! gradient, translucent or unresolved backdrop: neither pass nor fail),
+//! `shellsRemaining`, `intentQuestions`, `variableIssues`,
 //! `imageSlots`, `navIssues`, plus the `*Hint` sentences). The in-app wrapper
 //! (`execute_design_tool_with_root_seed_guard`) and the MCP write path
 //! (`op-host-services/src/mcp_serve/write_diagnostics.rs`) both call it, so an
@@ -20,6 +22,7 @@
 
 use serde_json::{json, Map, Value};
 
+use super::contrast_scan::ContrastUncertain;
 use super::font_issues::{scan_font_issues, FontKnowledge};
 use super::quality_scans::{contrast_hint, ContrastIssue};
 use super::*;
@@ -69,7 +72,7 @@ pub const IN_APP_FEEDBACK_CAPS: FeedbackCaps = FeedbackCaps {
 };
 
 /// Keys whose value is a list of items, in the order the envelope lists them.
-pub(crate) const LIST_KEYS: [&str; 9] = [
+pub(crate) const LIST_KEYS: [&str; 10] = [
     "layoutIssues",
     "iconIssues",
     "fontIssues",
@@ -78,6 +81,7 @@ pub(crate) const LIST_KEYS: [&str; 9] = [
     "variableIssues",
     "imageSlots",
     "contrastIssues",
+    "contrastUncertain",
     "navIssues",
 ];
 
@@ -108,12 +112,14 @@ pub fn post_write_diagnostics(
     let mut nav_issues = report.nav_issues;
     let mut empty_shells = report.empty_shells;
     let contrast_issues = report.contrast_issues;
+    let contrast_uncertain = report.contrast_uncertain;
     let root_seed_hint = extras.root_seed_hint;
 
     let mut out = Map::new();
     if layout_issues.is_empty()
         && structure_issues.is_empty()
         && contrast_issues.is_empty()
+        && contrast_uncertain.is_empty()
         && icon_issues.is_empty()
         && font_issues.is_empty()
         && empty_shells.is_empty()
@@ -140,6 +146,7 @@ pub fn post_write_diagnostics(
 
     let mut truncated = false;
     let mut contrast_value = json!(contrast_issues);
+    let mut uncertain_value = json!(contrast_uncertain);
     if let Some(caps) = caps {
         for list in [
             &mut layout_issues,
@@ -158,9 +165,16 @@ pub fn post_write_diagnostics(
             let mut lines: Vec<String> = contrast_issues.iter().map(contrast_line).collect();
             truncated |= cap_lines(&mut lines, caps);
             contrast_value = json!(lines);
+            let mut uncertain_lines: Vec<String> =
+                contrast_uncertain.iter().map(uncertain_line).collect();
+            truncated |= cap_lines(&mut uncertain_lines, caps);
+            uncertain_value = json!(uncertain_lines);
         } else {
             truncated |= contrast_issues.len() > caps.max_items;
             contrast_value = json!(&contrast_issues[..contrast_issues.len().min(caps.max_items)]);
+            truncated |= contrast_uncertain.len() > caps.max_items;
+            uncertain_value =
+                json!(&contrast_uncertain[..contrast_uncertain.len().min(caps.max_items)]);
         }
     }
 
@@ -188,6 +202,9 @@ pub fn post_write_diagnostics(
     if let Some(hint) = contrast_hint_text {
         out.insert("contrastHint".into(), json!(hint));
         out.insert("contrastIssues".into(), contrast_value);
+    }
+    if !contrast_uncertain.is_empty() {
+        out.insert("contrastUncertain".into(), uncertain_value);
     }
     if !nav_issues.is_empty() {
         out.insert("navIssues".into(), json!(nav_issues));
@@ -273,6 +290,15 @@ fn contrast_line(issue: &ContrastIssue) -> String {
     format!(
         "node {}{name}: contrast {:.1}:1 ({} on {}), needs {}:1",
         issue.node_id, issue.ratio, issue.fg, issue.bg, issue.target
+    )
+}
+
+/// One uncertain-backdrop finding as a single short line (external callers
+/// only): the node, the start of its text, why it is uncertain, what to do.
+fn uncertain_line(entry: &ContrastUncertain) -> String {
+    format!(
+        "node {} \"{}\": backdrop is {} - {}",
+        entry.node_id, entry.text, entry.reason, entry.advice
     )
 }
 

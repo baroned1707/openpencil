@@ -11,7 +11,9 @@ pub(super) fn fix_button_foreground_contrast(node: &mut Value) {
     if !has_visible_fill(node) {
         return;
     }
-    let Some(bg_raw) = get_first_solid_color(node) else {
+    // An image, gradient or translucent button background is not one colour:
+    // leave its content alone rather than recolour it against a guess.
+    let Some(bg_raw) = opaque_solid_background(node) else {
         return;
     };
     // A brand-accent token (`$--primary` / `$--destructive`) binds to a
@@ -133,7 +135,10 @@ pub(super) fn fix_container_text_contrast_for_current(node: &mut Value) {
     if !has_visible_fill(node) {
         return;
     }
-    let Some(bg_raw) = get_first_solid_color(node) else {
+    // Only an opaque solid backdrop is judged: text over an image, a gradient
+    // or a translucent overlay is left as authored (the write-time scan
+    // reports it as uncertain instead).
+    let Some(bg_raw) = opaque_solid_background(node) else {
         return;
     };
     let Some(bg) = resolve_color_maybe_ref(&bg_raw) else {
@@ -164,6 +169,12 @@ pub(super) fn fix_descendant_text_contrast(node: &mut Value, bg: &str, fg_fill: 
         return;
     }
     if matches!(role_of(node), Some("button") | Some("icon-button")) {
+        return;
+    }
+    // A nested container with its own image / gradient / translucent fill
+    // changes what the text behind it sits on; the outer colour no longer
+    // applies, so its whole subtree is left alone.
+    if paints_unjudgeable_backdrop(node) {
         return;
     }
     if let Some(children) = node.get_mut("children").and_then(Value::as_array_mut) {

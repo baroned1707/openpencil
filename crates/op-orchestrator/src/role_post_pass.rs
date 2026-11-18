@@ -385,6 +385,10 @@ mod tests;
 mod contrast_tests;
 
 #[cfg(test)]
+#[path = "role_post_pass_backdrop_tests.rs"]
+mod backdrop_tests;
+
+#[cfg(test)]
 #[path = "role_post_pass_mobile_tests.rs"]
 mod mobile_tests;
 

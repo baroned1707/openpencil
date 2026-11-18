@@ -19,7 +19,7 @@ use op_editor_core::EditorState;
 use op_editor_ui::layout_scene::LayoutScene;
 use op_mcp::{McpTool, ToolErrorCode, ToolOutcome};
 
-use crate::export::{render_node_raster_bytes, RasterFormat};
+use crate::export::{render_node_raster_at_chosen_scale, RasterFormat};
 
 /// Allowed range of the optional `scale` argument. Below the floor the image
 /// is too small to read; above the ceiling a large frame costs far more
@@ -27,22 +27,102 @@ use crate::export::{render_node_raster_bytes, RasterFormat};
 pub(crate) const MIN_SCALE: f32 = 0.25;
 pub(crate) const MAX_SCALE: f32 = 2.0;
 
-/// Parse the optional `scale` argument: absent or blank is 1.0; anything
-/// else must be a finite number in `MIN_SCALE..=MAX_SCALE`.
-fn parse_scale(args: &BTreeMap<String, String>) -> Result<f32, String> {
+/// Longest edge, in pixels, of a screenshot taken without an explicit `scale`.
+/// Vision models downscale anything larger before they look at it (the
+/// documented figure for Claude is about 1568 px on the long edge), so
+/// rendering more only costs time and tokens.
+pub(crate) const DEFAULT_LONG_EDGE_PX: f32 = 1568.0;
+/// Longest edge a screenshot may have even when `scale` asks for more.
+pub(crate) const MAX_LONG_EDGE_PX: f32 = 2576.0;
+
+/// Parse the optional `scale` argument: absent or blank is `None` (the size
+/// cap picks the scale); anything else must be a finite number in
+/// `MIN_SCALE..=MAX_SCALE`.
+fn parse_scale(args: &BTreeMap<String, String>) -> Result<Option<f32>, String> {
     let Some(raw) = args
         .get("scale")
         .map(|value| value.trim())
         .filter(|value| !value.is_empty())
     else {
-        return Ok(1.0);
+        return Ok(None);
     };
     match raw.parse::<f32>() {
-        Ok(scale) if scale.is_finite() && (MIN_SCALE..=MAX_SCALE).contains(&scale) => Ok(scale),
+        Ok(scale) if scale.is_finite() && (MIN_SCALE..=MAX_SCALE).contains(&scale) => {
+            Ok(Some(scale))
+        }
         _ => Err(format!(
             "scale must be a number from {MIN_SCALE} to {MAX_SCALE} (got '{raw}'); \
              omit it for 1.0"
         )),
+    }
+}
+
+/// The scale a screenshot is really drawn at and why.
+#[derive(Debug, Clone, Copy, PartialEq)]
+struct ScalePlan {
+    /// Scale the pixels are produced at.
+    used: f32,
+    /// Scale the caller asked for (1.0 when it passed none).
+    requested: f32,
+    /// The size cap lowered `used` below `requested`.
+    downscaled: bool,
+    /// The cap that applied was the hard maximum, not the default budget.
+    hard_cap: bool,
+}
+
+/// Pick the scale for a frame of `width` x `height` document px.
+///
+/// No `scale`: 1.0, lowered so the longest edge is at most
+/// [`DEFAULT_LONG_EDGE_PX`]. An explicit `scale` is honoured up to
+/// [`MAX_LONG_EDGE_PX`]. A lowered scale is floored to four decimals so the
+/// rounded pixel size can never exceed the cap, and it is NOT held to the
+/// export floor of 0.5: the reported scale is the one used.
+fn plan_scale(requested: Option<f32>, width: f32, height: f32) -> ScalePlan {
+    let explicit = requested.is_some();
+    let wanted = requested.unwrap_or(1.0);
+    let long_edge = width.max(height);
+    let cap_px = if explicit {
+        MAX_LONG_EDGE_PX
+    } else {
+        DEFAULT_LONG_EDGE_PX
+    };
+    // f64 so an exact ratio (1568 / 4000) is not nudged below itself by f32
+    // rounding before it is floored.
+    let allowed = if long_edge > 0.0 {
+        f64::from(cap_px) / f64::from(long_edge)
+    } else {
+        f64::from(wanted)
+    };
+    if allowed >= f64::from(wanted) {
+        return ScalePlan {
+            used: wanted,
+            requested: wanted,
+            downscaled: false,
+            hard_cap: false,
+        };
+    }
+    let floored = ((allowed * 10_000.0 + 1e-6).floor() / 10_000.0) as f32;
+    ScalePlan {
+        used: floored.max(0.0001),
+        requested: wanted,
+        downscaled: true,
+        hard_cap: explicit,
+    }
+}
+
+/// One-line advice attached when the size cap lowered the scale.
+fn downscale_hint(plan: &ScalePlan, width: f32, height: f32) -> String {
+    let frame = format!("{}x{}", width.round() as i64, height.round() as i64);
+    if plan.hard_cap {
+        format!(
+            "frame is {frame}; capped at {} px on the long edge (scale {}); crop to a child node for detail",
+            MAX_LONG_EDGE_PX as i64, plan.used
+        )
+    } else {
+        format!(
+            "frame is {frame}; shown at {}; crop to a child node or raise scale for detail",
+            plan.used
+        )
     }
 }
 
@@ -80,7 +160,7 @@ impl McpTool for GetScreenshot {
             }
         };
 
-        let scale = match parse_scale(args) {
+        let requested_scale = match parse_scale(args) {
             Ok(scale) => scale,
             Err(message) => return ToolOutcome::Err(ToolErrorCode::InvalidArgument, message),
         };
@@ -100,26 +180,49 @@ impl McpTool for GetScreenshot {
             raw_id
         };
 
-        // Render to PNG bytes via the shared raster pipeline.
-        let bytes = match render_node_raster_bytes(&self.scene, node_id, RasterFormat::Png, scale) {
-            Ok(b) => b,
+        // Render to PNG bytes via the shared raster pipeline. The scale is
+        // chosen from the frame's real size so the result stays within the
+        // vision-model pixel budget; the metadata reports what was used.
+        let mut plan = None;
+        let mut frame_size = (0.0_f32, 0.0_f32);
+        let raster = match render_node_raster_at_chosen_scale(
+            &self.scene,
+            node_id,
+            RasterFormat::Png,
+            |width, height| {
+                frame_size = (width, height);
+                let chosen = plan_scale(requested_scale, width, height);
+                plan = Some(chosen);
+                chosen.used
+            },
+        ) {
+            Ok(raster) => raster,
             Err(e) => return ToolOutcome::Err(ToolErrorCode::ToolFailed, e.to_string()),
         };
+        let plan = plan.expect("the scale chooser runs before any render");
 
         // Base64-encode using the same engine used elsewhere in this crate
         // (see `export/screenshot.rs` and `export/tests.rs`).
-        let image_base64 = base64::engine::general_purpose::STANDARD.encode(&bytes);
+        let image_base64 = base64::engine::general_purpose::STANDARD.encode(&raster.bytes);
 
-        let metadata = serde_json::json!({
+        let mut metadata = serde_json::json!({
             "nodeId": node_id,
             "format": "png",
-            "scale": scale,
+            "scale": raster.scale,
+            "requestedScale": plan.requested,
+            "width": raster.width_px,
+            "height": raster.height_px,
+            "size": format!("{}x{}", raster.width_px, raster.height_px),
             // The in-app chat agent reads the PNG from this metadata (it never
             // sees the image block). `op_mcp::tool_response_to_json` drops the
             // field from the wire text block when the image block carries the
             // same bytes, so an MCP client is not sent the PNG twice.
             "image_base64": image_base64,
         });
+        if plan.downscaled {
+            metadata["hint"] =
+                serde_json::Value::String(downscale_hint(&plan, frame_size.0, frame_size.1));
+        }
         ToolOutcome::OkImageContent {
             image_base64,
             mime_type: "image/png".into(),
@@ -446,3 +549,7 @@ mod tests {
         }
     }
 }
+
+#[cfg(test)]
+#[path = "screenshot_tool_tests.rs"]
+mod size_cap_tests;

@@ -286,3 +286,6 @@ pub(super) fn load_fixture(source: &str) -> EditorState {
     crate::doc_io::load_editor_state_from_source(source, op_editor_core::Locale::EnUs)
         .expect("load drift fixture")
 }
+
+#[path = "finalize_tool_verdict_tests.rs"]
+mod verdict_tests;

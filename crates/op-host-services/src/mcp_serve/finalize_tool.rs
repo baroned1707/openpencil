@@ -33,6 +33,7 @@
 use std::collections::{BTreeMap, BTreeSet};
 
 use jian_ops_schema::node::PenNode;
+use op_chat_agent::design_agent_tools::{post_write_diagnostics, FeedbackCaps, PostWriteExtras};
 use op_design_lint::design_form::classify_root_form_node;
 use op_design_lint::detectors::detect_shader_budget;
 use op_editor_core::{EditorCommand, EditorState, PenNodeExt};
@@ -128,6 +129,7 @@ impl McpTool for FinalizeDesignTool {
                 clipped_content:
                     &op_orchestrator::geometry_validation::fixed_board_content_diagnostics(&state),
                 changed_board_sizes: &fixed_board_size_changes(&self.state, &state),
+                remaining_issues: &remaining_write_time_issues(&state),
             },
         );
         if commands.is_empty() {
@@ -217,6 +219,134 @@ struct RenderFindings<'a> {
     shader_informational: &'a [op_design_lint::Issue],
     clipped_content: &'a [String],
     changed_board_sizes: &'a [String],
+    /// Write-time issues still open on the finalized roots (see
+    /// [`remaining_write_time_issues`]); empty when none.
+    remaining_issues: &'a serde_json::Map<String, serde_json::Value>,
+}
+
+/// The write-time scan keys that make a finalize verdict `warn`.
+///
+/// `imageSlots` is deliberately not one of them: finalize itself creates the
+/// empty slots that `enrich_images` fills afterwards, so counting them would
+/// make every run `warn`. Structure / shell / nav keys are not part of the
+/// write-time quality contract this verdict reports.
+const WARN_KEYS: [&str; 5] = [
+    "layoutIssues",
+    "iconIssues",
+    "contrastIssues",
+    "fontIssues",
+    "contrastUncertain",
+];
+
+/// At most this many lines per key ride along in `remainingIssues`; the full
+/// count is in `next`.
+const REMAINING_LINES_PER_KEY: usize = 5;
+
+/// Run the SAME scans a design write runs (`post_write_diagnostics`, the one
+/// function behind `batch_design`'s feedback) over the finalized document and
+/// keep the [`WARN_KEYS`] lists, as short lines. The finalizer has already
+/// applied its repairs to `state`, so no write repairs run here.
+fn remaining_write_time_issues(state: &EditorState) -> serde_json::Map<String, serde_json::Value> {
+    // No item cap here so the counts are exact; the lines are trimmed when
+    // they are put in the result.
+    let counting_caps = FeedbackCaps {
+        max_items: usize::MAX,
+        max_item_chars: 240,
+        max_total_bytes: usize::MAX,
+        contrast_as_lines: true,
+    };
+    let mut all = post_write_diagnostics(state, PostWriteExtras::default(), Some(&counting_caps));
+    WARN_KEYS
+        .iter()
+        .filter_map(|key| {
+            let value = all.remove(*key)?;
+            value
+                .as_array()
+                .is_some_and(|items| !items.is_empty())
+                .then(|| (key.to_string(), value))
+        })
+        .collect()
+}
+
+/// The verdict a finalize result gives and the one line telling the caller
+/// what to do next.
+///
+/// Rules:
+/// - `fail`: `blockingAdvisoryCount > 0`, i.e. `complete == false`. The design
+///   must not be presented as finished.
+/// - `warn`: `complete` is true but the write-time scans still find a layout,
+///   icon, contrast, font or contrast-uncertain item on the finalized roots.
+/// - `pass`: neither.
+///
+/// An uncertain-only `warn` cannot be "fixed" away (a scrim over a photo still
+/// reads as translucent), so its `next` tells the caller to verify with a
+/// screenshot and finish, instead of looping on finalize.
+fn verdict_and_next(
+    complete: bool,
+    blocking_advisory_count: usize,
+    remaining: &serde_json::Map<String, serde_json::Value>,
+) -> (&'static str, String) {
+    if !complete || blocking_advisory_count > 0 {
+        return (
+            "fail",
+            format!(
+                "{blocking_advisory_count} blocking advisory(ies): fix each with batch_design or update_node, then call finalize_design again."
+            ),
+        );
+    }
+    if remaining.is_empty() {
+        return (
+            "pass",
+            "No open issues found; present the design (run enrich_images first if image slots are still empty)."
+                .to_string(),
+        );
+    }
+    let counts = |skip_uncertain: bool| {
+        WARN_KEYS
+            .iter()
+            .filter(|key| !(skip_uncertain && **key == "contrastUncertain"))
+            .filter_map(|key| {
+                let count = remaining.get(*key)?.as_array()?.len();
+                Some(format!("{key} {count}"))
+            })
+            .collect::<Vec<_>>()
+            .join(", ")
+    };
+    let only_uncertain = remaining.keys().all(|key| key == "contrastUncertain");
+    let next = if only_uncertain {
+        format!(
+            "Text sits on an image, gradient or translucent fill ({}): check it with get_screenshot and finish if it reads well; add a scrim or solid backing if not.",
+            counts(false)
+        )
+    } else {
+        format!(
+            "Open issues ({}), listed under remainingIssues: fix them with batch_design or update_node, then call finalize_design again.",
+            counts(false)
+        )
+    };
+    ("warn", next)
+}
+
+/// `remaining` with each list cut to [`REMAINING_LINES_PER_KEY`] lines.
+fn remaining_issues_for_result(
+    remaining: &serde_json::Map<String, serde_json::Value>,
+) -> serde_json::Map<String, serde_json::Value> {
+    remaining
+        .iter()
+        .map(|(key, value)| {
+            let lines: Vec<serde_json::Value> = value
+                .as_array()
+                .map(|items| {
+                    items
+                        .iter()
+                        .take(REMAINING_LINES_PER_KEY)
+                        .cloned()
+                        .collect()
+                })
+                .unwrap_or_default();
+            (key.clone(), serde_json::Value::Array(lines))
+        })
+        .collect()
 }
 
 fn fixed_board_size_changes(before: &EditorState, after: &EditorState) -> Vec<String> {
@@ -329,9 +459,13 @@ fn finalize_result_json(
             )
         })
         .collect();
-    serde_json::json!({
+    let (verdict, next) =
+        verdict_and_next(complete, blocking_advisory_count, findings.remaining_issues);
+    let mut result = serde_json::json!({
         "roots": roots,
         "complete": complete,
+        "verdict": verdict,
+        "next": next,
         "blockingAdvisoryCount": blocking_advisory_count,
         "checkedCategories": categories,
         "repairs": summary.total_repairs(),
@@ -340,8 +474,12 @@ fn finalize_result_json(
         "informational": informational_json,
         "notes": summary.notes(),
         "summary": credential.trim().to_string(),
-    })
-    .to_string()
+    });
+    if !findings.remaining_issues.is_empty() {
+        result["remainingIssues"] =
+            serde_json::Value::Object(remaining_issues_for_result(findings.remaining_issues));
+    }
+    result.to_string()
 }
 
 #[cfg(test)]
@@ -361,6 +499,7 @@ mod delivery_tests {
                 shader_informational: &[],
                 clipped_content: &issues,
                 changed_board_sizes: &[],
+                remaining_issues: &Default::default(),
             },
         );
         let result: serde_json::Value = serde_json::from_str(&result).unwrap();
@@ -371,6 +510,24 @@ mod delivery_tests {
             "fixed-board-content-outside"
         );
         assert_eq!(result["repairs"], 0);
+        assert_eq!(result["verdict"], "fail");
+        assert!(result["next"].as_str().unwrap().contains("1 blocking"));
+    }
+
+    /// Invariant: a blocking advisory is `fail` even when write-time issues are
+    /// also open (the blocking one is what to fix first); `warn` needs
+    /// `complete`; nothing open is `pass`.
+    #[test]
+    fn verdict_rules_fail_before_warn_before_pass() {
+        let open: serde_json::Map<String, serde_json::Value> =
+            serde_json::from_value(serde_json::json!({"layoutIssues": ["a", "b"]})).unwrap();
+        let none = serde_json::Map::new();
+        assert_eq!(verdict_and_next(false, 1, &open).0, "fail");
+        assert_eq!(verdict_and_next(false, 0, &none).0, "fail");
+        let (verdict, next) = verdict_and_next(true, 0, &open);
+        assert_eq!(verdict, "warn");
+        assert!(next.contains("layoutIssues 2"), "{next}");
+        assert_eq!(verdict_and_next(true, 0, &none).0, "pass");
     }
 
     #[test]
@@ -396,6 +553,7 @@ mod delivery_tests {
                 shader_informational: &[],
                 clipped_content: &[],
                 changed_board_sizes: &issues,
+                remaining_issues: &Default::default(),
             },
         );
         let result: serde_json::Value = serde_json::from_str(&result).unwrap();

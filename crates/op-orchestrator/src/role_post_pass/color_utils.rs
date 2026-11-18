@@ -112,6 +112,56 @@ pub(super) fn get_first_solid_color(node: &Value) -> Option<String> {
         .map(str::to_string)
 }
 
+/// True for a hex colour whose alpha channel is below 1 (`#RRGGBBAA`).
+fn hex_has_alpha_below_one(color: &str) -> bool {
+    let c = color.trim();
+    let digits = c.strip_prefix('#').unwrap_or(c);
+    digits.len() == 8
+        && digits.is_ascii()
+        && u8::from_str_radix(&digits[6..8], 16).is_ok_and(|alpha| alpha < 255)
+}
+
+/// The colour a node's fill list paints behind its children when that is ONE
+/// opaque solid colour; `None` for anything else.
+///
+/// Image, gradient and shader fills are never one colour. A solid whose
+/// opacity, colour alpha or node opacity is below 1 lets whatever lies under
+/// it show through, and this pass carries no ancestor colour to blend with, so
+/// it is treated as unknown too. A pass that recolours text must not judge it
+/// against the first solid in the list (a frame with an image under a 40%
+/// black overlay is not solid black). Invisible entries are ignored.
+pub(super) fn opaque_solid_background(node: &Value) -> Option<String> {
+    if node
+        .get("opacity")
+        .and_then(Value::as_f64)
+        .is_some_and(|opacity| opacity < 1.0)
+    {
+        return None;
+    }
+    let mut colour = None;
+    for fill in fill_array(node)? {
+        if is_fill_invisible(fill) {
+            continue;
+        }
+        if fill.get("type").and_then(Value::as_str) != Some("solid") {
+            return None;
+        }
+        let color = fill.get("color").and_then(Value::as_str)?;
+        let opacity = fill.get("opacity").and_then(Value::as_f64).unwrap_or(1.0);
+        if opacity < 1.0 || hex_has_alpha_below_one(color) {
+            return None;
+        }
+        colour.get_or_insert_with(|| color.to_string());
+    }
+    colour
+}
+
+/// True when `node` paints a visible backdrop that is not one opaque solid
+/// colour: its subtree sits on something text-contrast repair cannot judge.
+pub(super) fn paints_unjudgeable_backdrop(node: &Value) -> bool {
+    has_visible_fill(node) && opaque_solid_background(node).is_none()
+}
+
 /// Resolve a `$color-*` ref to a hex — Rust has no doc-variable context at
 /// sub-agent time, so refs resolve to `None` and the dependent fix is skipped
 /// (port of `resolveColorMaybeRef`'s unresolved path).

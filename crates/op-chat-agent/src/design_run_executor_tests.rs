@@ -156,6 +156,30 @@ fn repeated_structured_contrast_issues_are_deduplicated_too() {
     assert_eq!(second["contrastIssuesUnchanged"], 1);
 }
 
+/// Invariant: `contrastUncertain` is an issue key like the others, so an entry
+/// the previous write already carried is reported once.
+#[test]
+fn repeated_contrast_uncertain_entries_are_deduplicated_too() {
+    let entry =
+        |id: &str| json!({"nodeId": id, "text": "Welcome", "reason": "image", "advice": "check"});
+    let result = |ids: &[&str]| {
+        json!({"success": true, "contrastUncertain": ids.iter().map(|id| entry(id)).collect::<Vec<_>>()})
+            .to_string()
+    };
+    let shaped = DesignRunExecutor::wrap(
+        Arc::new(Replay(Mutex::new(vec![
+            result(&["t1", "t2"]),
+            result(&["t1", "t3"]),
+        ]))),
+        "",
+    );
+    shaped.execute("batch_design", "{}");
+    let second: Value =
+        serde_json::from_str(&shaped.execute("batch_design", "{}").content).unwrap();
+    assert_eq!(second["contrastUncertain"], json!([entry("t3")]));
+    assert_eq!(second["contrastUncertainUnchanged"], 1);
+}
+
 #[test]
 fn the_completion_gates_pass_through_untouched() {
     struct Gated;
