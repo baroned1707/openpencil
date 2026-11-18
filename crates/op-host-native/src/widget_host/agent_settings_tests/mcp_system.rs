@@ -100,8 +100,10 @@ fn copy_mcp_client_config_queues_clipboard_text() {
 fn system_auto_update_switch_toggles_preference() {
     let mut host = WidgetHostNative::new();
     host.editor_state_mut().editor_ui.agent_settings.tab = AgentSettingsTab::System;
+    // The startup update check is opt-in, so the switch starts off.
     assert!(
-        host.editor_state()
+        !host
+            .editor_state()
             .editor_ui
             .agent_settings
             .auto_update_enabled
@@ -118,8 +120,7 @@ fn system_auto_update_switch_toggles_preference() {
     ));
 
     assert!(
-        !host
-            .editor_state()
+        host.editor_state()
             .editor_ui
             .agent_settings
             .auto_update_enabled
