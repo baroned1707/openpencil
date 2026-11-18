@@ -119,6 +119,8 @@ impl LlmClient for ProviderLlm {
                     let chunk = match delta {
                         ChatDelta::TextDelta(text) => Ok(LlmChunk::Text(text)),
                         ChatDelta::Thinking(text) => Ok(LlmChunk::Thinking(text)),
+                        // Token accounting is not part of the completion text.
+                        ChatDelta::Usage(_) => continue,
                         ChatDelta::Done {
                             stop_reason: StopReason::EndTurn,
                         } => {
