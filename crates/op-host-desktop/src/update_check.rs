@@ -4,7 +4,7 @@
 //! (download + signature-verify + self-install). The Rust desktop
 //! host has no signed-installer pipeline yet, so this module does
 //! the part that is safe and useful without one: a background probe
-//! of the GitHub releases API that compares the running build to
+//! of the fork's GitHub releases API that compares the running build to
 //! the latest published release and surfaces the result.
 //!
 //! Flow: [`UpdateProbe::spawn`] runs one HTTPS request on a worker
@@ -14,6 +14,10 @@
 //! tab). When a newer release is found the runner offers to open
 //! the download page via [`open_url`].
 //!
+//! While [`release_channel::RELEASES_ENABLED`] is `false` (this fork has no
+//! signed releases yet) the probe makes no request and reports
+//! `UpdateStatus::Unavailable`, and the installer download never runs.
+//!
 //! Every failure mode (offline, rate-limited, malformed JSON)
 //! degrades to `UpdateStatus::Error` — the probe never panics and
 //! never blocks shutdown.
@@ -22,36 +26,13 @@ use std::sync::mpsc::{self, Receiver, TryRecvError};
 
 use op_editor_core::UpdateStatus;
 
-/// GitHub publish target — mirrors the TS app's `constants.ts`
-/// (`GITHUB_OWNER` / `GITHUB_REPO`), the same repo `electron-updater`
-/// reads releases from.
-const GITHUB_OWNER: &str = "ZSeven-W";
-const GITHUB_REPO: &str = "openpencil";
+pub mod release_channel;
+
+use release_channel::RELEASES_ENABLED;
 
 /// Releases page a found-update notice opens in the browser.
 pub fn releases_url() -> String {
-    format!("https://github.com/{GITHUB_OWNER}/{GITHUB_REPO}/releases")
-}
-
-/// Releases list API endpoint. GitHub's `releases/latest` endpoint excludes
-/// prereleases, so the desktop updater uses the list feed and picks the first
-/// non-draft release itself.
-fn latest_release_api() -> String {
-    format!("https://api.github.com/repos/{GITHUB_OWNER}/{GITHUB_REPO}/releases?per_page=20")
-}
-
-/// Releases Atom feed — the fallback when the JSON API is unavailable.
-///
-/// The anonymous API allows 60 requests per hour *per source IP*, so every
-/// user behind a shared egress (corporate NAT, a VPN, most China-region
-/// proxies) can find it already exhausted by strangers and see the probe fail
-/// with "check the network" while the network is perfectly fine. The Atom
-/// feed is served by github.com rather than api.github.com and is not on that
-/// quota, so it answers when the API will not. Drafts never appear in it,
-/// which is the same rule `select_latest_release_tag` applies to the API
-/// response.
-fn latest_release_atom() -> String {
-    format!("https://github.com/{GITHUB_OWNER}/{GITHUB_REPO}/releases.atom")
+    release_channel::releases_url()
 }
 
 /// Background release-API probe. One request per `spawn`; the
@@ -79,12 +60,26 @@ impl UpdateProbe {
     }
 
     /// Spawn the probe worker. Returns immediately; the request
-    /// runs on its own thread.
+    /// runs on its own thread. With releases disabled no request is made
+    /// and the probe resolves to `Unavailable`.
     pub fn spawn() -> Self {
+        Self::spawn_with(RELEASES_ENABLED, check_latest_release)
+    }
+
+    /// [`UpdateProbe::spawn`] with the release switch and the check injected.
+    /// A disabled probe never runs `check`: its result is ready at once.
+    fn spawn_with(
+        releases_enabled: bool,
+        check: impl FnOnce() -> UpdateStatus + Send + 'static,
+    ) -> Self {
         let (tx, rx) = mpsc::channel();
-        std::thread::spawn(move || {
-            let _ = tx.send(check_latest_release());
-        });
+        if releases_enabled {
+            std::thread::spawn(move || {
+                let _ = tx.send(check());
+            });
+        } else {
+            let _ = tx.send(UpdateStatus::Unavailable);
+        }
         Self { rx: Some(rx) }
     }
 
@@ -160,7 +155,7 @@ fn fetch_latest_tag() -> Option<String> {
 
 async fn fetch_tag_from_api(client: &reqwest::Client) -> Option<String> {
     let resp = client
-        .get(latest_release_api())
+        .get(release_channel::releases_api_url())
         .header("Accept", "application/vnd.github+json")
         .send()
         .await
@@ -174,7 +169,7 @@ async fn fetch_tag_from_api(client: &reqwest::Client) -> Option<String> {
 
 async fn fetch_tag_from_atom(client: &reqwest::Client) -> Option<String> {
     let resp = client
-        .get(latest_release_atom())
+        .get(release_channel::releases_atom_url())
         .header("Accept", "application/atom+xml")
         .send()
         .await
@@ -225,17 +220,16 @@ fn select_latest_release_tag(json: &serde_json::Value) -> Option<String> {
 /// back to opening the releases page, so the user always ends up
 /// with a path to the update. Mirrors the electron-updater flow
 /// minus signature verification (no signing pipeline yet; the
-/// artifacts are the rust-release.yml installer matrix).
+/// artifacts are the rust-release.yml installer matrix). Only ever
+/// downloads from the fork's own release repository, and not at all
+/// while [`release_channel::RELEASES_ENABLED`] is `false`.
 pub fn download_and_open_installer(version: &str) {
     use std::sync::atomic::{AtomicBool, Ordering};
     // One download at a time — a second "Yes" (or re-check) while a
     // worker is still transferring must not spawn a duplicate writer
     // onto the same temp path.
     static IN_FLIGHT: AtomicBool = AtomicBool::new(false);
-    if IN_FLIGHT
-        .compare_exchange(false, true, Ordering::SeqCst, Ordering::SeqCst)
-        .is_err()
-    {
+    if !claim_download(RELEASES_ENABLED, &IN_FLIGHT) {
         return;
     }
     let version = version.to_string();
@@ -245,6 +239,17 @@ pub fn download_and_open_installer(version: &str) {
         }
         IN_FLIGHT.store(false, Ordering::SeqCst);
     });
+}
+
+/// Whether a download may start now: never while releases are disabled
+/// (this build has no signed installer of its own to fetch), and never while
+/// another one is in flight. Claims the in-flight flag when it says yes.
+fn claim_download(releases_enabled: bool, in_flight: &std::sync::atomic::AtomicBool) -> bool {
+    use std::sync::atomic::Ordering;
+    releases_enabled
+        && in_flight
+            .compare_exchange(false, true, Ordering::SeqCst, Ordering::SeqCst)
+            .is_ok()
 }
 
 /// The release-asset filename rust-release.yml publishes for this
@@ -274,9 +279,9 @@ fn download_and_open_blocking(version: &str) -> bool {
     let Some(name) = installer_asset_name(version) else {
         return false;
     };
-    let url = format!(
-        "https://github.com/{GITHUB_OWNER}/{GITHUB_REPO}/releases/download/v{version}/{name}"
-    );
+    let Some(url) = release_channel::configured_installer_url(version, &name) else {
+        return false;
+    };
     let dest = std::env::temp_dir().join(&name);
     // Shared runtime, not a private one — see `fetch_latest_tag`.
     let downloaded = op_host_services::chat_runtime::block_on_anywhere(async {
@@ -394,7 +399,7 @@ mod tests {
     /// Shaped like the live feed: a repository-level `<id>` comes first and
     /// must not be mistaken for a release.
     const ATOM_FEED: &str = concat!(
-        "<feed><id>tag:github.com,2008:https://github.com/ZSeven-W/openpencil/releases</id>",
+        "<feed><id>tag:github.com,2008:https://github.com/baroned1707/openpencil/releases</id>",
         "<entry><id>tag:github.com,2008:Repository/1159938129/v0.8.3</id></entry>",
         "<entry><id>tag:github.com,2008:Repository/1159938129/v0.8.2</id></entry></feed>",
     );
@@ -467,8 +472,8 @@ mod tests {
     #[test]
     fn releases_api_uses_list_endpoint_so_prereleases_are_visible() {
         assert_eq!(
-            latest_release_api(),
-            "https://api.github.com/repos/ZSeven-W/openpencil/releases?per_page=20"
+            release_channel::releases_api_url(),
+            "https://api.github.com/repos/baroned1707/openpencil/releases?per_page=20"
         );
     }
 
@@ -499,8 +504,69 @@ mod tests {
     fn releases_url_points_at_the_publish_repo() {
         assert_eq!(
             releases_url(),
-            "https://github.com/ZSeven-W/openpencil/releases"
+            "https://github.com/baroned1707/openpencil/releases"
         );
+    }
+
+    #[test]
+    fn disabled_releases_make_no_request_and_report_unavailable() {
+        let mut probe = UpdateProbe::spawn_with(false, || {
+            panic!("a disabled probe must never run the release check")
+        });
+
+        assert_eq!(probe.poll(), Some(UpdateStatus::Unavailable));
+        assert!(!probe.is_pending());
+    }
+
+    #[test]
+    fn enabled_releases_run_the_check() {
+        let mut probe = UpdateProbe::spawn_with(true, || UpdateStatus::UpToDate);
+
+        let status = loop {
+            if let Some(status) = probe.poll() {
+                break status;
+            }
+            std::thread::yield_now();
+        };
+
+        assert_eq!(status, UpdateStatus::UpToDate);
+    }
+
+    #[test]
+    fn this_build_probe_resolves_without_a_request() {
+        // `spawn` uses the real switch and the real network check: it may
+        // only be called here because this build ships with releases off.
+        assert!(!RELEASES_ENABLED);
+        let mut probe = UpdateProbe::spawn();
+
+        assert_eq!(probe.poll(), Some(UpdateStatus::Unavailable));
+    }
+
+    #[test]
+    fn auto_check_with_the_preference_on_still_makes_no_request_while_disabled() {
+        assert!(!RELEASES_ENABLED);
+        let mut probe = UpdateProbe::for_auto_check(true);
+
+        assert_eq!(probe.poll(), Some(UpdateStatus::Unavailable));
+    }
+
+    #[test]
+    fn a_download_never_starts_while_releases_are_disabled() {
+        use std::sync::atomic::{AtomicBool, Ordering};
+        let in_flight = AtomicBool::new(false);
+
+        assert!(!claim_download(false, &in_flight));
+        assert!(!in_flight.load(Ordering::SeqCst), "nothing was claimed");
+        assert!(!claim_download(RELEASES_ENABLED, &in_flight));
+    }
+
+    #[test]
+    fn an_enabled_download_is_claimed_once_at_a_time() {
+        use std::sync::atomic::AtomicBool;
+        let in_flight = AtomicBool::new(false);
+
+        assert!(claim_download(true, &in_flight));
+        assert!(!claim_download(true, &in_flight));
     }
 
     #[test]

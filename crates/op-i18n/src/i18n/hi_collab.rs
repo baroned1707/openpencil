@@ -657,6 +657,8 @@ pub fn lookup(key: &str) -> Option<&'static str> {
         "tooltip.topbar.otherUnsaved" => "बिना सहेजे बदलाव वाली अन्य फ़ाइलें",
         "tooltip.topbar.agentRunning" => "जिस फ़ाइल में एजेंट काम कर रहा है, वहाँ जाएँ",
         "tooltip.topbar.revealInDock" => "फ़ाइल सूची में दिखाएँ",
+        "settings.system.unavailable" => "सोर्स से प्रबंधित",
+        "settings.system.unavailableDescription" => "अपडेट इस फ़ोर्क को सोर्स से बिल्ड करके या इसके अपने रिलीज़ चैनल से मिलते हैं।",
         _ => return None,
     })
 }

@@ -120,6 +120,10 @@ fn system_tab_paints_each_update_probe_result() {
             "Update available v9.8.7",
         ),
         (op_editor_core::UpdateStatus::Error, "Check failed"),
+        (
+            op_editor_core::UpdateStatus::Unavailable,
+            "Managed from source",
+        ),
     ];
 
     for (status, expected) in cases {

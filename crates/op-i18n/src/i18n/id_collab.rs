@@ -653,6 +653,8 @@ pub fn lookup(key: &str) -> Option<&'static str> {
         "tooltip.topbar.otherUnsaved" => "File lain dengan perubahan belum disimpan",
         "tooltip.topbar.agentRunning" => "Buka file yang sedang dikerjakan agen",
         "tooltip.topbar.revealInDock" => "Tampilkan di daftar file",
+        "settings.system.unavailable" => "Dikelola dari kode sumber",
+        "settings.system.unavailableDescription" => "Pembaruan didapat dengan membangun fork ini dari kode sumber atau lewat saluran rilisnya sendiri.",
         _ => return None,
     })
 }

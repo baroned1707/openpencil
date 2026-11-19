@@ -665,6 +665,8 @@ pub fn lookup(key: &str) -> Option<&'static str> {
         "tooltip.topbar.otherUnsaved" => "Các tệp khác có thay đổi chưa lưu",
         "tooltip.topbar.agentRunning" => "Chuyển đến tệp mà agent đang làm việc",
         "tooltip.topbar.revealInDock" => "Hiện trong danh sách tệp",
+        "settings.system.unavailable" => "Quản lý từ mã nguồn",
+        "settings.system.unavailableDescription" => "Bản cập nhật có được bằng cách build bản fork này từ mã nguồn hoặc qua kênh phát hành riêng của nó.",
         _ => return None,
     })
 }

@@ -20,6 +20,29 @@ fn recent_menu_label(path: &str) -> String {
 }
 
 impl DesktopApp {
+    /// "Check for Updates": reveal the System tab with the result. With no
+    /// release channel the status is `Unavailable` at once and no request is
+    /// made.
+    pub(crate) fn start_manual_update_check(&mut self) {
+        // Make every manual check visible immediately. An automatic
+        // startup probe may already be running, so reveal that same
+        // worker instead of stacking another request.
+        self.host.apply_open_agent_settings_tab(
+            op_editor_core::agent_settings::AgentSettingsTab::System,
+        );
+        let releases_enabled = update_check::release_channel::RELEASES_ENABLED;
+        self.host.editor_state_mut().editor_ui.update_status = if releases_enabled {
+            op_editor_core::UpdateStatus::Checking
+        } else {
+            op_editor_core::UpdateStatus::Unavailable
+        };
+        self.host.mark_editor_state_dirty();
+        if releases_enabled && !self.update_probe.is_pending() {
+            self.update_probe = update_check::UpdateProbe::spawn();
+            self.update_prompt_shown = false;
+        }
+    }
+
     /// Sync the native File ▸ Open Recent submenu with the host's current
     /// recent-file list (file names, newest first). Cheap to call every loop
     /// iteration: the muda submenu is rebuilt only when the labels actually
@@ -264,23 +287,11 @@ impl DesktopApp {
                 false
             }
             A::CheckUpdates => {
-                // Make every manual check visible immediately. An automatic
-                // startup probe may already be running, so reveal that same
-                // worker instead of stacking another request.
-                self.host.apply_open_agent_settings_tab(
-                    op_editor_core::agent_settings::AgentSettingsTab::System,
-                );
-                self.host.editor_state_mut().editor_ui.update_status =
-                    op_editor_core::UpdateStatus::Checking;
-                self.host.mark_editor_state_dirty();
-                if !self.update_probe.is_pending() {
-                    self.update_probe = update_check::UpdateProbe::spawn();
-                    self.update_prompt_shown = false;
-                }
+                self.start_manual_update_check();
                 true
             }
             A::OpenGithub => {
-                update_check::open_url("https://github.com/ZSeven-W/openpencil");
+                update_check::open_url(&update_check::release_channel::repo_url());
                 false
             }
         };

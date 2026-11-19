@@ -653,6 +653,8 @@ pub fn lookup(key: &str) -> Option<&'static str> {
         "tooltip.topbar.otherUnsaved" => "Autres fichiers avec des modifications non enregistrées",
         "tooltip.topbar.agentRunning" => "Aller au fichier où l'agent travaille",
         "tooltip.topbar.revealInDock" => "Afficher dans la liste des fichiers",
+        "settings.system.unavailable" => "Géré depuis les sources",
+        "settings.system.unavailableDescription" => "Les mises à jour proviennent de la compilation de ce fork depuis les sources ou de son propre canal de versions.",
         _ => return None,
     })
 }

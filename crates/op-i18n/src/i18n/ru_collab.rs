@@ -683,6 +683,8 @@ pub fn lookup(key: &str) -> Option<&'static str> {
         "tooltip.topbar.otherUnsaved" => "Другие файлы с несохранёнными изменениями",
         "tooltip.topbar.agentRunning" => "Перейти к файлу, в котором работает агент",
         "tooltip.topbar.revealInDock" => "Показать в списке файлов",
+        "settings.system.unavailable" => "Управляется из исходников",
+        "settings.system.unavailableDescription" => "Обновления получают сборкой этого форка из исходников или через его собственный канал релизов.",
         _ => return None,
     })
 }

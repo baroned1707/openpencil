@@ -148,7 +148,12 @@ impl DesktopApp {
                     .auto_update_enabled,
             )
         };
-        if update_probe.is_pending() {
+        if !update_check::release_channel::RELEASES_ENABLED {
+            // No release channel: say so from the first frame instead of
+            // "not checked yet" (the probe would only repeat it).
+            host.editor_state_mut().editor_ui.update_status =
+                op_editor_core::UpdateStatus::Unavailable;
+        } else if update_probe.is_pending() {
             host.editor_state_mut().editor_ui.update_status =
                 op_editor_core::UpdateStatus::Checking;
         }

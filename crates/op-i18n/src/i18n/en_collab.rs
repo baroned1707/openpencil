@@ -693,6 +693,8 @@ pub fn lookup(key: &str) -> Option<&'static str> {
         "tooltip.topbar.otherUnsaved" => "Other files with unsaved changes",
         "tooltip.topbar.agentRunning" => "Go to the file the agent is working in",
         "tooltip.topbar.revealInDock" => "Show in the file list",
+        "settings.system.unavailable" => "Managed from source",
+        "settings.system.unavailableDescription" => "Updates come from building this fork from source or from its own release channel.",
         _ => return None,
     })
 }

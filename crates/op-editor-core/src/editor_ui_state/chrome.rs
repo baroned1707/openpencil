@@ -174,6 +174,10 @@ pub enum UpdateStatus {
     Available { version: String },
     /// The probe failed (offline, rate-limited, parse error).
     Error,
+    /// This build has no release channel to check: it is updated by
+    /// building from source or through the fork's own channel. No request
+    /// is made.
+    Unavailable,
 }
 
 /// A Design-MD panel action that needs the desktop host's native

@@ -669,6 +669,8 @@ pub fn lookup(key: &str) -> Option<&'static str> {
         "tooltip.topbar.otherUnsaved" => "저장되지 않은 변경 사항이 있는 다른 파일",
         "tooltip.topbar.agentRunning" => "에이전트가 작업 중인 파일로 이동",
         "tooltip.topbar.revealInDock" => "파일 목록에서 보기",
+        "settings.system.unavailable" => "소스로 관리",
+        "settings.system.unavailableDescription" => "업데이트는 이 포크를 소스에서 빌드하거나 자체 릴리스 채널을 통해 받습니다.",
         _ => return None,
     })
 }

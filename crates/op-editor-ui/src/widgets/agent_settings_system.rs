@@ -456,5 +456,10 @@ fn status_view(theme: &Theme, status: &UpdateStatus) -> (Color, &'static str, &'
             "settings.system.errorStatus",
             "settings.system.errorDescription",
         ),
+        UpdateStatus::Unavailable => (
+            theme.muted_foreground,
+            "settings.system.unavailable",
+            "settings.system.unavailableDescription",
+        ),
     }
 }

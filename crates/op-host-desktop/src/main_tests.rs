@@ -600,3 +600,31 @@ fn startup_account_gate_stays_closed_in_local_only_even_with_fake_login_env() {
     assert!(!ui.account.is_signed_in());
     assert_eq!(ui.collab.availability, CollabAvailability::Unavailable);
 }
+
+/// Without a release channel the menu's "Check for Updates" answers at once
+/// with an honest status, opens the System tab, and starts no probe.
+#[test]
+fn check_for_updates_reports_unavailable_without_a_request() {
+    assert!(!update_check::release_channel::RELEASES_ENABLED);
+    let mut app = DesktopApp::new(None);
+
+    app.start_manual_update_check();
+
+    let ui = &app.host.editor_state().editor_ui;
+    assert_eq!(ui.update_status, op_editor_core::UpdateStatus::Unavailable);
+    assert_eq!(
+        ui.agent_settings.tab,
+        op_editor_core::agent_settings::AgentSettingsTab::System
+    );
+    assert!(!app.update_probe.is_pending(), "no probe was spawned");
+}
+
+#[test]
+fn a_fresh_app_starts_with_the_unavailable_update_status() {
+    let app = DesktopApp::new(None);
+
+    assert_eq!(
+        app.host.editor_state().editor_ui.update_status,
+        op_editor_core::UpdateStatus::Unavailable
+    );
+}

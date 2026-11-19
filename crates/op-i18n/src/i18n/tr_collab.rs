@@ -653,6 +653,8 @@ pub fn lookup(key: &str) -> Option<&'static str> {
         "tooltip.topbar.otherUnsaved" => "Kaydedilmemiş değişiklikleri olan diğer dosyalar",
         "tooltip.topbar.agentRunning" => "Ajanın çalıştığı dosyaya git",
         "tooltip.topbar.revealInDock" => "Dosya listesinde göster",
+        "settings.system.unavailable" => "Kaynaktan yönetiliyor",
+        "settings.system.unavailableDescription" => "Güncellemeler, bu fork'u kaynaktan derleyerek veya kendi sürüm kanalı üzerinden alınır.",
         _ => return None,
     })
 }

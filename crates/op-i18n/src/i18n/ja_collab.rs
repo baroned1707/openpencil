@@ -669,6 +669,8 @@ pub fn lookup(key: &str) -> Option<&'static str> {
         "tooltip.topbar.otherUnsaved" => "未保存の変更があるほかのファイル",
         "tooltip.topbar.agentRunning" => "エージェントが作業中のファイルへ移動",
         "tooltip.topbar.revealInDock" => "ファイル一覧で表示",
+        "settings.system.unavailable" => "ソースから管理",
+        "settings.system.unavailableDescription" => "更新は、このフォークをソースからビルドするか、独自のリリースチャネルで行います。",
         _ => return None,
     })
 }

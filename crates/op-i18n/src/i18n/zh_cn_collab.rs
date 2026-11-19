@@ -653,6 +653,8 @@ pub fn lookup(key: &str) -> Option<&'static str> {
         "tooltip.topbar.otherUnsaved" => "其他有未保存更改的文件",
         "tooltip.topbar.agentRunning" => "前往 Agent 正在处理的文件",
         "tooltip.topbar.revealInDock" => "在文件列表中显示",
+        "settings.system.unavailable" => "通过源码管理",
+        "settings.system.unavailableDescription" => "更新方式：从源码构建此分支版本，或使用其自有发布渠道。",
         _ => return None,
     })
 }

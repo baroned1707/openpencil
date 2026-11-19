@@ -655,6 +655,8 @@ pub fn lookup(key: &str) -> Option<&'static str> {
         "tooltip.topbar.otherUnsaved" => "ไฟล์อื่นที่มีการเปลี่ยนแปลงที่ยังไม่ได้บันทึก",
         "tooltip.topbar.agentRunning" => "ไปที่ไฟล์ที่เอเจนต์กำลังทำงานอยู่",
         "tooltip.topbar.revealInDock" => "แสดงในรายการไฟล์",
+        "settings.system.unavailable" => "จัดการจากซอร์สโค้ด",
+        "settings.system.unavailableDescription" => "การอัปเดตมาจากการบิลด์ฟอร์กนี้จากซอร์สโค้ดหรือจากช่องทางรีลีสของตัวเอง",
         _ => return None,
     })
 }

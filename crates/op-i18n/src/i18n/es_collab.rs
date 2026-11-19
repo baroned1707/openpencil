@@ -653,6 +653,8 @@ pub fn lookup(key: &str) -> Option<&'static str> {
         "tooltip.topbar.otherUnsaved" => "Otros archivos con cambios sin guardar",
         "tooltip.topbar.agentRunning" => "Ir al archivo en el que trabaja el agente",
         "tooltip.topbar.revealInDock" => "Mostrar en la lista de archivos",
+        "settings.system.unavailable" => "Gestionado desde el código fuente",
+        "settings.system.unavailableDescription" => "Las actualizaciones se obtienen compilando este fork desde el código fuente o desde su propio canal de versiones.",
         _ => return None,
     })
 }
