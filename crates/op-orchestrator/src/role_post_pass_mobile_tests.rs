@@ -184,8 +184,8 @@ fn mobile_section_header_see_all_text_becomes_arrow_icon() {
 fn category_chip_row_preserves_all_chips_and_spreads() {
     // The chip COUNT follows the model (no truncate-to-4), and 3+ chips spread
     // across the row via space_between instead of clustering left
-    // (user direction 2026-06-23). Each chip is sized fit_content so the set
-    // fits the row.
+    // (user direction 2026-06-23). Each chip keeps its authored width; a chip
+    // with no width is sized fit_content.
     let mut row = json!({
         "type":"frame","layout":"horizontal","name":"Category Chips",
         "gap":16,"width":"fill_container",
@@ -212,8 +212,9 @@ fn category_chip_row_preserves_all_chips_and_spreads() {
         "3+ chips spread across the row instead of clustering left"
     );
     assert_eq!(row["alignItems"], json!("center"));
-    for child in children {
-        assert_eq!(child["width"], json!("fit_content"));
+    // Authored widths stay; only the missing radius fills in.
+    for (child, authored) in children.iter().zip([132, 120, 140, 130, 120]) {
+        assert_eq!(child["width"], json!(authored));
         assert_eq!(child["cornerRadius"], json!(8));
     }
 }
@@ -313,7 +314,7 @@ fn category_icon_label_items_without_chip_role_do_not_keep_huge_spacing() {
     let children = row["children"].as_array().expect("children");
     assert_eq!(children.len(), 4);
     for child in children {
-        assert_eq!(child["width"], json!("fit_content"));
+        assert_eq!(child["width"], json!(110));
         assert_eq!(child["height"], json!("fit_content"));
         assert_eq!(child["gap"], json!(8));
     }
@@ -439,8 +440,8 @@ fn category_section_with_generic_item_row_does_not_keep_huge_spacing() {
     assert_eq!(row["gap"], json!(12));
     assert_eq!(row["justifyContent"], json!("start"));
     for child in row["children"].as_array().expect("children") {
-        assert_eq!(child["width"], json!("fit_content"));
-        assert_eq!(child["height"], json!("fit_content"));
+        assert_eq!(child["width"], json!(96));
+        assert_eq!(child["height"], json!(104));
         assert_eq!(child["gap"], json!(8));
     }
 }

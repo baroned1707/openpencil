@@ -120,6 +120,8 @@ fn design_brief_triggers_for_new_product_prompts_not_for_modify_prompts() {
         "Create an app for tracking houseplants",
         "Build a website for a ceramics studio",
         "make me a booking app from scratch",
+        // "an" before a vowel: the word-boundary matcher needs its own keyword.
+        "make me an app screen",
         "设计一个记账应用",
     ] {
         assert!(loads(prompt), "{prompt:?} should load design-brief");
@@ -130,6 +132,7 @@ fn design_brief_triggers_for_new_product_prompts_not_for_modify_prompts() {
         "resize the card and fix the spacing",
         "update the title text",
         "remove the sidebar",
+        "make an icon bigger",
         "move the logo to the left",
         "add to the cart section a coupon field",
         "让按钮变成蓝色",

@@ -207,7 +207,17 @@ fn is_accent_ref(c: &str) -> bool {
     matches!(c, "$--primary" | "$--sidebar-primary") || c.starts_with("$--chart-")
 }
 
-pub(super) fn fix_invisible_text_band(node: &mut Value, theme: super::Theme, design_accent: &str) {
+/// `parent_bg` is the solid page background the section sits on (`None` when
+/// the forest has no page frame). A fill-less frame is stamped only when that
+/// background is KNOWN to be light: light text on an unknown or dark surface
+/// is not evidence that a coloured band was forgotten (a dark sidebar with
+/// white labels, a flat forest of screens), so nothing is painted there.
+pub(super) fn fix_invisible_text_band(
+    node: &mut Value,
+    theme: super::Theme,
+    parent_bg: Option<&str>,
+    design_accent: &str,
+) {
     // Guard B: unknown theme → abstain. When we can't tell if the page is light
     // or dark (unresolved tokens or unparseable hex), repainting on a guess
     // produced the full-bleed blue wall. Better to leave the node untouched.
@@ -250,6 +260,10 @@ pub(super) fn fix_invisible_text_band(node: &mut Value, theme: super::Theme, des
             Some(c) if is_light_surface_color(&c) => {} // light surface → still invisible
             _ => return, // colored/dark solid or gradient → real surface, text fine
         }
+    } else if super::detect_theme_from_fill(parent_bg) != super::Theme::Light {
+        // Fill-less: only a solid, light parent proves the light text has
+        // nothing to sit on. No parent background → abstain.
+        return;
     }
     let (mut light, mut dark) = (0usize, 0usize);
     tally_surface_text_colors(node, &mut light, &mut dark);
@@ -317,7 +331,12 @@ mod tests {
                 ]}
             ]});
             let before = toolbar.clone();
-            fix_invisible_text_band(&mut toolbar, super::Theme::Light, "$--primary");
+            fix_invisible_text_band(
+                &mut toolbar,
+                super::Theme::Light,
+                Some("#FFFFFF"),
+                "$--primary",
+            );
             assert_eq!(
                 toolbar, before,
                 "native {kind} labels do not appear in the text tally"
@@ -332,7 +351,12 @@ mod tests {
             {"type":"text","content":"Subscribe","fill":[{"type":"solid","color":"#FFFFFF"}]}
         ]});
         let before = panel.clone();
-        fix_invisible_text_band(&mut panel, super::Theme::Light, "$--primary");
+        fix_invisible_text_band(
+            &mut panel,
+            super::Theme::Light,
+            Some("#FFFFFF"),
+            "$--primary",
+        );
         assert_eq!(panel, before);
     }
 
@@ -354,7 +378,7 @@ mod tests {
         });
 
         // Apply the pass: theme = Light, design_accent = "$--primary" (blue).
-        fix_invisible_text_band(&mut bar, super::Theme::Light, "$--primary");
+        fix_invisible_text_band(&mut bar, super::Theme::Light, Some("#FFFFFF"), "$--primary");
 
         // Status bar should have NO fill (exempt by role).
         assert!(
@@ -379,7 +403,7 @@ mod tests {
             ]
         });
 
-        fix_invisible_text_band(&mut bar, super::Theme::Light, "$--primary");
+        fix_invisible_text_band(&mut bar, super::Theme::Light, Some("#FFFFFF"), "$--primary");
 
         assert!(
             bar.get("fill").is_none(),
@@ -403,7 +427,12 @@ mod tests {
             ]
         });
 
-        fix_invisible_text_band(&mut banner, super::Theme::Light, "$--primary");
+        fix_invisible_text_band(
+            &mut banner,
+            super::Theme::Light,
+            Some("#FFFFFF"),
+            "$--primary",
+        );
 
         // Non-status-bar frame SHOULD get the accent fill.
         assert!(
@@ -432,7 +461,7 @@ mod tests {
             ]
         });
 
-        fix_invisible_text_band(&mut bar, super::Theme::Light, "$--primary");
+        fix_invisible_text_band(&mut bar, super::Theme::Light, Some("#FFFFFF"), "$--primary");
 
         assert!(
             bar.get("fill").is_none(),
@@ -465,7 +494,12 @@ mod tests {
         });
 
         // Theme is Unknown (unresolved token or missing variables).
-        fix_invisible_text_band(&mut screen_root, super::Theme::Unknown, "$--primary");
+        fix_invisible_text_band(
+            &mut screen_root,
+            super::Theme::Unknown,
+            Some("#FFFFFF"),
+            "$--primary",
+        );
 
         // Screen root should NOT be repainted, even though all text is light.
         assert!(
@@ -502,7 +536,12 @@ mod tests {
             ]
         });
 
-        fix_invisible_text_band(&mut section, super::Theme::Light, "$--primary");
+        fix_invisible_text_band(
+            &mut section,
+            super::Theme::Light,
+            Some("#FFFFFF"),
+            "$--primary",
+        );
 
         // Section with frame children is a container, not a band.
         assert!(
@@ -534,7 +573,12 @@ mod tests {
             ]
         });
 
-        fix_invisible_text_band(&mut banner, super::Theme::Light, "$--primary");
+        fix_invisible_text_band(
+            &mut banner,
+            super::Theme::Light,
+            Some("#FFFFFF"),
+            "$--primary",
+        );
 
         // True band with only text children (no nested frames with text) should
         // be repainted when all text is light and surface fill is light.
@@ -583,7 +627,12 @@ mod tests {
             ]
         });
 
-        fix_invisible_text_band(&mut grid, super::Theme::Light, "$--primary");
+        fix_invisible_text_band(
+            &mut grid,
+            super::Theme::Light,
+            Some("#FFFFFF"),
+            "$--primary",
+        );
 
         // Grid with frame children is a container structure, not a band.
         assert!(

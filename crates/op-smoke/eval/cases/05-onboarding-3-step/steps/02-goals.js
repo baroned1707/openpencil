@@ -12,7 +12,7 @@ I(top, { type: "text", content: "Step 2 of 3", fontSize: 14, fontWeight: "600", 
 I(top, { type: "text", content: "Skip", fontSize: 14, fontWeight: "600", fill: "#1D4ED8" });
 
 const hero = I(screen, {
-  type: "frame", name: "Illustration", layout: "vertical", width: "fill_container", height: 340,
+  type: "frame", name: "Illustration", layout: "vertical", width: "fill_container", height: 200,
   justifyContent: "center", alignItems: "center", fill: "#DCFCE7"
 });
 I(hero, { type: "icon_font", iconFontName: "target", width: 96, height: 96, fill: "#15803D" });

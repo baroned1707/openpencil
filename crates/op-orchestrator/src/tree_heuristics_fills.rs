@@ -227,7 +227,7 @@ pub(super) fn should_strip_fill(child_fill: &str, root_fill: Option<&str>) -> bo
 /// nothing is behind it to paint. Screen roots are identified by:
 /// - Width 300-480 (mobile range)
 /// - Height >= 480 (numeric) OR "fit_content" (potential generated mobile root)
-fn looks_like_screen_root(node: &Value) -> bool {
+pub(crate) fn looks_like_screen_root(node: &Value) -> bool {
     let width = node.get("width").and_then(Value::as_f64).unwrap_or(0.0);
     let height_value = node.get("height");
 

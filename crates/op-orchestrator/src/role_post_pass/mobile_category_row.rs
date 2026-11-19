@@ -216,9 +216,17 @@ pub(super) fn normalize_mobile_category_row_unchecked(node: &mut Value) {
     // never delete product/category content to satisfy a viewport heuristic.
     for (idx, child) in children.iter_mut().enumerate() {
         if is_category_item_like_child(child) {
-            child["width"] = json!("fit_content");
-            child["height"] = json!("fit_content");
-            child["cornerRadius"] = json!(8);
+            // An authored size or radius is the design; only a missing (or
+            // non-numeric) size is replaced by hug sizing, and the 8 px radius
+            // fills in only when the chip has none.
+            for key in ["width", "height"] {
+                if numeric_prop(child, key).is_none() {
+                    child[key] = json!("fit_content");
+                }
+            }
+            if child.get("cornerRadius").is_none_or(Value::is_null) {
+                child["cornerRadius"] = json!(8);
+            }
             if is_icon_label_category_item(child) {
                 child["gap"] = json!(8);
                 child["alignItems"] = json!("center");

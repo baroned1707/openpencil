@@ -37,7 +37,7 @@ for (const [month, value] of months) {
   const column = I(bars, { type: "frame", name: "Bar " + month, layout: "vertical", width: "fill_container", gap: 8, alignItems: "center", justifyContent: "end" });
   const fillBar = I(column, {
     type: "frame", name: "Bar Fill", layout: "vertical", width: 36, height: Math.round(value * 1.2),
-    alignItems: "center", padding: [6, 0, 0, 0], cornerRadius: 6, fill: "#2563EB"
+    alignItems: "center", padding: [6, 0, 0, 0], cornerRadius: 6, fill: "#3B82F6"
   });
   I(fillBar, { type: "text", content: String(value), fontSize: 11, fontWeight: "600", fill: "#FFFFFF" });
   I(column, { type: "text", content: month, fontSize: 12, fill: "#94A3B8" });

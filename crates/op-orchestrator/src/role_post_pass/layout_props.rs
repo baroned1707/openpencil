@@ -307,11 +307,34 @@ pub(super) fn is_promo_like_container(node: &Value) -> bool {
         .any(|needle| label.contains(needle))
 }
 
+/// Narrowest / shortest numeric box that reads as a tablet or desktop screen
+/// rather than a card (768x1024 portrait tablet, 1440x900 desktop).
+const LARGE_SCREEN_MIN_WIDTH: f64 = 768.0;
+const LARGE_SCREEN_MIN_HEIGHT: f64 = 700.0;
+
+/// A frame sized like a whole screen: a phone artboard (390x844, 375x812, ...,
+/// the repo's own `looks_like_screen_root`) or a tablet / desktop viewport.
+/// Its height is the viewport, never a promo card's content height.
+fn is_viewport_sized_screen(node: &Value) -> bool {
+    if crate::tree_heuristics::looks_like_screen_root(node) {
+        return true;
+    }
+    let size = |key: &str| node.get(key).and_then(Value::as_f64);
+    size("width").is_some_and(|w| w >= LARGE_SCREEN_MIN_WIDTH)
+        && size("height").is_some_and(|h| h >= LARGE_SCREEN_MIN_HEIGHT)
+}
+
 pub(super) fn relax_clipping_promo_height(node: &mut Value) {
     if node.get("type").and_then(Value::as_str) != Some("frame") {
         return;
     }
     if node.get("height").and_then(Value::as_f64).is_none() {
+        return;
+    }
+    // A screen root clips its content by design and owns a button; relaxing
+    // its height to fit_content shrinks the screen to its content (and with
+    // several screens in one forest, collapses every one of them).
+    if is_viewport_sized_screen(node) {
         return;
     }
     let clips = node.get("clipContent").and_then(Value::as_bool) == Some(true);

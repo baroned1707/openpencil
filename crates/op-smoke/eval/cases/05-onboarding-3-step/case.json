@@ -45,7 +45,8 @@
       "Continue"
     ],
     "min": {
-      "nodeCount": 80
+      "nodeCount": 80,
+      "screenCount": 3
     }
   }
 }

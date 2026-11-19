@@ -19,7 +19,7 @@
 //!     stroke / cornerRadius / shadow when an ancestor already carries it
 //!     (port of strip-nested-card-decoration.ts) — kills box-in-box borders.
 
-use crate::role_defaults::Theme;
+use crate::role_defaults::{detect_theme_from_fill, Theme};
 use jian_ops_schema::node::PenNode;
 use serde_json::{json, Value};
 
@@ -40,6 +40,7 @@ mod tree_heuristics_text_band;
 
 use tree_heuristics_card_decoration::*;
 pub(crate) use tree_heuristics_card_decoration::{has_visible_solid_fill, is_compact_solid_circle};
+pub(crate) use tree_heuristics_fills::looks_like_screen_root;
 use tree_heuristics_fills::*;
 use tree_heuristics_image_overlay::*;
 use tree_heuristics_nav_rounding::*;
@@ -140,7 +141,7 @@ pub fn apply_tree_heuristics(
         // Section-level (operate on the forest root = a page-root child).
         strip_redundant_section_fill(&mut v, page_bg);
         inject_nav_surface_for_section(&mut v);
-        fix_invisible_text_band(&mut v, theme, &design_accent);
+        fix_invisible_text_band(&mut v, theme, page_bg, &design_accent);
         // Subtree-recursive.
         merge_backdrop_child_fill(&mut v);
         convert_stacked_overlay_to_absolute(&mut v);

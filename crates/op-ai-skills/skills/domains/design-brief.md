@@ -3,7 +3,7 @@ name: design-brief
 description: Context and UX brief workflow for a new product, app, site or screen - read what exists, write a short brief with assumptions, then build
 phase: [generation]
 trigger:
-  keywords: [design a, design an, create a, create an, build a, build an, make me a, new app, new website, new product, new screen, from scratch, app idea, 设计一个, 做一个, 创建一个]
+  keywords: [design a, design an, create a, create an, build a, build an, make me a, make me an, new app, new website, new product, new screen, from scratch, app idea, 设计一个, 做一个, 创建一个]
 priority: 14
 budget: 1100
 category: domain

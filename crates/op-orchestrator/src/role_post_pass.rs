@@ -403,3 +403,7 @@ mod pill_radius_tests;
 #[cfg(test)]
 #[path = "role_post_pass_orphan_control_tests.rs"]
 mod orphan_control_tests;
+
+#[cfg(test)]
+#[path = "role_post_pass_authored_geometry_tests.rs"]
+mod authored_geometry_tests;

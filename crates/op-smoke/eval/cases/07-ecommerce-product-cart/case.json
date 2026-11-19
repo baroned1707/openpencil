@@ -11,7 +11,7 @@
   ],
   "expect": {
     "requiredText": ["Trailhead Rain Jacket", "$189.00", "Add to cart", "Checkout"],
-    "min": { "contrastUncertain": 1 },
+    "min": { "contrastUncertain": 1, "screenCount": 2 },
     "max": { "contrastIssues": 0, "duplicateRowText": 2 }
   }
 }

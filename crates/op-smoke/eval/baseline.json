@@ -25,7 +25,7 @@
         "screenshotCount": 1,
         "solidFills": 52,
         "structureIssues": 0,
-        "tapTargetsUnder24": 4,
+        "tapTargetsUnder24": 0,
         "tokenBoundFills": 0,
         "tokenConformancePermille": 0,
         "typeSizesMaxPerSection": 3
@@ -193,7 +193,7 @@
         "repeatedRowTexts": 6,
         "replayErrors": 0,
         "requiredTextMissing": 0,
-        "screenCount": 0,
+        "screenCount": 3,
         "screenshotCount": 1,
         "solidFills": 63,
         "structureIssues": 0,
@@ -278,7 +278,7 @@
         "repeatedRowTexts": 21,
         "replayErrors": 0,
         "requiredTextMissing": 0,
-        "screenCount": 0,
+        "screenCount": 2,
         "screenshotCount": 1,
         "solidFills": 58,
         "structureIssues": 0,
@@ -416,12 +416,13 @@
       },
       "prompt": {
         "skills": [
+          "design-brief",
           "design-craft",
           "design-principles",
           "jian-components",
           "product-principles"
         ],
-        "tokenEstimate": 10352
+        "tokenEstimate": 11052
       }
     }
   }

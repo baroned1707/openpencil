@@ -120,7 +120,7 @@ fn is_page_root_wrapper(node: &PenNode) -> bool {
 ///   sit UNDER the page frame, on the page background.
 /// - **Flat section forest** (0 or 2+ top-level nodes): the top-level nodes ARE
 ///   the sections; there is no page-bg frame, so `page_bg = None`,
-///   `width = first node width`, `theme` from the first node's fill.
+///   `width = first node width`, `theme = Unknown` (no page background).
 fn locate_section_context(forest: &[PenNode]) -> (bool, Option<String>, f64, Theme) {
     if forest.len() == 1 && is_page_root_wrapper(&forest[0]) {
         let root = &forest[0];
@@ -137,12 +137,13 @@ fn locate_section_context(forest: &[PenNode]) -> (bool, Option<String>, f64, The
             .and_then(PenNodeExt::width_px)
             .filter(|w| *w > 0.0)
             .unwrap_or(DEFAULT_CANVAS_WIDTH);
-        // A flat-section forest has no page-bg frame: each top-level node is a
-        // section, so there is no "redundant page background" to match against.
-        // Explicitly default to Light here; `detect_theme_from_fill(None)` now
-        // returns Unknown. Without a page background to detect from, we assume
-        // Light to preserve existing behavior.
-        (false, None, width, Theme::Light)
+        // A flat-section forest has no page-bg frame, so there is nothing to
+        // read a theme from: the top-level nodes are screens or sections with
+        // their own surfaces, and calling the page Light made the text-band
+        // heuristic paint a fill-less dark sidebar's white labels with the
+        // accent. `Unknown` makes theme-gated passes abstain; role defaults
+        // treat it like Light (they only test for Dark).
+        (false, None, width, Theme::Unknown)
     }
 }
 
@@ -618,3 +619,7 @@ mod status_bar_tests;
 #[cfg(test)]
 #[path = "loop_finalize_recording_tests.rs"]
 mod recording_tests;
+
+#[cfg(test)]
+#[path = "loop_finalize_flat_forest_tests.rs"]
+mod flat_forest_tests;

@@ -1,6 +1,8 @@
 //! I3 contrast cluster — `fixButtonForegroundContrast`,
 //! the container/descendant text-contrast fixes and `fixSectionAlternation`.
 
+use op_design_lint::color::color_contrast;
+
 use super::*;
 
 pub(super) fn fix_button_foreground_contrast(node: &mut Value) {
@@ -148,24 +150,107 @@ pub(super) fn fix_container_text_contrast_for_current(node: &mut Value) {
         return;
     }
 
-    let fg_fill = solid_fill(preferred_foreground_for_bg(&bg));
+    // The text colours this container already uses are the palette a repair
+    // draws from first; they are gathered before any text is recoloured.
+    let mut palette: Vec<String> = Vec::new();
+    if let Some(children) = node.get("children").and_then(Value::as_array) {
+        for child in children {
+            collect_descendant_text_colors(child, &mut palette);
+        }
+    }
     if let Some(children) = node.get_mut("children").and_then(Value::as_array_mut) {
         for child in children {
-            fix_descendant_text_contrast(child, &bg, &fg_fill);
+            fix_descendant_text_contrast(child, &bg, &palette);
         }
     }
 }
 
-pub(super) fn fix_descendant_text_contrast(node: &mut Value, bg: &str, fg_fill: &Value) {
+/// WCAG contrast target for one text node: 3:1 for large text (>= 24 px, or
+/// >= 19 px at weight >= 700, the lint's own definition), 4.5:1 otherwise.
+fn text_contrast_target(text: &Value) -> f64 {
+    let size = text.get("fontSize").and_then(Value::as_f64).unwrap_or(0.0);
+    let weight = match text.get("fontWeight") {
+        Some(Value::Number(n)) => n.as_f64(),
+        Some(Value::String(s)) => s.trim().parse::<f64>().ok(),
+        _ => None,
+    };
+    if size >= 24.0 || (size >= 19.0 && weight.is_some_and(|w| w >= 700.0)) {
+        3.0
+    } else {
+        4.5
+    }
+}
+
+/// Resolved hex colours of the text nodes this pass judges against one
+/// backdrop (same walk as [`fix_descendant_text_contrast`]).
+fn collect_descendant_text_colors(node: &Value, out: &mut Vec<String>) {
     if node.get("type").and_then(Value::as_str) == Some("text") {
-        let existing =
-            get_first_solid_color(node).and_then(|color| resolve_color_maybe_ref(&color));
-        if existing
-            .as_deref()
-            .is_some_and(|fg| needs_luminance_contrast_override(fg, bg))
-        {
-            node["fill"] = fg_fill.clone();
+        if let Some(color) = get_first_solid_color(node).and_then(|c| resolve_color_maybe_ref(&c)) {
+            if hex_luminance(&color).is_some() && !out.contains(&color) {
+                out.push(color);
+            }
         }
+        return;
+    }
+    if matches!(role_of(node), Some("button") | Some("icon-button"))
+        || paints_unjudgeable_backdrop(node)
+    {
+        return;
+    }
+    if let Some(children) = node.get("children").and_then(Value::as_array) {
+        for child in children {
+            collect_descendant_text_colors(child, out);
+        }
+    }
+}
+
+/// The replacement foreground for text that fails `target` on `bg`, in
+/// preference order: a text colour the container already uses, then the
+/// pass's own dark / white, then pure black / white (the only pair that always
+/// clears 4.5:1). Within a tier the best ratio wins; a tier is used only when
+/// its best candidate meets the target, and the last tier is used regardless.
+fn readable_foreground(bg: &str, target: f64, palette: &[String]) -> String {
+    let palette_tier: Vec<&str> = palette.iter().map(String::as_str).collect();
+    for tier in [palette_tier.as_slice(), &["#0F172A", "#FFFFFF"]] {
+        if let Some((color, ratio)) = best_contrast(tier, bg) {
+            if ratio >= target {
+                return color.to_string();
+            }
+        }
+    }
+    best_contrast(&["#000000", "#FFFFFF"], bg)
+        .map(|(color, _)| color.to_string())
+        .unwrap_or_else(|| "#000000".to_string())
+}
+
+/// The candidate with the highest WCAG ratio against `bg`.
+fn best_contrast<'a>(candidates: &[&'a str], bg: &str) -> Option<(&'a str, f64)> {
+    candidates
+        .iter()
+        .map(|candidate| (*candidate, color_contrast(candidate, bg)))
+        .filter(|(_, ratio)| ratio.is_finite())
+        .max_by(|a, b| a.1.total_cmp(&b.1))
+}
+
+pub(super) fn fix_descendant_text_contrast(node: &mut Value, bg: &str, palette: &[String]) {
+    if node.get("type").and_then(Value::as_str) == Some("text") {
+        let Some(existing) =
+            get_first_solid_color(node).and_then(|color| resolve_color_maybe_ref(&color))
+        else {
+            return;
+        };
+        let ratio = color_contrast(&existing, bg);
+        if !ratio.is_finite() {
+            return;
+        }
+        let target = text_contrast_target(node);
+        // The authored colour already reads: keep it. Only text that fails
+        // the WCAG ratio is recoloured, so a dark label on a mid-tone bar
+        // is not flipped to white by a luminance rule.
+        if ratio >= target {
+            return;
+        }
+        node["fill"] = solid_fill(&readable_foreground(bg, target, palette));
         return;
     }
     if matches!(role_of(node), Some("button") | Some("icon-button")) {
@@ -179,7 +264,7 @@ pub(super) fn fix_descendant_text_contrast(node: &mut Value, bg: &str, fg_fill: 
     }
     if let Some(children) = node.get_mut("children").and_then(Value::as_array_mut) {
         for child in children {
-            fix_descendant_text_contrast(child, bg, fg_fill);
+            fix_descendant_text_contrast(child, bg, palette);
         }
     }
 }

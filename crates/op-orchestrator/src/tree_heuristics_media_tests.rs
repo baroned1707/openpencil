@@ -283,12 +283,32 @@ fn invisible_white_text_band_gets_accent_on_light_page() {
         {"type":"text","content":"50% OFF","fill":[{"type":"solid","color":"$--card"}]},
         {"type":"text","content":"first order","fill":[{"type":"solid","color":"#FFFFFF"}]}
     ]});
-    fix_invisible_text_band(&mut band, Theme::Light, "$--primary");
+    fix_invisible_text_band(&mut band, Theme::Light, Some("#FFFFFF"), "$--primary");
     assert_eq!(
         band["fill"],
         json!([{"type":"solid","color":"$--primary"}]),
         "all-white-text band on a light page → accent fill so copy is readable"
     );
+}
+
+/// A fill-less frame is stamped only when its parent background is a known
+/// light solid: a dark parent, a token and no parent at all all abstain (the
+/// dark-sidebar-with-white-labels case), whatever the caller's theme says.
+#[test]
+fn fill_less_white_text_band_needs_a_known_light_parent_background() {
+    let band = || {
+        json!({"type":"frame","role":"section","children":[
+            {"type":"text","content":"Overview","fill":[{"type":"solid","color":"#FFFFFF"}]}
+        ]})
+    };
+    for parent_bg in [None, Some("#0B1220"), Some("$--background")] {
+        let mut node = band();
+        fix_invisible_text_band(&mut node, Theme::Light, parent_bg, "$--primary");
+        assert!(node.get("fill").is_none(), "{parent_bg:?} must not paint");
+    }
+    let mut node = band();
+    fix_invisible_text_band(&mut node, Theme::Light, Some("#F8FAFC"), "$--primary");
+    assert_eq!(node["fill"], json!([{"type":"solid","color":"$--primary"}]));
 }
 
 #[test]
@@ -303,7 +323,7 @@ fn banner_with_filled_button_still_filled() {
             {"type":"text","content":"Order Now","fill":[{"type":"solid","color":"$--primary"}]}
         ]}
     ]});
-    fix_invisible_text_band(&mut band, Theme::Light, "$--primary");
+    fix_invisible_text_band(&mut band, Theme::Light, Some("#FFFFFF"), "$--primary");
     assert_eq!(
         band["fill"],
         json!([{"type":"solid","color":"$--primary"}]),
@@ -333,7 +353,7 @@ fn light_surface_filled_banner_repainted_accent() {
             ]}
         ]
     });
-    fix_invisible_text_band(&mut band, Theme::Light, "$--chart-6");
+    fix_invisible_text_band(&mut band, Theme::Light, Some("#FFFFFF"), "$--chart-6");
     assert_eq!(
         band["fill"],
         json!([{"type":"solid","color":"$--chart-6"}]),
@@ -354,7 +374,7 @@ fn gradient_filled_banner_left_alone() {
         ]
     });
     let before = band["fill"].clone();
-    fix_invisible_text_band(&mut band, Theme::Light, "$--primary");
+    fix_invisible_text_band(&mut band, Theme::Light, Some("#FFFFFF"), "$--primary");
     assert_eq!(
         band["fill"], before,
         "gradient banner keeps its real surface"
@@ -366,7 +386,7 @@ fn white_text_band_untouched_on_dark_page() {
     let mut band = json!({"type":"frame","children":[
         {"type":"text","fill":[{"type":"solid","color":"#FFFFFF"}]}
     ]});
-    fix_invisible_text_band(&mut band, Theme::Dark, "$--primary");
+    fix_invisible_text_band(&mut band, Theme::Dark, Some("#FFFFFF"), "$--primary");
     assert!(
         band.get("fill").is_none(),
         "white text on a dark page is fine — no fill stamped"
@@ -380,7 +400,7 @@ fn mixed_text_band_not_filled() {
         {"type":"text","fill":[{"type":"solid","color":"#FFFFFF"}]},
         {"type":"text","fill":[{"type":"solid","color":"#1C1410"}]}
     ]});
-    fix_invisible_text_band(&mut band, Theme::Light, "$--primary");
+    fix_invisible_text_band(&mut band, Theme::Light, Some("#FFFFFF"), "$--primary");
     assert!(band.get("fill").is_none(), "mixed text → not a hidden band");
 }
 
@@ -468,7 +488,7 @@ fn next_panel_body_and_buttons_block_nested_accent_wall() {
         .extend(children.drain(1..));
     panel["children"] = json!([panel["children"][0].clone(), nested_content]);
 
-    fix_invisible_text_band(&mut panel, Theme::Light, "$--primary");
+    fix_invisible_text_band(&mut panel, Theme::Light, Some("#FFFFFF"), "$--primary");
 
     assert_eq!(
         panel["fill"],
