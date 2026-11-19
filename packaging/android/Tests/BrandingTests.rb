@@ -26,15 +26,15 @@ legacy_sources = Dir.glob(File.join(player_dir, "app/src/{main,test}/kotlin/dev/
 raise "legacy Android package source paths remain: #{legacy_sources.join(', ')}" unless legacy_sources.empty?
 
 expected_icons = {
-  "mdpi" => [48, "bb3030caf2be6d8a4aed22055437b67b98136da2214fe6bd6b3d2bc58be47923"],
-  "hdpi" => [72, "6405710d4892e45e9005765c053ec7c6ffab478d630d5c006a8432335a03b223"],
-  "xhdpi" => [96, "47584c3bca0a03e6a551fec32175a0d85d5b9b41ef6e183bae48c2917aae5071"],
-  "xxhdpi" => [144, "58cbd4beef06c4c236410b2521a0f2be449d3cd3665ed1b8e924184834013dd1"],
-  "xxxhdpi" => [192, "7bfb43a067e648f649b8bb28cf6b9cbbf394799b670bd33b9de407e2573d181e"],
+  "mdpi" => [48, "c4655d45f0188b6e48b344d6f92355011746873be26079f614ffc696ab567b9e"],
+  "hdpi" => [72, "cf209c735d70136eb03e1bc5f5f2ba30ff584df0998753212380398475e547e2"],
+  "xhdpi" => [96, "cb4a036c410711ea38dc247ee4f5344b88cad1896efdc10b21fa1448d1b5d3ed"],
+  "xxhdpi" => [144, "61f34a598d14921b32000c8530ed64e665e26e0e38c99a240290994a7b4bcb43"],
+  "xxxhdpi" => [192, "e63ed9667853bf933ffd7893df7141cb338cb68ce20d51d21ae4f166999eeb04"],
 }.freeze
 
 canonical_icon = File.join(repo_dir, "crates/op-host-desktop/assets/icon.png")
-canonical_hash = "281c324071f222820ea9b7e7c2057cda89f6e603d8e80586f89d477a38e92c1b"
+canonical_hash = "a906aa0522db25e76eddde3667436b071c5290149a4e8aee22bf3428679705bd"
 raise "canonical OpenPencil icon changed without regenerating mobile assets" unless Digest::SHA256.file(canonical_icon).hexdigest == canonical_hash
 
 strings_path = File.join(res_dir, "values/strings.xml")
