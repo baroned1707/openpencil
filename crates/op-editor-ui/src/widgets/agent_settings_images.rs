@@ -34,6 +34,7 @@ pub enum ImagesHit {
     OpenStockRegisterLink(StockProvider),
     TestStockProvider(StockProvider),
     ToggleUnsplash,
+    TogglePexels,
     OpenUnsplashTerms,
     AddGenConfig,
     ToggleGenConfigEditor(usize),
@@ -70,7 +71,9 @@ pub(super) fn focused_input_rect_for_ui(
 ) -> Option<Rect> {
     match focus {
         SettingsFocus::ImageSearch(
-            field @ (ImageSearchField::PixabayKey | ImageSearchField::UnsplashKey),
+            field @ (ImageSearchField::PixabayKey
+            | ImageSearchField::UnsplashKey
+            | ImageSearchField::PexelsKey),
         ) => stock::focused_field_rect(content, settings, field, touch),
         SettingsFocus::ImageSearch(field) if settings.images_advanced_open => {
             let index = match field {

@@ -151,6 +151,12 @@ pub const PIXABAY_LICENSE_URL: &str = "https://pixabay.com/service/license-summa
 /// Licence of every Unsplash hit.
 pub const UNSPLASH_LICENSE: &str = "Unsplash License";
 pub const UNSPLASH_LICENSE_URL: &str = "https://unsplash.com/license";
+/// Licence of every Pexels hit: free to use and modify, attribution not
+/// required (the credit is stored anyway). It is a named licence, not CC0:
+/// it forbids selling unaltered copies, implying endorsement and use as part
+/// of a trade-mark, and identifiable people may not appear in a bad light.
+pub const PEXELS_LICENSE: &str = "Pexels License";
+pub const PEXELS_LICENSE_URL: &str = "https://www.pexels.com/license/";
 
 /// Policy for a hit of a provider that reports a NAMED licence instead of a
 /// Creative Commons one. Never guesses: a name the table does not know, or a
@@ -160,6 +166,7 @@ pub const UNSPLASH_LICENSE_URL: &str = "https://unsplash.com/license";
 /// |------------|------------------------------------------|-------------------|
 /// | `pixabay`  | `Pixabay Content License` (own URL only) | `Allow`           |
 /// | `unsplash` | `Unsplash License` (own URL only)        | `AllowWithCredit` |
+/// | `pexels`   | `Pexels License` (own URL only)          | `Allow`           |
 /// | `iconify`  | an SPDX id, see [`iconify_spdx_policy`]  | per SPDX table    |
 ///
 /// Any other provider falls through to [`license_policy_with`].
@@ -183,6 +190,12 @@ pub fn provider_license_policy(
             (UNSPLASH_LICENSE, UNSPLASH_LICENSE_URL),
             LicensePolicy::AllowWithCredit,
         ),
+        "pexels" => named_license_policy(
+            license_short,
+            license_url,
+            (PEXELS_LICENSE, PEXELS_LICENSE_URL),
+            LicensePolicy::Allow,
+        ),
         "iconify" => iconify_spdx_policy(license_id, allow_share_alike),
         _ => license_policy_with(license_short, license_url, allow_share_alike),
     }
@@ -197,7 +210,11 @@ fn named_license_policy(
     if !license_short.trim().eq_ignore_ascii_case(name) {
         return LicensePolicy::Refuse("licence not on the allow list");
     }
-    let url = license_url.trim().trim_end_matches('/');
+    // A referral query (`?utm_source=...`, which Unsplash asks credit links to
+    // carry) does not change which page the link names; scheme, host and path
+    // must still be the licence's own.
+    let url = license_url.trim();
+    let url = url.split('?').next().unwrap_or(url).trim_end_matches('/');
     if !url.is_empty() && !url.eq_ignore_ascii_case(own_url.trim_end_matches('/')) {
         return LicensePolicy::Refuse("licence URL does not match the named licence");
     }

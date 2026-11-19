@@ -525,6 +525,7 @@ pub(crate) fn apply_entry_hit(
         | AgentSettingsHit::OpenStockRegisterLink(_)
         | AgentSettingsHit::TestStockProvider(_)
         | AgentSettingsHit::ToggleUnsplash
+        | AgentSettingsHit::TogglePexels
         | AgentSettingsHit::OpenUnsplashTerms
         | AgentSettingsHit::ToggleAutoUpdate
         | AgentSettingsHit::ToggleAutosaveOnAgentRun

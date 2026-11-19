@@ -34,6 +34,8 @@ pub mod design_styles_search;
 mod design_intelligence_tests;
 #[cfg(test)]
 mod design_pack_a_tests;
+#[cfg(test)]
+mod design_vector_drawing_tests;
 pub mod design_systems;
 pub mod frontmatter;
 pub mod loader;
@@ -386,8 +388,12 @@ pub fn design_agent_system_prompt() -> &'static str {
 /// `get_screenshot`. Consumers that have no tools or parse a script / JSON
 /// reply (orchestrator sub-agents, the plain chat prompt, the builtin
 /// preamble) drop these by name.
-pub const TOOL_LOOP_ONLY_SKILLS: [&str; 3] =
-    ["design-craft", "design-brief", "design-wcag-quickcheck"];
+pub const TOOL_LOOP_ONLY_SKILLS: [&str; 4] = [
+    "design-craft",
+    "design-brief",
+    "design-wcag-quickcheck",
+    "design-vector-drawing",
+];
 
 /// Return the design-agent tool-loop system prompt with the prompt-matched
 /// product-depth skills appended.

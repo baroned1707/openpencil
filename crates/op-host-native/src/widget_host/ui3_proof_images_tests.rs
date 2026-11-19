@@ -1,6 +1,7 @@
 //! Proof scenes for the Settings > Images "Stock photo providers" block:
-//! the Pixabay and Unsplash key rows (masked), their hints and links, the
-//! Test statuses, and the opt-in Unsplash switch off and on.
+//! the Pixabay, Unsplash and Pexels key rows (masked), their hints and
+//! links, the Test statuses, and the opt-in Unsplash and Pexels switches off
+//! and on.
 //!
 //! Writes `.proof-of-work/97-images-<scene>-<theme>.png` when `OP_PROOF_DIR`
 //! is set. The block sits at the bottom of the tab, so the scenes scroll the
@@ -41,5 +42,13 @@ fn stock_provider_rows_proof() {
             settings.unsplash_test_status = ImageTestStatus::Invalid;
         }
         render_scene(&mut host, "97-images-stock-unsplash-on", (720, 450));
+
+        {
+            let settings = &mut host.editor_state_mut().editor_ui.agent_settings;
+            settings.pexels_api_key = "pe-demo-key-not-real".into();
+            settings.pexels_enabled = true;
+            settings.pexels_test_status = ImageTestStatus::Valid;
+        }
+        render_scene(&mut host, "97-images-stock-pexels-on", (720, 450));
     }
 }

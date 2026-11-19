@@ -1,7 +1,8 @@
-//! The "Stock photo providers" block of the Images tab: the Pixabay and
-//! Unsplash keys (masked like the Openverse client secret), a hint and a
-//! "Get a free key" link under each, a Test button per key, and the opt-in
-//! Unsplash switch with a link to the Unsplash API terms.
+//! The "Stock photo providers" block of the Images tab: the Pixabay,
+//! Unsplash and Pexels keys (masked like the Openverse client secret), a hint
+//! and a "Get a free key" link under each, a Test button per key, the opt-in
+//! Unsplash switch with a link to the Unsplash API terms, and the opt-in
+//! Pexels switch.
 //!
 //! One module owns the block's geometry, hit-testing and paint, so the three
 //! walk the same rects. The block sits last in the tab, below the Image
@@ -68,7 +69,7 @@ pub(super) fn block_height_for_ui(content: Rect, touch: bool) -> f32 {
     let density = ImagesDensity::new(content, touch);
     density.section_title_h()
         + key_row_h(touch) * StockProvider::ALL.len() as f32
-        + toggle_h(touch)
+        + toggle_h(touch) * 2.0
         + terms_h(touch)
 }
 
@@ -76,6 +77,7 @@ fn row_index(provider: StockProvider) -> usize {
     match provider {
         StockProvider::Pixabay => 0,
         StockProvider::Unsplash => 1,
+        StockProvider::Pexels => 2,
     }
 }
 
@@ -84,6 +86,7 @@ pub(super) fn search_field(provider: StockProvider) -> ImageSearchField {
     match provider {
         StockProvider::Pixabay => ImageSearchField::PixabayKey,
         StockProvider::Unsplash => ImageSearchField::UnsplashKey,
+        StockProvider::Pexels => ImageSearchField::PexelsKey,
     }
 }
 
@@ -91,6 +94,7 @@ pub(super) fn provider_of_field(field: ImageSearchField) -> Option<StockProvider
     match field {
         ImageSearchField::PixabayKey => Some(StockProvider::Pixabay),
         ImageSearchField::UnsplashKey => Some(StockProvider::Unsplash),
+        ImageSearchField::PexelsKey => Some(StockProvider::Pexels),
         ImageSearchField::ClientId | ImageSearchField::ClientSecret => None,
     }
 }
@@ -173,6 +177,7 @@ pub(super) fn key_row(
     }
 }
 
+/// The Unsplash opt-in switch (first row under the key rows).
 pub(super) fn toggle_row(content: Rect, settings: &AgentSettings, touch: bool) -> Rect {
     let density = ImagesDensity::new(content, touch);
     let top = block_top(content, settings, touch)
@@ -191,10 +196,22 @@ pub(super) fn terms_link(content: Rect, settings: &AgentSettings, touch: bool) -
     )
 }
 
+/// The Pexels opt-in switch, below the Unsplash terms link.
+pub(super) fn pexels_toggle_row(content: Rect, settings: &AgentSettings, touch: bool) -> Rect {
+    let link = terms_link(content, settings, touch);
+    Rect::xywh(
+        content.origin.x,
+        link.origin.y + link.size.y,
+        content.size.x,
+        toggle_h(touch),
+    )
+}
+
 fn status_of(settings: &AgentSettings, provider: StockProvider) -> ImageTestStatus {
     match provider {
         StockProvider::Pixabay => settings.pixabay_test_status,
         StockProvider::Unsplash => settings.unsplash_test_status,
+        StockProvider::Pexels => settings.pexels_test_status,
     }
 }
 
@@ -202,6 +219,7 @@ fn key_is_blank(settings: &AgentSettings, provider: StockProvider) -> bool {
     match provider {
         StockProvider::Pixabay => settings.pixabay_api_key.is_blank(),
         StockProvider::Unsplash => settings.unsplash_access_key.is_blank(),
+        StockProvider::Pexels => settings.pexels_api_key.is_blank(),
     }
 }
 
@@ -237,6 +255,9 @@ pub(super) fn hit_test(
     }
     if terms_link(content, settings, touch).contains(scrolled) {
         return Some(ImagesHit::OpenUnsplashTerms);
+    }
+    if pexels_toggle_row(content, settings, touch).contains(scrolled) {
+        return Some(ImagesHit::TogglePexels);
     }
     None
 }
@@ -302,6 +323,12 @@ pub(super) fn paint_stock(
             "settings.images.unsplashKeyPlaceholder",
             "settings.images.unsplashHint",
         ),
+        (
+            StockProvider::Pexels,
+            "settings.images.pexelsKey",
+            "settings.images.pexelsKeyPlaceholder",
+            "settings.images.pexelsHint",
+        ),
     ] {
         let row = key_row(content, settings, provider, touch);
         paint_search_input_row(
@@ -349,6 +376,22 @@ pub(super) fn paint_stock(
         terms_link(content, settings, touch),
         t_settings(ui, "settings.images.unsplashTerms"),
         touch,
+    );
+
+    let pexels_toggle = pexels_toggle_row(content, settings, touch);
+    paint_row_label(
+        cx,
+        theme,
+        pexels_toggle,
+        t_settings(ui, "settings.images.pexelsToggle"),
+        Some(t_settings(ui, "settings.images.pexelsToggleHint")),
+        SETTINGS_SWITCH_W + 16.0,
+    );
+    paint_settings_switch(
+        cx,
+        theme,
+        row_control_rect(pexels_toggle, SETTINGS_SWITCH_W, SETTINGS_SWITCH_H),
+        settings.pexels_enabled,
     );
 }
 

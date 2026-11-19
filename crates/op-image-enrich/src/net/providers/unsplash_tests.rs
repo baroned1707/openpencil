@@ -44,10 +44,13 @@ fn unsplash_hit_maps_credit_with_utm_links() {
     assert_eq!(hit.provider, "unsplash");
     assert_eq!(hit.creator.as_deref(), Some("Alex Rider"));
     assert_eq!(hit.license.as_deref(), Some("Unsplash License"));
+    // Every link back to Unsplash carries the referral query, the licence
+    // link included, and the licence still passes the named-licence policy.
     assert_eq!(
         hit.license_url.as_deref(),
-        Some("https://unsplash.com/license")
+        Some("https://unsplash.com/license?utm_source=openpencil&utm_medium=referral")
     );
+    assert_eq!(UTM_APP_NAME, "openpencil");
     assert_eq!(
         hit.source_page_url.as_deref(),
         Some("https://unsplash.com/photos/abc123?utm_source=openpencil&utm_medium=referral")

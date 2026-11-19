@@ -186,6 +186,7 @@ pub fn paint_search_popover(
                     ImageSearchSource::Wikimedia => "Wikimedia Commons",
                     ImageSearchSource::Pixabay => "Pixabay",
                     ImageSearchSource::Unsplash => "Unsplash",
+                    ImageSearchSource::Pexels => "Pexels",
                     ImageSearchSource::Iconify => "Iconify",
                 },
             );

@@ -32,6 +32,7 @@ Rules for maintainers:
 | Prompt skills `design-craft`, `design-brief` (adapted, condensed, modified): Anthropic frontend-design and write-spec | https://github.com/anthropics/skills and https://github.com/anthropics/knowledge-work-plugins | Apache-2.0 | sections "Anthropic skills (frontend-design) and knowledge-work-plugins (write-spec) (Apache-2.0)" and "Apache License 2.0 (full text)" |
 | Prompt skill `design-craft` (adapted, condensed, modified): Impeccable | https://github.com/pbakaus/impeccable, Copyright 2025 Paul Bakaus | Apache-2.0 | section "Impeccable (Apache-2.0)", with its NOTICE text |
 | Prompt skill `design-brief` (adapted, condensed, modified): designer-skills | https://github.com/Owl-Listener/designer-skills | MIT, Copyright (c) 2026 MC Dean | section "Owl-Listener designer-skills (MIT)" |
+| Prompt skill `design-vector-drawing` (adapted, condensed, modified): five MIT skill packs for drawing icons, logos and small illustrations | MengTo/Skills, tryopendata skills, jezweb claude-skills, kaankiziltug logo-design-skill, arlinamid draw-better-svg (see the section for URLs and copyright lines) | MIT | section "Vector drawing skills (MIT)" |
 | Icon glyphs (path data of the Lucide icon set, embedded in `iconify-catalog-core.json` and the first-party glyph table) | https://github.com/lucide-icons/lucide, packaged by `@iconify-json/lucide` | ISC | section "Lucide (ISC)" below |
 | Icon glyphs (path data of the Feather icon set, embedded in `iconify-catalog-core.json`) | https://github.com/feathericons/feather, packaged by `@iconify-json/feather` | MIT | section "Feather (MIT)" below |
 | Design data: OpenPencil seed | Written for OpenPencil from general design knowledge, no third-party dataset | MIT (this project) | none needed |
@@ -207,6 +208,63 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ```
 
+## Vector drawing skills (MIT)
+
+OpenPencil's prompt skill `design-vector-drawing` was adapted in part from the
+five MIT-licensed projects below. Only ideas and short rules were taken, all
+rewritten in OpenPencil's own words for its node-based tools. No file, sample
+logo, example image, script or long passage was copied. The logo sample library
+of kaankiziltug/logo-design-skill is trademarked brand material outside its MIT
+licence and is not used.
+
+- MengTo/Skills (https://github.com/MengTo/Skills), pinned commit `1a32b45a57f435f1564544e7267a71fc3b180a7a`
+  - Files used: `agent-skills/illustration/illustration-flat/references/craft.md`
+  - Copyright (c) 2026 Meng To
+- tryopendata skills (https://github.com/tryopendata/skills), pinned commit `f97583ecb7eeb8a0c2a193fe9b80e55806d29823`
+  - Files used: `plugins/opendesign/skills/svg-design/references/icon-design.md`
+  - Copyright (c) 2026 OpenData
+- jezweb claude-skills (https://github.com/jezweb/claude-skills), pinned commit `1260fa7439b36b18dbf16648ccc7fb44783f6c23`
+  - Files used: `plugins/design-assets/skills/icon-set-generator/SKILL.md`
+  - Copyright (c) 2025 Jeremy Dawes (Jezweb)
+- kaankiziltug/logo-design-skill (https://github.com/kaankiziltug/logo-design-skill), pinned commit `e9eaddc07895575253d6663320354a708f53e955` (MIT code only)
+  - Files used: `skills/logo-design/SKILL.md`, `skills/logo-design/references/svg-construction.md`
+  - Copyright (c) 2026 kaankiziltug
+- arlinamid/draw-better-svg (https://github.com/arlinamid/draw-better-svg), pinned commit `5e65ee36fb4ad431267defcac268b020d096d7f4`
+  - Files used: `plugins/draw-better-svg/skills/draw-better-svg/references/review-and-repair.md` (its `effects.md` and `motion.md` are not used)
+  - Copyright (c) 2026 Rózsavölgyi János
+
+Adapted and condensed by OpenPencil for a node-based editor; modified. The
+licence text shared by all five projects, verbatim (the copyright lines are the
+five above):
+
+```text
+MIT License
+
+Copyright (c) 2026 Meng To
+Copyright (c) 2026 OpenData
+Copyright (c) 2025 Jeremy Dawes (Jezweb)
+Copyright (c) 2026 kaankiziltug
+Copyright (c) 2026 Rózsavölgyi János
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+```
+
 ## Lucide (ISC)
 
 The `icon_font` glyphs drawn with `iconFontFamily` `lucide` (the icon picker and
@@ -298,6 +356,16 @@ Adapted and condensed by OpenPencil for a node-based editor; modified.
 - `ux-strategy/skills/information-architecture/SKILL.md` at Owl-Listener/designer-skills `9a6930cf84a822eb458624bd11c61aac5bbdf224` (MIT)
 - `prototyping-testing/skills/user-flow-diagram/SKILL.md` at Owl-Listener/designer-skills `9a6930cf84a822eb458624bd11c61aac5bbdf224` (MIT)
 - `product-management/skills/write-spec/SKILL.md` at anthropics/knowledge-work-plugins `e91a134584eb798bac7fb0379358006a2b63b965` (Apache-2.0)
+
+Adapted and condensed by OpenPencil for a node-based editor; modified.
+
+### design-vector-drawing
+
+- `agent-skills/illustration/illustration-flat/references/craft.md` at MengTo/Skills `1a32b45a57f435f1564544e7267a71fc3b180a7a` (MIT)
+- `plugins/opendesign/skills/svg-design/references/icon-design.md` at tryopendata/skills `f97583ecb7eeb8a0c2a193fe9b80e55806d29823` (MIT)
+- `plugins/design-assets/skills/icon-set-generator/SKILL.md` at jezweb/claude-skills `1260fa7439b36b18dbf16648ccc7fb44783f6c23` (MIT)
+- `skills/logo-design/references/svg-construction.md` at kaankiziltug/logo-design-skill `e9eaddc07895575253d6663320354a708f53e955` (MIT, code only; no sample logos)
+- `plugins/draw-better-svg/skills/draw-better-svg/references/review-and-repair.md` at arlinamid/draw-better-svg `5e65ee36fb4ad431267defcac268b020d096d7f4` (MIT)
 
 Adapted and condensed by OpenPencil for a node-based editor; modified.
 

@@ -396,6 +396,7 @@ async fn run_search(
             "openverse" => ImageSearchSource::Openverse,
             "pixabay" => ImageSearchSource::Pixabay,
             "unsplash" => ImageSearchSource::Unsplash,
+            "pexels" => ImageSearchSource::Pexels,
             "iconify" => ImageSearchSource::Iconify,
             _ => ImageSearchSource::Wikimedia,
         }),

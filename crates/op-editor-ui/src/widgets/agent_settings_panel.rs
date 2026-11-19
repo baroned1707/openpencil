@@ -317,6 +317,7 @@ pub enum AgentSettingsHit {
     OpenStockRegisterLink(op_editor_core::agent_settings::StockProvider),
     TestStockProvider(op_editor_core::agent_settings::StockProvider),
     ToggleUnsplash,
+    TogglePexels,
     OpenUnsplashTerms,
     AddGenConfig,
     ToggleGenConfigEditor(usize),

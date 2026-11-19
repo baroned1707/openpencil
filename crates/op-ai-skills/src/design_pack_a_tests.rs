@@ -168,5 +168,8 @@ fn pack_a_stays_inside_the_skill_budgets() {
     let wcag = estimate_tokens(&skill_text("design-wcag-quickcheck"));
     assert!(craft <= 1_300, "design-craft {craft}");
     assert!(brief <= 1_100, "design-brief {brief}");
-    assert!(craft + brief + wcag <= 2_400, "{}", craft + brief + wcag);
+    let vector = estimate_tokens(&skill_text("design-vector-drawing"));
+    assert!(vector <= 650, "design-vector-drawing {vector}");
+    let all_four = craft + brief + wcag + vector;
+    assert!(all_four <= 2_400, "{all_four}");
 }

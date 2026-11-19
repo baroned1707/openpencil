@@ -338,6 +338,7 @@ mod tests {
                 "design-craft",
                 "design-brief",
                 "design-wcag-quickcheck",
+                "design-vector-drawing",
             ]);
             let out = filter(input, tier, false, false);
             assert_eq!(names(&out), ["schema", "layout"], "{tier:?}");

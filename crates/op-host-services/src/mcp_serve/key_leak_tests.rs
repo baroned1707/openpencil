@@ -15,6 +15,7 @@ use super::*;
 
 const PIXABAY_SENTINEL: &str = "PIXABAY-SENTINEL-7f3a91c2";
 const UNSPLASH_SENTINEL: &str = "UNSPLASH-SENTINEL-b04d55e8";
+const PEXELS_SENTINEL: &str = "PEXELS-SENTINEL-5c1e9a07";
 
 fn state_with_keys() -> EditorState {
     let mut state = EditorState::new();
@@ -22,11 +23,13 @@ fn state_with_keys() -> EditorState {
     settings.pixabay_api_key = PIXABAY_SENTINEL.into();
     settings.unsplash_access_key = UNSPLASH_SENTINEL.into();
     settings.unsplash_enabled = true;
+    settings.pexels_api_key = PEXELS_SENTINEL.into();
+    settings.pexels_enabled = true;
     state
 }
 
 fn assert_clean(label: &str, text: &str) {
-    for sentinel in [PIXABAY_SENTINEL, UNSPLASH_SENTINEL] {
+    for sentinel in [PIXABAY_SENTINEL, UNSPLASH_SENTINEL, PEXELS_SENTINEL] {
         assert!(
             !text.contains(sentinel),
             "{label} leaked a provider key: {}",

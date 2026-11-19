@@ -132,7 +132,9 @@ fn credit_marker(credit: &ImageCredit) -> Option<&'static str> {
     );
     let policy = match credit.provider.as_str() {
         "iconify" => return None,
-        "pixabay" | "unsplash" => provider_license_policy(&credit.provider, short, url, "", true),
+        "pixabay" | "unsplash" | "pexels" => {
+            provider_license_policy(&credit.provider, short, url, "", true)
+        }
         _ => license_policy_with(short, url, true),
     };
     match policy {

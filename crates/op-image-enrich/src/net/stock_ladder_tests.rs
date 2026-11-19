@@ -21,6 +21,7 @@ const CART_SVG: &str = r#"<svg xmlns="http://www.w3.org/2000/svg" width="256" he
 struct Has {
     pixabay: bool,
     unsplash: bool,
+    pexels: bool,
     iconify: bool,
     openverse: bool,
     commons: bool,
@@ -31,6 +32,8 @@ fn route(target: &str) -> &'static str {
         "pixabay"
     } else if target.starts_with("/search/photos") {
         "unsplash"
+    } else if target.starts_with("/v1/search?") {
+        "pexels"
     } else if target.starts_with("/search?") {
         "iconify"
     } else if target.starts_with("/v1/images/") {
@@ -70,6 +73,20 @@ fn fake_host(has: Has) -> FakeHttp {
                             "html": "https://unsplash.com/photos/u1",
                             "download_location": format!("{base}/photos/u1/download"),
                         },
+                    })]
+                } else { Vec::new() }
+            })),
+            "pexels" => FakeResponse::json(serde_json::json!({
+                "photos": if has.pexels {
+                    vec![serde_json::json!({
+                        "id": 9001,
+                        "url": "https://www.pexels.com/photo/red-bicycle-9001/",
+                        "photographer": "Pia",
+                        "src": {
+                            "large": format!("{base}/thumb/9001.png"),
+                            "large2x": format!("{base}/thumb/9001.png"),
+                        },
+                        "alt": "a red bicycle on a street",
                     })]
                 } else { Vec::new() }
             })),
@@ -199,6 +216,7 @@ fn photo_ladder_prefers_pixabay_then_unsplash_then_openverse_then_wikimedia() {
         pixabay: ApiKey::new("pk"),
         unsplash: ApiKey::new("uk"),
         unsplash_enabled: true,
+        ..StockKeys::default()
     };
     assert_eq!(
         ids(&providers_for(ImageKind::Photo, &keys)),
@@ -388,6 +406,13 @@ fn per_provider_test_button_resolves_valid_and_invalid() {
         )),
         Valid
     );
+    assert_eq!(
+        run(ImageProvider::pexels_at(
+            &healthy.base_url,
+            ApiKey::new("xk")
+        )),
+        Valid
+    );
     assert_eq!(run(ImageProvider::iconify_at(&healthy.base_url)), Valid);
     // A host that refuses the key (Pixabay answers 400, Unsplash 401).
     let refusing = FakeHttp::start(|target, _| match route(target) {
@@ -403,6 +428,13 @@ fn per_provider_test_button_resolves_valid_and_invalid() {
     );
     assert_eq!(
         run(ImageProvider::unsplash_at(
+            &refusing.base_url,
+            ApiKey::new("bad")
+        )),
+        Invalid
+    );
+    assert_eq!(
+        run(ImageProvider::pexels_at(
             &refusing.base_url,
             ApiKey::new("bad")
         )),
@@ -457,4 +489,131 @@ fn judged_ladder_asks_pixabay_before_the_open_catalogues() {
     assert_eq!(credit.provider, "pixabay");
     assert_eq!(credit.creator.as_deref(), Some("Pat"));
     assert!(resolved.src.starts_with("data:image/"));
+}
+
+/// Invariant: Pexels runs only with a key AND its switch, and sits between
+/// Unsplash and Openverse. Off (the default), keyless or whitespace-only it is
+/// absent, and it never joins the Vector ladder.
+#[test]
+fn pexels_needs_key_and_optin_and_sits_between_unsplash_and_openverse() {
+    let matrix = [
+        // (key, enabled, runs)
+        ("xk", true, true),
+        ("xk", false, false),
+        ("", true, false),
+        ("  ", true, false),
+        ("", false, false),
+    ];
+    for (key, enabled, runs) in matrix {
+        let keys = StockKeys {
+            pexels: ApiKey::new(key),
+            pexels_enabled: enabled,
+            ..StockKeys::default()
+        };
+        let listed = ids(&providers_for(ImageKind::Photo, &keys));
+        assert_eq!(listed.contains(&"pexels"), runs, "key={key:?} on={enabled}");
+        assert!(!ids(&providers_for(ImageKind::Vector, &keys)).contains(&"pexels"));
+        if !runs {
+            assert_eq!(listed, ["openverse", "wikimedia"]);
+        }
+    }
+    let everything = StockKeys {
+        pixabay: ApiKey::new("pk"),
+        unsplash: ApiKey::new("uk"),
+        unsplash_enabled: true,
+        pexels: ApiKey::new("xk"),
+        pexels_enabled: true,
+    };
+    assert_eq!(
+        ids(&providers_for(ImageKind::Photo, &everything)),
+        ["pixabay", "unsplash", "pexels", "openverse", "wikimedia"]
+    );
+    // A key with the switch off is skipped without disturbing the others.
+    let off = StockKeys {
+        pexels_enabled: false,
+        ..everything.clone()
+    };
+    assert_eq!(
+        ids(&providers_for(ImageKind::Photo, &off)),
+        ["pixabay", "unsplash", "openverse", "wikimedia"]
+    );
+    assert!(ImageProvider::pexels(ApiKey::new("xk")).needs_key());
+    assert!(!StockKeys::default().pexels_enabled);
+}
+
+fn pexels_walk() -> impl Fn(&FakeHttp) -> Vec<ImageProvider> {
+    |server| {
+        vec![
+            ImageProvider::pixabay_at(&server.base_url, ApiKey::new("pk")),
+            ImageProvider::unsplash_at(&server.base_url, ApiKey::new("uk")),
+            ImageProvider::pexels_at(&server.base_url, ApiKey::new("xk")),
+            ImageProvider::openverse_at(&server.base_url),
+            ImageProvider::wikimedia_at(&server.base_url),
+        ]
+    }
+}
+
+#[test]
+fn pexels_answers_after_pixabay_and_unsplash_and_before_openverse() {
+    let providers_of = pexels_walk();
+    let client = test_client();
+    let resolve_over = |server: &FakeHttp| {
+        crate::net::block_on_image_runtime(resolve_thumbnail_over_kind(
+            &client,
+            &providers_of(server),
+            ImageKind::Photo,
+            QUERY,
+            "",
+            None,
+            None,
+            &Mutex::new(HashSet::new()),
+        ))
+    };
+    let cases = [
+        (
+            Has {
+                pexels: true,
+                openverse: true,
+                commons: true,
+                ..Has::default()
+            },
+            "pexels",
+            vec!["pixabay", "unsplash", "pexels"],
+        ),
+        (
+            Has {
+                unsplash: true,
+                pexels: true,
+                ..Has::default()
+            },
+            "unsplash",
+            vec!["pixabay", "unsplash"],
+        ),
+        (
+            Has {
+                openverse: true,
+                commons: true,
+                ..Has::default()
+            },
+            "openverse",
+            vec!["pixabay", "unsplash", "pexels", "openverse"],
+        ),
+    ];
+    for (has, expected_provider, expected_walk) in cases {
+        let server = fake_host(has);
+        let resolved = resolve_over(&server).expect("a provider answers");
+        assert_eq!(resolved.provider, expected_provider);
+        assert_eq!(walked(&server), expected_walk, "{expected_provider}");
+        let credit = resolved.provenance.expect("every hit carries a credit");
+        assert_eq!(credit.provider, expected_provider);
+        if expected_provider == "pexels" {
+            assert_eq!(credit.creator.as_deref(), Some("Pia"));
+            assert_eq!(credit.license.as_deref(), Some("Pexels License"));
+            assert_eq!(
+                credit.source_page_url.as_deref(),
+                Some("https://www.pexels.com/photo/red-bicycle-9001/")
+            );
+            assert!(resolved.download_ping.is_none());
+        }
+    }
 }

@@ -199,6 +199,11 @@ fn commit_image_search(
             ui.agent_settings.unsplash_test_status = ImageTestStatus::Idle;
             return;
         }
+        ImageSearchField::PexelsKey => {
+            ui.agent_settings.pexels_api_key = trimmed.into();
+            ui.agent_settings.pexels_test_status = ImageTestStatus::Idle;
+            return;
+        }
     }
     if scope.takes_over_browser_entries() {
         ui.agent_settings.openverse_credential_owner = None;

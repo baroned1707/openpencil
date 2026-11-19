@@ -15,6 +15,7 @@ use crate::{ImageAspectRatio, ImageKind};
 use super::catalog::{parse_openverse_results, parse_wikimedia_results, RawHit};
 use super::iconify::{self, parse_iconify_results};
 use super::license::{retain_usable_license, ALLOW_SHARE_ALIKE_DEFAULT};
+use super::pexels::{self, parse_pexels_results};
 use super::pixabay::{self, parse_pixabay_results};
 use super::unsplash::{self, parse_unsplash_results};
 use super::{openverse, wikimedia, WebOpenverseCredentials, SEARCH_CANDIDATE_COUNT};
@@ -23,6 +24,7 @@ pub(crate) const OPENVERSE_BASE_URL: &str = "https://api.openverse.org";
 pub(crate) const WIKIMEDIA_BASE_URL: &str = "https://commons.wikimedia.org";
 pub(crate) const PIXABAY_BASE_URL: &str = "https://pixabay.com";
 pub(crate) const UNSPLASH_BASE_URL: &str = "https://api.unsplash.com";
+pub(crate) const PEXELS_BASE_URL: &str = "https://api.pexels.com";
 pub(crate) const ICONIFY_BASE_URL: &str = "https://api.iconify.design";
 
 /// What a provider is, for UI copy and policy decisions.
@@ -94,6 +96,11 @@ pub enum ImageProvider {
         base_url: String,
         key: ApiKey,
     },
+    /// Needs the user's own key AND the Settings opt-in.
+    Pexels {
+        base_url: String,
+        key: ApiKey,
+    },
     /// Icons, keyless; licence per collection.
     Iconify {
         base_url: String,
@@ -107,6 +114,9 @@ pub struct StockKeys {
     pub unsplash: ApiKey,
     /// Unsplash runs only with a key AND this switch.
     pub unsplash_enabled: bool,
+    pub pexels: ApiKey,
+    /// Pexels runs only with a key AND this switch.
+    pub pexels_enabled: bool,
 }
 
 impl StockKeys {
@@ -115,14 +125,16 @@ impl StockKeys {
             pixabay: settings.pixabay_api_key.clone(),
             unsplash: settings.unsplash_access_key.clone(),
             unsplash_enabled: settings.unsplash_enabled,
+            pexels: settings.pexels_api_key.clone(),
+            pexels_enabled: settings.pexels_enabled,
         }
     }
 }
 
 /// The ladder for one kind of slot.
 ///
-/// Photo: Pixabay (key set) -> Unsplash (key set AND opted in) -> Openverse
-/// -> Wikimedia. Vector: Iconify -> Openverse (SVG only) -> Commons (SVG
+/// Photo: Pixabay (key set) -> Unsplash (key set AND opted in) -> Pexels (key
+/// set AND opted in) -> Openverse -> Wikimedia. Vector: Iconify -> Openverse (SVG only) -> Commons (SVG
 /// only). A provider whose key is missing is simply absent, so with no keys
 /// the photo ladder is exactly [`default_providers`].
 pub fn providers_for(kind: ImageKind, keys: &StockKeys) -> Vec<ImageProvider> {
@@ -134,6 +146,9 @@ pub fn providers_for(kind: ImageKind, keys: &StockKeys) -> Vec<ImageProvider> {
             }
             if keys.unsplash_enabled && !keys.unsplash.is_blank() {
                 providers.push(ImageProvider::unsplash(keys.unsplash.clone()));
+            }
+            if keys.pexels_enabled && !keys.pexels.is_blank() {
+                providers.push(ImageProvider::pexels(keys.pexels.clone()));
             }
         }
         ImageKind::Vector => providers.push(ImageProvider::iconify()),
@@ -179,6 +194,10 @@ impl ImageProvider {
         Self::unsplash_at(UNSPLASH_BASE_URL, key)
     }
 
+    pub fn pexels(key: ApiKey) -> Self {
+        Self::pexels_at(PEXELS_BASE_URL, key)
+    }
+
     pub fn iconify() -> Self {
         Self::iconify_at(ICONIFY_BASE_URL)
     }
@@ -210,6 +229,13 @@ impl ImageProvider {
         }
     }
 
+    pub fn pexels_at(base_url: &str, key: ApiKey) -> Self {
+        Self::Pexels {
+            base_url: base_url.trim_end_matches('/').to_string(),
+            key,
+        }
+    }
+
     pub fn iconify_at(base_url: &str) -> Self {
         Self::Iconify {
             base_url: base_url.trim_end_matches('/').to_string(),
@@ -224,6 +250,7 @@ impl ImageProvider {
             Self::Wikimedia { .. } => "wikimedia",
             Self::Pixabay { .. } => "pixabay",
             Self::Unsplash { .. } => "unsplash",
+            Self::Pexels { .. } => "pexels",
             Self::Iconify { .. } => "iconify",
         }
     }
@@ -233,7 +260,9 @@ impl ImageProvider {
             Self::Openverse { .. } | Self::Wikimedia { .. } | Self::Iconify { .. } => {
                 ProviderKind::OpenCatalogue
             }
-            Self::Pixabay { .. } | Self::Unsplash { .. } => ProviderKind::Stock,
+            Self::Pixabay { .. } | Self::Unsplash { .. } | Self::Pexels { .. } => {
+                ProviderKind::Stock
+            }
         }
     }
 
@@ -243,7 +272,7 @@ impl ImageProvider {
     pub fn needs_key(&self) -> bool {
         match self {
             Self::Openverse { .. } | Self::Wikimedia { .. } | Self::Iconify { .. } => false,
-            Self::Pixabay { .. } | Self::Unsplash { .. } => true,
+            Self::Pixabay { .. } | Self::Unsplash { .. } | Self::Pexels { .. } => true,
         }
     }
 
@@ -258,7 +287,10 @@ impl ImageProvider {
     pub(crate) fn supports_aspect(&self) -> bool {
         matches!(
             self,
-            Self::Openverse { .. } | Self::Pixabay { .. } | Self::Unsplash { .. }
+            Self::Openverse { .. }
+                | Self::Pixabay { .. }
+                | Self::Unsplash { .. }
+                | Self::Pexels { .. }
         )
     }
 
@@ -270,6 +302,7 @@ impl ImageProvider {
             Self::Openverse { .. } => Some("openverse-retry"),
             Self::Pixabay { .. } => Some("pixabay-retry"),
             Self::Unsplash { .. } => Some("unsplash-retry"),
+            Self::Pexels { .. } => Some("pexels-retry"),
             Self::Wikimedia { .. } | Self::Iconify { .. } => None,
         }
     }
@@ -313,6 +346,7 @@ impl ImageProvider {
             ),
             Self::Pixabay { base_url, key } => pixabay::probe(probe.client, base_url, key).await,
             Self::Unsplash { base_url, key } => unsplash::probe(probe.client, base_url, key).await,
+            Self::Pexels { base_url, key } => pexels::probe(probe.client, base_url, key).await,
             Self::Iconify { base_url } => iconify::probe(probe.client, base_url).await,
         };
         if reachable {
@@ -388,6 +422,20 @@ impl ImageProvider {
                 )
                 .await?;
                 parse_unsplash_results(&json, base_url)
+            }
+            Self::Pexels { base_url, key } => {
+                let json = pexels::fetch_list_json(
+                    ctx.client,
+                    &pexels::runtime(base_url),
+                    base_url,
+                    key,
+                    query,
+                    aspect,
+                    ctx.page_size,
+                    now,
+                )
+                .await?;
+                parse_pexels_results(&json)
             }
             Self::Iconify { base_url } => {
                 let json =

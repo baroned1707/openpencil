@@ -5,13 +5,14 @@
 //! may be used, so it only runs with the user's own access key AND an
 //! explicit switch. Rules followed here (Unsplash API guidelines): the
 //! `Authorization: Client-ID <key>` header carries the key (never the URL),
-//! a demo key is limited to 50 requests per hour, credit links carry
-//! `utm_source=openpencil&utm_medium=referral`, and when a photo is actually
+//! a demo key is limited to 50 requests per hour, credit links (photo page
+//! and licence) carry `utm_source=openpencil&utm_medium=referral`
+//! ([`UTM_APP_NAME`]), and when a photo is actually
 //! USED the photo's `download_location` is requested once
 //! ([`send_download_ping`], fired by the apply seam, never by a listing).
-//! Embedding the downloaded bytes instead of hot-linking `urls.*` is a
-//! deliberate product choice that Unsplash's guidelines may not allow; see
-//! the report.
+//! Known gaps against the guidelines: the downloaded bytes are embedded in
+//! the document instead of hot-linking `urls.*`, and the photographer's
+//! profile link is not stored (`ImageCredit` has no field for it).
 
 use std::time::{Duration, Instant};
 
@@ -28,7 +29,9 @@ use crate::ImageAspectRatio;
 pub(crate) const REQUESTS_PER_WINDOW: usize = 50;
 pub(crate) const WINDOW: Duration = Duration::from_secs(60 * 60);
 const MAX_PER_PAGE: usize = 30;
-const UTM: &str = "utm_source=openpencil&utm_medium=referral";
+/// The `utm_source` Unsplash asks every link back to Unsplash to carry
+/// (`?utm_source=your_app_name&utm_medium=referral`).
+pub(crate) const UTM_APP_NAME: &str = "openpencil";
 const ACCEPT_VERSION: &str = "v1";
 
 pub(crate) fn runtime(base_url: &str) -> std::sync::Arc<StockRuntime> {
@@ -186,7 +189,7 @@ pub async fn send_download_ping(
 /// `url` with the referral parameters Unsplash asks credit links to carry.
 fn with_utm(url: &str) -> String {
     let separator = if url.contains('?') { '&' } else { '?' };
-    format!("{url}{separator}{UTM}")
+    format!("{url}{separator}utm_source={UTM_APP_NAME}&utm_medium=referral")
 }
 
 /// Same scheme, host and port as `base_url`: the download ping carries the
@@ -253,7 +256,7 @@ fn unsplash_hit(photo: &serde_json::Value, base_url: &str) -> Option<RawHit> {
         provider: "unsplash",
         creator,
         license: Some(UNSPLASH_LICENSE.to_string()),
-        license_url: Some(UNSPLASH_LICENSE_URL.to_string()),
+        license_url: Some(with_utm(UNSPLASH_LICENSE_URL)),
         source_page_url: page,
         download_ping: ping,
         ..RawHit::default()

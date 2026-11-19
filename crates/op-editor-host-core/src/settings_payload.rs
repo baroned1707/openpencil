@@ -126,7 +126,7 @@ pub struct OpenverseOAuthPayload {
     pub client_secret: String,
 }
 
-/// Stock-provider keys and the Unsplash opt-in. A struct of its own so the
+/// Stock-provider keys and the Unsplash / Pexels opt-ins. A struct of its own so the
 /// derived `Debug` of the whole settings payload prints no key (`ApiKey` is
 /// redacted); the file itself holds the plain strings (0600).
 #[derive(Debug, Serialize, Deserialize, Clone, Default, PartialEq, Eq)]
@@ -137,6 +137,10 @@ pub struct StockProvidersPayload {
     pub unsplash_access_key: ApiKey,
     #[serde(default)]
     pub unsplash_enabled: bool,
+    #[serde(default)]
+    pub pexels_api_key: ApiKey,
+    #[serde(default)]
+    pub pexels_enabled: bool,
 }
 
 /// `None` while nothing is configured, so a settings file of a user who never
@@ -148,6 +152,8 @@ pub fn stock_providers_to_payload(
         pixabay_api_key: settings.pixabay_api_key.trimmed().unwrap_or("").into(),
         unsplash_access_key: settings.unsplash_access_key.trimmed().unwrap_or("").into(),
         unsplash_enabled: settings.unsplash_enabled,
+        pexels_api_key: settings.pexels_api_key.trimmed().unwrap_or("").into(),
+        pexels_enabled: settings.pexels_enabled,
     };
     (payload != StockProvidersPayload::default()).then_some(payload)
 }
@@ -160,6 +166,8 @@ pub fn apply_stock_providers_payload(
     settings.pixabay_api_key = payload.pixabay_api_key;
     settings.unsplash_access_key = payload.unsplash_access_key;
     settings.unsplash_enabled = payload.unsplash_enabled;
+    settings.pexels_api_key = payload.pexels_api_key;
+    settings.pexels_enabled = payload.pexels_enabled;
 }
 
 pub fn builtin_agent_to_payload(agent: &BuiltinAgentConfig) -> BuiltinAgentPayload {

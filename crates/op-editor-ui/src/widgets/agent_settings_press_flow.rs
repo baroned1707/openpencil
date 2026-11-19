@@ -18,7 +18,7 @@
 
 use op_editor_core::agent_settings::{
     ImageSearchField, ImageTestStatus, SettingsFocus, StockProvider, OPENVERSE_AUTH_DOCS_URL,
-    PIXABAY_DOCS_URL, UNSPLASH_DOCS_URL, UNSPLASH_TERMS_URL,
+    PEXELS_DOCS_URL, PIXABAY_DOCS_URL, UNSPLASH_DOCS_URL, UNSPLASH_TERMS_URL,
 };
 use op_editor_core::host_settings_commit::{commit_settings_focus, SettingsCommitScope};
 use op_editor_core::{AccountState, AgentSettingsTab, ButtonPressTarget, EditorState};
@@ -222,6 +222,12 @@ pub fn apply_agent_settings_hit(
                     .unsplash_access_key
                     .expose()
                     .to_string(),
+                ImageSearchField::PexelsKey => state
+                    .editor_ui
+                    .agent_settings
+                    .pexels_api_key
+                    .expose()
+                    .to_string(),
             };
             focus_with_text(state, SettingsFocus::ImageSearch(field), text, now_ms);
             SettingsPressOutcome::handled()
@@ -235,6 +241,7 @@ pub fn apply_agent_settings_hit(
             SettingsPressOutcome::effect(SettingsPress::OpenUrl(match provider {
                 StockProvider::Pixabay => PIXABAY_DOCS_URL,
                 StockProvider::Unsplash => UNSPLASH_DOCS_URL,
+                StockProvider::Pexels => PEXELS_DOCS_URL,
             }))
         }
         AgentSettingsHit::OpenUnsplashTerms => {
@@ -246,12 +253,18 @@ pub fn apply_agent_settings_hit(
             state.editor_ui.agent_settings.unsplash_enabled ^= true;
             SettingsPressOutcome::handled()
         }
+        AgentSettingsHit::TogglePexels => {
+            commit(state);
+            state.editor_ui.agent_settings.pexels_enabled ^= true;
+            SettingsPressOutcome::handled()
+        }
         AgentSettingsHit::TestStockProvider(provider) => {
             commit(state);
             let settings = &mut state.editor_ui.agent_settings;
             let has_key = match provider {
                 StockProvider::Pixabay => !settings.pixabay_api_key.is_blank(),
                 StockProvider::Unsplash => !settings.unsplash_access_key.is_blank(),
+                StockProvider::Pexels => !settings.pexels_api_key.is_blank(),
             };
             let status = if has_key {
                 // The host resolves Testing into Valid / Invalid with one
@@ -264,6 +277,7 @@ pub fn apply_agent_settings_hit(
             match provider {
                 StockProvider::Pixabay => settings.pixabay_test_status = status,
                 StockProvider::Unsplash => settings.unsplash_test_status = status,
+                StockProvider::Pexels => settings.pexels_test_status = status,
             }
             SettingsPressOutcome::handled()
         }

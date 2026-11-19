@@ -24,6 +24,7 @@ pub mod license;
 mod openverse;
 mod original_download;
 pub(crate) mod pacing;
+mod pexels;
 mod pixabay;
 mod provider;
 mod relevance;

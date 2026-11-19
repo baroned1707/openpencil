@@ -2,7 +2,8 @@
 
 use super::*;
 use crate::license_policy::{
-    PIXABAY_LICENSE, PIXABAY_LICENSE_URL, UNSPLASH_LICENSE, UNSPLASH_LICENSE_URL,
+    PEXELS_LICENSE, PEXELS_LICENSE_URL, PIXABAY_LICENSE, PIXABAY_LICENSE_URL, UNSPLASH_LICENSE,
+    UNSPLASH_LICENSE_URL,
 };
 
 fn refused(policy: &LicensePolicy) -> bool {
@@ -84,6 +85,97 @@ fn license_policy_knows_named_provider_licenses() {
         provider_license_policy("openverse", "CC BY 4.0", "", "", false),
         LicensePolicy::AllowWithCredit
     );
+}
+
+/// Invariant: a referral query on the licence link (Unsplash asks for
+/// `utm_*` on every link back to it) does not change the verdict, but the
+/// scheme, host and path must still be the licence's own page.
+#[test]
+fn named_license_url_tolerates_only_a_referral_query() {
+    let utm = "?utm_source=openpencil&utm_medium=referral";
+    for url in [
+        UNSPLASH_LICENSE_URL.to_string(),
+        format!("{UNSPLASH_LICENSE_URL}{utm}"),
+        format!("{UNSPLASH_LICENSE_URL}/{utm}"),
+    ] {
+        assert_eq!(
+            provider_license_policy("unsplash", UNSPLASH_LICENSE, &url, "", false),
+            LicensePolicy::AllowWithCredit,
+            "{url}"
+        );
+    }
+    for url in [
+        format!("https://evil.example/license{utm}"),
+        format!("https://unsplash.com.evil.example/license{utm}"),
+        format!("https://unsplash.com/other{utm}"),
+        format!("http://unsplash.com/license{utm}"),
+    ] {
+        assert!(
+            refused(&provider_license_policy(
+                "unsplash",
+                UNSPLASH_LICENSE,
+                &url,
+                "",
+                false
+            )),
+            "{url} must be refused"
+        );
+    }
+    // Pixabay keeps its own table: its URL with or without a query is fine,
+    // another host is still refused.
+    assert_eq!(
+        provider_license_policy(
+            "pixabay",
+            PIXABAY_LICENSE,
+            &format!("{PIXABAY_LICENSE_URL}{utm}"),
+            "",
+            false
+        ),
+        LicensePolicy::Allow
+    );
+    assert!(refused(&provider_license_policy(
+        "pixabay",
+        PIXABAY_LICENSE,
+        &format!("https://evil.example/service/license-summary/{utm}"),
+        "",
+        false
+    )));
+}
+
+/// Invariant: Pexels is a NAMED licence (usable, no credit required), never
+/// read as CC0 and never accepted for another provider's hits.
+#[test]
+fn pexels_license_is_a_named_licence_not_cc0() {
+    assert_eq!(
+        provider_license_policy("pexels", PEXELS_LICENSE, PEXELS_LICENSE_URL, "", false),
+        LicensePolicy::Allow
+    );
+    assert_eq!(
+        provider_license_policy("pexels", "pexels license", "", "", false),
+        LicensePolicy::Allow
+    );
+    for (short, url) in [
+        ("CC0", PEXELS_LICENSE_URL),
+        ("Public Domain", PEXELS_LICENSE_URL),
+        (PEXELS_LICENSE, "https://evil.example/license/"),
+        (PIXABAY_LICENSE, PEXELS_LICENSE_URL),
+        ("", ""),
+    ] {
+        assert!(
+            refused(&provider_license_policy("pexels", short, url, "", false)),
+            "{short:?} {url:?} must be refused"
+        );
+    }
+    // Not a Creative Commons licence: the CC path refuses it, as does any
+    // other provider.
+    assert!(refused(&license_policy(PEXELS_LICENSE, PEXELS_LICENSE_URL)));
+    assert!(refused(&provider_license_policy(
+        "openverse",
+        PEXELS_LICENSE,
+        PEXELS_LICENSE_URL,
+        "",
+        false
+    )));
 }
 
 #[test]

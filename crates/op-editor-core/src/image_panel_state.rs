@@ -20,6 +20,7 @@ pub enum ImageSearchSource {
     Wikimedia,
     Pixabay,
     Unsplash,
+    Pexels,
     Iconify,
 }
 

@@ -416,5 +416,7 @@ pub const OPENVERSE_AUTH_DOCS_URL: &str = "https://api.openverse.org/v1/#tag/aut
 pub const PIXABAY_DOCS_URL: &str = "https://pixabay.com/api/docs/";
 /// Where a user gets an Unsplash access key.
 pub const UNSPLASH_DOCS_URL: &str = "https://unsplash.com/developers";
+/// Where a user gets a free Pexels API key.
+pub const PEXELS_DOCS_URL: &str = "https://www.pexels.com/api/";
 /// The Unsplash API terms a user should read before enabling Unsplash.
 pub const UNSPLASH_TERMS_URL: &str = "https://unsplash.com/api-terms";

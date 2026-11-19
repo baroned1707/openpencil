@@ -1,5 +1,5 @@
-//! Invariants of the three design-intelligence skills (`design-craft`,
-//! `design-brief`, `design-wcag-quickcheck`): they reach the in-app loop
+//! Invariants of the four design-intelligence skills (`design-craft`,
+//! `design-brief`, `design-wcag-quickcheck`, `design-vector-drawing`): they reach the in-app loop
 //! without displacing the domain skills that were already there, stay small,
 //! and carry valid frontmatter and no platform-guideline material.
 
@@ -11,9 +11,14 @@ use crate::{
     ResolveOptions, SkillCategory,
 };
 
-const NEW_SKILLS: [&str; 3] = ["design-craft", "design-brief", "design-wcag-quickcheck"];
+const NEW_SKILLS: [&str; 4] = [
+    "design-craft",
+    "design-brief",
+    "design-wcag-quickcheck",
+    "design-vector-drawing",
+];
 
-/// Growth the three skills may add to a loop prompt (tokens, chars / 4).
+/// Growth the four skills may add to a loop prompt (tokens, chars / 4).
 const MAX_LOOP_GROWTH_TOKENS: u32 = 2_400;
 
 /// (prompt, domain skill that must keep loading, a heading of that skill).
@@ -185,12 +190,12 @@ fn design_brief_mentions_kind_style() {
 
 #[test]
 fn loop_prompt_growth_is_within_budget() {
-    // Static bound: all three skills together, were every one to load.
-    let all_three: u32 = NEW_SKILLS
+    // Static bound: all four skills together, were every one to load.
+    let all_four: u32 = NEW_SKILLS
         .iter()
         .map(|name| estimate_tokens(&skill_text(name)))
         .sum();
-    assert!(all_three <= MAX_LOOP_GROWTH_TOKENS, "{all_three} tokens");
+    assert!(all_four <= MAX_LOOP_GROWTH_TOKENS, "{all_four} tokens");
     // Per prompt: render, remove the new skills' text, compare.
     for (prompt, _, _) in LOOP_CASES {
         let with = design_agent_system_prompt_with_skills(prompt);
@@ -276,7 +281,7 @@ fn skill_frontmatter_is_valid() {
         .iter()
         .map(|name| get_skill_by_name(name).expect("registered").meta.budget)
         .collect();
-    assert_eq!(budgets, [1300, 1100, 500]);
+    assert_eq!(budgets, [1300, 1100, 500, 650]);
 }
 
 #[test]

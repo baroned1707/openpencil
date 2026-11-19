@@ -99,10 +99,12 @@ fn stock_provider(settings: &AgentSettings, which: StockProvider) -> Option<Imag
     let key = match which {
         StockProvider::Pixabay => &settings.pixabay_api_key,
         StockProvider::Unsplash => &settings.unsplash_access_key,
+        StockProvider::Pexels => &settings.pexels_api_key,
     };
     (!key.is_blank()).then(|| match which {
         StockProvider::Pixabay => ImageProvider::pixabay(key.clone()),
         StockProvider::Unsplash => ImageProvider::unsplash(key.clone()),
+        StockProvider::Pexels => ImageProvider::pexels(key.clone()),
     })
 }
 
@@ -116,6 +118,7 @@ fn land_stock_status(
     let slot = match which {
         StockProvider::Pixabay => &mut settings.pixabay_test_status,
         StockProvider::Unsplash => &mut settings.unsplash_test_status,
+        StockProvider::Pexels => &mut settings.pexels_test_status,
     };
     if *slot == ImageTestStatus::Testing {
         *slot = status;
@@ -234,6 +237,13 @@ mod tests {
         ));
         assert_eq!(settings.pixabay_test_status, ImageTestStatus::Valid);
         assert_eq!(settings.unsplash_test_status, ImageTestStatus::Idle);
+        // Pexels has its own button too.
+        assert!(!land_stock_status(
+            &mut settings,
+            StockProvider::Pexels,
+            ImageTestStatus::Valid
+        ));
+        assert_eq!(settings.pexels_test_status, ImageTestStatus::Idle);
     }
 
     #[test]
@@ -245,6 +255,14 @@ mod tests {
         let provider = stock_provider(&settings, StockProvider::Pixabay).unwrap();
         assert_eq!(provider.id(), "pixabay");
         assert!(stock_provider(&settings, StockProvider::Unsplash).is_none());
+        assert!(stock_provider(&settings, StockProvider::Pexels).is_none());
+        settings.pexels_api_key = "xk".into();
+        assert_eq!(
+            stock_provider(&settings, StockProvider::Pexels)
+                .unwrap()
+                .id(),
+            "pexels"
+        );
     }
 
     #[test]

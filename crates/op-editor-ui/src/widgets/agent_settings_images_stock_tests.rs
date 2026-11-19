@@ -1,4 +1,4 @@
-//! The Pixabay / Unsplash rows of the Images tab: hit regions, geometry
+//! The Pixabay / Unsplash / Pexels rows of the Images tab: hit regions, geometry
 //! against the rest of the tab, painted text (the key is masked) and the
 //! press flow.
 
@@ -12,7 +12,7 @@ use crate::widgets::PaintCx;
 use crate::{Color, Point2D, Rect, RenderBackend, TextLayout};
 use op_editor_core::agent_settings::{
     AgentSettings, ImageGenField, ImageSearchField, ImageTestStatus, SettingsFocus, StockProvider,
-    PIXABAY_DOCS_URL, UNSPLASH_DOCS_URL, UNSPLASH_TERMS_URL,
+    PEXELS_DOCS_URL, PIXABAY_DOCS_URL, UNSPLASH_DOCS_URL, UNSPLASH_TERMS_URL,
 };
 use op_editor_core::host_settings_commit::SettingsCommitScope;
 use op_editor_core::EditorState;
@@ -101,6 +101,13 @@ fn settings_images_rows_hit_test_and_paint() {
         assert!(seen(ImagesHit::FocusSearchField(
             ImageSearchField::UnsplashKey
         )));
+        assert!(seen(ImagesHit::FocusSearchField(
+            ImageSearchField::PexelsKey
+        )));
+        assert!(seen(ImagesHit::OpenStockRegisterLink(
+            StockProvider::Pexels
+        )));
+        assert!(seen(ImagesHit::TogglePexels));
         assert!(seen(ImagesHit::OpenStockRegisterLink(
             StockProvider::Pixabay
         )));
@@ -112,6 +119,7 @@ fn settings_images_rows_hit_test_and_paint() {
         assert!(seen(ImagesHit::OpenUnsplashTerms));
         // The Unsplash key is blank: its Test button is inert (no hit).
         assert!(!seen(ImagesHit::TestStockProvider(StockProvider::Unsplash)));
+        assert!(!seen(ImagesHit::TestStockProvider(StockProvider::Pexels)));
 
         // The sweep passes the controls in reading order, after the
         // generation list, and never lands a stock hit inside the profile.
@@ -145,8 +153,11 @@ fn settings_images_rows_hit_test_and_paint() {
             ImagesHit::OpenStockRegisterLink(StockProvider::Pixabay),
             ImagesHit::FocusSearchField(ImageSearchField::UnsplashKey),
             ImagesHit::OpenStockRegisterLink(StockProvider::Unsplash),
+            ImagesHit::FocusSearchField(ImageSearchField::PexelsKey),
+            ImagesHit::OpenStockRegisterLink(StockProvider::Pexels),
             ImagesHit::ToggleUnsplash,
             ImagesHit::OpenUnsplashTerms,
+            ImagesHit::TogglePexels,
         ];
         let positions: Vec<usize> = order
             .iter()
@@ -184,12 +195,15 @@ fn settings_images_rows_hit_test_and_paint() {
         "Stock photo providers",
         "Pixabay key",
         "Unsplash key",
+        "Pexels key",
         "Use Unsplash",
+        "Use Pexels",
+        "Only the search keywords are sent to Pexels",
         "Get a free key",
         "Unsplash API terms",
         "Only the search keywords are sent to Pixabay",
         "Only the search keywords are sent to Unsplash",
-        "check the Unsplash API terms first",
+        "Unsplash images are subject to Unsplash's API terms",
     ] {
         assert!(
             painted.contains(expected),
@@ -210,6 +224,7 @@ fn a_focused_stock_key_scrolls_to_its_own_input() {
     for (field, provider) in [
         (ImageSearchField::PixabayKey, StockProvider::Pixabay),
         (ImageSearchField::UnsplashKey, StockProvider::Unsplash),
+        (ImageSearchField::PexelsKey, StockProvider::Pexels),
     ] {
         let rect = agent_settings_images::focused_input_rect_for_ui(
             content,
@@ -251,6 +266,14 @@ fn press_flow_runs_tests_toggles_and_opens_links() {
     press(&mut state, AgentSettingsHit::ToggleUnsplash);
     assert!(!state.editor_ui.agent_settings.unsplash_enabled);
 
+    // Pexels is opt-in too, and its switch is its own.
+    assert!(!state.editor_ui.agent_settings.pexels_enabled);
+    press(&mut state, AgentSettingsHit::TogglePexels);
+    assert!(state.editor_ui.agent_settings.pexels_enabled);
+    assert!(!state.editor_ui.agent_settings.unsplash_enabled);
+    press(&mut state, AgentSettingsHit::TogglePexels);
+    assert!(!state.editor_ui.agent_settings.pexels_enabled);
+
     // A Test press with no key reads Invalid at once and asks for no probe.
     press(
         &mut state,
@@ -275,6 +298,29 @@ fn press_flow_runs_tests_toggles_and_opens_links() {
     );
     assert_eq!(settings.pixabay_test_status, ImageTestStatus::Invalid);
 
+    // The Pexels key behaves the same: blank is Invalid at once, a key raises
+    // the host seam, and neither touches the other providers' buttons.
+    press(
+        &mut state,
+        AgentSettingsHit::TestStockProvider(StockProvider::Pexels),
+    );
+    assert_eq!(
+        state.editor_ui.agent_settings.pexels_test_status,
+        ImageTestStatus::Invalid
+    );
+    state.editor_ui.agent_settings.pexels_api_key = "xk".into();
+    press(
+        &mut state,
+        AgentSettingsHit::TestStockProvider(StockProvider::Pexels),
+    );
+    let settings = &state.editor_ui.agent_settings;
+    assert_eq!(settings.pexels_test_status, ImageTestStatus::Testing);
+    assert_eq!(
+        settings.pending_stock_provider_test,
+        Some(StockProvider::Pexels)
+    );
+    assert_eq!(settings.unsplash_test_status, ImageTestStatus::Testing);
+
     // Links open the registration pages and the Unsplash terms.
     for (hit, url) in [
         (
@@ -284,6 +330,10 @@ fn press_flow_runs_tests_toggles_and_opens_links() {
         (
             AgentSettingsHit::OpenStockRegisterLink(StockProvider::Unsplash),
             UNSPLASH_DOCS_URL,
+        ),
+        (
+            AgentSettingsHit::OpenStockRegisterLink(StockProvider::Pexels),
+            PEXELS_DOCS_URL,
         ),
         (AgentSettingsHit::OpenUnsplashTerms, UNSPLASH_TERMS_URL),
     ] {
@@ -305,4 +355,21 @@ fn press_flow_runs_tests_toggles_and_opens_links() {
     let settings = &state.editor_ui.agent_settings;
     assert_eq!(settings.pixabay_api_key.expose(), "brand-new-key");
     assert_eq!(settings.pixabay_test_status, ImageTestStatus::Idle);
+
+    // The same for the Pexels key.
+    state.editor_ui.agent_settings.pexels_test_status = ImageTestStatus::Valid;
+    press(
+        &mut state,
+        AgentSettingsHit::FocusSearchField(ImageSearchField::PexelsKey),
+    );
+    assert_eq!(state.editor_ui.settings_input.text(), "xk");
+    state.editor_ui.settings_input.set_text("pexels-new-key");
+    op_editor_core::host_settings_commit::commit_settings_focus(
+        &mut state,
+        SettingsCommitScope::Operator,
+        0,
+    );
+    let settings = &state.editor_ui.agent_settings;
+    assert_eq!(settings.pexels_api_key.expose(), "pexels-new-key");
+    assert_eq!(settings.pexels_test_status, ImageTestStatus::Idle);
 }

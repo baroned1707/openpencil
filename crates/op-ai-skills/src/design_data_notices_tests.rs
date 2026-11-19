@@ -227,8 +227,15 @@ const IMPECCABLE_SECTION: &str = "Impeccable (Apache-2.0)";
 const OWL_SECTION: &str = "Owl-Listener designer-skills (MIT)";
 const APACHE_SECTION: &str = "Apache License 2.0 (full text)";
 
+const MENGTO_SKILLS: &str = "1a32b45a57f435f1564544e7267a71fc3b180a7a";
+const TRYOPENDATA_SKILLS: &str = "f97583ecb7eeb8a0c2a193fe9b80e55806d29823";
+const JEZWEB_SKILLS: &str = "1260fa7439b36b18dbf16648ccc7fb44783f6c23";
+const LOGO_DESIGN_SKILL: &str = "e9eaddc07895575253d6663320354a708f53e955";
+const DRAW_BETTER_SVG: &str = "5e65ee36fb4ad431267defcac268b020d096d7f4";
+const VECTOR_SECTION: &str = "Vector drawing skills (MIT)";
+
 /// Skill -> the third-party files it was adapted from: (path, commit).
-const ADAPTED_SKILLS: [(&str, &[(&str, &str)]); 2] = [
+const ADAPTED_SKILLS: [(&str, &[(&str, &str)]); 3] = [
     (
         "design-craft",
         &[
@@ -255,6 +262,31 @@ const ADAPTED_SKILLS: [(&str, &[(&str, &str)]); 2] = [
             (
                 "product-management/skills/write-spec/SKILL.md",
                 KNOWLEDGE_WORK_PLUGINS,
+            ),
+        ],
+    ),
+    (
+        "design-vector-drawing",
+        &[
+            (
+                "agent-skills/illustration/illustration-flat/references/craft.md",
+                MENGTO_SKILLS,
+            ),
+            (
+                "plugins/opendesign/skills/svg-design/references/icon-design.md",
+                TRYOPENDATA_SKILLS,
+            ),
+            (
+                "plugins/design-assets/skills/icon-set-generator/SKILL.md",
+                JEZWEB_SKILLS,
+            ),
+            (
+                "skills/logo-design/references/svg-construction.md",
+                LOGO_DESIGN_SKILL,
+            ),
+            (
+                "plugins/draw-better-svg/skills/draw-better-svg/references/review-and-repair.md",
+                DRAW_BETTER_SVG,
             ),
         ],
     ),
@@ -405,4 +437,52 @@ fn notice_check_fails_without_a_section() {
         std::fs::remove_dir_all(&directory).expect("clean up");
         assert_eq!(missing_sections(required, &reduced), [*section]);
     }
+}
+
+#[test]
+fn vector_drawing_section_names_every_source_with_its_copyright_and_one_mit_text() {
+    let markdown = notices_markdown();
+    assert!(section_headings(&markdown).contains(VECTOR_SECTION));
+    let body = section_body(&markdown, VECTOR_SECTION);
+    for (repository, commit, copyright) in [
+        (
+            "https://github.com/MengTo/Skills",
+            MENGTO_SKILLS,
+            "Copyright (c) 2026 Meng To",
+        ),
+        (
+            "https://github.com/tryopendata/skills",
+            TRYOPENDATA_SKILLS,
+            "Copyright (c) 2026 OpenData",
+        ),
+        (
+            "https://github.com/jezweb/claude-skills",
+            JEZWEB_SKILLS,
+            "Copyright (c) 2025 Jeremy Dawes (Jezweb)",
+        ),
+        (
+            "https://github.com/kaankiziltug/logo-design-skill",
+            LOGO_DESIGN_SKILL,
+            "Copyright (c) 2026 kaankiziltug",
+        ),
+        (
+            "https://github.com/arlinamid/draw-better-svg",
+            DRAW_BETTER_SVG,
+            "Copyright (c) 2026 Rózsavölgyi János",
+        ),
+    ] {
+        assert!(body.contains(repository), "{repository} is not named");
+        assert!(
+            body.contains(&format!("`{commit}`")),
+            "{repository}: no pin"
+        );
+        assert!(body.contains(copyright), "{repository}: no {copyright:?}");
+    }
+    assert!(body.contains(MODIFIED_STATEMENT));
+    // One licence text, whole, shared by the five sources.
+    assert_eq!(body.matches("Permission is hereby granted").count(), 1);
+    assert!(body.contains("THE SOFTWARE IS PROVIDED \"AS IS\""));
+    assert!(body.contains("SOFTWARE.\n```"));
+    // The trademarked sample logos are named as NOT used.
+    assert!(body.contains("trademarked") && body.contains("not used"));
 }

@@ -120,3 +120,49 @@ fn credits_text_marks_credit_required_vs_not() {
     );
     assert!(!text.ends_with('\n'));
 }
+
+/// Invariant: the named stock licences get their marker from the provider
+/// table (Pixabay and Pexels need no credit, Unsplash asks for it), the
+/// Unsplash licence link may carry the referral query, and a Pexels credit is
+/// never read through the Creative Commons path.
+#[test]
+fn credits_text_marks_the_named_stock_licences() {
+    let stock = |provider: &str, license: &str, url: &str| CreditLine {
+        title: "Photo".into(),
+        credit: ImageCredit {
+            provider: provider.into(),
+            creator: Some("Pat".into()),
+            license: Some(license.into()),
+            license_url: Some(url.into()),
+            source_page_url: None,
+        },
+    };
+    let text = format_credits_text(&[
+        stock(
+            "pexels",
+            "Pexels License",
+            "https://www.pexels.com/license/",
+        ),
+        stock(
+            "unsplash",
+            "Unsplash License",
+            "https://unsplash.com/license?utm_source=openpencil&utm_medium=referral",
+        ),
+        stock(
+            "pixabay",
+            "Pixabay Content License",
+            "https://pixabay.com/service/license-summary/",
+        ),
+        // Pexels' name next to another provider's id is not vouched for.
+        stock(
+            "openverse",
+            "Pexels License",
+            "https://www.pexels.com/license/",
+        ),
+    ]);
+    let lines: Vec<&str> = text.lines().collect();
+    assert!(lines[0].ends_with("— no credit required"), "{}", lines[0]);
+    assert!(lines[1].ends_with("— credit required"), "{}", lines[1]);
+    assert!(lines[2].ends_with("— no credit required"), "{}", lines[2]);
+    assert!(!lines[3].contains("credit required"), "{}", lines[3]);
+}

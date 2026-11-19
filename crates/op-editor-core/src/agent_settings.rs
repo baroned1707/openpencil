@@ -32,8 +32,8 @@ mod mutators;
 pub use config_types::{
     normalize_builtin_models, AcpAgentConfig, AcpConnectionType, BuiltinAgentConfig,
     BuiltinAgentKind, ImageGenProfile, ImageGenProvider, MAX_BUILTIN_AGENT_MODELS,
-    MAX_BUILTIN_MODEL_CHARS, OPENVERSE_AUTH_DOCS_URL, PIXABAY_DOCS_URL, UNSPLASH_DOCS_URL,
-    UNSPLASH_TERMS_URL,
+    MAX_BUILTIN_MODEL_CHARS, OPENVERSE_AUTH_DOCS_URL, PEXELS_DOCS_URL, PIXABAY_DOCS_URL,
+    UNSPLASH_DOCS_URL, UNSPLASH_TERMS_URL,
 };
 
 /// Which section of the settings modal is active.
@@ -199,6 +199,7 @@ pub enum ImageSearchField {
     ClientSecret,
     PixabayKey,
     UnsplashKey,
+    PexelsKey,
 }
 
 /// The stock providers that need the user's own key.
@@ -206,10 +207,15 @@ pub enum ImageSearchField {
 pub enum StockProvider {
     Pixabay,
     Unsplash,
+    Pexels,
 }
 
 impl StockProvider {
-    pub const ALL: [StockProvider; 2] = [StockProvider::Pixabay, StockProvider::Unsplash];
+    pub const ALL: [StockProvider; 3] = [
+        StockProvider::Pixabay,
+        StockProvider::Unsplash,
+        StockProvider::Pexels,
+    ];
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -365,8 +371,15 @@ pub struct AgentSettings {
     /// Unsplash is opt-in: its API terms limit how a key may be used, so it
     /// needs BOTH a key and this switch. Off by default. Persisted.
     pub unsplash_enabled: bool,
+    /// Pexels API key (the user's own). Used only while `pexels_enabled` is
+    /// also on.
+    pub pexels_api_key: ApiKey,
+    /// Pexels is opt-in like Unsplash: it needs BOTH a key and this switch.
+    /// Off by default. Persisted.
+    pub pexels_enabled: bool,
     pub pixabay_test_status: ImageTestStatus,
     pub unsplash_test_status: ImageTestStatus,
+    pub pexels_test_status: ImageTestStatus,
     /// Stock-provider Test request seam: set by the Settings > Images Test
     /// press for that provider, taken by the host. Runtime-only.
     pub pending_stock_provider_test: Option<StockProvider>,
@@ -473,8 +486,11 @@ impl Default for AgentSettings {
             pixabay_api_key: ApiKey::default(),
             unsplash_access_key: ApiKey::default(),
             unsplash_enabled: false,
+            pexels_api_key: ApiKey::default(),
+            pexels_enabled: false,
             pixabay_test_status: ImageTestStatus::Idle,
             unsplash_test_status: ImageTestStatus::Idle,
+            pexels_test_status: ImageTestStatus::Idle,
             pending_stock_provider_test: None,
             image_gen_profiles: Vec::new(),
             active_image_gen_profile_id: None,

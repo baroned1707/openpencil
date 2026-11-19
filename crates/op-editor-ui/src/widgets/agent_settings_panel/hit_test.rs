@@ -249,6 +249,7 @@ impl AgentSettingsPanel<'_> {
                         return AgentSettingsHit::TestStockProvider(provider);
                     }
                     ImagesHit::ToggleUnsplash => return AgentSettingsHit::ToggleUnsplash,
+                    ImagesHit::TogglePexels => return AgentSettingsHit::TogglePexels,
                     ImagesHit::OpenUnsplashTerms => return AgentSettingsHit::OpenUnsplashTerms,
                     ImagesHit::AddGenConfig => return AgentSettingsHit::AddGenConfig,
                     ImagesHit::ToggleGenConfigEditor(index) => {

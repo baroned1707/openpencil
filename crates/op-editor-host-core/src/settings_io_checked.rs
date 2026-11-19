@@ -50,7 +50,13 @@ pub(super) fn validate_payload_fields(raw: &serde_json::Value) -> Result<()> {
     )?;
     validate_optional_object_fields(
         root.get("stock_providers"),
-        &["pixabay_api_key", "unsplash_access_key", "unsplash_enabled"],
+        &[
+            "pixabay_api_key",
+            "unsplash_access_key",
+            "unsplash_enabled",
+            "pexels_api_key",
+            "pexels_enabled",
+        ],
         "Stock providers",
     )?;
     validate_array_object_fields(
