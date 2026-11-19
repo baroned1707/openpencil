@@ -1,0 +1,53 @@
+{
+  "prompt": "Design a landing page for Alder & Finch, an independent coffee roaster. Six sections: hero, features, how it works, testimonials, pricing and a closing call to action. Use an editorial serif style.",
+  "note": "Serif headings (DM Serif Display) with Inter body copy, both bundled, so fontIssues stays 0.",
+  "steps": [
+    {
+      "tool": "get_editor_state",
+      "args": {}
+    },
+    {
+      "tool": "get_guidelines",
+      "args": {
+        "topic": "landing-page"
+      }
+    },
+    {
+      "tool": "batch_design",
+      "scriptFile": "steps/01-root-hero.js"
+    },
+    {
+      "tool": "batch_design",
+      "scriptFile": "steps/02-features-how.js"
+    },
+    {
+      "tool": "batch_design",
+      "scriptFile": "steps/03-proof-pricing-cta.js"
+    },
+    {
+      "tool": "snapshot_layout",
+      "args": {
+        "maxDepth": 2
+      }
+    },
+    {
+      "tool": "get_screenshot",
+      "args": {
+        "nodeId": "root"
+      }
+    }
+  ],
+  "expect": {
+    "requiredText": [
+      "Roasted slowly",
+      "Why Alder & Finch",
+      "How it works",
+      "What customers say",
+      "Simple pricing",
+      "Start your first box"
+    ],
+    "max": {
+      "fontIssues": 0
+    }
+  }
+}

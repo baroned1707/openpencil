@@ -1,0 +1,428 @@
+{
+  "cases": {
+    "01-mobile-food-delivery": {
+      "metrics": {
+        "batchCount": 3,
+        "contentCoveragePermille": 1000,
+        "contrastIssues": 0,
+        "contrastUncertain": 0,
+        "duplicateRowText": 0,
+        "expectationFailures": 0,
+        "fontIssues": 0,
+        "iconIssues": 0,
+        "interactiveNodes": 10,
+        "layoutIssues": 0,
+        "navIssues": 0,
+        "nodeCount": 72,
+        "outsideScopeChanges": 0,
+        "outsideScopeEdits": 0,
+        "pageCount": 1,
+        "placeholderText": 0,
+        "repeatedRowTexts": 20,
+        "replayErrors": 0,
+        "requiredTextMissing": 0,
+        "screenCount": 1,
+        "screenshotCount": 1,
+        "solidFills": 52,
+        "structureIssues": 0,
+        "tapTargetsUnder24": 4,
+        "tokenBoundFills": 0,
+        "tokenConformancePermille": 0,
+        "typeSizesMaxPerSection": 3
+      },
+      "prompt": {
+        "skills": [
+          "design-brief",
+          "design-craft",
+          "design-principles",
+          "food-delivery",
+          "form-ui",
+          "jian-components",
+          "mobile-app",
+          "product-principles"
+        ],
+        "tokenEstimate": 15248
+      }
+    },
+    "02-dark-dashboard": {
+      "metrics": {
+        "batchCount": 3,
+        "contentCoveragePermille": 930,
+        "contrastIssues": 0,
+        "contrastUncertain": 0,
+        "duplicateRowText": 10,
+        "expectationFailures": 0,
+        "fontIssues": 0,
+        "iconIssues": 0,
+        "interactiveNodes": 1,
+        "layoutIssues": 0,
+        "navIssues": 0,
+        "nodeCount": 197,
+        "outsideScopeChanges": 0,
+        "outsideScopeEdits": 0,
+        "pageCount": 1,
+        "placeholderText": 0,
+        "repeatedRowTexts": 143,
+        "replayErrors": 0,
+        "requiredTextMissing": 0,
+        "screenCount": 0,
+        "screenshotCount": 1,
+        "solidFills": 125,
+        "structureIssues": 0,
+        "tapTargetsUnder24": 0,
+        "tokenBoundFills": 0,
+        "tokenConformancePermille": 0,
+        "typeSizesMaxPerSection": 6
+      },
+      "prompt": {
+        "skills": [
+          "dashboard",
+          "design-brief",
+          "design-craft",
+          "design-principles",
+          "jian-components",
+          "product-principles"
+        ],
+        "tokenEstimate": 13330
+      }
+    },
+    "03-landing-serif": {
+      "metrics": {
+        "batchCount": 3,
+        "contentCoveragePermille": 1000,
+        "contrastIssues": 0,
+        "contrastUncertain": 0,
+        "duplicateRowText": 0,
+        "expectationFailures": 0,
+        "fontIssues": 0,
+        "iconIssues": 0,
+        "interactiveNodes": 5,
+        "layoutIssues": 0,
+        "navIssues": 0,
+        "nodeCount": 83,
+        "outsideScopeChanges": 0,
+        "outsideScopeEdits": 0,
+        "pageCount": 1,
+        "placeholderText": 0,
+        "repeatedRowTexts": 61,
+        "replayErrors": 0,
+        "requiredTextMissing": 0,
+        "screenCount": 0,
+        "screenshotCount": 1,
+        "solidFills": 69,
+        "structureIssues": 0,
+        "tapTargetsUnder24": 0,
+        "tokenBoundFills": 3,
+        "tokenConformancePermille": 43,
+        "typeSizesMaxPerSection": 5
+      },
+      "prompt": {
+        "skills": [
+          "anti-slop",
+          "design-brief",
+          "design-craft",
+          "design-principles",
+          "jian-components",
+          "landing-page",
+          "product-principles"
+        ],
+        "tokenEstimate": 12701
+      }
+    },
+    "04-signup-form": {
+      "metrics": {
+        "batchCount": 2,
+        "contentCoveragePermille": 1000,
+        "contrastIssues": 0,
+        "contrastUncertain": 0,
+        "duplicateRowText": 0,
+        "expectationFailures": 0,
+        "fontIssues": 0,
+        "iconIssues": 0,
+        "interactiveNodes": 4,
+        "layoutIssues": 0,
+        "navIssues": 0,
+        "nodeCount": 35,
+        "outsideScopeChanges": 0,
+        "outsideScopeEdits": 0,
+        "pageCount": 1,
+        "placeholderText": 0,
+        "repeatedRowTexts": 0,
+        "replayErrors": 0,
+        "requiredTextMissing": 0,
+        "screenCount": 1,
+        "screenshotCount": 1,
+        "solidFills": 21,
+        "structureIssues": 0,
+        "tapTargetsUnder24": 0,
+        "tokenBoundFills": 0,
+        "tokenConformancePermille": 0,
+        "typeSizesMaxPerSection": 4
+      },
+      "prompt": {
+        "skills": [
+          "design-brief",
+          "design-craft",
+          "design-principles",
+          "form-ui",
+          "jian-components",
+          "mobile-app",
+          "product-principles"
+        ],
+        "tokenEstimate": 13903
+      }
+    },
+    "05-onboarding-3-step": {
+      "metrics": {
+        "batchCount": 3,
+        "contentCoveragePermille": 1000,
+        "contrastIssues": 0,
+        "contrastUncertain": 0,
+        "duplicateRowText": 0,
+        "expectationFailures": 0,
+        "fontIssues": 0,
+        "iconIssues": 0,
+        "interactiveNodes": 3,
+        "layoutIssues": 0,
+        "navIssues": 0,
+        "nodeCount": 95,
+        "outsideScopeChanges": 0,
+        "outsideScopeEdits": 0,
+        "pageCount": 1,
+        "placeholderText": 0,
+        "repeatedRowTexts": 6,
+        "replayErrors": 0,
+        "requiredTextMissing": 0,
+        "screenCount": 0,
+        "screenshotCount": 1,
+        "solidFills": 63,
+        "structureIssues": 0,
+        "tapTargetsUnder24": 0,
+        "tokenBoundFills": 0,
+        "tokenConformancePermille": 0,
+        "typeSizesMaxPerSection": 3
+      },
+      "prompt": {
+        "skills": [
+          "design-brief",
+          "design-craft",
+          "design-principles",
+          "jian-components",
+          "mobile-app",
+          "product-principles"
+        ],
+        "tokenEstimate": 13512
+      }
+    },
+    "06-settings-variables": {
+      "metrics": {
+        "batchCount": 2,
+        "contentCoveragePermille": 1000,
+        "contrastIssues": 0,
+        "contrastUncertain": 0,
+        "duplicateRowText": 0,
+        "expectationFailures": 0,
+        "fontIssues": 0,
+        "iconIssues": 0,
+        "interactiveNodes": 9,
+        "layoutIssues": 0,
+        "navIssues": 0,
+        "nodeCount": 58,
+        "outsideScopeChanges": 0,
+        "outsideScopeEdits": 0,
+        "pageCount": 1,
+        "placeholderText": 0,
+        "repeatedRowTexts": 0,
+        "replayErrors": 0,
+        "requiredTextMissing": 0,
+        "screenCount": 1,
+        "screenshotCount": 1,
+        "solidFills": 37,
+        "structureIssues": 0,
+        "tapTargetsUnder24": 0,
+        "tokenBoundFills": 32,
+        "tokenConformancePermille": 864,
+        "typeSizesMaxPerSection": 3
+      },
+      "prompt": {
+        "skills": [
+          "cards",
+          "design-brief",
+          "design-craft",
+          "design-principles",
+          "jian-components",
+          "mobile-app",
+          "product-principles"
+        ],
+        "tokenEstimate": 13969
+      }
+    },
+    "07-ecommerce-product-cart": {
+      "metrics": {
+        "batchCount": 2,
+        "contentCoveragePermille": 1000,
+        "contrastIssues": 0,
+        "contrastUncertain": 1,
+        "duplicateRowText": 0,
+        "expectationFailures": 0,
+        "fontIssues": 0,
+        "iconIssues": 0,
+        "interactiveNodes": 7,
+        "layoutIssues": 0,
+        "navIssues": 0,
+        "nodeCount": 89,
+        "outsideScopeChanges": 0,
+        "outsideScopeEdits": 0,
+        "pageCount": 1,
+        "placeholderText": 0,
+        "repeatedRowTexts": 21,
+        "replayErrors": 0,
+        "requiredTextMissing": 0,
+        "screenCount": 0,
+        "screenshotCount": 1,
+        "solidFills": 58,
+        "structureIssues": 0,
+        "tapTargetsUnder24": 0,
+        "tokenBoundFills": 0,
+        "tokenConformancePermille": 0,
+        "typeSizesMaxPerSection": 4
+      },
+      "prompt": {
+        "skills": [
+          "design-brief",
+          "design-craft",
+          "design-principles",
+          "form-ui",
+          "incremental-add",
+          "jian-components",
+          "mobile-app",
+          "product-principles",
+          "web-app"
+        ],
+        "tokenEstimate": 15875
+      }
+    },
+    "08-five-slide-deck": {
+      "metrics": {
+        "batchCount": 2,
+        "contentCoveragePermille": 1000,
+        "contrastIssues": 0,
+        "contrastUncertain": 0,
+        "duplicateRowText": 0,
+        "expectationFailures": 0,
+        "fontIssues": 0,
+        "iconIssues": 0,
+        "interactiveNodes": 0,
+        "layoutIssues": 0,
+        "navIssues": 0,
+        "nodeCount": 39,
+        "outsideScopeChanges": 0,
+        "outsideScopeEdits": 0,
+        "pageCount": 1,
+        "placeholderText": 0,
+        "repeatedRowTexts": 12,
+        "replayErrors": 0,
+        "requiredTextMissing": 0,
+        "screenCount": 0,
+        "screenshotCount": 1,
+        "solidFills": 29,
+        "structureIssues": 0,
+        "tapTargetsUnder24": 0,
+        "tokenBoundFills": 0,
+        "tokenConformancePermille": 0,
+        "typeSizesMaxPerSection": 2
+      },
+      "prompt": {
+        "skills": [
+          "deck-contract",
+          "deck-patterns",
+          "design-principles",
+          "jian-components",
+          "product-principles",
+          "slides"
+        ],
+        "tokenEstimate": 15569
+      }
+    },
+    "09-modify-hero-bolder": {
+      "metrics": {
+        "batchCount": 1,
+        "contentCoveragePermille": 1000,
+        "contrastIssues": 0,
+        "contrastUncertain": 0,
+        "duplicateRowText": 0,
+        "expectationFailures": 0,
+        "fontIssues": 0,
+        "iconIssues": 0,
+        "interactiveNodes": 1,
+        "layoutIssues": 0,
+        "navIssues": 0,
+        "nodeCount": 24,
+        "outsideScopeChanges": 6,
+        "outsideScopeEdits": 0,
+        "pageCount": 1,
+        "placeholderText": 0,
+        "repeatedRowTexts": 9,
+        "replayErrors": 0,
+        "requiredTextMissing": 0,
+        "screenCount": 0,
+        "screenshotCount": 1,
+        "solidFills": 16,
+        "structureIssues": 0,
+        "tapTargetsUnder24": 0,
+        "tokenBoundFills": 0,
+        "tokenConformancePermille": 0,
+        "typeSizesMaxPerSection": 4
+      },
+      "prompt": {
+        "skills": [
+          "design-principles",
+          "jian-components",
+          "landing-page",
+          "product-principles"
+        ],
+        "tokenEstimate": 10822
+      }
+    },
+    "10-vague-app-screen": {
+      "metrics": {
+        "batchCount": 1,
+        "contentCoveragePermille": 1000,
+        "contrastIssues": 0,
+        "contrastUncertain": 0,
+        "duplicateRowText": 0,
+        "expectationFailures": 0,
+        "fontIssues": 0,
+        "iconIssues": 0,
+        "interactiveNodes": 5,
+        "layoutIssues": 0,
+        "navIssues": 0,
+        "nodeCount": 49,
+        "outsideScopeChanges": 0,
+        "outsideScopeEdits": 0,
+        "pageCount": 1,
+        "placeholderText": 0,
+        "repeatedRowTexts": 12,
+        "replayErrors": 0,
+        "requiredTextMissing": 0,
+        "screenCount": 1,
+        "screenshotCount": 1,
+        "solidFills": 37,
+        "structureIssues": 0,
+        "tapTargetsUnder24": 0,
+        "tokenBoundFills": 0,
+        "tokenConformancePermille": 0,
+        "typeSizesMaxPerSection": 3
+      },
+      "prompt": {
+        "skills": [
+          "design-craft",
+          "design-principles",
+          "jian-components",
+          "product-principles"
+        ],
+        "tokenEstimate": 10352
+      }
+    }
+  }
+}

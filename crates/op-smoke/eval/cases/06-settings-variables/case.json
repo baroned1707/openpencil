@@ -1,0 +1,85 @@
+{
+  "prompt": "Design a mobile Settings screen: profile card, notification toggles, appearance and privacy rows. Use the project's design variables for every colour.",
+  "note": "Variables are created first with set_variables, then every fill and text colour is bound with a $ reference, so tokenConformancePermille is high.",
+  "steps": [
+    {
+      "tool": "get_editor_state",
+      "args": {}
+    },
+    {
+      "tool": "get_variables",
+      "args": {}
+    },
+    {
+      "tool": "set_variables",
+      "args": {
+        "variables": {
+          "--background": {
+            "type": "color",
+            "value": "#F8FAFC"
+          },
+          "--card": {
+            "type": "color",
+            "value": "#FFFFFF"
+          },
+          "--foreground": {
+            "type": "color",
+            "value": "#0F172A"
+          },
+          "--muted-foreground": {
+            "type": "color",
+            "value": "#475569"
+          },
+          "--border": {
+            "type": "color",
+            "value": "#E2E8F0"
+          },
+          "--primary": {
+            "type": "color",
+            "value": "#4338CA"
+          },
+          "--primary-foreground": {
+            "type": "color",
+            "value": "#FFFFFF"
+          },
+          "--switch-off": {
+            "type": "color",
+            "value": "#CBD5E1"
+          }
+        }
+      }
+    },
+    {
+      "tool": "batch_design",
+      "scriptFile": "steps/01-root-profile.js"
+    },
+    {
+      "tool": "batch_design",
+      "scriptFile": "steps/02-groups.js"
+    },
+    {
+      "tool": "snapshot_layout",
+      "args": {
+        "maxDepth": 2
+      }
+    },
+    {
+      "tool": "get_screenshot",
+      "args": {
+        "nodeId": "root"
+      }
+    }
+  ],
+  "expect": {
+    "requiredText": [
+      "Settings",
+      "Push notifications",
+      "Dark mode",
+      "Privacy"
+    ],
+    "min": {
+      "tokenConformancePermille": 600,
+      "screenCount": 1
+    }
+  }
+}

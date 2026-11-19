@@ -1,0 +1,148 @@
+{
+  "metrics": [
+    {
+      "name": "layoutIssues",
+      "direction": "lower",
+      "gate": true
+    },
+    {
+      "name": "iconIssues",
+      "direction": "lower",
+      "gate": true
+    },
+    {
+      "name": "contrastIssues",
+      "direction": "lower",
+      "gate": true
+    },
+    {
+      "name": "fontIssues",
+      "direction": "lower",
+      "gate": true
+    },
+    {
+      "name": "structureIssues",
+      "direction": "lower",
+      "gate": true
+    },
+    {
+      "name": "placeholderText",
+      "direction": "lower",
+      "gate": true
+    },
+    {
+      "name": "contentCoveragePermille",
+      "direction": "higher",
+      "gate": true
+    },
+    {
+      "name": "requiredTextMissing",
+      "direction": "lower",
+      "gate": true
+    },
+    {
+      "name": "replayErrors",
+      "direction": "lower",
+      "gate": true
+    },
+    {
+      "name": "expectationFailures",
+      "direction": "lower",
+      "gate": true
+    },
+    {
+      "name": "outsideScopeEdits",
+      "direction": "lower",
+      "gate": true
+    },
+    {
+      "name": "contrastUncertain",
+      "direction": "lower",
+      "gate": false
+    },
+    {
+      "name": "navIssues",
+      "direction": "lower",
+      "gate": false
+    },
+    {
+      "name": "duplicateRowText",
+      "direction": "lower",
+      "gate": false
+    },
+    {
+      "name": "repeatedRowTexts",
+      "direction": "higher",
+      "gate": false
+    },
+    {
+      "name": "tokenConformancePermille",
+      "direction": "higher",
+      "gate": false
+    },
+    {
+      "name": "tokenBoundFills",
+      "direction": "higher",
+      "gate": false
+    },
+    {
+      "name": "solidFills",
+      "direction": "lower",
+      "gate": false
+    },
+    {
+      "name": "tapTargetsUnder24",
+      "direction": "lower",
+      "gate": false
+    },
+    {
+      "name": "interactiveNodes",
+      "direction": "higher",
+      "gate": false
+    },
+    {
+      "name": "typeSizesMaxPerSection",
+      "direction": "lower",
+      "gate": false
+    },
+    {
+      "name": "outsideScopeChanges",
+      "direction": "lower",
+      "gate": false
+    },
+    {
+      "name": "nodeCount",
+      "direction": "higher",
+      "gate": false
+    },
+    {
+      "name": "screenCount",
+      "direction": "higher",
+      "gate": false
+    },
+    {
+      "name": "pageCount",
+      "direction": "higher",
+      "gate": false
+    },
+    {
+      "name": "batchCount",
+      "direction": "lower",
+      "gate": false
+    },
+    {
+      "name": "screenshotCount",
+      "direction": "lower",
+      "gate": false
+    }
+  ],
+  "absolute": {
+    "contrastIssues": 0,
+    "requiredTextMissing": 0,
+    "placeholderText": 0,
+    "replayErrors": 0,
+    "expectationFailures": 0,
+    "outsideScopeEdits": 0
+  },
+  "promptTokenCeiling": 17000
+}

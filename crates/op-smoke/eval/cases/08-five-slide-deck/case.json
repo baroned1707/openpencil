@@ -1,0 +1,51 @@
+{
+  "prompt": "Make a 5-slide pitch deck for Tidewater, a startup that sells tide-powered micro-grids to coastal towns: title, problem, solution, traction, ask.",
+  "note": "Five 1920x1080 frames stacked on one page, one idea per slide, three type sizes (title 72, body 36, label 24).",
+  "steps": [
+    {
+      "tool": "get_editor_state",
+      "args": {}
+    },
+    {
+      "tool": "get_guidelines",
+      "args": {
+        "topic": "slides"
+      }
+    },
+    {
+      "tool": "batch_design",
+      "scriptFile": "steps/01-slides-1-3.js"
+    },
+    {
+      "tool": "batch_design",
+      "scriptFile": "steps/02-slides-4-5.js"
+    },
+    {
+      "tool": "snapshot_layout",
+      "args": {
+        "maxDepth": 1
+      }
+    },
+    {
+      "tool": "get_screenshot",
+      "args": {
+        "nodeId": "root"
+      }
+    }
+  ],
+  "expect": {
+    "requiredText": [
+      "Tidewater",
+      "The problem",
+      "The solution",
+      "Traction",
+      "The ask"
+    ],
+    "min": {
+      "nodeCount": 35
+    },
+    "max": {
+      "typeSizesMaxPerSection": 3
+    }
+  }
+}

@@ -1,0 +1,18 @@
+{
+  "prompt": "Design a dark analytics dashboard for an agency: KPI cards, a revenue chart and a recent clients table.",
+  "note": "Dark theme: every foreground is chosen against its own surface. At least eight distinct table rows.",
+  "steps": [
+    { "tool": "get_editor_state", "args": {} },
+    { "tool": "get_guidelines", "args": { "topic": "web-app" } },
+    { "tool": "batch_design", "scriptFile": "steps/01-shell.js" },
+    { "tool": "batch_design", "scriptFile": "steps/02-kpis-chart.js" },
+    { "tool": "batch_design", "scriptFile": "steps/03-clients-table.js" },
+    { "tool": "snapshot_layout", "args": { "maxDepth": 2 } },
+    { "tool": "get_screenshot", "args": { "nodeId": "root" } }
+  ],
+  "expect": {
+    "requiredText": ["Revenue", "Active clients", "Recent clients", "Northwind Traders"],
+    "min": { "repeatedRowTexts": 40 },
+    "max": { "contrastIssues": 0 }
+  }
+}

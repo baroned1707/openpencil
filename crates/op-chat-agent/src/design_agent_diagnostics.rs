@@ -424,7 +424,7 @@ fn collect_ref_strings(value: &serde_json::Value, out: &mut BTreeSet<String>) {
     }
 }
 
-fn resolved_sizes(state: &EditorState) -> HashMap<String, (f64, f64)> {
+pub(crate) fn resolved_sizes(state: &EditorState) -> HashMap<String, (f64, f64)> {
     let scene = op_pen_loader::editor_state_to_active_page_layout_scene(state);
     let mut out = HashMap::new();
     fn walk(

@@ -1,0 +1,51 @@
+{
+  "prompt": "Design a 3-step onboarding flow for a habit-tracking mobile app: welcome, set your goals, turn on reminders. Each step is its own 390x844 mobile screen with a progress indicator.",
+  "note": "Three separate mobile screens side by side on one page; each batch builds one screen.",
+  "steps": [
+    {
+      "tool": "get_editor_state",
+      "args": {}
+    },
+    {
+      "tool": "get_guidelines",
+      "args": {
+        "topic": "mobile"
+      }
+    },
+    {
+      "tool": "batch_design",
+      "scriptFile": "steps/01-welcome.js"
+    },
+    {
+      "tool": "batch_design",
+      "scriptFile": "steps/02-goals.js"
+    },
+    {
+      "tool": "batch_design",
+      "scriptFile": "steps/03-reminders.js"
+    },
+    {
+      "tool": "snapshot_layout",
+      "args": {
+        "maxDepth": 1
+      }
+    },
+    {
+      "tool": "get_screenshot",
+      "args": {
+        "nodeId": "root"
+      }
+    }
+  ],
+  "expect": {
+    "requiredText": [
+      "Welcome to Streak",
+      "Pick your goals",
+      "Never miss a day",
+      "Continue"
+    ],
+    "min": {
+      "nodeCount": 80
+    }
+  }
+}

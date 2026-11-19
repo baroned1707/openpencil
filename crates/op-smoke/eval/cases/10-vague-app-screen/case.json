@@ -1,0 +1,15 @@
+{
+  "prompt": "make me an app screen",
+  "note": "A vague prompt: the agent states its assumption (a personal planner home screen) in its own words, builds one complete screen with real copy and does not fall back to filler text.",
+  "steps": [
+    { "tool": "get_editor_state", "args": {} },
+    { "tool": "get_guidelines", "args": { "topic": "mobile" } },
+    { "tool": "batch_design", "scriptFile": "steps/01-screen.js" },
+    { "tool": "snapshot_layout", "args": { "maxDepth": 2 } },
+    { "tool": "get_screenshot", "args": { "nodeId": "root" } }
+  ],
+  "expect": {
+    "min": { "screenCount": 1, "nodeCount": 30 },
+    "max": { "placeholderText": 0, "contrastIssues": 0 }
+  }
+}

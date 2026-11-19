@@ -1,0 +1,9 @@
+{
+  "prompt": "Design a mobile profile screen",
+  "note": "NEGATIVE test, not a baseline case: the script leaves filler copy in the design, so the gate must fail on placeholderText.",
+  "steps": [
+    { "tool": "get_editor_state", "args": {} },
+    { "tool": "batch_design", "scriptFile": "steps/01-screen.js" }
+  ],
+  "expect": {}
+}

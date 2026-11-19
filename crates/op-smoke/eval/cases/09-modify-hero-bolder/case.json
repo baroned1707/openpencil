@@ -1,0 +1,42 @@
+{
+  "prompt": "Make the hero bolder.",
+  "seed": "seed.op",
+  "note": "Modify an existing page: only the hero subtree may change; navigation and features stay exactly as they were.",
+  "steps": [
+    {
+      "tool": "get_editor_state",
+      "args": {}
+    },
+    {
+      "tool": "snapshot_layout",
+      "args": {
+        "parentId": "hero",
+        "maxDepth": 2
+      }
+    },
+    {
+      "tool": "batch_design",
+      "args": {
+        "operations": "U(\"hero-title\",{\"fontSize\":72,\"fontWeight\":\"800\",\"fill\":[{\"type\":\"solid\",\"color\":\"#111827\"}]})\nU(\"hero-eyebrow\",{\"fontWeight\":\"700\",\"fill\":[{\"type\":\"solid\",\"color\":\"#374151\"}]})\nU(\"hero-sub\",{\"fontSize\":20,\"fill\":[{\"type\":\"solid\",\"color\":\"#374151\"}]})\nU(\"hero-cta\",{\"fill\":[{\"type\":\"solid\",\"color\":\"#111827\"}]})\nU(\"hero-cta-label\",{\"fontWeight\":\"700\"})"
+      }
+    },
+    {
+      "tool": "get_screenshot",
+      "args": {
+        "nodeId": "hero"
+      }
+    }
+  ],
+  "expect": {
+    "requiredText": [
+      "We design calm software.",
+      "What we do",
+      "Fieldnotes"
+    ],
+    "max": {
+      "outsideScopeEdits": 0,
+      "contrastIssues": 0
+    },
+    "scopeRootId": "hero"
+  }
+}

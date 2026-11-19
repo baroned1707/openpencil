@@ -26,6 +26,8 @@ pub mod chat_tool_result;
 pub mod design_agent_diagnostics;
 pub mod design_agent_tools;
 pub mod design_context;
+pub mod design_eval_judge;
+pub mod design_eval_metrics;
 pub mod design_loop_prompt;
 pub mod design_run_executor;
 pub mod ip_screen;

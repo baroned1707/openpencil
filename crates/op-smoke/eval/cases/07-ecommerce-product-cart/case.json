@@ -1,0 +1,17 @@
+{
+  "prompt": "Design a mobile e-commerce flow for an outdoor-gear shop: a product detail screen for a rain jacket (price, sizes, Add to cart) and the cart screen with three items and a checkout button.",
+  "note": "The product hero carries a 'New arrival' label over a photo, so contrastUncertain reports it (a screenshot decides, the scan does not guess).",
+  "steps": [
+    { "tool": "get_editor_state", "args": {} },
+    { "tool": "get_guidelines", "args": { "topic": "mobile" } },
+    { "tool": "batch_design", "scriptFile": "steps/01-product.js" },
+    { "tool": "batch_design", "scriptFile": "steps/02-cart.js" },
+    { "tool": "snapshot_layout", "args": { "maxDepth": 1 } },
+    { "tool": "get_screenshot", "args": { "nodeId": "root" } }
+  ],
+  "expect": {
+    "requiredText": ["Trailhead Rain Jacket", "$189.00", "Add to cart", "Checkout"],
+    "min": { "contrastUncertain": 1 },
+    "max": { "contrastIssues": 0, "duplicateRowText": 2 }
+  }
+}

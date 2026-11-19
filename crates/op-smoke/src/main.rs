@@ -51,6 +51,7 @@ use std::sync::Arc;
 
 mod audit_rubric;
 mod best_of;
+mod eval;
 mod home_prompt;
 mod image_fill;
 mod llm_clients;
@@ -201,6 +202,9 @@ async fn run_loop_mode(prompt: String) -> std::process::ExitCode {
 #[tokio::main(flavor = "multi_thread")]
 async fn main() -> std::process::ExitCode {
     op_host_native::bundled_design_fonts::register();
+    if let Some(code) = eval::run_if_requested() {
+        return code;
+    }
     let argv: Vec<String> = std::env::args().skip(1).collect();
     let (variants, prompt) = match variants_mode::parse_smoke_args(&argv) {
         Ok(parsed) => (parsed.variants, parsed.prompt),

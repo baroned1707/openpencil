@@ -66,6 +66,8 @@ tokio = { version = "1", features = ["rt-multi-thread", "macros", "time"] }
 # same shape as `persistence::save_to_path`) when `OPENPENCIL_SMOKE_OUT`
 # is set — lets the headless render / screenshot step pick up the result.
 serde_json = { workspace = true }
+# Offline eval harness (`eval*.rs`): fixture / baseline / threshold files.
+serde = { workspace = true }
 # Content-address the immutable modify baseline and each output so prompt
 # thumbnail provenance can prove both modify prompts started from the same file.
 sha2 = "0.10"

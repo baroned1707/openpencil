@@ -1,0 +1,55 @@
+{
+  "prompt": "Design a mobile food-delivery app home screen: a greeting header, search bar, category chips, restaurant cards with rating and delivery time, and a bottom tab bar.",
+  "note": "Chrome complete (header, content, bottom nav), no nav or layout issues.",
+  "steps": [
+    {
+      "tool": "get_editor_state",
+      "args": {}
+    },
+    {
+      "tool": "get_guidelines",
+      "args": {
+        "topic": "mobile"
+      }
+    },
+    {
+      "tool": "batch_design",
+      "scriptFile": "steps/01-root.js"
+    },
+    {
+      "tool": "batch_design",
+      "scriptFile": "steps/02-header-search-chips.js"
+    },
+    {
+      "tool": "batch_design",
+      "scriptFile": "steps/03-restaurants-tabs.js"
+    },
+    {
+      "tool": "snapshot_layout",
+      "args": {
+        "maxDepth": 2
+      }
+    },
+    {
+      "tool": "get_screenshot",
+      "args": {
+        "nodeId": "root"
+      }
+    }
+  ],
+  "expect": {
+    "requiredText": [
+      "Search restaurants",
+      "Burger Joint",
+      "Home",
+      "Orders"
+    ],
+    "min": {
+      "screenCount": 1,
+      "repeatedRowTexts": 6
+    },
+    "max": {
+      "navIssues": 0
+    }
+  }
+}

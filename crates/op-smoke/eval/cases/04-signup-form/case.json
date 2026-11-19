@@ -1,0 +1,16 @@
+{
+  "prompt": "Design a mobile sign-up screen with name, email and password fields, a Sign up button and a terms checkbox. Show the error state for an invalid email.",
+  "note": "The error line sits under the email field and uses a red that passes AA on white.",
+  "steps": [
+    { "tool": "get_editor_state", "args": {} },
+    { "tool": "get_guidelines", "args": { "topic": "mobile" } },
+    { "tool": "batch_design", "scriptFile": "steps/01-root.js" },
+    { "tool": "batch_design", "scriptFile": "steps/02-form.js" },
+    { "tool": "snapshot_layout", "args": { "maxDepth": 3 } },
+    { "tool": "get_screenshot", "args": { "nodeId": "root" } }
+  ],
+  "expect": {
+    "requiredText": ["Create your account", "Sign up", "Enter a valid email address"],
+    "min": { "screenCount": 1 }
+  }
+}
