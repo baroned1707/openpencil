@@ -55,6 +55,12 @@ pub(crate) struct DocumentRuns {
     /// How the last run ended, until the host takes it (once per frame) to
     /// decide on an autosave (`agent_run_autosave`).
     pub run_end: Option<RunEnd>,
+    /// Image-slot enrichment of THIS document: stock searches and generations
+    /// that fill its empty image nodes. Per document because node ids,
+    /// revisions and the scan gate restart in every document; it travels with
+    /// the document on a switch, is pumped through the lens while the
+    /// document is parked, and is dropped with it when the tab closes.
+    pub image_search: crate::image_search_session::ImageSearchSession,
 }
 
 impl DocumentRuns {

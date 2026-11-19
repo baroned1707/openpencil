@@ -126,6 +126,13 @@ impl DocumentScope {
         self.revision
     }
 
+    /// Index of the page this document shows. A parked document's background
+    /// work (image-slot scans) keys on it together with the revision, because
+    /// a page switch does not move the revision.
+    pub fn active_page_index(&self) -> usize {
+        self.ui.active_page_index
+    }
+
     /// Whether the document is exactly as freshly created: no edits ever,
     /// nothing to undo and an untouched chat. Used to reuse a blank untitled tab instead of
     /// stacking a new one beside it.

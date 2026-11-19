@@ -196,6 +196,8 @@ pub(crate) struct ImageSearchSession {
     /// would make switching from a scanned page A to an unscanned page B at
     /// the same revision silently skip page B forever.
     last_scanned: Option<(u64, usize)>,
+    /// When a PARKED document was last walked (see `parked::ParkedImageWork`).
+    last_parked_scan: Option<Instant>,
     /// Test-only: counts how many times `enqueue_missing` has actually
     /// walked the tree (as opposed to short-circuiting on the revision
     /// gate), so tests can assert the gate skips redundant walks instead of
@@ -406,7 +408,8 @@ impl ImageSearchSession {
         self.last_scanned = None;
     }
 
-    #[cfg(test)]
+    /// The scene-less walk: resolves the active page itself. Used for a
+    /// parked document, whose host scene cache is stale until it is painted.
     pub(crate) fn enqueue_missing(&mut self, state: &EditorState) -> bool {
         self.enqueue_missing_with_optional_scene(state, None)
     }
@@ -515,7 +518,7 @@ impl ImageSearchSession {
         true
     }
 
-    #[cfg(test)]
+    /// The scene-less poll, the counterpart of [`Self::enqueue_missing`].
     pub(crate) fn poll_into(&mut self, state: &mut EditorState) -> bool {
         self.poll_into_with_optional_scene(state, None)
     }
@@ -738,11 +741,13 @@ impl ImageSearchSession {
 mod fetch;
 mod intent;
 mod jobs;
+pub(crate) mod parked;
 mod progress;
 
 #[cfg(test)]
 use jobs::publish_search_result;
 use jobs::{spawn_gen_job, spawn_job, spawn_unavailable_gen_job};
+pub(crate) use parked::{ParkedImageWork, PARKED_PENDING_CAP};
 
 use fetch::fetch_first_image_resolved_blocking_with_judge_and_providers;
 pub(crate) use fetch::fetch_image_data_url;

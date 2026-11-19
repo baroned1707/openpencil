@@ -3,7 +3,7 @@
 //! the `app_handler.rs` spine to keep it under the 800-line cap; pure
 //! code motion.
 
-use crate::{chat_session, codegen_session, figma_import_session, frame, DesktopApp};
+use crate::{codegen_session, figma_import_session, frame, DesktopApp};
 use std::time::{Duration, Instant};
 use winit::event_loop::ActiveEventLoop;
 
@@ -113,6 +113,7 @@ impl DesktopApp {
         // directly, each other document's through the lens, so a run keeps
         // streaming into the document it was started in. Deltas land in the
         // chat tab the turn was bound to, not whichever tab is active now.
+        self.note_background_pump();
         if self.pump_document_runs() {
             self.redraw_dirty = true;
         }
@@ -232,26 +233,9 @@ impl DesktopApp {
             self.host.mark_editor_state_dirty();
             self.redraw_dirty = true;
         }
-        // Background image search: hand the session the selected chat
-        // provider for its relevance judge until one sticks (env judge wins
-        // when configured; see `ImageSearchSession::ensure_judge`). A
-        // provider configured mid-session is still picked up until the
-        // first search actually spawns.
-        if !self.image_search.judge_resolved() {
-            if let Some(provider) = chat_session::provider_for_selected_model(&self.host) {
-                let model = chat_session::selected_cli_model_id(&self.host);
-                self.image_search
-                    .ensure_judge(Some(std::sync::Arc::from(provider)), model);
-            }
-        }
-        let (editor_state, layout_scene) = self.host.editor_state_mut_and_layout_scene();
-        self.image_search
-            .enqueue_missing_with_scene(editor_state, layout_scene);
-        if self
-            .image_search
-            .poll_into_with_scene(editor_state, layout_scene)
-        {
-            self.host.mark_editor_state_dirty();
+        // Background image search for EVERY open document: the one on screen
+        // against the host's scene, the others through the lens.
+        if self.pump_image_enrichment() {
             self.redraw_dirty = true;
         }
         // Property-panel image section: asset check + Search /
@@ -286,7 +270,7 @@ impl DesktopApp {
         }
         // Missing Google Fonts: queue clicked / automatic downloads and land
         // finished ones (registration stays on this thread).
-        if self.font_downloads.drain(&mut self.host) {
+        if self.pump_font_downloads() {
             self.redraw_dirty = true;
         }
         // Drain the connect-time provider probe (Settings →

@@ -14,6 +14,11 @@ use op_editor_core::agent_indicators;
 use op_editor_core::DocumentTabStatus;
 use op_host_native::WidgetHostNative;
 
+#[path = "background_pump.rs"]
+pub(crate) mod background_pump;
+#[path = "image_enrichment_host.rs"]
+mod image_enrichment_host;
+
 impl DesktopApp {
     /// Point the thread's epoch-less indicator calls at the document on screen.
     /// Painters and every launch / stop path read the registry that way.

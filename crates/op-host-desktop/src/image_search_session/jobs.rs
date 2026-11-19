@@ -18,6 +18,10 @@ pub(super) fn spawn_job(
     intent: String,
     deadline: Option<Instant>,
 ) -> ImageSearchJob {
+    #[cfg(test)]
+    if let Some(job) = super::parked::stubbed_search_job(&target, &intent, deadline) {
+        return job;
+    }
     let (tx, rx) = mpsc::channel();
     let node_id = target.node_id.clone();
     let aspect_ratio = target.aspect_ratio;

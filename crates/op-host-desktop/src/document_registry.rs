@@ -240,6 +240,83 @@ impl DocumentRegistry {
         slot.local.runs = runs;
     }
 
+    /// What each parked document's image session wants at `now`, in tab order,
+    /// leaving out the documents with nothing to do. The on-screen document's
+    /// session is `DesktopApp::runs.image_search`, not in a slot.
+    pub fn parked_image_work(
+        &self,
+        now: std::time::Instant,
+    ) -> Vec<(usize, crate::image_search_session::ParkedImageWork)> {
+        self.parked_scopes()
+            .filter_map(|(index, slot, scope)| {
+                let work = slot.local.runs.image_search.parked_work(
+                    scope.document_revision(),
+                    scope.active_page_index(),
+                    now,
+                );
+                (!work.is_idle()).then_some((index, work))
+            })
+            .collect()
+    }
+
+    /// The parked documents worth checking for missing fonts, as
+    /// `(position, id, revision)`: edited this session (revision 0 is what
+    /// the file holds, and waits for the user to open it) and not under a
+    /// collaboration session, which no background writer may enter.
+    pub fn parked_font_candidates(&self) -> Vec<(usize, DocumentId, u64)> {
+        self.parked_scopes()
+            .filter(|(_, _, scope)| {
+                scope.document_revision() > 0 && !scope.collab().binds_session()
+            })
+            .map(|(index, slot, scope)| (index, slot.id, scope.document_revision()))
+            .collect()
+    }
+
+    /// Ids of every open document.
+    pub fn open_ids(&self) -> Vec<DocumentId> {
+        self.slots.iter().map(|slot| slot.id).collect()
+    }
+
+    /// Jobs in flight in the parked documents' image sessions.
+    pub fn parked_image_jobs(&self) -> usize {
+        self.slots
+            .iter()
+            .enumerate()
+            .filter(|&(index, _)| index != self.active)
+            .map(|(_, slot)| slot.local.runs.image_search.pending_jobs())
+            .sum()
+    }
+
+    /// Whether a parked document still has image work to do or wait for: jobs
+    /// in flight, or changed content whose walk was deferred (a document under
+    /// a collaboration session is never walked, so it is left out).
+    pub fn parked_image_work_outstanding(&self) -> bool {
+        self.parked_image_jobs() > 0
+            || self.parked_scopes().any(|(_, slot, scope)| {
+                !scope.collab().binds_session()
+                    && slot
+                        .local
+                        .runs
+                        .image_search
+                        .parked_scan_waiting(scope.document_revision(), scope.active_page_index())
+            })
+    }
+
+    /// Every parked slot that holds its document, with that document's scope.
+    fn parked_scopes(
+        &self,
+    ) -> impl Iterator<Item = (usize, &DocumentSlot, &op_editor_core::DocumentScope)> {
+        self.slots
+            .iter()
+            .enumerate()
+            .filter(|&(index, _)| index != self.active)
+            .filter_map(|(index, slot)| {
+                slot.parked
+                    .as_ref()
+                    .map(|parked| (index, slot, parked.scope()))
+            })
+    }
+
     /// Positions of the parked documents that have a collaboration session
     /// bound, in tab order.
     pub fn parked_with_collab_session(&self) -> Vec<usize> {

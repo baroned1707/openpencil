@@ -334,9 +334,9 @@ struct DesktopApp {
     /// Jobs stay host-side because discovery uses native networking; only
     /// successful, current results are installed into editor-core runtime state.
     builtin_model_refresh: builtin_model_refresh_host::BuiltinModelRefreshHost,
-    /// Background auto-search jobs that replace generated empty image
-    /// nodes with freely licensed remote images.
-    image_search: image_search_session::ImageSearchSession,
+    /// When the frame loop last pumped every document's background work
+    /// (`background_pump`).
+    last_background_pump: Option<std::time::Instant>,
     /// Property-panel image-section workers: Search / Generate
     /// popover requests + the local-asset existence check.
     image_panel: image_panel_host::ImagePanelJobs,

@@ -112,7 +112,7 @@ impl DesktopApp {
                 // The import installed a fresh `EditorState` whose revision
                 // restarts at 0 and whose node ids can collide with the
                 // replaced document's: drop all image-search state.
-                self.image_search.reset();
+                self.runs.image_search.reset();
                 dirty = true;
             }
             PumpOutcome::CompletedErr | PumpOutcome::SelectionReady | PumpOutcome::Cancelled => {
@@ -123,7 +123,7 @@ impl DesktopApp {
         match self.pump_html_import() {
             PumpOutcome::CompletedOk | PumpOutcome::CompletedSaved => {
                 self.rebind_git_session_for_current_path();
-                self.image_search.reset();
+                self.runs.image_search.reset();
                 dirty = true;
             }
             PumpOutcome::CompletedErr => dirty = true,

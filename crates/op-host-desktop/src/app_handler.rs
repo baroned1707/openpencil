@@ -36,6 +36,16 @@ impl ApplicationHandler<DesktopEvent> for DesktopApp {
         if self.poll_collaboration() {
             self.request_redraw(true);
         }
+        // In-app agent runs, image fills and font downloads are pumped from
+        // `on_redraw_requested`. When the window is not repainting (occluded),
+        // pump them here so no document's agent stalls (`background_pump`).
+        if let Some(changed) = self.pump_background_when_redraw_starved() {
+            if changed {
+                self.request_redraw(true);
+            }
+            // No redraw is re-arming the wake cadence, so do it here.
+            self.schedule_next_wake(event_loop);
+        }
         // A token-authed `op stop` goes through the same unsaved-changes prompts
         // as the Quit menu item; Cancel there drops the request.
         if self.mcp_quit_confirmed() {

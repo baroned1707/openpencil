@@ -234,7 +234,6 @@ impl DesktopApp {
     fn finish_document_switch(&mut self, git_before: (Option<PathBuf>, Option<PathBuf>)) {
         self.sync_indicator_scope();
         self.pending_cursor_move = None;
-        self.image_search.reset();
         // Accessibility actions name nodes of the previous document.
         if let Some(a11y) = self.a11y.as_mut() {
             let _ = a11y.drain_actions();

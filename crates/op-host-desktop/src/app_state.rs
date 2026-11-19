@@ -6,10 +6,9 @@
 
 use crate::{
     collab_avatar_host, figma_import_session, font_download_host, git_session, html_import_session,
-    image_decode_host, image_panel_host, image_search_session, ime_window, init_auth_runtime,
-    kit_persistence, prompt_center_store, remote_image_host, save_session, single_instance,
-    theme_preset_host, update_check, DesktopApp, PaintedPageIdentity, INITIAL_VIEWPORT_H,
-    INITIAL_VIEWPORT_W,
+    image_decode_host, image_panel_host, ime_window, init_auth_runtime, kit_persistence,
+    prompt_center_store, remote_image_host, save_session, single_instance, theme_preset_host,
+    update_check, DesktopApp, PaintedPageIdentity, INITIAL_VIEWPORT_H, INITIAL_VIEWPORT_W,
 };
 use op_host_native::WidgetHostNative;
 use std::path::PathBuf;
@@ -212,7 +211,7 @@ impl DesktopApp {
             pending_html_paste: None,
             model_probe,
             builtin_model_refresh: Default::default(),
-            image_search: image_search_session::ImageSearchSession::new(),
+            last_background_pump: None,
             image_panel: image_panel_host::ImagePanelJobs::new(),
             brand_jobs: crate::brand_extract_host::BrandJobs::new(),
             style_suggest: Default::default(),
@@ -324,7 +323,7 @@ impl DesktopApp {
         // document is handled by the document-epoch guard in
         // `pump_*_clipboard_paste` — a paste decoded for a document
         // that a later Open / New / import replaced is dropped there.
-        self.image_search.reset();
+        self.runs.image_search.reset();
         self.host.editor_state_mut().mark_saved_revision();
         self.rebind_git_session_for_current_path();
     }

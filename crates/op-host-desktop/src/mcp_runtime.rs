@@ -292,7 +292,7 @@ impl DesktopApp {
         // later replace the document that was just persisted.
         crate::figma_import_session::cancel(&mut self.host, &mut self.current_figma_import);
         crate::html_import_session::cancel(&mut self.host, &mut self.current_html_import);
-        self.image_search.reset();
+        self.runs.image_search.reset();
         self.current_path = Some(path.clone());
         crate::settings_io::touch_recent(&mut self.host, &path);
         self.rebind_git_session_for_current_path();
@@ -400,7 +400,9 @@ impl DesktopApp {
             // same-id node once it resolves. `reset()` drops the whole
             // session (sets + in-flight jobs + the scan gate) so the new
             // document starts clean.
-            self.image_search.reset();
+            for id in &outcome.replaced {
+                self.reset_image_search_of(*id);
+            }
             self.last_painted_page = None;
             // The replaced document restarts at revision 0 / page 0, so its
             // LayerPanel row-model-cache key aliases the previous document's.
@@ -667,6 +669,10 @@ mod runtime_token_tests;
 #[cfg(test)]
 #[path = "mcp_parked_document_tests.rs"]
 mod parked_document_tests;
+
+#[cfg(test)]
+#[path = "mcp_parked_document_lens_tests.rs"]
+mod parked_document_lens_tests;
 
 #[cfg(test)]
 #[path = "mcp_multi_document_e2e_support.rs"]

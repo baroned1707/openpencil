@@ -667,7 +667,7 @@ impl crate::DesktopApp {
             return false;
         }
         self.host.mark_editor_state_dirty();
-        self.image_search.reset();
+        self.runs.image_search.reset();
         self.rebind_git_session_for_current_path();
         // The file now holds the content the crash-recovery snapshot did.
         self.clear_obsolete_recovery_entries();

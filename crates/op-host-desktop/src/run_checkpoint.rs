@@ -246,7 +246,7 @@ impl DesktopApp {
         self.host.mark_editor_state_dirty();
         // Node ids of the replaced content may name different nodes now.
         self.host.force_rotate_layer_panel_owner();
-        self.image_search.reset();
+        self.runs.image_search.reset();
         self.last_painted_page = None;
         self.runs.status = op_editor_core::DocumentTabStatus::Idle;
         self.sync_active_slot();

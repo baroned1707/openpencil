@@ -28,9 +28,14 @@ use op_host_native::WidgetHostNative;
 
 use crate::fonts::FontStore;
 
+#[path = "font_download_parked.rs"]
+mod parked;
+
 pub(crate) struct FontDownloadHost {
     fetcher: FontFetcher,
     store: Option<FontStore>,
+    /// Which parked documents were last checked for missing families.
+    parked_scans: parked::ParkedFontScans,
 }
 
 fn failure_kind(failure: &FetchFailure) -> FontDownloadFailure {
@@ -82,6 +87,7 @@ impl FontDownloadHost {
         Self {
             fetcher: FontFetcher::new(source, cache, SessionConfig::default()),
             store: Some(store),
+            parked_scans: Default::default(),
         }
     }
 
@@ -100,6 +106,7 @@ impl FontDownloadHost {
         Self {
             fetcher: FontFetcher::new(Arc::new(Never), cache, SessionConfig::default()),
             store,
+            parked_scans: Default::default(),
         }
     }
 

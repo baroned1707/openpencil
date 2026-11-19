@@ -701,3 +701,6 @@ fn agent_run_survives_the_rename() {
 
 #[path = "agent_run_autosave_tests.rs"]
 mod autosave_tests;
+
+#[path = "document_runs_background_tests.rs"]
+mod background_tests;
