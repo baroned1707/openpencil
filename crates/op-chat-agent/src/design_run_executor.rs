@@ -124,6 +124,10 @@ impl ChatToolExecutor for DesignRunExecutor {
     fn check_blockers(&self) -> BlockerReport {
         self.inner.check_blockers()
     }
+
+    fn usage_budget_exhausted(&self, run: &op_ai::chat_usage::RunUsage) -> bool {
+        self.inner.usage_budget_exhausted(run)
+    }
 }
 
 #[cfg(test)]

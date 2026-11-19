@@ -575,6 +575,20 @@ pub trait ChatToolExecutor: Send + Sync {
     fn check_blockers(&self) -> BlockerReport {
         BlockerReport::default()
     }
+
+    /// Whether the run has used its token budget. The Anthropic tool loop asks
+    /// before every model request (the OpenAI-compatible loop does not ask),
+    /// passing the usage of the run so far (summed over
+    /// its finished responses); `true` ends the run the way an exhausted turn
+    /// budget does (loop-end finalize, usage, then `Done`), so the document
+    /// keeps the work done so far. The overshoot is at most one response.
+    ///
+    /// The default never stops a run: an app run has no token budget. Only a
+    /// recording harness (the real-model design recorder in `op-smoke`) that
+    /// has to bound its spend overrides it.
+    fn usage_budget_exhausted(&self, _run: &crate::chat_usage::RunUsage) -> bool {
+        false
+    }
 }
 
 /// Test double — replays a fixed delta script. Lets the chat widget

@@ -58,6 +58,7 @@ mod llm_clients;
 mod loop_mode;
 mod loop_seed;
 mod modify_mode;
+mod real_run;
 mod smoke_post;
 mod smoke_post_error;
 mod smoke_save;
@@ -203,6 +204,9 @@ async fn run_loop_mode(prompt: String) -> std::process::ExitCode {
 async fn main() -> std::process::ExitCode {
     op_host_native::bundled_design_fonts::register();
     if let Some(code) = eval::run_if_requested() {
+        return code;
+    }
+    if let Some(code) = real_run::run_if_requested().await {
         return code;
     }
     let argv: Vec<String> = std::env::args().skip(1).collect();

@@ -194,6 +194,21 @@ pub(super) async fn run_anthropic_agent_loop_inner(
     let turn_cap = cfg.max_turns.max(1);
     let mut turn = 0usize;
     loop {
+        // A harness that bounds its spend (the real-model design recorder)
+        // can end the run here, before another request is paid for. Exits
+        // like the exhausted turn budget: finalize, usage, then `Done`. The
+        // app's executors never ask for this (default: false).
+        if cfg.executor.usage_budget_exhausted(usage) {
+            let zero = zero_write_detail(cfg.finalize_on_exit, wrote, "token budget exhausted");
+            finalize_and_report(tx, &cfg.executor, cfg.finalize_on_exit, zero.as_deref()).await;
+            send_usage_before_done(tx, usage).await;
+            let _ = tx
+                .send(ChatDelta::Done {
+                    stop_reason: StopReason::MaxTokens,
+                })
+                .await;
+            return Ok(true);
+        }
         // A failed design write gets one model-authored correction request,
         // even when that failure consumed the final ordinary turn. This is a
         // separate one-shot budget; the host never replays tool arguments.

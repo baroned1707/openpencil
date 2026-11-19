@@ -76,3 +76,8 @@ sha2 = "0.10"
 # QueryEngine can't, so M3 (reasoning) can be validated headless. rustls-tls +
 # json mirror op-host-desktop so the workspace shares one TLS backend.
 reqwest = { version = "0.12", default-features = false, features = ["rustls-tls", "json"] }
+# Real-run recorder (`real_*.rs`): decode the PNG a `get_screenshot` call returns
+# and shrink it before it is embedded in review.html. Both are already in the
+# workspace lockfile (op-host-services, op-orchestrator).
+base64 = "0.22"
+image = { version = "0.25", default-features = false, features = ["png"] }

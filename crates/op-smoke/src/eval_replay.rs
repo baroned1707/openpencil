@@ -141,7 +141,7 @@ fn flatten(metrics: &impl serde::Serialize) -> BTreeMap<String, u32> {
         .collect()
 }
 
-fn load_seed(fixture: &Fixture, relative: &str) -> Result<EditorState, EvalError> {
+pub(crate) fn load_seed(fixture: &Fixture, relative: &str) -> Result<EditorState, EvalError> {
     let text = read_text(&fixture.dir.join(relative))?;
     let loaded = jian_ops_schema::load_str(&text).map_err(|error| EvalError::Seed {
         case: fixture.id.clone(),
@@ -151,7 +151,7 @@ fn load_seed(fixture: &Fixture, relative: &str) -> Result<EditorState, EvalError
 }
 
 /// The JSON a step sends: its `args`, or `{ "script": <file> }`.
-fn step_args(fixture: &Fixture, index: usize, step: &StepFile) -> Result<String, EvalError> {
+pub(crate) fn step_args(fixture: &Fixture, index: usize, step: &StepFile) -> Result<String, EvalError> {
     match (&step.args, &step.script_file) {
         (Some(args), None) => Ok(args.to_string()),
         (None, Some(file)) => {

@@ -524,3 +524,7 @@ mod cache_tests;
 #[cfg(test)]
 #[path = "chat_agent_loop_usage_tests.rs"]
 mod usage_tests;
+
+#[cfg(test)]
+#[path = "chat_agent_loop_usage_budget_tests.rs"]
+mod usage_budget_tests;

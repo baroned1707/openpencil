@@ -4948,7 +4948,9 @@ name = "op-smoke"
 version = "0.8.5"
 dependencies = [
  "agent",
+ "base64 0.22.1",
  "futures",
+ "image",
  "jian-ops-schema",
  "op-ai",
  "op-ai-skills",
