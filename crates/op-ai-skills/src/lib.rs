@@ -32,6 +32,8 @@ pub mod design_styles_choice;
 pub mod design_styles_search;
 #[cfg(test)]
 mod design_intelligence_tests;
+#[cfg(test)]
+mod design_pack_a_tests;
 pub mod design_systems;
 pub mod frontmatter;
 pub mod loader;
@@ -291,8 +293,9 @@ const LAYOUT_FINISH_CONDITION: &str = "End the turn when `snapshot_layout` confi
 section is present and filled and the last `batch_design` results carry no unresolved \
 `layoutIssues`.";
 
-const SCREENSHOT_FINISH_CONDITION: &str = "End the turn when the `get_screenshot` output \
-verifies the design is complete and visually polished.";
+const SCREENSHOT_FINISH_CONDITION: &str = "End the turn when the one full `get_screenshot` after \
+the first complete build (plus at most one more after targeted fixes) verifies the design is \
+complete and visually polished.";
 
 /// The design-agent template with the shared `jian-components` contract
 /// mounted and the host-dependent placeholders still in place.

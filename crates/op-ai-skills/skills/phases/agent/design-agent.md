@@ -267,4 +267,4 @@ When the user asks for 2+ new screens in one request AND their agent-team settin
 
 ## Finishing
 
-{{finishCondition}} Give a one-line summary of what you built (e.g., "Built a 4-screen mobile onboarding flow with the Indigo style guide."). Do not dump JSON, node trees, or raw DSL into the chat.
+{{finishCondition}} End with Done (what you built, root node ids), Remaining (unfinished), Unsure (guessed choices): one line each. Do not dump JSON, node trees, or raw DSL into the chat.

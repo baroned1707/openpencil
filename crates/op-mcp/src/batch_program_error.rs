@@ -81,6 +81,31 @@ impl fmt::Display for ProgramError {
 
 impl std::error::Error for ProgramError {}
 
+impl ProgramError {
+    /// Whether this failure means the model's picture of the document (an id,
+    /// a path, a placement) is wrong, so re-sending a corrected batch without
+    /// looking at the document again would fail the same way. Every other
+    /// variant is a mistake inside the batch text itself.
+    pub(crate) fn model_view_may_be_stale(&self) -> bool {
+        matches!(
+            self,
+            ProgramError::NotFound(_) | ProgramError::ApplyRejected(_)
+        )
+    }
+}
+
+/// The retry advice that closes a rolled-back transaction's hint.
+/// `stale_view` is true when any failed line was
+/// [`ProgramError::model_view_may_be_stale`].
+pub(crate) fn rollback_retry_advice(stale_view: bool) -> &'static str {
+    if stale_view {
+        "A node or placement the batch relied on does not match the document: re-read it \
+         (batch_get or snapshot_layout) before resending."
+    } else {
+        "Nothing was applied: retry the corrected call without re-reading the document."
+    }
+}
+
 /// Boundary bridge kept for the tool-outcome layer, which still hands the
 /// model a `String` payload. Nothing in-crate needs it to `?` any more —
 /// `batch_design.rs`'s `parse_operations` now carries

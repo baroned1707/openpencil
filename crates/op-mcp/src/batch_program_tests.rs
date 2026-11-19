@@ -224,6 +224,65 @@ b=I("n10", {"type":"rectangle","name":"B","width":10,"height":10})"##;
 }
 
 #[test]
+fn rollback_hint_says_whether_a_retry_needs_a_re_read() {
+    // A second line keeps the program out of the single-line direct path.
+    const OK_LINE: &str = r#"a=I("n10", {"type":"rectangle","name":"A","width":10,"height":10})"#;
+    let state = sample();
+    let hint_for = |program: &str| -> String {
+        let (envelope, cmd) = call_operations(&state, program);
+        assert!(cmd.is_none(), "{envelope}");
+        envelope["hint"].as_str().expect("hint present").to_string()
+    };
+    // A mistake inside the batch text: the model's picture of the document
+    // is fine, so the corrected call can go out as it is.
+    let grammar = hint_for(&format!("{OK_LINE}\nthis is not an operation"));
+    assert!(
+        grammar.contains("Nothing was applied: retry the corrected call without re-reading"),
+        "{grammar}"
+    );
+    assert!(!grammar.contains("re-read it"), "{grammar}");
+    // A node the batch relied on is not there: the picture is stale.
+    let stale = hint_for(&format!("{OK_LINE}\nU(\"missing-node\", {{\"x\":5}})"));
+    assert!(
+        stale.contains("re-read it (batch_get or snapshot_layout)"),
+        "{stale}"
+    );
+    assert!(!stale.contains("without re-reading"), "{stale}");
+    // One stale line is enough, whatever else failed.
+    let mixed = hint_for(&format!(
+        "{OK_LINE}\nthis is not an operation\nU(\"missing-node\", {{\"x\":5}})"
+    ));
+    assert!(mixed.contains("re-read it"), "{mixed}");
+    // Both keep the existing rollback wording.
+    for hint in [&grammar, &stale, &mixed] {
+        assert!(hint.contains("NONE of this batch was applied"), "{hint}");
+        assert!(hint.contains("First failure"), "{hint}");
+    }
+}
+
+#[test]
+fn only_a_wrong_view_of_the_document_is_retry_unsafe() {
+    use super::batch_program_error::ProgramError;
+    let stale = [
+        ProgramError::NotFound("x".into()),
+        ProgramError::ApplyRejected("x".into()),
+    ];
+    let own_text = [
+        ProgramError::UnparsableLine("x".into()),
+        ProgramError::Syntax("x".into()),
+        ProgramError::Json("x".into()),
+        ProgramError::InvalidNode("x".into()),
+        ProgramError::InvalidValue("x".into()),
+        ProgramError::ValueOutOfRange("x".into()),
+        ProgramError::Rejected("x".into()),
+        ProgramError::ProducedNoNode("Insert"),
+        ProgramError::IdSpaceExhausted,
+    ];
+    assert!(stale.iter().all(ProgramError::model_view_may_be_stale));
+    assert!(!own_text.iter().any(ProgramError::model_view_may_be_stale));
+}
+
+#[test]
 fn failed_rail_reconstruction_keeps_all_four_populated_cards_byte_identical() {
     let cards: Vec<jian_ops_schema::node::PenNode> = (1..=4)
         .map(|index| {

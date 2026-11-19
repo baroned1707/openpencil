@@ -30,6 +30,7 @@ pub mod design_eval_judge;
 pub mod design_eval_metrics;
 pub mod design_loop_prompt;
 pub mod design_run_executor;
+mod design_run_feedback;
 pub mod ip_screen;
 pub mod loop_blocker_ledger;
 pub mod provider_dial;

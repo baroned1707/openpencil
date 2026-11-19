@@ -18,6 +18,7 @@ CONTEXT AND UX BRIEF (a NEW product, app, site or screen). Decide alone: ask the
    - 3-7 features, each marked P0 (cannot ship without) or P1.
    - Key flows: happy path first, then one empty or error path.
    - Screen list and how screens connect (at most 3 levels deep, labels in the users' own words).
+   - Content inventory per screen: the real labels, rows and numbers it shows, so every size comes from content, not a guess.
    - Platform and size; direction (style, colour roles, type pair) with the reason it suits the audience.
    - Accessibility target, WCAG 2.2 AA: 4.5:1 text, 3:1 UI parts, 24x24 px smallest target, nothing by colour alone, a focus state noted on interactive nodes.
    - ASSUMPTIONS, one line each.

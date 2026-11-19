@@ -41,7 +41,7 @@
           "mobile-app",
           "product-principles"
         ],
-        "tokenEstimate": 15248
+        "tokenEstimate": 15470
       }
     },
     "02-dark-dashboard": {
@@ -83,7 +83,7 @@
           "jian-components",
           "product-principles"
         ],
-        "tokenEstimate": 13330
+        "tokenEstimate": 13551
       }
     },
     "03-landing-serif": {
@@ -126,7 +126,7 @@
           "landing-page",
           "product-principles"
         ],
-        "tokenEstimate": 12701
+        "tokenEstimate": 12923
       }
     },
     "04-signup-form": {
@@ -169,7 +169,7 @@
           "mobile-app",
           "product-principles"
         ],
-        "tokenEstimate": 13903
+        "tokenEstimate": 14125
       }
     },
     "05-onboarding-3-step": {
@@ -211,7 +211,7 @@
           "mobile-app",
           "product-principles"
         ],
-        "tokenEstimate": 13512
+        "tokenEstimate": 13733
       }
     },
     "06-settings-variables": {
@@ -254,7 +254,7 @@
           "mobile-app",
           "product-principles"
         ],
-        "tokenEstimate": 13969
+        "tokenEstimate": 14191
       }
     },
     "07-ecommerce-product-cart": {
@@ -299,7 +299,7 @@
           "product-principles",
           "web-app"
         ],
-        "tokenEstimate": 15875
+        "tokenEstimate": 16096
       }
     },
     "08-five-slide-deck": {
@@ -341,7 +341,7 @@
           "product-principles",
           "slides"
         ],
-        "tokenEstimate": 15569
+        "tokenEstimate": 15639
       }
     },
     "09-modify-hero-bolder": {
@@ -381,7 +381,7 @@
           "landing-page",
           "product-principles"
         ],
-        "tokenEstimate": 10822
+        "tokenEstimate": 10892
       }
     },
     "10-vague-app-screen": {
@@ -422,7 +422,7 @@
           "jian-components",
           "product-principles"
         ],
-        "tokenEstimate": 11052
+        "tokenEstimate": 11274
       }
     }
   }

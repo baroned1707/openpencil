@@ -7,19 +7,20 @@
 //! - `get_guidelines` for a topic whose text is already in the run's system
 //!   prompt (the prompt-matched domain skill) answers with a one-line
 //!   reference instead of re-sending 7-18 KB the model already holds.
-//! - A `batch_design` result's issue lists drop lines that are byte-identical
-//!   to the previous write's, replaced by an `(N unchanged ...)` count: the
-//!   earlier result, which carries the full lines, is still in the
-//!   conversation, and re-sending a defect the model has not fixed yet only
-//!   inflates every later turn. The count rides in `<key>Unchanged`
-//!   (`layoutIssuesUnchanged: 2`), the entries themselves are only in an
-//!   earlier result.
+//! - A `batch_design` result's issue lists are shaped by the run's
+//!   [`FeedbackLedger`]: a line the model was already shown and that is still
+//!   present is replaced by an `(N unchanged ...)` count, because the earlier
+//!   result, which carries the full line, is still in the conversation and
+//!   re-sending a defect the model has not fixed yet only inflates every later
+//!   turn. The count rides in `<key>Unchanged` (`layoutIssuesUnchanged: 2`).
+//!   An issue that survives a third write in a row also adds one `replanHint`.
+//!   Both rules, and how a fixed issue is allowed to come back, are described
+//!   in `design_run_feedback.rs`.
 //!
 //! The loop-end completion gates (`finalize`, `check_unfilled_screens`,
 //! `check_blockers`) are forwarded unchanged: they recompute from the live
 //! document, never from these shaped results.
 
-use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 
 use op_ai::chat_provider::{
@@ -27,13 +28,13 @@ use op_ai::chat_provider::{
 };
 use serde_json::{json, Value};
 
-use crate::design_agent_tools::LIST_KEYS;
+use crate::design_run_feedback::{page_key, FeedbackLedger};
 
 pub struct DesignRunExecutor {
     inner: Arc<dyn ChatToolExecutor>,
     system_prompt: String,
-    /// Issue entries of the previous `batch_design` result, per list key.
-    previous_lines: Mutex<HashMap<String, Vec<Value>>>,
+    /// What the model has been shown of the write feedback so far this run.
+    ledger: Mutex<FeedbackLedger>,
 }
 
 impl DesignRunExecutor {
@@ -44,7 +45,7 @@ impl DesignRunExecutor {
         Arc::new(Self {
             inner,
             system_prompt: system_prompt.to_string(),
-            previous_lines: Mutex::new(HashMap::new()),
+            ledger: Mutex::new(FeedbackLedger::default()),
         })
     }
 
@@ -70,41 +71,15 @@ impl DesignRunExecutor {
         .then_some(topic)
     }
 
-    /// Drop issue entries identical to the previous write's. Entries are
-    /// compared as JSON values, so the structured `contrastIssues` objects
-    /// dedupe like the string lines. The dropped count rides in a sibling
-    /// `<key>Unchanged` number; a list that empties out is removed.
-    fn dedupe_write_feedback(&self, content: &str) -> Option<String> {
+    /// Shape a `batch_design` result through the run's [`FeedbackLedger`]:
+    /// lines the model has already seen become a `<key>Unchanged` count, and
+    /// an issue that survives its third write in a row adds one `replanHint`.
+    /// `None` when the result is left as it came.
+    fn shape_write_feedback(&self, args_json: &str, content: &str) -> Option<String> {
         let mut envelope: Value = serde_json::from_str(content).ok()?;
         let object = envelope.as_object_mut()?;
-        let mut previous = self.previous_lines.lock().ok()?;
-        let mut changed = false;
-        let mut seen_now: HashMap<String, Vec<Value>> = HashMap::new();
-        for key in LIST_KEYS {
-            let Some(items) = object.get(key).and_then(Value::as_array).cloned() else {
-                continue;
-            };
-            let before = previous.get(key);
-            let (repeated, fresh): (Vec<&Value>, Vec<&Value>) = items
-                .iter()
-                .partition(|item| before.is_some_and(|prev| prev.contains(item)));
-            if !repeated.is_empty() {
-                let count = repeated.len();
-                if fresh.is_empty() {
-                    object.remove(key);
-                } else {
-                    object.insert(
-                        key.to_string(),
-                        Value::Array(fresh.into_iter().cloned().collect()),
-                    );
-                }
-                object.insert(format!("{key}Unchanged"), json!(count));
-                changed = true;
-            }
-            seen_now.insert(key.to_string(), items);
-        }
-        // A key absent from this write was fixed; if it returns it is new.
-        *previous = seen_now;
+        let mut ledger = self.ledger.lock().ok()?;
+        let changed = ledger.shape(&page_key(args_json), object);
         changed.then(|| envelope.to_string())
     }
 }
@@ -129,7 +104,7 @@ impl ChatToolExecutor for DesignRunExecutor {
                 }
             }
             "batch_design" => {
-                if let Some(shaped) = self.dedupe_write_feedback(&result.content) {
+                if let Some(shaped) = self.shape_write_feedback(args_json, &result.content) {
                     result.content = shaped;
                 }
             }

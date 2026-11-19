@@ -63,7 +63,7 @@ use serde_json::{json, Value};
 use super::batch_design::{find_top_level_char, normalize_node_shape, split_operations};
 use super::batch_direct_ops::{split_top_level_args, update_command_from_value};
 use super::batch_page::optional_page_id;
-use super::batch_program_error::ProgramError;
+use super::batch_program_error::{rollback_retry_advice, ProgramError};
 use super::{EditorCommand, ToolOutcome};
 
 // The DSL machinery lives in flat siblings carved off for the 800-line
@@ -149,9 +149,13 @@ pub(crate) fn run_batch_design_program(
 
     let mut errors: Vec<Value> = Vec::new();
     let mut warnings: Vec<Value> = Vec::new();
+    // Classified here, while the typed error still exists: the entries below
+    // only carry its text.
+    let mut stale_view = false;
     for (line_index, line) in lines.into_iter().enumerate() {
         ctx.current_line = line_index;
         if let Err(error) = execute_line(&line, &mut ctx) {
+            stale_view |= error.model_view_may_be_stale();
             errors.push(json!({ "line": line_preview(&line), "error": error.to_string() }));
         }
         for warning in ctx.warnings.drain(..) {
@@ -192,8 +196,9 @@ pub(crate) fn run_batch_design_program(
             json!(format!(
                 "Transaction rolled back: {} operation(s) failed, so NONE of this batch was \
                  applied — the document is unchanged. Fix the failing line(s) and resend the \
-                 whole corrected batch.{}",
+                 whole corrected batch. {}{}",
                 errors.len(),
+                rollback_retry_advice(stale_view),
                 first.map(|line| format!(" {line}")).unwrap_or_default()
             )),
         );
