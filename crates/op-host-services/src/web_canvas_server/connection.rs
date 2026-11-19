@@ -578,9 +578,11 @@ pub(super) fn dispatch<S: Read + Write>(
                     refused = Some(reason);
                     return false;
                 }
+                let icon_names_before =
+                    op_chat_agent::design_agent_tools::IconNameSnapshot::capture(editor);
                 let ok = editor.apply(cmd.clone());
                 if ok {
-                    crate::mcp_serve::run_write_repairs_after_apply(editor);
+                    crate::mcp_serve::run_write_repairs_after_apply(editor, &icon_names_before);
                 }
                 applied_any |= ok;
                 ok

@@ -187,6 +187,8 @@ mod update_node_data_tests;
 pub mod write_tools;
 mod write_tools_import_svg;
 #[cfg(test)]
+mod write_tools_import_svg_tests;
+#[cfg(test)]
 mod write_tools_tests;
 mod write_tools_variables;
 // Cross-cutting tests for the crate spine — stdio dispatch + parser

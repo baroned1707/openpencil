@@ -267,3 +267,103 @@ fn icon_font_node_unknown_name_paints_nothing() {
     assert_eq!(unknown_family.paths, 0);
     assert_eq!(unknown_family.fills, 0);
 }
+
+/// Invariant: an `icon_font` node resolves ANY glyph of the embedded lucide
+/// and feather sets, not only the hand-copied chrome set behind
+/// `Icon::from_name`. The painter asks the catalog first, so the ~75 chrome
+/// glyphs are a fallback for legacy names, not a ceiling.
+#[test]
+fn icon_font_node_paints_every_lucide_and_feather_glyph() {
+    use crate::widgets::icon_catalog::core_icon_names;
+
+    let lucide: Vec<&str> = core_icon_names("lucide").collect();
+    let feather: Vec<&str> = core_icon_names("feather").collect();
+    assert!(lucide.len() >= 1_500, "lucide glyphs: {}", lucide.len());
+    assert!(feather.len() >= 250, "feather glyphs: {}", feather.len());
+    for (family, names) in [("lucide", &lucide), ("feather", &feather)] {
+        for name in names {
+            let mut backend = CountingBackend::default();
+            paint_icon_font_node(
+                &mut backend,
+                family,
+                name,
+                Rect::xywh(0.0, 0.0, 24.0, 24.0),
+                Some(Color::WHITE),
+            );
+            assert!(
+                backend.paths + backend.fills > 0,
+                "{family}:{name} painted nothing"
+            );
+        }
+    }
+}
+
+/// Invariant: a name the chrome table does not know still paints through the
+/// catalog (the case the first-party table could never cover), and a name both
+/// know paints from the catalog, exactly as before.
+#[test]
+fn icon_font_node_names_outside_the_chrome_set_paint_through_the_catalog() {
+    use crate::widgets::icon_catalog::lookup_icon;
+
+    for name in [
+        "binoculars",
+        "croissant",
+        "drum",
+        "flower-2",
+        "ghost",
+        "guitar",
+        "hand-coins",
+        "microscope",
+        "pizza",
+        "telescope",
+        "trophy",
+        "wine",
+    ] {
+        assert!(lookup_icon("lucide", name).is_some(), "{name}");
+        assert!(
+            Icon::from_name(name).is_none(),
+            "{name} is in the chrome table; pick a name that proves the catalog path"
+        );
+        let mut backend = CountingBackend::default();
+        paint_icon_font_node(
+            &mut backend,
+            "lucide",
+            name,
+            Rect::xywh(0.0, 0.0, 24.0, 24.0),
+            Some(Color::WHITE),
+        );
+        assert!(backend.paths > 0, "{name}");
+    }
+}
+
+/// Invariant: the third-party notice for the embedded icon sets ships with
+/// them. Lucide is ISC and Feather is MIT; both licences require the notice to
+/// travel with copies, and the catalog asset holds their path data.
+#[test]
+fn embedded_icon_sets_have_their_licence_notice() {
+    let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("../../packaging/shared/THIRD_PARTY_NOTICES.md");
+    let notices = std::fs::read_to_string(&path).expect("read THIRD_PARTY_NOTICES.md");
+    for (heading, licence_marker) in [
+        (
+            "## Lucide (ISC)",
+            "Permission to use, copy, modify, and/or distribute",
+        ),
+        (
+            "## Feather (MIT)",
+            "Permission is hereby granted, free of charge",
+        ),
+    ] {
+        let start = notices
+            .find(heading)
+            .unwrap_or_else(|| panic!("{heading} section is missing"));
+        let section = &notices[start..];
+        let end = section[heading.len()..]
+            .find("\n## ")
+            .map_or(section.len(), |at| at + heading.len());
+        assert!(
+            section[..end].contains(licence_marker),
+            "{heading} lacks the licence text"
+        );
+    }
+}

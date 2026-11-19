@@ -15,7 +15,7 @@ I(null, {"type":"frame","id":"card","name":"Card","width":294,"height":236,
   "layout":"none","clipContent":true,"fill":[{"type":"solid","color":"#FFFFFF"}],
   "children":[
     {"type":"frame","id":"add","role":"button","x":282,"y":176,"width":44,"height":44},
-    {"type":"icon_font","id":"star","iconFontName":"serch","width":20,"height":20}
+    {"type":"icon_font","id":"star","iconFontName":"no-such-glyph-xyz","width":20,"height":20}
   ]});
 "##;
 
@@ -67,7 +67,7 @@ fn result_json(response: &str) -> Value {
 }
 
 /// Invariant: a script that builds a card clipping its own button yields
-/// `layoutIssues` (and `iconIssues` for the misspelled glyph) in the result of
+/// `layoutIssues` (and `iconIssues` for the unknown glyph) in the result of
 /// an external `batch_design`, with at most 12 short lines per key.
 #[test]
 fn external_batch_design_result_carries_layout_issues() {
@@ -89,7 +89,7 @@ fn external_batch_design_result_carries_layout_issues() {
     assert!(icons[0]
         .as_str()
         .expect("line")
-        .contains("'serch' is not a lucide glyph"));
+        .contains("'no-such-glyph-xyz' is not a lucide glyph"));
     for key in ["layoutIssues", "iconIssues"] {
         assert!(result[key].as_array().expect(key).len() <= 12);
     }
@@ -238,7 +238,7 @@ fn small_writer_update_node_carries_feedback() {
         &mut state,
         &line(
             "update_node",
-            json!({ "nodeId": icon_id, "data": "{\"iconFontName\":\"serch\"}" }),
+            json!({ "nodeId": icon_id, "data": "{\"iconFontName\":\"no-such-glyph-xyz\"}" }),
         ),
     );
     assert!(!response.contains(r#""isError":true"#), "{response}");
@@ -247,7 +247,7 @@ fn small_writer_update_node_carries_feedback() {
         result["iconIssues"][0]
             .as_str()
             .expect("icon line")
-            .contains("'serch'"),
+            .contains("'no-such-glyph-xyz'"),
         "{result}"
     );
 }
@@ -294,9 +294,7 @@ fn description_lint_still_passes() {
 /// writers keep it at any size and a small page still gets it.
 #[test]
 fn update_node_skips_feedback_only_on_a_large_page() {
-    use super::{
-        too_costly_for_small_writer_for_tests, SMALL_WRITER_NODE_LIMIT,
-    };
+    use super::{too_costly_for_small_writer_for_tests, SMALL_WRITER_NODE_LIMIT};
     let mut state = EditorState::new();
     run(
         &mut state,

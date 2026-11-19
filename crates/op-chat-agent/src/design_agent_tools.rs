@@ -218,6 +218,9 @@ pub fn execute_design_tool_with_root_seed_guard(
     let reveal_started_ms = reveal_now_millis();
     let ids_before = should_register_batch_reveals(name, indicator_epoch)
         .then(|| collect_active_node_ids(state));
+    // Icon names as they stood before the write: only icons it adds or changes
+    // are eligible for the glyph-name auto-rename below.
+    let icon_names_before = (name == "batch_design").then(|| IconNameSnapshot::capture(state));
     let root_ids_before =
         should_track_root_seed_candidate(state, name, indicator_epoch, root_seed_guard.as_deref())
             .then(|| collect_active_top_level_node_ids(state));
@@ -244,6 +247,13 @@ pub fn execute_design_tool_with_root_seed_guard(
             state,
             op_editor_ui::widgets::icons::lucide_name_for_path_d,
         );
+        let icon_notes: Vec<String> = icon_names_before
+            .as_ref()
+            .map(|before| rename_unknown_icons(state, before))
+            .unwrap_or_default()
+            .iter()
+            .map(IconRename::note)
+            .collect();
         if icon_path_report != Default::default() {
             eprintln!(
                 "openpencil agent: icon path normalization: converted_to_icon_font={}, refit_uniform={}",
@@ -279,6 +289,7 @@ pub fn execute_design_tool_with_root_seed_guard(
             PostWriteExtras {
                 structure_notes,
                 root_seed_hint,
+                icon_notes,
             },
             Some(&IN_APP_FEEDBACK_CAPS),
         );
@@ -510,6 +521,7 @@ fn extract_from_schema_entry(entry: &str) -> Option<(String, String)> {
 mod contrast_scan;
 mod font_catalog_file;
 mod font_issues;
+mod icon_auto_rename;
 mod icon_names;
 mod post_write_diagnostics;
 mod quality_scans;
@@ -517,6 +529,7 @@ mod root_seed;
 
 pub use contrast_scan::*;
 pub use font_catalog_file::with_font_catalog_file;
+pub use icon_auto_rename::{rename_unknown_icons, IconNameSnapshot, IconRename, RenameRecording};
 pub use post_write_diagnostics::*;
 pub use quality_scans::*;
 pub use root_seed::*;
@@ -552,3 +565,7 @@ mod feedback_tests;
 #[cfg(test)]
 #[path = "design_agent_tools_font_tests.rs"]
 mod font_tests;
+
+#[cfg(test)]
+#[path = "design_agent_tools_icon_rename_tests.rs"]
+mod icon_rename_tests;

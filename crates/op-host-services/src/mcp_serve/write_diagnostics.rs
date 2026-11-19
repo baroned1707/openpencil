@@ -17,7 +17,8 @@
 use std::panic::{catch_unwind, AssertUnwindSafe};
 
 use op_chat_agent::design_agent_tools::{
-    page_index_for_selector, post_write_diagnostics, PostWriteExtras, MCP_FEEDBACK_CAPS,
+    page_index_for_selector, post_write_diagnostics, IconNameSnapshot, IconRename, PostWriteExtras,
+    RenameRecording, MCP_FEEDBACK_CAPS,
 };
 use op_editor_core::{EditorCommand, EditorState};
 use op_mcp::{RequestId, ToolCall, ToolRegistry, ToolResponse};
@@ -53,20 +54,29 @@ pub(super) fn dispatch<F>(
 where
     F: FnMut(&str, &mut EditorState, &EditorCommand) -> bool,
 {
+    // Icons as they stood before the write, and a log of any glyph name the
+    // write's own repairs correct: on the headless transport that happens
+    // inside `apply`, before the diagnostics below can see the old name.
+    let icon_names_before = feedback_call
+        .is_some()
+        .then(|| IconNameSnapshot::capture(state));
+    let recording = feedback_call.is_some().then(RenameRecording::start);
     let mut applied = false;
     let response = super::process_tool_message_with_registry(registry, line, |tool_name, cmd| {
         let ok = apply(tool_name, state, cmd);
         applied |= ok;
         ok
     })?;
-    match (feedback_call, response) {
-        (Some(call), Some(response)) if applied && !too_costly_for_small_writer(&call, state) => {
+    match (feedback_call, response, icon_names_before, recording) {
+        (Some(call), Some(response), Some(before), Some(recording))
+            if applied && !too_costly_for_small_writer(&call, state) =>
+        {
             let selector = page_selector(&call);
             Ok(Some(append_feedback(response, &call.id, || {
-                diagnose(state, selector.as_deref())
+                diagnose(state, selector.as_deref(), &before, &recording)
             })))
         }
-        (_, response) => Ok(response),
+        (_, response, _, _) => Ok(response),
     }
 }
 
@@ -123,15 +133,26 @@ fn page_selector(call: &ToolCall) -> Option<String> {
 /// has had the write repairs, so it reports what the document looks like
 /// after the host's own cleanup (the live path applies the command to a local
 /// snapshot only; the host repairs the real document separately).
-fn diagnose(state: &EditorState, selector: Option<&str>) -> Result<Map<String, Value>, String> {
+fn diagnose(
+    state: &EditorState,
+    selector: Option<&str>,
+    icon_names_before: &IconNameSnapshot,
+    recording: &RenameRecording,
+) -> Result<Map<String, Value>, String> {
     let page = page_index_for_selector(state, selector)
         .ok_or_else(|| "write page is not on the document".to_string())?;
     let mut scratch = state.clone();
     scratch.ui.active_page_index = page;
-    super::run_write_repairs_after_apply(&mut scratch);
+    super::run_write_repairs_after_apply(&mut scratch, icon_names_before);
+    // Renames made by the applier (headless) and by the pass above (live,
+    // where the applier only touched a local snapshot) read the same.
+    let icon_notes = recording.take().iter().map(IconRename::note).collect();
     Ok(post_write_diagnostics(
         &scratch,
-        PostWriteExtras::default(),
+        PostWriteExtras {
+            icon_notes,
+            ..PostWriteExtras::default()
+        },
         Some(&MCP_FEEDBACK_CAPS),
     ))
 }
@@ -205,3 +226,7 @@ fn merge_into_result(
 #[cfg(test)]
 #[path = "write_diagnostics_tests.rs"]
 mod tests;
+
+#[cfg(test)]
+#[path = "write_diagnostics_icon_rename_tests.rs"]
+mod icon_rename_tests;

@@ -128,3 +128,48 @@ fn plan_scale_floors_so_the_rounded_edge_never_exceeds_the_cap() {
     }
     assert!(!plan_scale(None, 1568.0, 10.0).downscaled);
 }
+
+#[test]
+fn a_small_icon_is_enlarged_to_the_requested_scale() {
+    let (width, height, meta) = shot(&tool_for_frame(24.0, 24.0), Some("16"));
+    assert_eq!((width, height), (384, 384));
+    assert_eq!(meta["scale"], 16.0);
+    assert_eq!(meta["requestedScale"], 16.0);
+    assert!(meta.get("hint").is_none(), "{meta}");
+    assert_report_matches_pixels(width, height, &meta, (24.0, 24.0));
+}
+
+#[test]
+fn a_high_scale_still_stops_at_the_hard_long_edge_cap() {
+    // 400 px at scale 16 would be 6400 px; the cap lowers it to 2576 and the
+    // reported scale is the one used.
+    let (width, height, meta) = shot(&tool_for_frame(400.0, 200.0), Some("16"));
+    assert_eq!(width, 2576);
+    assert_report_matches_pixels(width, height, &meta, (400.0, 200.0));
+    assert_eq!(meta["requestedScale"], 16.0);
+    assert!(meta["hint"].as_str().expect("hint").contains("2576"));
+}
+
+#[test]
+fn a_node_already_at_the_hard_cap_is_not_enlarged() {
+    let (width, height, meta) = shot(&tool_for_frame(2576.0, 100.0), Some("8"));
+    assert_eq!((width, height), (2576, 100));
+    assert_eq!(meta["scale"], 1.0);
+    assert_eq!(meta["requestedScale"], 8.0);
+}
+
+#[test]
+fn omitted_and_low_scales_keep_the_pre_raise_plan() {
+    // Byte-identical behaviour for scale omitted or <= 2: same plan as before
+    // the ceiling moved from 2 to 16.
+    let plan = plan_scale(None, 4000.0, 3000.0);
+    assert_eq!(
+        (plan.used, plan.requested, plan.hard_cap),
+        (0.392, 1.0, false)
+    );
+    let plan = plan_scale(Some(2.0), 4000.0, 3000.0);
+    assert!(plan.downscaled && plan.hard_cap);
+    assert_eq!(plan.used, 0.644);
+    let plan = plan_scale(Some(2.0), 80.0, 80.0);
+    assert_eq!((plan.used, plan.downscaled), (2.0, false));
+}

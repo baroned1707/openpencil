@@ -272,6 +272,7 @@ fn in_app_extras_reach_structure_issues_and_the_hint() {
     let extras = PostWriteExtras {
         structure_notes: vec!["removed 1 extra status bar(s)".to_string()],
         root_seed_hint: Some("seed hint".to_string()),
+        ..PostWriteExtras::default()
     };
     let feedback = post_write_diagnostics(&state, extras, None);
     assert_eq!(

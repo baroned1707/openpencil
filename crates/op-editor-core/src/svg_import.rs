@@ -4,18 +4,28 @@
 //! TS parity with `apps/web/src/.../svg-parser.ts`. v1 scope:
 //!
 //!   - Shape elements: `<rect>` / `<circle>` / `<ellipse>` / `<line>` /
-//!     `<polyline>` / `<polygon>`.
-//!   - `<path>` — the `M L H V C S Q T Z` command subset (absolute +
-//!     relative). Cubic / quadratic curves keep their bezier handles
-//!     (`Q`/`T` are promoted to cubics); `A` (elliptical arc) degrades
-//!     to a straight segment to its endpoint.
-//!   - `fill` attribute — `#rgb` / `#rrggbb` + a small named-colour
-//!     table; `none` leaves the node unfilled.
+//!     `<polyline>` / `<polygon>` (a `<rect>`'s `rx` / `ry` are not read).
+//!   - `<path>` — kept as SVG path data, so every command (arcs
+//!     included) and compound sub-paths survive; coordinates are scaled
+//!     to the viewBox-aware root size.
+//!   - `<g>` — becomes a Group (one child collapses into the child), with
+//!     `fill` / `stroke` / `stroke-width` / `fill-rule` inherited from it.
+//!   - `fill` / `stroke` — `#rgb` / `#rrggbb` + a small named-colour
+//!     table; `none` leaves the node unfilled / unstroked.
 //!
-//! Out of scope for v1 (skipped, not an error): `<g>` grouping,
-//! `transform` attributes, CSS `<style>`, `<defs>` / gradients,
-//! `stroke` styling. Elements are scanned flat, so a shape nested in a
-//! `<g>` still imports — just without the group's transform.
+//! Not imported, and not an error (the MCP `import_svg` tool reports the
+//! features of a document it drops, see [`skipped_svg_features`]):
+//!
+//!   - `transform` on any element, `opacity` / `fill-opacity` /
+//!     `stroke-opacity`, `stroke-linecap` / `-linejoin` / `-dasharray`,
+//!     `clip-path` / `mask` / `filter`.
+//!   - Gradients: `<defs>` / `<linearGradient>` / `<radialGradient>` are
+//!     skipped, a `fill="url(#…)"` paints BLACK and a `stroke="url(#…)"`
+//!     draws no stroke.
+//!   - `<text>`, `<use>`, `<image>` and any other element than `<g>` /
+//!     `<svg>` that is not a shape above (the element and its children are
+//!     dropped), `<symbol>`, `<style>` / class-based CSS (fills fall back to
+//!     black).
 //!
 //! The parser is hand-rolled (no XML / SVG crate) so `op-editor-core`
 //! stays dependency-light + wasm32-clean, matching the hand-rolled
@@ -34,6 +44,7 @@
 //! - `nodes` — element → `PenNode` conversion (containers + leaves)
 //! - `style` — fill / stroke resolution + the named-colour table
 //! - `scale` — applying the root scale to attrs / path data / points
+//! - `skipped` — read-only report of the features the import drops
 //! - `lexer` — hand-rolled tag / attribute / number scanning
 //! - `path_data` — the `<path d="…">` command reader
 
@@ -41,6 +52,7 @@ mod lexer;
 mod nodes;
 mod path_data;
 mod scale;
+mod skipped;
 mod style;
 mod xml;
 
@@ -50,6 +62,8 @@ use path_data::*;
 use scale::*;
 use style::*;
 use xml::*;
+
+pub use skipped::{skipped_svg_features, SkippedSvgFeature};
 
 use crate::command_node::build_leaf_node;
 use crate::fills::set_primary_fill_hex;

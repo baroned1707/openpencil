@@ -29,6 +29,22 @@ fn checkable_collection(family: Option<&str>) -> Option<&'static str> {
     }
 }
 
+/// Whether the painter draws `name` for `collection` (the catalog with its
+/// legacy-name aliases, then the chrome table for lucide).
+fn painted_in(collection: &str, name: &str) -> bool {
+    lookup_icon(collection, name).is_some()
+        || (collection == "lucide" && Icon::from_name(name.trim()).is_some())
+}
+
+/// `true` when the painter would draw `name`, or when the family or catalog
+/// cannot be judged (so nothing may be changed on that basis).
+pub(super) fn painter_knows_glyph(family: Option<&str>, name: &str) -> bool {
+    match checkable_collection(family) {
+        Some(collection) if core_catalog_loaded() => painted_in(collection, name),
+        _ => true,
+    }
+}
+
 /// `Some(issue line)` when `name` is not a glyph the canvas can paint for
 /// `family`; `None` for a known glyph, an unchecked family or a catalog that
 /// is not loaded.
@@ -37,9 +53,7 @@ pub(super) fn unknown_glyph_issue(id: &str, family: Option<&str>, name: &str) ->
     if !core_catalog_loaded() {
         return None;
     }
-    let painted = lookup_icon(collection, name).is_some()
-        || (collection == "lucide" && Icon::from_name(name.trim()).is_some());
-    if painted {
+    if painted_in(collection, name) {
         return None;
     }
     let closest = nearest_glyph_names(collection, name.trim());
@@ -49,6 +63,57 @@ pub(super) fn unknown_glyph_issue(id: &str, family: Option<&str>, name: &str) ->
         line.push_str(&closest.join(", "));
     }
     Some(line)
+}
+
+/// Shortest name a typo fix is trusted for: one edit on a three-letter name
+/// reaches too many other glyphs to call it what was meant.
+const MIN_RENAME_LEN: usize = 4;
+
+/// The glyph name to write instead of the unpainted `name`, when exactly one is
+/// clearly meant: `name` normalised (case, `_` and spaces to `-`) is a name the
+/// painter draws, or it is one edit from exactly one glyph of the family's
+/// set. `None` when the family cannot be judged, the name is a family name or
+/// a variable reference, too short, ambiguous or unmatched.
+pub(super) fn rename_target(family: Option<&str>, name: &str) -> Option<String> {
+    let collection = checkable_collection(family)?;
+    if !core_catalog_loaded() {
+        return None;
+    }
+    let trimmed = name.trim();
+    let lowered = trimmed.to_ascii_lowercase();
+    if lowered.starts_with('$') || lowered.starts_with("lucide") || lowered.starts_with("material")
+    {
+        return None;
+    }
+    let normalised: String = lowered
+        .chars()
+        .map(|c| {
+            if c == '_' || c.is_whitespace() {
+                '-'
+            } else {
+                c
+            }
+        })
+        .collect::<String>()
+        .trim_matches('-')
+        .to_string();
+    if normalised.chars().count() < MIN_RENAME_LEN {
+        return None;
+    }
+    if normalised != trimmed && painted_in(collection, &normalised) {
+        return Some(normalised);
+    }
+    // Compare against the raw edit distance, not the picker's ranking
+    // distance, which treats a prefix as close.
+    let mut targets: Vec<&'static str> = core_icon_names(collection)
+        .filter(|candidate| edit_distance(&normalised, candidate) == 1)
+        .collect();
+    targets.sort_unstable();
+    targets.dedup();
+    match targets.as_slice() {
+        [only] => Some((*only).to_string()),
+        _ => None,
+    }
 }
 
 /// Up to [`SUGGESTION_COUNT`] glyph names nearest to `name`, best first.

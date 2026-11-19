@@ -16,6 +16,7 @@ use std::time::Instant;
 
 use crate::brand_extract::brand_extract_snapshot;
 use crate::import_html_url::import_html_url_snapshot;
+use op_chat_agent::design_agent_tools::IconNameSnapshot;
 use op_editor_core::{EditorCommand, EditorState};
 use op_mcp::import_html_tool::import_html_snapshot;
 use op_mcp::import_snapshot_tool::import_web_snapshot_tool;
@@ -131,71 +132,6 @@ fn save_editor_state(state: &EditorState, path: &Path) -> Result<(), McpServeErr
         .map_err(|error| McpServeError::Document(format!("save {}: {error}", path.display())))
 }
 
-pub(crate) fn normalize_mobile_screens_after_apply(
-    state: &mut EditorState,
-) -> op_chat_agent::MobileNormalizeReport {
-    let report = op_chat_agent::normalize_mobile_screens(state);
-    let mut changes = Vec::new();
-    if report.status_bars_inserted > 0 {
-        changes.push(format!(
-            "status_bars_inserted={}",
-            report.status_bars_inserted
-        ));
-    }
-    if report.status_bars_replaced > 0 {
-        changes.push(format!(
-            "status_bars_replaced={}",
-            report.status_bars_replaced
-        ));
-    }
-    if report.duplicate_status_bars_removed > 0 {
-        changes.push(format!(
-            "duplicate_status_bars_removed={}",
-            report.duplicate_status_bars_removed
-        ));
-    }
-    if report.viewport_heights_fixed > 0 {
-        changes.push(format!(
-            "viewport_heights_fixed={}",
-            report.viewport_heights_fixed
-        ));
-    }
-    if !changes.is_empty() {
-        eprintln!(
-            "openpencil-desktop mcp: mobile normalization: {}",
-            changes.join(", ")
-        );
-    }
-    report
-}
-
-pub(crate) fn normalize_icon_paths_after_apply(
-    state: &mut EditorState,
-) -> op_editor_core::icon_path_normalize::IconPathNormalizeReport {
-    let report = op_editor_core::icon_path_normalize::normalize_icon_paths(
-        state,
-        op_editor_ui::widgets::icons::lucide_name_for_path_d,
-    );
-    if report != Default::default() {
-        eprintln!(
-            "openpencil-desktop mcp: icon path normalization: converted_to_icon_font={}, refit_uniform={}",
-            report.converted_to_icon_font, report.refit_uniform
-        );
-    }
-    report
-}
-
-/// Run the two cheap, idempotent repair passes shared by every bare-MCP
-/// document write after the command itself has applied and before it saves.
-pub(crate) fn run_write_repairs_after_apply(state: &mut EditorState) -> bool {
-    normalize_mobile_screens_after_apply(state);
-    normalize_icon_paths_after_apply(state);
-    let mobile_nav_reflowed = op_orchestrator::repair_mobile_trailing_nav_reflow(state);
-    let image_slots_materialized =
-        op_orchestrator::cleanup_image_slots::materialize_empty_image_fill_slots(state);
-    mobile_nav_reflowed || image_slots_materialized
-}
-
 /// Process one JSON-RPC message line against the editor state.
 #[cfg(test)]
 fn process_message(
@@ -250,6 +186,7 @@ fn process_message_with_auto_finalize(
     // the tool name is accepted (shared signature with the live-MCP path)
     // and deliberately ignored here.
     let response = process_message_with_applier_profiled(state, line, profile, |_, state, cmd| {
+        let icon_names_before = IconNameSnapshot::capture(state);
         // `EditorState::apply` runs the pre-validate-then-mutate
         // discipline; `false` means the command rejected and the
         // document was NOT changed.
@@ -258,7 +195,7 @@ fn process_message_with_auto_finalize(
             return false;
         }
         if !annotation_only {
-            run_write_repairs_after_apply(state);
+            run_write_repairs_after_apply(state, &icon_names_before);
         }
         if let Err(e) = save_editor_state(state, path) {
             applier_failed = Some(format!("save failed: {e}"));
@@ -727,6 +664,8 @@ mod server_instructions;
 mod tool_annotations;
 mod wire;
 mod write_diagnostics;
+mod write_repairs;
+pub(crate) use write_repairs::run_write_repairs_after_apply;
 pub use wire::*;
 
 mod doc_sync;

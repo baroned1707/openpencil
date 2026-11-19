@@ -32,6 +32,8 @@ Rules for maintainers:
 | Prompt skills `design-craft`, `design-brief` (adapted, condensed, modified): Anthropic frontend-design and write-spec | https://github.com/anthropics/skills and https://github.com/anthropics/knowledge-work-plugins | Apache-2.0 | sections "Anthropic skills (frontend-design) and knowledge-work-plugins (write-spec) (Apache-2.0)" and "Apache License 2.0 (full text)" |
 | Prompt skill `design-craft` (adapted, condensed, modified): Impeccable | https://github.com/pbakaus/impeccable, Copyright 2025 Paul Bakaus | Apache-2.0 | section "Impeccable (Apache-2.0)", with its NOTICE text |
 | Prompt skill `design-brief` (adapted, condensed, modified): designer-skills | https://github.com/Owl-Listener/designer-skills | MIT, Copyright (c) 2026 MC Dean | section "Owl-Listener designer-skills (MIT)" |
+| Icon glyphs (path data of the Lucide icon set, embedded in `iconify-catalog-core.json` and the first-party glyph table) | https://github.com/lucide-icons/lucide, packaged by `@iconify-json/lucide` | ISC | section "Lucide (ISC)" below |
+| Icon glyphs (path data of the Feather icon set, embedded in `iconify-catalog-core.json`) | https://github.com/feathericons/feather, packaged by `@iconify-json/feather` | MIT | section "Feather (MIT)" below |
 | Design data: OpenPencil seed | Written for OpenPencil from general design knowledge, no third-party dataset | MIT (this project) | none needed |
 
 ## OpenPencil seed
@@ -185,6 +187,75 @@ project, verbatim:
 MIT License
 
 Copyright (c) 2026 MC Dean
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+```
+
+## Lucide (ISC)
+
+The `icon_font` glyphs drawn with `iconFontFamily` `lucide` (the icon picker and
+every icon node) use path data from the **Lucide** icon set, embedded in
+`crates/op-editor-ui/assets/iconify-catalog-core.json` and, for a few glyphs of
+the editor's own chrome, copied into `crates/op-editor-ui/src/widgets/icons_data/`.
+
+- Repository: https://github.com/lucide-icons/lucide
+- Packaged for OpenPencil by `@iconify-json/lucide` (`packages/scripts/generate-iconify-catalog.mjs`)
+- Used unmodified: only the path data, re-encoded as Iconify `d` strings
+
+The licence text of the upstream project, verbatim (copied from the `LICENSE`
+file shipped by `lucide-react`):
+
+```text
+ISC License
+
+Copyright (c) for portions of Lucide are held by Cole Bemis 2013-2022 as part of Feather (MIT). All other copyright (c) for Lucide are held by Lucide Contributors 2022.
+
+Permission to use, copy, modify, and/or distribute this software for any
+purpose with or without fee is hereby granted, provided that the above
+copyright notice and this permission notice appear in all copies.
+
+THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
+WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
+MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR
+ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
+WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
+ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
+OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+```
+
+## Feather (MIT)
+
+The `icon_font` glyphs drawn with `iconFontFamily` `feather` use path data from
+the **Feather** icon set, embedded in
+`crates/op-editor-ui/assets/iconify-catalog-core.json`. A `lucide` glyph name
+that Lucide no longer has falls back to the Feather glyph of the same name.
+
+- Repository: https://github.com/feathericons/feather
+- Packaged for OpenPencil by `@iconify-json/feather`
+- Copyright (c) Cole Bemis (the upstream copyright year is not recorded here)
+
+The MIT licence applies to the Feather path data:
+
+```text
+The MIT License (MIT)
+
+Copyright (c) Cole Bemis
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal

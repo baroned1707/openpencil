@@ -133,7 +133,7 @@ fn document_tool_descriptions_match_what_the_tools_do() {
 }
 
 /// Invariant: the lean catalog's screenshot description and schema agree on
-/// `scale` (inline screenshots now take 0.25 to 2.0).
+/// `scale` (inline screenshots take 0.25 to 16; small icons want 8-16).
 #[test]
 fn screenshot_scale_range_is_documented_in_both_catalogs() {
     for profile in [McpAccessProfile::UNRESTRICTED, McpAccessProfile::LEAN] {
@@ -144,9 +144,25 @@ fn screenshot_scale_range_is_documented_in_both_catalogs() {
             .expect("get_screenshot");
         let scale = &tool["inputSchema"]["properties"]["scale"];
         assert_eq!(scale["type"], "number");
+        let description = scale["description"].as_str().unwrap_or("");
         assert!(
-            scale["description"].as_str().unwrap_or("").contains("0.25"),
+            description.contains("0.25") && description.contains("16"),
             "{scale}"
         );
     }
+    // The full catalog also states the ceiling as a machine-readable bound
+    // and tells the agent which scale suits a small icon.
+    let full = listed(McpAccessProfile::UNRESTRICTED);
+    let full_scale = &full
+        .iter()
+        .find(|tool| tool["name"] == "get_screenshot")
+        .expect("get_screenshot")["inputSchema"]["properties"]["scale"];
+    assert_eq!(full_scale["maximum"], 16, "{full_scale}");
+    assert!(
+        full_scale["description"]
+            .as_str()
+            .unwrap_or("")
+            .contains("small icons: use scale 8-16"),
+        "{full_scale}"
+    );
 }

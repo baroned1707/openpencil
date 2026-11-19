@@ -22,10 +22,11 @@ use op_mcp::{McpTool, ToolErrorCode, ToolOutcome};
 use crate::export::{render_node_raster_at_chosen_scale, RasterFormat};
 
 /// Allowed range of the optional `scale` argument. Below the floor the image
-/// is too small to read; above the ceiling a large frame costs far more
-/// pixels than a visual check needs.
+/// is too small to read. The ceiling lets a 24 px icon be drawn at 384 px so
+/// an agent can judge it; a large frame is still held to
+/// [`MAX_LONG_EDGE_PX`], so a high scale never costs more pixels than that.
 pub(crate) const MIN_SCALE: f32 = 0.25;
-pub(crate) const MAX_SCALE: f32 = 2.0;
+pub(crate) const MAX_SCALE: f32 = 16.0;
 
 /// Longest edge, in pixels, of a screenshot taken without an explicit `scale`.
 /// Vision models downscale anything larger before they look at it (the
@@ -468,17 +469,17 @@ mod tests {
         assert_eq!(png_width(call_with_scale(&tool, "0.5")), base / 2);
     }
 
-    /// Invariant: a `scale` outside 0.25..=2.0, or not a number, is refused
+    /// Invariant: a `scale` outside 0.25..=16, or not a number, is refused
     /// before any rendering, and the error text states the allowed range.
     #[test]
     fn scale_outside_the_allowed_range_is_refused_with_the_range_in_the_message() {
         let tool = square_tool();
-        for bad in ["0.1", "0", "-1", "2.5", "abc", "NaN", "inf"] {
+        for bad in ["0.1", "0", "-1", "16.5", "17", "abc", "NaN", "inf"] {
             match call_with_scale(&tool, bad) {
                 ToolOutcome::Err(code, message) => {
                     assert_eq!(code, ToolErrorCode::InvalidArgument, "{bad}");
                     assert!(
-                        message.contains("0.25") && message.contains('2'),
+                        message.contains("0.25") && message.contains("16"),
                         "{message}"
                     );
                     assert!(message.contains(bad), "{message}");
@@ -486,7 +487,7 @@ mod tests {
                 other => panic!("scale {bad:?} must be refused, got {other:?}"),
             }
         }
-        for good in ["0.25", "2", "2.0", "1.5"] {
+        for good in ["0.25", "2", "2.5", "8", "16", "1.5"] {
             assert!(
                 matches!(
                     call_with_scale(&tool, good),

@@ -8,6 +8,8 @@ mod font_download;
 mod frame;
 #[path = "ui3_proof_home_tests.rs"]
 mod home;
+#[path = "ui3_proof_icons_tests.rs"]
+mod icons;
 #[path = "ui3_proof_images_tests.rs"]
 mod images;
 #[path = "ui3_proof_menus_tests.rs"]

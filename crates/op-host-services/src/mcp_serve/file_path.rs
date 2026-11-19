@@ -59,10 +59,12 @@ pub fn process_message_for_file_path_arg(
         line,
         profile,
         |_tool_name, state, cmd| {
+            let icon_names_before =
+                op_chat_agent::design_agent_tools::IconNameSnapshot::capture(state);
             if !state.apply(cmd.clone()) {
                 return false;
             }
-            super::run_write_repairs_after_apply(state);
+            super::run_write_repairs_after_apply(state, &icon_names_before);
             if let Err(e) = super::save_editor_state(state, &target.path) {
                 applier_failed = Some(format!("save {} failed: {e}", target.path.display()));
                 return false;

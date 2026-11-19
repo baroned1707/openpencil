@@ -35,6 +35,9 @@ pub struct PostWriteExtras {
     pub structure_notes: Vec<String>,
     /// Folded into `layoutHint`.
     pub root_seed_hint: Option<String>,
+    /// `renamed: from -> to` lines for glyph names the write path corrected
+    /// (`IconRename::note`). Listed first under `iconIssues`.
+    pub icon_notes: Vec<String>,
 }
 
 /// Bounds for feedback that is appended to an external agent's tool result.
@@ -103,7 +106,11 @@ pub fn post_write_diagnostics(
     layout_issues.extend(report.layout_issues);
     let mut structure_issues = report.structure_issues;
     structure_issues.extend(extras.structure_notes);
-    let mut icon_issues = report.icon_issues;
+    // Names the host already corrected are news, not a to-do: only the
+    // unresolved lines earn the "fix each icon" hint.
+    let unresolved_icon_issues = report.icon_issues.clone();
+    let mut icon_issues = extras.icon_notes;
+    icon_issues.extend(report.icon_issues);
     let mut font_issues =
         scan_font_issues(state.active_children(), &FontKnowledge::from_state(state));
     let mut intent_questions = report.intent_questions;
@@ -135,7 +142,7 @@ pub fn post_write_diagnostics(
     // Hints are worded from the full lists, before any cap shortens them.
     let hints = hints(
         &layout_issues,
-        &icon_issues,
+        &unresolved_icon_issues,
         &intent_questions,
         &variable_issues,
         &image_slots,

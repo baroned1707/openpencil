@@ -4,6 +4,7 @@
 
 use std::{collections::BTreeMap, fs};
 
+use op_editor_core::svg_import::skipped_svg_features;
 use op_editor_core::NodeId;
 
 use super::write_tools::{parse_opt_i32, root_or_node_id};
@@ -11,7 +12,8 @@ use super::{EditorCommand, McpTool, ToolErrorCode, ToolOutcome};
 
 /// First-party `import_svg` tool — parse an SVG document + insert the
 /// resulting nodes on the active page. `x` / `y` (optional, default 0)
-/// offset the imported nodes in doc-px.
+/// offset the imported nodes in doc-px. The result carries `skipped`
+/// (`[{feature, count}]`) when the SVG uses features the importer drops.
 pub struct ImportSvg;
 
 impl McpTool for ImportSvg {
@@ -68,18 +70,28 @@ impl McpTool for ImportSvg {
             .map(|s| s.trim())
             .filter(|s| !s.is_empty())
             .map(str::to_string);
-        let mut out = BTreeMap::new();
-        out.insert("wrote".into(), "true".into());
-        ToolOutcome::OkWithCommand(
-            out,
-            EditorCommand::ImportSvg {
-                svg,
-                x,
-                y,
-                target_parent,
-                page_id,
-            },
-        )
+        let skipped = skipped_svg_features(&svg);
+        let command = EditorCommand::ImportSvg {
+            svg,
+            x,
+            y,
+            target_parent,
+            page_id,
+        };
+        if skipped.is_empty() {
+            let mut out = BTreeMap::new();
+            out.insert("wrote".into(), "true".into());
+            return ToolOutcome::OkWithCommand(out, command);
+        }
+        // Same `wrote` field as the plain result, plus what the importer
+        // dropped, so the agent does not take a plainer drawing for a faithful
+        // one. Only present when something was skipped.
+        let skipped: Vec<serde_json::Value> = skipped
+            .into_iter()
+            .map(|item| serde_json::json!({"feature": item.feature, "count": item.count}))
+            .collect();
+        let result = serde_json::json!({"wrote": "true", "skipped": skipped});
+        ToolOutcome::OkJsonWithCommand(result.to_string(), command)
     }
 }
 

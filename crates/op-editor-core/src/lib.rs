@@ -303,6 +303,8 @@ mod prompt_center_catalog_tests;
 #[cfg(test)]
 mod property_task9_tests;
 #[cfg(test)]
+mod svg_import_skipped_tests;
+#[cfg(test)]
 mod svg_import_tests;
 #[cfg(test)]
 mod test_support;

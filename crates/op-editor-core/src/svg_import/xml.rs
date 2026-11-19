@@ -93,6 +93,16 @@ pub(super) fn compute_root_scale(root_attrs: &[(String, String)]) -> (f64, Style
 /// `</tag>` so `<g>` children land under the right parent. Skip
 /// tags (`defs` / `style` / …) are filtered out before recursion.
 pub(super) fn parse_svg_tree(body: &str) -> Vec<SvgTree> {
+    parse_svg_tree_observing(body, &mut |_, _| {})
+}
+
+/// [`parse_svg_tree`] that also tells `on_skipped` about every element dropped
+/// by [`SKIP_TAGS`] (lower-case tag, raw inner body) so the skipped-feature
+/// report sees exactly what the importer skips. The tree is identical.
+pub(super) fn parse_svg_tree_observing(
+    body: &str,
+    on_skipped: &mut dyn FnMut(&str, &str),
+) -> Vec<SvgTree> {
     let bytes = body.as_bytes();
     let mut out = Vec::new();
     let mut i = 0usize;
@@ -132,11 +142,15 @@ pub(super) fn parse_svg_tree(body: &str) -> Vec<SvgTree> {
         if SKIP_TAGS.iter().any(|t| *t == tag_lower) {
             // Skip its body too so child shapes inside `<defs>` don't
             // leak into the import.
-            i = if self_closing {
-                open_end + 1
+            if self_closing {
+                on_skipped(&tag_lower, "");
+                i = open_end + 1;
             } else {
-                skip_until_closing(body, open_end + 1, &tag_lower).unwrap_or(body.len())
-            };
+                let body_start = open_end + 1;
+                let close = find_matching_close(body, body_start, &tag_lower);
+                on_skipped(&tag_lower, &body[body_start..close.unwrap_or(body.len())]);
+                i = skip_until_closing(body, body_start, &tag_lower).unwrap_or(body.len());
+            }
             continue;
         }
         if self_closing {
@@ -154,7 +168,7 @@ pub(super) fn parse_svg_tree(body: &str) -> Vec<SvgTree> {
         out.push(SvgTree {
             tag: tag_lower,
             attrs,
-            children: parse_svg_tree(inner_body),
+            children: parse_svg_tree_observing(inner_body, on_skipped),
         });
         // Advance past the close tag itself.
         i = match body[body_end..].find('>') {
