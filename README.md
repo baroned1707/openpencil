@@ -65,6 +65,8 @@ Each item below is taken from `CLAUDE.md` / `crates/CLAUDE.md` or from the sourc
 
 Prerequisites: the Rust toolchain pinned in [`rust-toolchain.toml`](./rust-toolchain.toml) (`rustup` installs it on first use, including the `wasm32-unknown-unknown` target). Bun and Node.js are needed only for the web SDK under `packages/`. The browser bundle script also needs `wasm-bindgen`, `wasm-opt`, `node`, `python3` and `gzip` (see the header of [`tools/check-wasm-bundle.sh`](./tools/check-wasm-bundle.sh)).
 
+The repository is private, so cloning needs an account with access.
+
 ```bash
 git clone --recurse-submodules https://github.com/baroned1707/openpencil.git
 cd openpencil
