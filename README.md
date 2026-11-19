@@ -13,7 +13,7 @@
   <img src="./screenshot/op-cover.png" alt="The OpenPencil editor with the Layers panel, the canvas, the Design panel and the Projects dock" width="100%" />
 </p>
 
-<p align="center"><sub>Screenshot taken before the active-file info bar replaced the tab strip in the top bar.</sub></p>
+<p align="center"><sub>The editor in dark theme: Layers rail, canvas, Design panel, Projects dock, info bar and chat composer.</sub></p>
 
 This repository is a fork of [OpenPencil by ZSeven-W](https://github.com/ZSeven-W/openpencil) (MIT). The product name is unchanged. It is built from source and runs **local-only** (see [Status and limits](#status-and-limits)).
 
