@@ -111,6 +111,11 @@
       "gate": false
     },
     {
+      "name": "finalizeOnlyChanges",
+      "direction": "lower",
+      "gate": false
+    },
+    {
       "name": "nodeCount",
       "direction": "higher",
       "gate": false

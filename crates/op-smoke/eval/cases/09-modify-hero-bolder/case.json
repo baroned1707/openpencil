@@ -35,6 +35,7 @@
     ],
     "max": {
       "outsideScopeEdits": 0,
+      "outsideScopeChanges": 0,
       "contrastIssues": 0
     },
     "scopeRootId": "hero"

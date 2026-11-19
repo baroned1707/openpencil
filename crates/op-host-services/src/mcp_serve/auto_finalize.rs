@@ -107,6 +107,10 @@ impl AutoFinalize {
         {
             return None;
         }
+        // Whole page, on purpose: an idle finalize keeps no pre-run baseline
+        // (the writes came from any client over any number of calls), so it
+        // cannot prove which sections were touched. A client that edited one
+        // part of a design scopes its own finalize with `root_ids`.
         let recorded = match op_orchestrator::record_loop_finalize_counted(state) {
             Ok(recorded) => recorded,
             Err(error) => {

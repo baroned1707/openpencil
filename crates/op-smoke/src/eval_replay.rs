@@ -26,7 +26,7 @@ pub(crate) struct Replayed {
     /// Every metric by its camelCase name: the document metrics plus the
     /// replay counters (`batchCount`, `screenshotCount`, `replayErrors`,
     /// `requiredTextMissing`, `outsideScopeEdits`, `outsideScopeChanges`,
-    /// `expectationFailures`).
+    /// `finalizeOnlyChanges`, `expectationFailures`).
     pub metrics: BTreeMap<String, u32>,
     /// The finalized document, pretty-printed (the determinism witness).
     pub doc_json: String,
@@ -95,8 +95,24 @@ fn replay_steps(fixture: &Fixture) -> Result<Replayed, EvalError> {
         ("requiredTextMissing", count(required_missing.len())),
         ("outsideScopeEdits", outside(&edited)),
         ("outsideScopeChanges", outside(&doc)),
+        (
+            "finalizeOnlyChanges",
+            count(finalize_only_changed_ids(&seed_doc, &edited, &doc).len()),
+        ),
     ] {
         metrics.insert(name.to_string(), value);
+    }
+    // Name the leaked nodes only when the case bounds them (the bound's own
+    // message carries the count, not which nodes).
+    let outside_bound = fixture.file.expect.max.get("outsideScopeChanges");
+    if let (Some(scope), Some(bound)) = (&fixture.file.expect.scope_root_id, outside_bound) {
+        let leaked = outside_scope_changed_ids(&seed_doc, &doc, scope);
+        if count(leaked.len()) > *bound {
+            problems.push(format!(
+                "finalize changed nodes outside {scope:?}: {}",
+                leaked.join(", ")
+            ));
+        }
     }
     for text in required_missing {
         problems.push(format!("required text not found: {text:?}"));
@@ -209,6 +225,11 @@ pub(super) fn bound_violations(expect: &Expect, metrics: &BTreeMap<String, u32>)
 /// Nodes outside the `scope` subtree whose own properties (children aside)
 /// differ between the seed and the result, counting added and removed nodes.
 pub(super) fn outside_scope_changes(seed: &Value, result: &Value, scope: &str) -> u32 {
+    count(outside_scope_changed_ids(seed, result, scope).len())
+}
+
+/// The ids [`outside_scope_changes`] counts, sorted.
+pub(super) fn outside_scope_changed_ids(seed: &Value, result: &Value, scope: &str) -> Vec<String> {
     let before = flatten_nodes(seed);
     let after = flatten_nodes(result);
     let inside: BTreeSet<&String> = [&before, &after]
@@ -216,11 +237,30 @@ pub(super) fn outside_scope_changes(seed: &Value, result: &Value, scope: &str) -
         .flat_map(|nodes| subtree_ids(nodes, scope))
         .collect();
     let ids: BTreeSet<&String> = before.keys().chain(after.keys()).collect();
-    count(
-        ids.into_iter()
-            .filter(|id| !inside.contains(*id) && before.get(*id) != after.get(*id))
-            .count(),
-    )
+    ids.into_iter()
+        .filter(|id| !inside.contains(*id) && before.get(*id) != after.get(*id))
+        .cloned()
+        .collect()
+}
+
+/// Nodes the scripted calls left exactly as the seed had them (or never
+/// created) that the loop-end repairs then changed, anywhere in the document:
+/// inside the scope subtree as well, which `outsideScopeChanges` cannot see.
+/// A node the script itself edited or inserted is not counted, so a repair of
+/// the run's own work is free.
+pub(super) fn finalize_only_changed_ids(
+    seed: &Value,
+    edited: &Value,
+    finalized: &Value,
+) -> Vec<String> {
+    let seeded = flatten_nodes(seed);
+    let scripted = flatten_nodes(edited);
+    let repaired = flatten_nodes(finalized);
+    let ids: BTreeSet<&String> = scripted.keys().chain(repaired.keys()).collect();
+    ids.into_iter()
+        .filter(|id| seeded.get(*id) == scripted.get(*id) && scripted.get(*id) != repaired.get(*id))
+        .cloned()
+        .collect()
 }
 
 /// One node as the differ sees it: its parent id and its JSON without children.

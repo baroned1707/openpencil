@@ -359,8 +359,14 @@ pub(super) fn launch_design_loop_turn(
         root_seed_mobile,
         root_seed_continuation,
     );
-    *current_chat =
-        Some(ChatSession::start_with_tools(provider, req, Some(tool_rx)).into_design_loop());
+    // The document as the model is about to see it: the loop finalizer repairs
+    // only what the run changed from here (`op_orchestrator::run_scope`).
+    let run_baseline = op_editor_core::RunBaseline::capture(host.editor_state());
+    *current_chat = Some(
+        ChatSession::start_with_tools(provider, req, Some(tool_rx))
+            .into_design_loop()
+            .with_run_baseline(run_baseline),
+    );
     // Signal one agent running so the chat header shows "1/1 designing…"
     // and the canvas indicator pump registers frame glows.
     host.editor_state_mut().chat.agents_running = (1, 1);

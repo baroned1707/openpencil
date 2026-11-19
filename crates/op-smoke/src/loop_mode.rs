@@ -119,12 +119,24 @@ pub struct HeadlessExecutor {
     /// Echo each tool call + truncated result to stderr when
     /// `OPENPENCIL_SMOKE_DUMP` is set, so ab-v9 logs capture the run.
     dump: bool,
+    /// The document as the run found it, taken when the executor is built
+    /// (the run starts there). `finalize` uses it to repair only the sections
+    /// the run changed; a run that built the design finalizes the whole page.
+    baseline: Option<op_editor_core::RunBaseline>,
+}
+
+fn run_baseline(state: &Arc<Mutex<EditorState>>) -> Option<op_editor_core::RunBaseline> {
+    state
+        .lock()
+        .ok()
+        .map(|guard| op_editor_core::RunBaseline::capture(&guard))
 }
 
 impl HeadlessExecutor {
     #[cfg(test)]
     pub fn new(state: Arc<Mutex<EditorState>>, dump: bool) -> Self {
         Self {
+            baseline: run_baseline(&state),
             state,
             root_seed_guard: Mutex::new(RootSeedGuard::disabled()),
             dump,
@@ -133,6 +145,7 @@ impl HeadlessExecutor {
 
     pub fn with_prompt(state: Arc<Mutex<EditorState>>, dump: bool, prompt: &str) -> Self {
         Self {
+            baseline: run_baseline(&state),
             state,
             root_seed_guard: Mutex::new(RootSeedGuard::from_prompt(prompt)),
             dump,
@@ -200,7 +213,8 @@ impl ChatToolExecutor for HeadlessExecutor {
             .state
             .lock()
             .expect("EditorState mutex poisoned before finalize");
-        let quality = op_orchestrator::apply_loop_finalize_counted(&mut state);
+        let quality =
+            op_orchestrator::apply_loop_finalize_since(&mut state, self.baseline.as_ref());
         let unfilled =
             op_orchestrator::unfilled_screens::finalize_and_mark_unfilled_screens(&mut state);
         let committed = op_orchestrator::unfilled_screens::list_screen_candidates(&state)

@@ -166,6 +166,7 @@ pub mod role_post_pass;
 pub(crate) mod root_section_gap;
 pub mod run;
 mod run_salvage_feedback;
+pub mod run_scope;
 pub mod scaffold;
 pub(crate) mod scaffold_right_rail;
 pub mod screen_groups;
@@ -250,7 +251,8 @@ pub use image_fallback_policy::{
 };
 pub use intent::classify_intent;
 pub use loop_finalize::{
-    apply_loop_finalize, apply_loop_finalize_counted, record_loop_finalize_counted,
+    apply_loop_finalize, apply_loop_finalize_counted, apply_loop_finalize_scoped,
+    apply_loop_finalize_since, record_loop_finalize_counted, record_loop_finalize_scoped,
     RecordLoopFinalizeError, RecordedLoopFinalize,
 };
 pub use mobile_reflow::repair_mobile_trailing_nav_reflow;
@@ -266,6 +268,7 @@ pub use repair_scope::finalize_authored_import;
 pub use repair_summary::{CheckCategory, RepairSummary};
 pub use repair_tier::{RepairTier, RepairTierPolicy, TieredPass};
 pub use run::Orchestrator;
+pub use run_scope::{RunScope, RunScopeError, SectionScope};
 pub use spawn_concurrent::{run_spawned_agents_concurrent, SpawnAgentResult, SpawnAgentSpec};
 pub use stub_providers::{
     SkippedPreValidator, SkippedScreenshotProvider, SkippedVisionLlmClient,

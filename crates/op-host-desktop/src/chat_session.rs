@@ -91,7 +91,9 @@ pub(crate) fn finalize_design_session_if_needed(
         return;
     }
     let state = host.editor_state_mut();
-    op_orchestrator::apply_loop_finalize(state);
+    // A run that modified an existing design repairs only the sections it
+    // touched; a run that built one (or has no baseline) repairs the page.
+    op_orchestrator::apply_loop_finalize_since(state, session.run_baseline());
     // Same promise-delivery marking the normal finalize op gets (see
     // `execute_tool_requests` below) — an early-death run (429 / quota /
     // abort / a session torn down mid-flight) is exactly the case that
@@ -356,7 +358,7 @@ fn execute_tool_requests(
                     .map(|hit| hit.name)
                     .collect::<Vec<_>>()
             } else {
-                quality = op_orchestrator::apply_loop_finalize_counted(state);
+                quality = op_orchestrator::apply_loop_finalize_since(state, session.run_baseline());
                 let names =
                     op_orchestrator::unfilled_screens::finalize_and_mark_unfilled_screens(state);
                 session.mark_loop_finalized();

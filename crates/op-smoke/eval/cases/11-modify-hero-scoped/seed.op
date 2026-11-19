@@ -1,0 +1,383 @@
+{
+  "version": "1.0",
+  "children": [
+    {
+      "type": "frame",
+      "id": "page",
+      "name": "Studio Landing",
+      "layout": "vertical",
+      "width": 1440,
+      "height": 1100,
+      "children": [
+        {
+          "type": "frame",
+          "id": "nav",
+          "name": "Navigation",
+          "layout": "horizontal",
+          "width": "fill_container",
+          "height": "fit_content",
+          "children": [
+            {
+              "type": "text",
+              "id": "nav-logo",
+              "content": "Fieldnotes",
+              "fontFamily": "Inter",
+              "fontSize": 22,
+              "fontWeight": "700",
+              "width": "fit_content",
+              "height": "fit_content",
+              "fill": [
+                {
+                  "type": "solid",
+                  "color": "#111827"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "nav-links",
+              "name": "Links",
+              "layout": "horizontal",
+              "width": "fit_content",
+              "height": "fit_content",
+              "children": [
+                {
+                  "type": "text",
+                  "id": "nav-l1",
+                  "content": "Work",
+                  "fontFamily": "Inter",
+                  "fontSize": 15,
+                  "fontWeight": "400",
+                  "width": "fit_content",
+                  "height": "fit_content",
+                  "fill": [
+                    {
+                      "type": "solid",
+                      "color": "#374151"
+                    }
+                  ]
+                },
+                {
+                  "type": "text",
+                  "id": "nav-l2",
+                  "content": "About",
+                  "fontFamily": "Inter",
+                  "fontSize": 15,
+                  "fontWeight": "400",
+                  "width": "fit_content",
+                  "height": "fit_content",
+                  "fill": [
+                    {
+                      "type": "solid",
+                      "color": "#374151"
+                    }
+                  ]
+                }
+              ],
+              "gap": 24
+            }
+          ],
+          "justifyContent": "space_between",
+          "alignItems": "center",
+          "padding": [
+            20,
+            80,
+            20,
+            80
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "hero",
+          "name": "Hero",
+          "layout": "vertical",
+          "width": "fill_container",
+          "height": "fit_content",
+          "children": [
+            {
+              "type": "text",
+              "id": "hero-eyebrow",
+              "content": "DESIGN STUDIO",
+              "fontFamily": "Inter",
+              "fontSize": 13,
+              "fontWeight": "500",
+              "width": "fit_content",
+              "height": "fit_content",
+              "fill": [
+                {
+                  "type": "solid",
+                  "color": "#6B7280"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "id": "hero-title",
+              "content": "We design calm software.",
+              "fontFamily": "Inter",
+              "fontSize": 56,
+              "fontWeight": "500",
+              "width": "fill_container",
+              "height": "fit_content",
+              "fill": [
+                {
+                  "type": "solid",
+                  "color": "#374151"
+                }
+              ],
+              "textGrowth": "fixed-width"
+            },
+            {
+              "type": "text",
+              "id": "hero-sub",
+              "content": "A small studio for product teams who want fewer, better screens.",
+              "fontFamily": "Inter",
+              "fontSize": 18,
+              "fontWeight": "400",
+              "width": "fill_container",
+              "height": "fit_content",
+              "fill": [
+                {
+                  "type": "solid",
+                  "color": "#4B5563"
+                }
+              ],
+              "textGrowth": "fixed-width"
+            },
+            {
+              "type": "frame",
+              "id": "hero-cta",
+              "name": "Hero Button",
+              "layout": "horizontal",
+              "width": "fit_content",
+              "height": "fit_content",
+              "children": [
+                {
+                  "type": "text",
+                  "id": "hero-cta-label",
+                  "content": "See our work",
+                  "fontFamily": "Inter",
+                  "fontSize": 16,
+                  "fontWeight": "500",
+                  "width": "fit_content",
+                  "height": "fit_content",
+                  "fill": [
+                    {
+                      "type": "solid",
+                      "color": "#FFFFFF"
+                    }
+                  ]
+                }
+              ],
+              "padding": [
+                14,
+                28,
+                14,
+                28
+              ],
+              "cornerRadius": 10,
+              "fill": [
+                {
+                  "type": "solid",
+                  "color": "#374151"
+                }
+              ]
+            }
+          ],
+          "gap": 18,
+          "padding": [
+            96,
+            80,
+            96,
+            80
+          ],
+          "fill": [
+            {
+              "type": "solid",
+              "color": "#F3F4F6"
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "features",
+          "name": "Features",
+          "layout": "vertical",
+          "width": "fill_container",
+          "height": "fit_content",
+          "children": [
+            {
+              "type": "text",
+              "id": "features-title",
+              "content": "What we do",
+              "fontFamily": "Inter",
+              "fontSize": 32,
+              "fontWeight": "600",
+              "width": "fit_content",
+              "height": "fit_content",
+              "fill": [
+                {
+                  "type": "solid",
+                  "color": "#111827"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "features-row",
+              "name": "Feature Row",
+              "layout": "horizontal",
+              "width": "fill_container",
+              "height": "fit_content",
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "f1",
+                  "name": "Feature",
+                  "layout": "vertical",
+                  "width": "fill_container",
+                  "height": "fit_content",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "f1-t",
+                      "content": "Product strategy",
+                      "fontFamily": "Inter",
+                      "fontSize": 18,
+                      "fontWeight": "600",
+                      "width": "fit_content",
+                      "height": "fit_content",
+                      "fill": [
+                        {
+                          "type": "solid",
+                          "color": "#111827"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "text",
+                      "id": "f1-b",
+                      "content": "Workshops that end in a plan.",
+                      "fontFamily": "Inter",
+                      "fontSize": 15,
+                      "fontWeight": "400",
+                      "width": "fit_content",
+                      "height": "fit_content",
+                      "fill": [
+                        {
+                          "type": "solid",
+                          "color": "#4B5563"
+                        }
+                      ]
+                    }
+                  ],
+                  "gap": 6
+                },
+                {
+                  "type": "frame",
+                  "id": "f2",
+                  "name": "Feature",
+                  "layout": "vertical",
+                  "width": "fill_container",
+                  "height": "fit_content",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "f2-t",
+                      "content": "Interface design",
+                      "fontFamily": "Inter",
+                      "fontSize": 18,
+                      "fontWeight": "600",
+                      "width": "fit_content",
+                      "height": "fit_content",
+                      "fill": [
+                        {
+                          "type": "solid",
+                          "color": "#111827"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "text",
+                      "id": "f2-b",
+                      "content": "Systems, not one-off screens.",
+                      "fontFamily": "Inter",
+                      "fontSize": 15,
+                      "fontWeight": "400",
+                      "width": "fit_content",
+                      "height": "fit_content",
+                      "fill": [
+                        {
+                          "type": "solid",
+                          "color": "#4B5563"
+                        }
+                      ]
+                    }
+                  ],
+                  "gap": 6
+                },
+                {
+                  "type": "frame",
+                  "id": "f3",
+                  "name": "Feature",
+                  "layout": "vertical",
+                  "width": "fill_container",
+                  "height": "fit_content",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "f3-t",
+                      "content": "Design engineering",
+                      "fontFamily": "Inter",
+                      "fontSize": 18,
+                      "fontWeight": "600",
+                      "width": "fit_content",
+                      "height": "fit_content",
+                      "fill": [
+                        {
+                          "type": "solid",
+                          "color": "#111827"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "text",
+                      "id": "f3-b",
+                      "content": "Prototypes that run.",
+                      "fontFamily": "Inter",
+                      "fontSize": 15,
+                      "fontWeight": "400",
+                      "width": "fit_content",
+                      "height": "fit_content",
+                      "fill": [
+                        {
+                          "type": "solid",
+                          "color": "#4B5563"
+                        }
+                      ]
+                    }
+                  ],
+                  "gap": 6
+                }
+              ],
+              "gap": 32
+            }
+          ],
+          "gap": 24,
+          "padding": [
+            64,
+            80,
+            64,
+            80
+          ]
+        }
+      ],
+      "fill": [
+        {
+          "type": "solid",
+          "color": "#FFFFFF"
+        }
+      ]
+    }
+  ]
+}

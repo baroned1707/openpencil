@@ -1,0 +1,36 @@
+{
+  "prompt": "Add a short availability note to the hero.",
+  "seed": "seed.op",
+  "note": "Modify an existing page by adding to one section: the finalizer may repair the hero (the new note gets a readable fill) but must not give roles, gaps or numbers to navigation, features or the page frame, which the run never touched.",
+  "steps": [
+    {
+      "tool": "get_editor_state",
+      "args": {}
+    },
+    {
+      "tool": "batch_design",
+      "args": {
+        "script": "I(\"hero\", {type:\"text\", id:\"hero-note\", content:\"Booking projects for spring.\", fontFamily:\"Inter\", fontSize:15, fontWeight:\"500\", width:\"fit_content\", height:\"fit_content\"});"
+      }
+    },
+    {
+      "tool": "get_screenshot",
+      "args": {
+        "nodeId": "hero"
+      }
+    }
+  ],
+  "expect": {
+    "requiredText": [
+      "We design calm software.",
+      "Booking projects for spring.",
+      "Fieldnotes"
+    ],
+    "max": {
+      "outsideScopeEdits": 0,
+      "outsideScopeChanges": 0,
+      "contrastIssues": 0
+    },
+    "scopeRootId": "hero"
+  }
+}

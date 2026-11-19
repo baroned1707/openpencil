@@ -8,6 +8,18 @@
 //! record_loop_finalize_counted`) and reports the `RepairSummary` that path
 //! surfaces as its quality credential.
 //!
+//! ## Scope
+//!
+//! Omitted `root_ids` finalize the whole active page, as always. `root_ids`
+//! naming any node scopes the finalize to the SECTIONS that contain those ids
+//! (a child of the page wrapper, or a top-level frame of a multi-screen
+//! page): the semantic repairs run there only, document-level passes (page
+//! gap, app shell, theme polarity) are skipped, and the contract-tier checks
+//! (text contrast, geometry) still cover the whole page. This is how a client
+//! that just edited one section avoids restyling the rest. The result lists
+//! `finalizedRoots`. Naming the page wrapper, or every section, is the whole
+//! page. See `op_orchestrator::run_scope`.
+//!
 //! ## How the mutation reaches the host
 //!
 //! MCP tools are snapshots: they cannot mutate the live `EditorState`, they
@@ -30,7 +42,7 @@
 //! - `shader-invalid`: a shader fill is invalid and will degrade to flat colour.
 //! - `shader-budget`: a shader fill is expensive (exceeds GPU budget for the design form).
 
-use std::collections::{BTreeMap, BTreeSet};
+use std::collections::BTreeMap;
 
 use jian_ops_schema::node::PenNode;
 use op_chat_agent::design_agent_tools::{post_write_diagnostics, FeedbackCaps, PostWriteExtras};
@@ -39,6 +51,7 @@ use op_design_lint::detectors::detect_shader_budget;
 use op_editor_core::{EditorCommand, EditorState, PenNodeExt};
 use op_mcp::{McpTool, ToolErrorCode, ToolOutcome};
 use op_orchestrator::repair_summary::RepairSummary;
+use op_orchestrator::RunScope;
 
 /// The `finalize_design` tool: a snapshot of the document at registration
 /// time plus nothing else — the cleanup runs against a clone inside `call`.
@@ -57,11 +70,11 @@ impl McpTool for FinalizeDesignTool {
     }
 
     fn call(&self, args: &BTreeMap<String, String>) -> ToolOutcome {
-        let root_ids: Vec<String> = match parse_root_ids(args, &self.state) {
-            Ok(ids) => ids,
+        let scope = match parse_scope(args, &self.state) {
+            Ok(scope) => scope,
             Err(message) => return ToolOutcome::Err(ToolErrorCode::InvalidArgument, message),
         };
-        let recorded = match op_orchestrator::record_loop_finalize_counted(&self.state) {
+        let recorded = match op_orchestrator::record_loop_finalize_scoped(&self.state, &scope) {
             Ok(recorded) => recorded,
             Err(error) => {
                 return ToolOutcome::Err(
@@ -119,7 +132,7 @@ impl McpTool for FinalizeDesignTool {
         }
         let json = finalize_result_json(
             &summary,
-            root_ids.len(),
+            &FinalizedRoots::of(&scope, &self.state),
             &advisories,
             &void_advisories,
             &format_drift,
@@ -141,19 +154,16 @@ impl McpTool for FinalizeDesignTool {
 }
 
 /// `root_ids`: optional JSON array string, comma-separated string, or omitted
-/// for the required whole-document scope (every top-level root on the active
-/// page). Blank input is treated as omitted. An explicit subset is rejected:
-/// the App-equivalent finalizer is intentionally not a per-root transform.
-fn parse_root_ids(
-    args: &BTreeMap<String, String>,
-    state: &EditorState,
-) -> Result<Vec<String>, String> {
+/// for the whole active page. Blank input is treated as omitted. Any id on the
+/// active page is accepted and mapped to its section; an unknown id is
+/// rejected (see [`RunScope::from_root_ids`]).
+fn parse_scope(args: &BTreeMap<String, String>, state: &EditorState) -> Result<RunScope, String> {
     let raw = args
         .get("root_ids")
         .map(|v| v.trim())
         .filter(|v| !v.is_empty());
     let Some(raw) = raw else {
-        return Ok(default_root_ids(state));
+        return Ok(RunScope::Whole);
     };
     let ids: Vec<String> = if raw.starts_with('[') {
         match serde_json::from_str::<serde_json::Value>(raw) {
@@ -161,10 +171,7 @@ fn parse_root_ids(
                 .into_iter()
                 .filter_map(|item| item.as_str().map(str::to_string))
                 .collect(),
-            Ok(_) => {
-                return Err("root_ids must be a JSON array of node id strings".to_string());
-            }
-            Err(_) => {
+            _ => {
                 return Err("root_ids must be a JSON array of node id strings".to_string());
             }
         }
@@ -175,31 +182,24 @@ fn parse_root_ids(
             .map(str::to_string)
             .collect()
     };
-    if ids.is_empty() {
-        return Err("root_ids must name at least one node".to_string());
-    }
-    let requested: BTreeSet<String> = ids.into_iter().collect();
-    let all_roots = default_root_ids(state);
-    let all_root_set: BTreeSet<String> = all_roots.iter().cloned().collect();
-    if requested.len() != all_roots.len() || requested != all_root_set {
-        return Err(
-            "root_ids must include every top-level root on the active page; the whole-document finalizer requires every active root"
-                .to_string(),
-        );
-    }
-    // Preserve active-page document order for reporting and deterministic
-    // diagnostics. Duplicate explicit ids have already been harmlessly
-    // collapsed by the set equality check above.
-    Ok(all_roots)
+    RunScope::from_root_ids(state, &ids).map_err(|error| error.to_string())
 }
 
-/// Every top-level root on the active page — the tool's required scope.
-fn default_root_ids(state: &EditorState) -> Vec<String> {
-    state
-        .active_children()
-        .iter()
-        .map(|node| node.id_str().to_string())
-        .collect()
+/// What a finalize covered, for the result.
+struct FinalizedRoots {
+    /// Top-level frames on the page (the whole-page count).
+    roots: usize,
+    /// The sections a scoped finalize covered; `None` for the whole page.
+    sections: Option<Vec<String>>,
+}
+
+impl FinalizedRoots {
+    fn of(scope: &RunScope, state: &EditorState) -> Self {
+        Self {
+            roots: state.active_children().len(),
+            sections: scope.touched_sections().map(<[String]>::to_vec),
+        }
+    }
 }
 
 /// The human-readable repair summary, rendered through the same
@@ -365,7 +365,7 @@ fn fixed_board_size_changes(before: &EditorState, after: &EditorState) -> Vec<St
 
 fn finalize_result_json(
     summary: &RepairSummary,
-    roots: usize,
+    finalized: &FinalizedRoots,
     advisories: &[op_orchestrator::orchestration_self_check::SectionStructureDriftAdvisory],
     void_advisories: &[op_orchestrator::board_trailing_void::BoardTrailingVoidAdvisory],
     format_drift: &[op_orchestrator::board_trailing_void::BoardFormatDriftAdvisory],
@@ -462,7 +462,7 @@ fn finalize_result_json(
     let (verdict, next) =
         verdict_and_next(complete, blocking_advisory_count, findings.remaining_issues);
     let mut result = serde_json::json!({
-        "roots": roots,
+        "roots": finalized.sections.as_ref().map_or(finalized.roots, Vec::len),
         "complete": complete,
         "verdict": verdict,
         "next": next,
@@ -475,6 +475,10 @@ fn finalize_result_json(
         "notes": summary.notes(),
         "summary": credential.trim().to_string(),
     });
+    if let Some(sections) = &finalized.sections {
+        result["scope"] = serde_json::json!("sections");
+        result["finalizedRoots"] = serde_json::json!(sections);
+    }
     if !findings.remaining_issues.is_empty() {
         result["remainingIssues"] =
             serde_json::Value::Object(remaining_issues_for_result(findings.remaining_issues));
@@ -490,7 +494,10 @@ mod delivery_tests {
         let issues = vec!["fixed-board-content-outside: footer is outside the artboard".into()];
         let result = finalize_result_json(
             &RepairSummary::default(),
-            1,
+            &FinalizedRoots {
+                roots: 1,
+                sections: None,
+            },
             &[],
             &[],
             &[],
@@ -544,7 +551,10 @@ mod delivery_tests {
         assert!(issues[0].contains("844") && issues[0].contains("898"));
         let result = finalize_result_json(
             &RepairSummary::default(),
-            1,
+            &FinalizedRoots {
+                roots: 1,
+                sections: None,
+            },
             &[],
             &[],
             &[],

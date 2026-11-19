@@ -11,7 +11,7 @@ use op_ai::chat_provider::{
     ChatToolResult, FinalizeReport, QualitySummary, UnfilledScreensReport, CHECK_BLOCKERS_OP,
     LOOP_FINALIZE_OP,
 };
-use op_editor_core::{ChatMessage, ChatRole, ChatToolCall, UsageView};
+use op_editor_core::{ChatMessage, ChatRole, ChatToolCall, RunBaseline, UsageView};
 
 /// One tool call forwarded from an agent-loop worker to a host UI thread.
 pub struct ChatToolRequest {
@@ -240,6 +240,10 @@ pub struct ChatSession {
     /// chat keeps its classic aggregated tool panel.
     is_design_loop: bool,
     loop_finalized: bool,
+    /// The document as this turn found it, for a design loop that may be
+    /// modifying an existing design (`op_orchestrator::run_scope`). `None`
+    /// finalizes the whole page.
+    run_baseline: Option<RunBaseline>,
     viewport_fitted: bool,
     hosted_session_epoch: Option<u64>,
     /// Token usage reported by this turn's provider, not yet taken by the
@@ -531,6 +535,7 @@ impl ChatSession {
             finished: false,
             is_design_loop: false,
             loop_finalized: false,
+            run_baseline: None,
             viewport_fitted: false,
             hosted_session_epoch,
             usage: None,
@@ -557,6 +562,18 @@ impl ChatSession {
 
     pub fn hosted_session_epoch(&self) -> Option<u64> {
         self.hosted_session_epoch
+    }
+
+    /// Attach the document as it stood when this turn launched. Chainable.
+    pub fn with_run_baseline(mut self, baseline: RunBaseline) -> Self {
+        self.run_baseline = Some(baseline);
+        self
+    }
+
+    /// The document as it stood when this turn launched, when the host took
+    /// one.
+    pub fn run_baseline(&self) -> Option<&RunBaseline> {
+        self.run_baseline.as_ref()
     }
 
     /// Record that the loop's structural finalize pass ran for this turn.
@@ -617,6 +634,7 @@ impl ChatSession {
             finished: false,
             is_design_loop: false,
             loop_finalized: false,
+            run_baseline: None,
             viewport_fitted: false,
             hosted_session_epoch: None,
             usage: None,

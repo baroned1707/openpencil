@@ -130,7 +130,11 @@ fn scope_note(inserted: usize, targets: usize) -> String {
 /// `TextCollision` is detect-only by design — it reports into the geometry
 /// echo, and `geometry_validate_and_fix` below is what repairs the geometry
 /// that produces those collisions.
-fn contract_sweep(sink: &mut dyn DocSink, roots: &[&str], summary: &mut RepairSummary) -> bool {
+pub(crate) fn contract_sweep(
+    sink: &mut dyn DocSink,
+    roots: &[&str],
+    summary: &mut RepairSummary,
+) -> bool {
     if roots.is_empty() {
         return false;
     }

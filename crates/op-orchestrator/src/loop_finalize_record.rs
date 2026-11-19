@@ -110,6 +110,18 @@ impl crate::types::DocSink for RecordingStateDocSink<'_> {
 pub fn record_loop_finalize_counted(
     input: &EditorState,
 ) -> Result<RecordedLoopFinalize, RecordLoopFinalizeError> {
+    record_loop_finalize_scoped(input, &crate::run_scope::RunScope::Whole)
+}
+
+/// [`record_loop_finalize_counted`] over an explicit
+/// [`RunScope`](crate::run_scope::RunScope): the recording twin of
+/// [`apply_loop_finalize_scoped`]. `Whole` is the whole-page recorder above,
+/// unchanged; `Sections` records the scoped finalizer
+/// (`loop_finalize_scoped`), with the same replay-parity proof.
+pub fn record_loop_finalize_scoped(
+    input: &EditorState,
+    scope: &crate::run_scope::RunScope,
+) -> Result<RecordedLoopFinalize, RecordLoopFinalizeError> {
     let mut state = input.clone();
     let mut summary = RepairSummary::default();
     let mut commands = Vec::new();
@@ -121,55 +133,12 @@ pub fn record_loop_finalize_counted(
         });
     }
 
-    {
-        let mut sink = RecordingStateDocSink {
-            state: &mut state,
-            commands: &mut commands,
-        };
-        run_loop_finalize_prelude(&mut sink, &mut summary);
-    }
-    if !state.active_children().is_empty() {
-        let before_direct = state.clone();
-        let canvas_width = run_loop_finalize_direct_passes(&mut state, &mut summary);
-        commands.extend(record_same_id_shallow_patches(
-            &before_direct,
-            &state,
-            "semantic passes",
-            true,
-        )?);
-
-        let before_hoist = state.clone();
-        if let Some(command) = apply_loop_finalize_app_state_hoist(&mut state) {
-            commands.extend(record_same_id_shallow_patches(
-                &before_hoist,
-                &state,
-                "app-state hoist",
-                false,
-            )?);
-            commands.push(command);
+    match scope {
+        crate::run_scope::RunScope::Whole => {
+            record_whole_page_phases(&mut state, &mut summary, &mut commands)?;
         }
-
-        {
-            let mut sink = RecordingStateDocSink {
-                state: &mut state,
-                commands: &mut commands,
-            };
-            run_loop_finalize_cleanup(&mut sink, canvas_width, &mut summary);
-        }
-
-        let before_text_fill = state.clone();
-        run_loop_finalize_text_fill(&mut state);
-        commands.extend(record_same_id_shallow_patches(
-            &before_text_fill,
-            &state,
-            "text fill",
-            false,
-        )?);
-
-        if let Some(command) =
-            crate::loop_finalize_palette::seed_referenced_palette_tokens(&mut state)
-        {
-            commands.push(command);
+        crate::run_scope::RunScope::Sections(sections) => {
+            record_scoped_phases(&mut state, sections, &mut summary, &mut commands)?;
         }
     }
 
@@ -200,6 +169,117 @@ pub fn record_loop_finalize_counted(
         summary,
         commands,
     })
+}
+
+/// The whole-page phases, in [`apply_loop_finalize_counted`]'s order.
+fn record_whole_page_phases(
+    state: &mut EditorState,
+    summary: &mut RepairSummary,
+    commands: &mut Vec<EditorCommand>,
+) -> Result<(), RecordLoopFinalizeError> {
+    {
+        let mut sink = RecordingStateDocSink {
+            state: &mut *state,
+            commands: &mut *commands,
+        };
+        run_loop_finalize_prelude(&mut sink, summary);
+    }
+    if !state.active_children().is_empty() {
+        let before_direct = state.clone();
+        let canvas_width = run_loop_finalize_direct_passes(state, summary);
+        commands.extend(record_same_id_shallow_patches(
+            &before_direct,
+            state,
+            "semantic passes",
+            true,
+        )?);
+
+        let before_hoist = state.clone();
+        if let Some(command) = apply_loop_finalize_app_state_hoist(state) {
+            commands.extend(record_same_id_shallow_patches(
+                &before_hoist,
+                state,
+                "app-state hoist",
+                false,
+            )?);
+            commands.push(command);
+        }
+
+        {
+            let mut sink = RecordingStateDocSink {
+                state: &mut *state,
+                commands: &mut *commands,
+            };
+            run_loop_finalize_cleanup(&mut sink, canvas_width, summary);
+        }
+
+        let before_text_fill = state.clone();
+        run_loop_finalize_text_fill(state);
+        commands.extend(record_same_id_shallow_patches(
+            &before_text_fill,
+            state,
+            "text fill",
+            false,
+        )?);
+
+        if let Some(command) = crate::loop_finalize_palette::seed_referenced_palette_tokens(state) {
+            commands.push(command);
+        }
+    }
+    Ok(())
+}
+
+/// The scoped phases, in `loop_finalize_scoped::apply`'s order.
+fn record_scoped_phases(
+    state: &mut EditorState,
+    sections: &crate::run_scope::SectionScope,
+    summary: &mut RepairSummary,
+    commands: &mut Vec<EditorCommand>,
+) -> Result<(), RecordLoopFinalizeError> {
+    use loop_finalize_scoped as scoped;
+    let before_direct = state.clone();
+    scoped::direct_passes(state, sections, summary);
+    commands.extend(record_same_id_shallow_patches(
+        &before_direct,
+        state,
+        "semantic passes",
+        true,
+    )?);
+
+    let before_hoist = state.clone();
+    if let Some(command) = scoped::app_state_hoist(state, sections) {
+        commands.extend(record_same_id_shallow_patches(
+            &before_hoist,
+            state,
+            "app-state hoist",
+            false,
+        )?);
+        commands.push(command);
+    }
+
+    {
+        let mut sink = RecordingStateDocSink {
+            state: &mut *state,
+            commands: &mut *commands,
+        };
+        scoped::image_slots(&mut sink, sections);
+        scoped::contract_sweep(&mut sink, summary);
+    }
+
+    let before_text_fill = state.clone();
+    scoped::text_fill(state, sections);
+    commands.extend(record_same_id_shallow_patches(
+        &before_text_fill,
+        state,
+        "text fill",
+        false,
+    )?);
+
+    if let Some(command) = crate::loop_finalize_palette::seed_referenced_palette_tokens(state) {
+        commands.push(command);
+    }
+    summary.note(scoped::scope_note(sections));
+    Ok(())
 }
 
 #[derive(Debug, Clone)]

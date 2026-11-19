@@ -132,8 +132,26 @@ fn finalize_accepts_root_ids_as_json_array_and_comma_list() {
     }
 }
 
+fn json_of(outcome: ToolOutcome) -> serde_json::Value {
+    match outcome {
+        ToolOutcome::OkJson(json) | ToolOutcome::OkJsonWithCommand(json, _) => {
+            serde_json::from_str(&json).expect("finalize result json")
+        }
+        other => panic!("expected a finalize result, got {other:?}"),
+    }
+}
+
+fn finalize_with(tool: &super::finalize_tool::FinalizeDesignTool, root_ids: &str) -> ToolOutcome {
+    let mut args = BTreeMap::new();
+    args.insert("root_ids".to_string(), root_ids.to_string());
+    tool.call(&args)
+}
+
+/// Invariant: a subset of the top-level frames finalizes just those frames and
+/// says so; the complete set (duplicates collapsed) is the whole page and its
+/// result carries no scope keys; an id that is not on the page is rejected.
 #[test]
-fn finalize_rejects_an_explicit_root_subset_but_accepts_the_full_deduped_set() {
+fn finalize_scopes_to_a_root_subset_and_reports_which_roots() {
     let live = load_fixture(
         r##"{
           "version":"1.1","children":[
@@ -146,29 +164,85 @@ fn finalize_rejects_an_explicit_root_subset_but_accepts_the_full_deduped_set() {
     );
     let tool = finalize_design_snapshot(&live);
 
-    for raw in [r#"["left"]"#, r#"["left","unknown"]"#] {
-        let mut args = BTreeMap::new();
-        args.insert("root_ids".to_string(), raw.to_string());
-        match tool.call(&args) {
-            ToolOutcome::Err(ToolErrorCode::InvalidArgument, message) => assert!(
-                message.contains("whole-document finalizer requires every active root"),
-                "subset error must explain the whole-document contract: {message}"
-            ),
-            other => panic!("explicit subset {raw} must be rejected, got {other:?}"),
+    let subset = json_of(finalize_with(&tool, r#"["left"]"#));
+    assert_eq!(subset["scope"], "sections", "{subset}");
+    assert_eq!(subset["finalizedRoots"], serde_json::json!(["left"]));
+    assert_eq!(subset["roots"], 1);
+
+    let whole = json_of(finalize_with(&tool, r#"["right","left","left"]"#));
+    assert!(whole.get("scope").is_none() && whole.get("finalizedRoots").is_none());
+    assert_eq!(whole["roots"], 2);
+
+    match finalize_with(&tool, r#"["left","unknown"]"#) {
+        ToolOutcome::Err(ToolErrorCode::InvalidArgument, message) => {
+            assert!(message.contains("unknown"), "{message}")
         }
+        other => panic!("an unknown id must be rejected, got {other:?}"),
+    }
+}
+
+const PAGE: &str = r##"{
+  "version":"1.1","children":[
+    {"type":"frame","id":"page","name":"Page","width":1200,"height":900,
+     "layout":"vertical","children":[
+       {"type":"frame","id":"nav","name":"Nav","width":"fill_container",
+        "layout":"horizontal","children":[
+          {"type":"text","id":"nav-t","content":"Home","fontSize":15}]},
+       {"type":"frame","id":"hero","name":"Hero","width":"fill_container",
+        "layout":"vertical","children":[
+          {"type":"text","id":"hero-t","content":"Hello","fontSize":40}]}
+     ]}
+  ]
+}"##;
+
+fn command_targets(outcome: &ToolOutcome) -> Vec<String> {
+    let ToolOutcome::OkJsonWithCommand(_, EditorCommand::Batch { commands }) = outcome else {
+        return Vec::new();
+    };
+    commands
+        .iter()
+        .filter_map(|command| match command {
+            EditorCommand::PatchNodeData { node_id, .. } => Some(node_id.as_str().to_string()),
+            _ => None,
+        })
+        .collect()
+}
+
+/// Invariant: `root_ids` naming a node INSIDE a section finalizes that
+/// section and nothing else: the section gets its semantic repairs (here a
+/// fill-less text gets a fill), a sibling section keeps its own fill-less
+/// text, and the page wrapper gets no gap.
+#[test]
+fn finalize_scopes_to_the_section_that_contains_the_named_id() {
+    let live = load_fixture(PAGE);
+    let tool = finalize_design_snapshot(&live);
+
+    let outcome = finalize_with(&tool, r#"["hero-t"]"#);
+    let json = json_of(match &outcome {
+        ToolOutcome::OkJson(j) | ToolOutcome::OkJsonWithCommand(j, _) => {
+            ToolOutcome::OkJson(j.clone())
+        }
+        other => panic!("{other:?}"),
+    });
+    assert_eq!(
+        json["finalizedRoots"],
+        serde_json::json!(["hero"]),
+        "{json}"
+    );
+    let targets = command_targets(&outcome);
+    assert!(targets.contains(&"hero-t".to_string()), "{targets:?}");
+    for untouched in ["nav", "nav-t", "page"] {
+        assert!(
+            !targets.contains(&untouched.to_string()),
+            "{untouched} is outside the named section: {targets:?}"
+        );
     }
 
-    let mut args = BTreeMap::new();
-    args.insert(
-        "root_ids".to_string(),
-        r#"["right","left","left"]"#.to_string(),
-    );
+    let whole = finalize_with(&tool, "");
+    let whole_targets = command_targets(&whole);
     assert!(
-        matches!(
-            tool.call(&args),
-            ToolOutcome::OkJson(_) | ToolOutcome::OkJsonWithCommand(_, _)
-        ),
-        "the complete set is accepted after duplicate ids are collapsed"
+        whole_targets.contains(&"nav-t".to_string()) || whole_targets.contains(&"page".to_string()),
+        "the unscoped finalize repairs the other sections too: {whole_targets:?}"
     );
 }
 

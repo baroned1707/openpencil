@@ -78,8 +78,13 @@ pub(crate) struct StateDocSink<'a> {
 #[path = "loop_finalize_record.rs"]
 mod loop_finalize_record;
 pub use loop_finalize_record::{
-    record_loop_finalize_counted, RecordLoopFinalizeError, RecordedLoopFinalize,
+    record_loop_finalize_counted, record_loop_finalize_scoped, RecordLoopFinalizeError,
+    RecordedLoopFinalize,
 };
+// The modify-run counterpart: confines the judgement to the sections a run
+// touched (see `crate::run_scope`). The whole-page path below is untouched.
+#[path = "loop_finalize_scoped.rs"]
+mod loop_finalize_scoped;
 
 impl crate::types::DocSink for StateDocSink<'_> {
     fn state(&self) -> &EditorState {
@@ -107,7 +112,7 @@ impl crate::types::DocSink for StateDocSink<'_> {
 /// wrapper, the Class-A section passes must run on its CHILDREN (the sections),
 /// not on the wrapper itself, so the page background (the wrapper's own fill)
 /// is not mistaken for a redundant section surface.
-fn is_page_root_wrapper(node: &PenNode) -> bool {
+pub(crate) fn is_page_root_wrapper(node: &PenNode) -> bool {
     matches!(node, PenNode::Frame(_) | PenNode::Group(_))
         && node.children().is_some_and(|c| !c.is_empty())
 }
@@ -396,6 +401,35 @@ pub fn apply_loop_finalize_counted(state: &mut EditorState) -> RepairSummary {
     summary
 }
 
+/// [`apply_loop_finalize_counted`] for a run that started from `baseline`.
+///
+/// A run that modified an existing design finalizes only the sections it
+/// touched; a run that built one (or has no baseline: `None`) finalizes the
+/// whole page exactly as [`apply_loop_finalize_counted`] does.
+pub fn apply_loop_finalize_since(
+    state: &mut EditorState,
+    baseline: Option<&op_editor_core::RunBaseline>,
+) -> RepairSummary {
+    let scope = crate::run_scope::RunScope::since(baseline, state);
+    apply_loop_finalize_scoped(state, &scope)
+}
+
+/// [`apply_loop_finalize_counted`] over an explicit [`RunScope`]. `Whole` IS
+/// `apply_loop_finalize_counted`; `Sections` runs the scoped finalizer
+/// (`loop_finalize_scoped`), whose result the recorder reproduces command for
+/// command.
+pub fn apply_loop_finalize_scoped(
+    state: &mut EditorState,
+    scope: &crate::run_scope::RunScope,
+) -> RepairSummary {
+    match scope {
+        crate::run_scope::RunScope::Whole => apply_loop_finalize_counted(state),
+        crate::run_scope::RunScope::Sections(sections) => {
+            loop_finalize_scoped::apply(state, sections)
+        }
+    }
+}
+
 fn run_loop_finalize_prelude(base: &mut dyn crate::types::DocSink, summary: &mut RepairSummary) {
     let mut counter = RepairCounter::new();
     let mut counting = counter.wrap(base);
@@ -623,3 +657,7 @@ mod recording_tests;
 #[cfg(test)]
 #[path = "loop_finalize_flat_forest_tests.rs"]
 mod flat_forest_tests;
+
+#[cfg(test)]
+#[path = "loop_finalize_scoped_tests.rs"]
+mod scoped_tests;

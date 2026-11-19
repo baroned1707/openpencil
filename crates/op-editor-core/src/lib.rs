@@ -169,6 +169,7 @@ pub mod ref_resolve;
 pub mod rename;
 pub mod render_backend;
 pub mod request_snapshot;
+pub mod run_baseline;
 pub mod save_name_keyboard;
 pub mod scene_template_append;
 pub mod scene_template_catalog;
@@ -500,6 +501,7 @@ pub use quality_report::{
 };
 pub use render_backend::*;
 pub use selection::SelectionState;
+pub use run_baseline::RunBaseline;
 pub use state::EditorState;
 pub use statusbar_state::StatusBarButton;
 pub use theme_presets::ThemePreset;

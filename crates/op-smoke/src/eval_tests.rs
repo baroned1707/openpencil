@@ -225,6 +225,59 @@ fn outside_scope_changes_ignore_the_scope_subtree() {
     );
 }
 
+/// Invariant: `finalizeOnlyChanges` counts nodes the scripted calls did not
+/// touch that the loop-end repairs changed (inside the scope too), and counts
+/// neither a node the script edited nor one it inserted.
+#[test]
+fn finalize_only_changes_skip_what_the_script_touched() {
+    let doc = |hero_gap: u32, title: &str, footer_role: Option<&str>, extra: bool| {
+        let mut footer = json!({ "type": "frame", "id": "footer", "children": [] });
+        if let Some(role) = footer_role {
+            footer["role"] = json!(role);
+        }
+        let mut hero_children = vec![json!({
+            "type": "text", "id": "title", "content": title, "children": []
+        })];
+        if extra {
+            hero_children.push(json!({ "type": "text", "id": "note", "content": "x" }));
+        }
+        let hero = json!({
+            "type": "frame", "id": "hero", "gap": hero_gap, "children": hero_children
+        });
+        json!({ "version": "1.0", "children": [{
+            "type": "frame", "id": "page", "children": [hero, footer]
+        }] })
+    };
+    let seed = doc(4, "a", None, false);
+    let changed = |edited: &Value, finalized: &Value| {
+        eval_replay::finalize_only_changed_ids(&seed, edited, finalized)
+    };
+    assert!(changed(&seed, &seed).is_empty(), "nothing finalized");
+    assert_eq!(
+        changed(&seed, &doc(4, "a", Some("footer"), false)),
+        ["footer"],
+        "a node the script left alone, repaired outside the scope"
+    );
+    assert_eq!(
+        changed(&seed, &doc(8, "a", None, false)),
+        ["hero"],
+        "a node the script left alone, repaired inside the scope"
+    );
+    let edited = doc(4, "b", None, true);
+    assert!(
+        changed(&edited, &doc(4, "b", None, true)).is_empty(),
+        "the script's own edit and insert are free"
+    );
+    assert!(
+        changed(&edited, &doc(9, "c", None, true)).contains(&"hero".to_string()),
+        "finalize still counts a node it changed beside the edited ones"
+    );
+    assert!(
+        !changed(&edited, &doc(4, "c", None, true)).contains(&"title".to_string()),
+        "a node the script edited is never finalize-only"
+    );
+}
+
 /// Invariant: regeneration needs the explicit switch and never happens in CI.
 #[test]
 fn bless_needs_the_explicit_switch_and_is_refused_in_ci() {
