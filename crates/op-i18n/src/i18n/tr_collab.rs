@@ -660,6 +660,10 @@ pub fn lookup(key: &str) -> Option<&'static str> {
         "tooltip.topbar.revealInDock" => "Dosya listesinde göster",
         "settings.system.unavailable" => "Kaynaktan yönetiliyor",
         "settings.system.unavailableDescription" => "Güncellemeler, bu fork'u kaynaktan derleyerek veya kendi sürüm kanalı üzerinden alınır.",
+        "dialog.saveConflictTitle" => "Dosya diskte değişti",
+        "dialog.saveConflictChangedBody" => "\"{{name}}\", siz açtığınızdan veya en son kaydettiğinizden beri düzenleyici dışında değiştirildi. Şimdi kaydederseniz bu sürüm değiştirilir; bir kopyası düzenleyicinin sürüm geçmişinde saklanır.\n\nEvet = Üzerine yaz · Hayır = Kopya kaydet · İptal = Kaydetme.",
+        "dialog.saveConflictUnknownBody" => "Düzenleyici, \"{{name}}\" dosyasının diskte değişmediğini doğrulayamıyor (belge kurtarıldı veya durumu hiç kaydedilmedi). Şimdi kaydederseniz dosya değiştirilir; eski sürümün bir kopyası düzenleyicinin sürüm geçmişinde saklanır.\n\nEvet = Üzerine yaz · Hayır = Kopya kaydet · İptal = Kaydetme.",
+        "dialog.autosaveChangedOnDisk" => "Kaydedilmedi: \"{{name}}\" diskte değişti. Ne yapılacağını seçmek için Kaydet'e basın.",
         _ => return None,
     })
 }

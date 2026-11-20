@@ -56,12 +56,59 @@ impl DiskBaselines {
         }
     }
 
+    /// The editor holds a document bound to `path` that it cannot vouch for
+    /// against the file (a recovered document, or a file that changed while it
+    /// was being read). The sweep never replaces this entry, and every check
+    /// against it reads "changed", so the next save asks before overwriting.
+    pub(crate) fn mark_stale(&mut self, path: &Path) {
+        self.entries
+            .insert(path.to_path_buf(), DiskFingerprint::Stale);
+    }
+
+    /// A tab's file was renamed: the same file, so the same record. (A rename
+    /// keeps size, modification time and inode.) Moving it, rather than reading
+    /// the new name from disk, keeps a change somebody made before the rename
+    /// visible.
+    pub(crate) fn rename(&mut self, from: &Path, to: &Path) {
+        if let Some(record) = self.entries.remove(from) {
+            self.entries.insert(to.to_path_buf(), record);
+        }
+    }
+
     pub(crate) fn get(&self, path: &Path) -> Option<DiskFingerprint> {
         self.entries.get(path).copied()
     }
 }
 
 impl DesktopApp {
+    /// Record what the file looked like when a document was LOADED from it, so
+    /// the first save never sees "unknown" and a write between the load and the
+    /// per-frame sweep can never become the baseline. `before` is the file as
+    /// observed BEFORE it was read (a change after that reads as a difference,
+    /// never as a match). `bound` is the file the document ended up bound to.
+    ///
+    /// * the editor itself wrote the file during the load (it initialised an
+    ///   empty file, or a legacy upgrade created `bound`): the file as it is now;
+    /// * untouched since `before`: `before`;
+    /// * it changed during the load and the editor did not write it: stale, so
+    ///   the first save asks.
+    pub(crate) fn record_baseline_after_load(
+        &mut self,
+        requested: &Path,
+        bound: &Path,
+        before: Option<DiskFingerprint>,
+        editor_wrote_it: bool,
+    ) {
+        if bound != requested || editor_wrote_it {
+            self.disk_baselines.record_from_disk(bound);
+            return;
+        }
+        match (before, DiskFingerprint::capture(bound)) {
+            (Some(before), Ok(now)) if before == now => self.disk_baselines.record(bound, before),
+            _ => self.disk_baselines.mark_stale(bound),
+        }
+    }
+
     /// Record the files of newly opened tabs and forget closed ones. Cheap
     /// when nothing changed; call it once per frame before anything that may
     /// save a document in place.

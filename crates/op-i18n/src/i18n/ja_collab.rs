@@ -676,6 +676,10 @@ pub fn lookup(key: &str) -> Option<&'static str> {
         "tooltip.topbar.revealInDock" => "ファイル一覧で表示",
         "settings.system.unavailable" => "ソースから管理",
         "settings.system.unavailableDescription" => "更新は、このフォークをソースからビルドするか、独自のリリースチャネルで行います。",
+        "dialog.saveConflictTitle" => "ファイルがディスク上で変更されました",
+        "dialog.saveConflictChangedBody" => "「{{name}}」は、開いた後または前回の保存後にエディタの外で変更されました。今保存するとそのバージョンが置き換えられます。置き換えられたバージョンのコピーはエディタのバージョン履歴に保存されます。\n\nはい = 上書き / いいえ = コピーを保存 / キャンセル = 保存しない",
+        "dialog.saveConflictUnknownBody" => "「{{name}}」がディスク上で変更されていないことをエディタが確認できません（復元されたドキュメント、または状態が記録されていません）。今保存するとファイルが置き換えられます。古いバージョンのコピーはエディタのバージョン履歴に保存されます。\n\nはい = 上書き / いいえ = コピーを保存 / キャンセル = 保存しない",
+        "dialog.autosaveChangedOnDisk" => "保存しませんでした：「{{name}}」がディスク上で変更されています。保存を押して操作を選んでください。",
         _ => return None,
     })
 }

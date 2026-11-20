@@ -676,6 +676,10 @@ pub fn lookup(key: &str) -> Option<&'static str> {
         "tooltip.topbar.revealInDock" => "파일 목록에서 보기",
         "settings.system.unavailable" => "소스로 관리",
         "settings.system.unavailableDescription" => "업데이트는 이 포크를 소스에서 빌드하거나 자체 릴리스 채널을 통해 받습니다.",
+        "dialog.saveConflictTitle" => "디스크에서 파일이 변경되었습니다",
+        "dialog.saveConflictChangedBody" => "\"{{name}}\"은(는) 열었거나 마지막으로 저장한 이후 편집기 밖에서 변경되었습니다. 지금 저장하면 해당 버전이 대체되며, 대체된 버전의 사본은 편집기의 버전 기록에 보관됩니다.\n\n예 = 덮어쓰기 · 아니요 = 사본 저장 · 취소 = 저장 안 함",
+        "dialog.saveConflictUnknownBody" => "\"{{name}}\"이(가) 디스크에서 변경되지 않았는지 편집기가 확인할 수 없습니다(복구된 문서이거나 상태가 기록된 적이 없습니다). 지금 저장하면 파일이 대체되며, 이전 버전의 사본은 편집기의 버전 기록에 보관됩니다.\n\n예 = 덮어쓰기 · 아니요 = 사본 저장 · 취소 = 저장 안 함",
+        "dialog.autosaveChangedOnDisk" => "저장되지 않음: \"{{name}}\"이(가) 디스크에서 변경되었습니다. 저장을 눌러 처리 방법을 선택하세요.",
         _ => return None,
     })
 }

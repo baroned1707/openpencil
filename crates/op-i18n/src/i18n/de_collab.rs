@@ -660,6 +660,10 @@ pub fn lookup(key: &str) -> Option<&'static str> {
         "tooltip.topbar.revealInDock" => "In der Dateiliste anzeigen",
         "settings.system.unavailable" => "Über den Quellcode verwaltet",
         "settings.system.unavailableDescription" => "Updates erhältst du, indem du diesen Fork aus dem Quellcode baust oder über seinen eigenen Release-Kanal.",
+        "dialog.saveConflictTitle" => "Datei auf dem Datenträger geändert",
+        "dialog.saveConflictChangedBody" => "„{{name}}“ wurde außerhalb des Editors geändert, seit du die Datei geöffnet oder zuletzt gespeichert hast. Speicherst du jetzt, wird diese Version ersetzt; eine Kopie bleibt im Versionsverlauf des Editors erhalten.\n\nJa = Überschreiben · Nein = Kopie speichern · Abbrechen = Nicht speichern.",
+        "dialog.saveConflictUnknownBody" => "Der Editor kann nicht bestätigen, dass „{{name}}“ auf dem Datenträger unverändert ist (das Dokument wurde wiederhergestellt oder sein Zustand nie erfasst). Speicherst du jetzt, wird die Datei ersetzt; eine Kopie der alten Version bleibt im Versionsverlauf des Editors erhalten.\n\nJa = Überschreiben · Nein = Kopie speichern · Abbrechen = Nicht speichern.",
+        "dialog.autosaveChangedOnDisk" => "Nicht gespeichert: „{{name}}“ wurde auf dem Datenträger geändert. Wähle mit Speichern, wie es weitergeht.",
         _ => return None,
     })
 }

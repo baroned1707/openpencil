@@ -672,6 +672,10 @@ pub fn lookup(key: &str) -> Option<&'static str> {
         "tooltip.topbar.revealInDock" => "Hiện trong danh sách tệp",
         "settings.system.unavailable" => "Quản lý từ mã nguồn",
         "settings.system.unavailableDescription" => "Bản cập nhật có được bằng cách build bản fork này từ mã nguồn hoặc qua kênh phát hành riêng của nó.",
+        "dialog.saveConflictTitle" => "Tệp đã thay đổi trên đĩa",
+        "dialog.saveConflictChangedBody" => "\"{{name}}\" đã bị thay đổi bên ngoài trình chỉnh sửa kể từ khi bạn mở hoặc lưu lần cuối. Lưu bây giờ sẽ thay thế phiên bản đó; một bản sao của nó được giữ trong lịch sử phiên bản của trình chỉnh sửa.\n\nCó = Ghi đè · Không = Lưu bản sao · Hủy = Không lưu.",
+        "dialog.saveConflictUnknownBody" => "Trình chỉnh sửa không thể xác nhận \"{{name}}\" chưa thay đổi trên đĩa (tài liệu được khôi phục, hoặc trạng thái chưa từng được ghi lại). Lưu bây giờ sẽ thay thế tệp; một bản sao của phiên bản cũ được giữ trong lịch sử phiên bản của trình chỉnh sửa.\n\nCó = Ghi đè · Không = Lưu bản sao · Hủy = Không lưu.",
+        "dialog.autosaveChangedOnDisk" => "Chưa lưu: \"{{name}}\" đã thay đổi trên đĩa. Nhấn Lưu để chọn cách xử lý.",
         _ => return None,
     })
 }

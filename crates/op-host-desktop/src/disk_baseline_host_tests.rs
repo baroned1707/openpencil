@@ -46,3 +46,23 @@ fn the_editors_own_write_becomes_the_baseline() {
     assert_eq!(baselines.get(&file), DiskFingerprint::capture(&file).ok());
     let _ = std::fs::remove_dir_all(dir);
 }
+
+#[test]
+fn a_renamed_file_keeps_its_record_and_a_stale_one_stays_stale() {
+    let dir = scratch("rename");
+    let (old, new) = (dir.join("a.op"), dir.join("b.op"));
+    std::fs::write(&old, b"one").unwrap();
+    let mut baselines = DiskBaselines::default();
+    baselines.record_from_disk(&old);
+    let record = baselines.get(&old);
+    std::fs::rename(&old, &new).unwrap();
+    baselines.rename(&old, &new);
+    assert_eq!(baselines.get(&old), None);
+    assert_eq!(baselines.get(&new), record);
+    assert_eq!(baselines.get(&new), DiskFingerprint::capture(&new).ok());
+    baselines.mark_stale(&new);
+    let renamed_again = dir.join("c.op");
+    baselines.rename(&new, &renamed_again);
+    assert_eq!(baselines.get(&renamed_again), Some(DiskFingerprint::Stale));
+    let _ = std::fs::remove_dir_all(dir);
+}

@@ -10,7 +10,7 @@
 use std::io::Write;
 use std::path::Path;
 
-use crate::doc_io::atomic_file::{create_sibling_temp, replace_file};
+use crate::doc_io::atomic_file::{create_sibling_temp, replace_file_keeping_previous};
 
 /// Replace `path` with `bytes` atomically. Never leaves the temp file behind.
 pub fn write_atomically(path: &Path, bytes: &[u8]) -> std::io::Result<()> {
@@ -21,7 +21,7 @@ pub fn write_atomically(path: &Path, bytes: &[u8]) -> std::io::Result<()> {
         .and_then(|()| file.sync_all());
     drop(file);
     let committed = match written {
-        Ok(()) => replace_file(&temp, path).map_err(into_io),
+        Ok(()) => replace_file_keeping_previous(&temp, path).map_err(into_io),
         Err(error) => Err(error),
     };
     if committed.is_err() {
@@ -86,5 +86,26 @@ mod tests {
             names.iter().all(|name| !name.ends_with(".tmp")),
             "{names:?}"
         );
+    }
+
+    #[test]
+    fn the_headless_and_mcp_byte_writer_keeps_the_replaced_bytes() {
+        use crate::doc_io::version_backup::{
+            enable_version_history, versions_dir_for_document, with_origin, WrittenBy,
+        };
+        enable_version_history();
+        let dir = scratch("history");
+        let target = dir.join("design.op");
+        std::fs::write(&target, b"before").expect("seed");
+        with_origin(WrittenBy::Mcp, || write_atomically(&target, b"after")).expect("write");
+        assert_eq!(std::fs::read(&target).expect("read"), b"after");
+        let folder = versions_dir_for_document(&target).expect("settings dir");
+        let kept: Vec<_> = std::fs::read_dir(&folder)
+            .expect("history folder")
+            .flatten()
+            .filter(|entry| entry.file_name().to_string_lossy().ends_with(".op"))
+            .collect();
+        assert_eq!(kept.len(), 1);
+        assert_eq!(std::fs::read(kept[0].path()).expect("version"), b"before");
     }
 }

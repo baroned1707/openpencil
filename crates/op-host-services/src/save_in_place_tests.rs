@@ -162,3 +162,57 @@ fn save_in_place_is_atomic_and_keeps_old_content_on_write_failure() {
     assert_eq!(names, vec!["a.op".to_string()], "no temp file left");
     let _ = std::fs::remove_dir_all(dir);
 }
+
+#[test]
+fn a_stale_baseline_refuses_as_changed_on_disk_never_as_a_transient_unknown() {
+    let dir = scratch("stale");
+    let file = dir.join("a.op");
+    let (mut state, _) = saved_document(&file);
+    state.mark_document_changed();
+    let before = std::fs::read(&file).unwrap();
+    let error = save_in_place(&mut state, Some(&file), Some(&DiskFingerprint::Stale))
+        .expect_err("a recovered document's first agent save must not overwrite");
+    assert!(
+        matches!(error, SaveInPlaceError::ChangedOnDisk { .. }),
+        "{error}"
+    );
+    assert!(!error.is_transient(), "a retry cannot clear it");
+    assert_eq!(std::fs::read(&file).unwrap(), before);
+    assert!(state.is_dirty());
+    let _ = std::fs::remove_dir_all(dir);
+}
+
+#[test]
+fn an_in_place_save_keeps_the_replaced_bytes_attributed_to_mcp_or_the_outer_origin() {
+    use crate::doc_io::version_backup::{
+        enable_version_history, versions_dir_for_document, with_origin, WrittenBy,
+    };
+    enable_version_history();
+    let dir = scratch("origin");
+    let file = dir.join("a.op");
+    let (mut state, baseline) = saved_document(&file);
+    state.doc.name = Some("first".into());
+    state.mark_document_changed();
+    let saved = save_in_place(&mut state, Some(&file), Some(&baseline)).expect("saves");
+    state.doc.name = Some("second".into());
+    state.mark_document_changed();
+    with_origin(WrittenBy::Autosave, || {
+        save_in_place(&mut state, Some(&file), Some(&saved.fingerprint))
+    })
+    .expect("saves again");
+    let folder = versions_dir_for_document(&file).expect("settings dir");
+    let mut written_by: Vec<String> = std::fs::read_dir(folder)
+        .unwrap()
+        .flatten()
+        .filter(|entry| entry.file_name().to_string_lossy().ends_with(".json"))
+        .filter(|entry| entry.file_name() != "meta.json")
+        .map(|entry| {
+            let sidecar: serde_json::Value =
+                serde_json::from_slice(&std::fs::read(entry.path()).unwrap()).unwrap();
+            sidecar["writtenBy"].as_str().unwrap().to_string()
+        })
+        .collect();
+    written_by.sort();
+    assert_eq!(written_by, vec!["autosave".to_string(), "mcp".to_string()]);
+    let _ = std::fs::remove_dir_all(dir);
+}

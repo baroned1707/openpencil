@@ -128,8 +128,11 @@ pub fn load_or_initialize_editor_state(path: &Path) -> Result<EditorState, McpSe
 
 /// Serialize through the same streaming, atomic path as desktop Save.
 fn save_editor_state(state: &EditorState, path: &Path) -> Result<(), McpServeError> {
-    crate::doc_io::save_to_path(state, path)
-        .map_err(|error| McpServeError::Document(format!("save {}: {error}", path.display())))
+    use crate::doc_io::version_backup::{with_origin, WrittenBy};
+    with_origin(WrittenBy::Headless, || {
+        crate::doc_io::save_to_path(state, path)
+    })
+    .map_err(|error| McpServeError::Document(format!("save {}: {error}", path.display())))
 }
 
 /// Process one JSON-RPC message line against the editor state.
@@ -338,6 +341,7 @@ where
 
 /// `--mcp <path>`: stdio MCP over `path`, serving `catalog`.
 pub fn run(path: PathBuf, catalog: tool_catalog::McpToolCatalog) -> Result<(), McpServeError> {
+    crate::doc_io::version_backup::enable_version_history();
     auto_finalize::run(path, local_profile(catalog))
 }
 
@@ -348,6 +352,7 @@ pub fn run_http(
     port: u16,
     catalog: tool_catalog::McpToolCatalog,
 ) -> Result<(), McpServeError> {
+    crate::doc_io::version_backup::enable_version_history();
     auto_finalize::run_http(path, port, local_profile(catalog))
 }
 

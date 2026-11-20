@@ -22,6 +22,10 @@ pub enum DiskFingerprint {
         /// File identity on Unix; `0` where the platform has none.
         inode: u64,
     },
+    /// Never observed: a baseline that equals no file, so a check against it
+    /// always reads "changed". The editor records it for a document whose base
+    /// file it never saw (a recovered one), so the first save asks first.
+    Stale,
 }
 
 impl DiskFingerprint {
@@ -72,6 +76,18 @@ pub fn check_unchanged(baseline: &DiskFingerprint, path: &Path) -> Result<(), Di
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn a_stale_baseline_matches_no_file() {
+        let dir = std::env::temp_dir().join(format!("openpencil-stale-{}", std::process::id()));
+        std::fs::create_dir_all(&dir).unwrap();
+        let file = dir.join("a.op");
+        let stale = DiskFingerprint::Stale;
+        assert_eq!(check_unchanged(&stale, &file), Err(DiskCheckError::Changed));
+        std::fs::write(&file, b"one").unwrap();
+        assert_eq!(check_unchanged(&stale, &file), Err(DiskCheckError::Changed));
+        let _ = std::fs::remove_dir_all(dir);
+    }
 
     fn scratch(tag: &str) -> std::path::PathBuf {
         let dir = std::env::temp_dir().join(format!(

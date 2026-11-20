@@ -55,6 +55,28 @@ pub fn pick_save_as_path(state: &EditorState) -> Option<PathBuf> {
         .save_file()
 }
 
+/// The Save As picker for a copy of a file that changed on disk: opens in the
+/// original's folder with `default` (a name nothing uses) pre-filled.
+#[cfg_attr(test, allow(dead_code))] // only the native conflict UI asks, tests inject
+pub(crate) fn pick_save_copy_path(
+    state: &EditorState,
+    default: &std::path::Path,
+) -> Option<PathBuf> {
+    let mut dialog = rfd::FileDialog::new()
+        .set_title(op_i18n::translate(
+            state.editor_ui.locale,
+            "dialog.pickerSaveTitle",
+        ))
+        .add_filter(op_editor_ui::PRODUCT_NAME, DOCUMENT_EXTENSIONS);
+    if let Some(directory) = default.parent().filter(|dir| !dir.as_os_str().is_empty()) {
+        dialog = dialog.set_directory(directory);
+    }
+    if let Some(name) = default.file_name() {
+        dialog = dialog.set_file_name(name.to_string_lossy());
+    }
+    dialog.save_file()
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[must_use = "a Save As outcome may require scheduling a collaboration fork"]
 pub(crate) enum SaveActionOutcome {

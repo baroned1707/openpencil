@@ -660,6 +660,10 @@ pub fn lookup(key: &str) -> Option<&'static str> {
         "tooltip.topbar.revealInDock" => "Mostrar en la lista de archivos",
         "settings.system.unavailable" => "Gestionado desde el código fuente",
         "settings.system.unavailableDescription" => "Las actualizaciones se obtienen compilando este fork desde el código fuente o desde su propio canal de versiones.",
+        "dialog.saveConflictTitle" => "Archivo modificado en el disco",
+        "dialog.saveConflictChangedBody" => "\"{{name}}\" se modificó fuera del editor desde que lo abriste o lo guardaste por última vez. Guardar ahora sustituye esa versión; se conserva una copia en el historial de versiones del editor.\n\nSí = Sobrescribir · No = Guardar una copia · Cancelar = No guardar.",
+        "dialog.saveConflictUnknownBody" => "El editor no puede confirmar que \"{{name}}\" no haya cambiado en el disco (se recuperó, o nunca se registró su estado). Guardar ahora sustituye el archivo; se conserva una copia de la versión anterior en el historial de versiones del editor.\n\nSí = Sobrescribir · No = Guardar una copia · Cancelar = No guardar.",
+        "dialog.autosaveChangedOnDisk" => "No guardado: \"{{name}}\" cambió en el disco. Pulsa Guardar para elegir qué hacer.",
         _ => return None,
     })
 }

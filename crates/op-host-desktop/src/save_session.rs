@@ -11,10 +11,15 @@ use std::sync::Arc;
 use std::time::Instant;
 
 use op_editor_core::EditorState;
+use op_host_services::doc_io::version_backup::{with_origin, WrittenBy};
 use winit::event_loop::EventLoopProxy;
 
 use crate::DesktopEvent;
 
+#[path = "save_session/conflict.rs"]
+pub(crate) mod conflict;
+#[path = "save_session/conflict_host.rs"]
+mod conflict_host;
 #[path = "save_session/error.rs"]
 mod error;
 pub(crate) use error::SaveError;
@@ -145,6 +150,17 @@ impl SaveSession {
                     .filter(|job| job.document_epoch == document_epoch)
                     .map(|job| job.path.as_path())
             })
+    }
+
+    /// Whether a save to `path` is running or queued. Its write is about to
+    /// refresh the editor's record of the file, so a second user save to the
+    /// same path must not read the not-yet-refreshed record as a conflict.
+    pub(crate) fn targets_path(&self, path: &Path) -> bool {
+        self.running.as_ref().is_some_and(|job| job.path == path)
+            || self
+                .queued
+                .as_ref()
+                .is_some_and(|request| request.path == path)
     }
 
     pub(crate) fn enqueue(
@@ -321,6 +337,12 @@ impl SaveSession {
         let revision = snapshot.revision;
         let worker_path = path.clone();
         let worker_snapshot = Arc::clone(&snapshot);
+        // Who replaces an existing file, as recorded with its kept version.
+        let written_by = if set_current_path {
+            WrittenBy::SaveAs
+        } else {
+            WrittenBy::CmdS
+        };
         let (tx, rx) = mpsc::channel();
         let spawned = std::thread::Builder::new()
             .name("op-document-save".to_string())
@@ -329,7 +351,7 @@ impl SaveSession {
                 // Both payloads stream directly: a dirty document serializes
                 // its shared snapshot, while a clean bound OP copies source
                 // bytes and rewrites only editorMeta.
-                let result = match &worker_snapshot.payload {
+                let result = with_origin(written_by, || match &worker_snapshot.payload {
                     SavePayload::Canonical(snapshot) => {
                         op_host_services::doc_io::save_snapshot_to_path(
                             snapshot.as_ref(),
@@ -344,7 +366,7 @@ impl SaveSession {
                         &worker_path,
                         editor_meta.clone(),
                     ),
-                }
+                })
                 // `doc_io` belongs to `op-host-services`, a crate this pass
                 // does not own; carry its message so the dialog text and the
                 // stderr line are unchanged.
@@ -410,122 +432,6 @@ impl crate::DesktopApp {
             &mut self.current_figma_import,
         );
         crate::html_import_session::cancel(&mut self.host, &mut self.current_html_import);
-    }
-
-    /// Queue Cmd+S without running JSON serialization on the winit thread.
-    pub(crate) fn request_background_save(&mut self) -> bool {
-        let gate = if self.current_path.is_some() {
-            op_editor_core::CollabGateAction::SaveShared
-        } else {
-            op_editor_core::CollabGateAction::SaveFork
-        };
-        if !self
-            .host
-            .gate_collaboration_action(gate, op_editor_core::CollabEditSource::User)
-        {
-            return false;
-        }
-        let document_epoch = self.host.document_epoch();
-        let path = self
-            .save_session
-            .latest_target(document_epoch)
-            .map(Path::to_path_buf)
-            .or_else(|| self.current_path.clone());
-        let Some(path) = path else {
-            return self.request_background_save_as();
-        };
-        if can_skip_unchanged_current_save(
-            self.host.editor_state(),
-            self.current_path.as_deref(),
-            &path,
-            self.save_session.is_active(),
-        ) {
-            eprintln!("[save] skipped unchanged document");
-            return true;
-        }
-        let set_current_path = self.current_path.as_deref() != Some(path.as_path());
-        let _ = self.enqueue_background_save(path, set_current_path);
-        true
-    }
-
-    /// Show the native picker synchronously, then queue only the expensive
-    /// snapshot serialization and disk write.
-    pub(crate) fn request_background_save_as(&mut self) -> bool {
-        if !self.host.gate_collaboration_action(
-            op_editor_core::CollabGateAction::SaveFork,
-            op_editor_core::CollabEditSource::User,
-        ) {
-            return false;
-        }
-        let collaboration_bound =
-            crate::persistence::requires_background_save_as_fork(self.host.editor_state());
-        let Some(path) = crate::persistence::pick_save_as_path(self.host.editor_state()) else {
-            return false;
-        };
-        self.save_as_to_picked_path(path, collaboration_bound)
-    }
-
-    /// Everything Save As does once the user has chosen `path`: refuse a file
-    /// another tab holds, refuse an unsafe collaboration fork target, then
-    /// queue the write. Split from the picker so it can run without a dialog.
-    pub(crate) fn save_as_to_picked_path(
-        &mut self,
-        path: PathBuf,
-        collaboration_bound: bool,
-    ) -> bool {
-        if self.refuse_save_as_onto_file_open_in_another_tab(&path) {
-            return false;
-        }
-        if collaboration_bound
-            && !collaboration_fork_target_is_safe(self.current_path.as_deref(), &path)
-        {
-            let detail =
-                "Save As must use a different, resolvable path while collaboration is active.";
-            eprintln!(
-                "[save] rejected collaboration fork target {}: {detail}",
-                path.display()
-            );
-            crate::persistence::show_error_dialog_public(
-                &self.host,
-                op_host_services::doc_io::ErrorKind::Save,
-                Some(&path),
-                detail,
-            );
-            return false;
-        }
-        let identity = (
-            self.host.document_epoch(),
-            self.host.editor_state().document_generation(),
-            self.host.editor_state().document_revision(),
-            path.clone(),
-        );
-        let outcome = self.enqueue_background_save(path, true);
-        if collaboration_bound {
-            return self.confirm_collaboration_fork_enqueue(identity, outcome);
-        }
-        true
-    }
-
-    fn enqueue_background_save(&mut self, path: PathBuf, set_current_path: bool) -> EnqueueOutcome {
-        let outcome = match (set_current_path, self.current_path.clone()) {
-            (true, Some(source_path)) => self.save_session.enqueue_clean_bound_op_save_as(
-                self.host.editor_state(),
-                self.host.document_epoch(),
-                source_path,
-                path,
-                set_current_path,
-                self.mcp_wake_proxy.clone(),
-            ),
-            _ => self.save_session.enqueue(
-                self.host.editor_state(),
-                self.host.document_epoch(),
-                path,
-                set_current_path,
-                self.mcp_wake_proxy.clone(),
-            ),
-        };
-        eprintln!("[save] request {outcome:?}");
-        outcome
     }
 
     /// Register leave authority only for the exact Save-As request that was

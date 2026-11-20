@@ -4,6 +4,8 @@
 //! out of the `git_host.rs` spine to keep it under the 800-line cap;
 //! pure code motion.
 
+use op_host_services::disk_fingerprint::DiskFingerprint;
+
 use crate::{git_jobs, persistence, DesktopApp};
 
 use super::auth_error::GitAuthError;
@@ -53,13 +55,21 @@ impl DesktopApp {
             return;
         }
         if let Some(path) = self.current_path.clone() {
+            // The checkout / merge / pull just wrote this file and the reload
+            // reads it: that is the new baseline. Without this every branch
+            // switch would read as an outside change at the next save. (Other
+            // open tabs of files the git op changed are deliberately left
+            // alone: their next save should ask.)
+            let before_load = DiskFingerprint::capture(&path).ok();
             if persistence::open_path(
                 &mut self.host,
-                path,
+                path.clone(),
                 &mut self.current_path,
                 self.window.as_ref(),
             ) {
                 self.mark_document_saved();
+                let bound = self.current_path.clone().unwrap_or_else(|| path.clone());
+                self.record_baseline_after_load(&path, &bound, before_load, false);
             }
         }
     }

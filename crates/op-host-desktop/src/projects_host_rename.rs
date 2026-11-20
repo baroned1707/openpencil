@@ -109,6 +109,7 @@ impl DesktopApp {
         let RenamePlan { source, target, .. } = plan;
         if let Some(index) = tab {
             self.follow_renamed_tab(index, target);
+            self.disk_baselines.rename(source, target);
         }
         crate::settings_io::rename_recent(&mut self.host, source, target);
         self.projects_host.roots.invalidate(source);

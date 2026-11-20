@@ -13,6 +13,7 @@
 
 use op_editor_core::editor_toast::EditorToastLevel;
 use op_editor_core::{CollabEditSource, CollabGateAction, CollabGatePolicy, DocumentId};
+use op_host_services::doc_io::version_backup::{with_origin, WrittenBy};
 use op_host_services::save_in_place::{save_in_place_unless_busy, SaveInPlaceError};
 
 use crate::DesktopApp;
@@ -188,7 +189,14 @@ impl DesktopApp {
             };
             let decision = should_autosave_after_run(&facts);
             let saved = (decision == AutosaveDecision::Save).then(|| {
-                save_in_place_unless_busy(state, path.as_deref(), baseline.as_ref(), save_in_flight)
+                with_origin(WrittenBy::Autosave, || {
+                    save_in_place_unless_busy(
+                        state,
+                        path.as_deref(),
+                        baseline.as_ref(),
+                        save_in_flight,
+                    )
+                })
             });
             (decision, saved)
         });
@@ -219,7 +227,29 @@ impl DesktopApp {
     /// tells the user, and the document stays dirty for a manual save.
     fn report_autosave_failure(&mut self, id: DocumentId, error: &SaveInPlaceError) {
         eprintln!("[autosave] {id:?}: {error}");
-        self.toast_autosave_failed();
+        match error {
+            // The one failure the user can do something about, so the toast
+            // says it. The document stays dirty; Cmd+S asks what to do.
+            SaveInPlaceError::ChangedOnDisk { path } => {
+                let name = path
+                    .file_name()
+                    .map(|name| name.to_string_lossy().into_owned())
+                    .unwrap_or_else(|| path.display().to_string());
+                self.toast_autosave_changed_on_disk(name);
+            }
+            _ => self.toast_autosave_failed(),
+        }
+    }
+
+    fn toast_autosave_changed_on_disk(&mut self, name: String) {
+        let now_ms = self.host.now_ms();
+        self.host.editor_state_mut().editor_ui.show_toast(
+            "dialog.autosaveChangedOnDisk",
+            vec![("name".to_string(), name)],
+            EditorToastLevel::Warn,
+            now_ms,
+        );
+        self.host.mark_editor_state_dirty();
     }
 
     /// Reuses the existing "Save failed" string (`dialog.saveErrorTitle`); the

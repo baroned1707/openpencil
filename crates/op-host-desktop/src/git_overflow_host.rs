@@ -8,6 +8,8 @@ use std::path::PathBuf;
 
 use op_editor_core::{GitCandidateFile, GitOverflowView, GitPanelState};
 
+use op_host_services::disk_fingerprint::DiskFingerprint;
+
 use crate::DesktopApp;
 use crate::{git_jobs, persistence};
 
@@ -68,15 +70,20 @@ impl DesktopApp {
             // the session and the open document can't diverge (`open_path`
             // updates `current_path` on success, leaves it on failure; the
             // canonical rebind follows it either way).
-            if self.confirm_document_reload()
-                && persistence::open_path(
+            // Observed after the confirmation: its Save may rewrite this very
+            // file, and that write must not read as an outside change.
+            if self.confirm_document_reload() {
+                let before_load = DiskFingerprint::capture(&path).ok();
+                if persistence::open_path(
                     &mut self.host,
-                    path,
+                    path.clone(),
                     &mut self.current_path,
                     self.window.as_ref(),
-                )
-            {
-                self.mark_document_saved();
+                ) {
+                    self.mark_document_saved();
+                    let bound = self.current_path.clone().unwrap_or_else(|| path.clone());
+                    self.record_baseline_after_load(&path, &bound, before_load, false);
+                }
             }
             self.rebind_git_session_for_current_path();
         } else {

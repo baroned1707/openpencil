@@ -42,7 +42,7 @@ pub(super) fn answer_in_headless(
                 path: path.to_path_buf(),
                 bytes: match fingerprint {
                     DiskFingerprint::Present { len, .. } => len,
-                    DiskFingerprint::Missing => 0,
+                    DiskFingerprint::Missing | DiskFingerprint::Stale => 0,
                 },
                 dirty_before: false,
                 fingerprint,

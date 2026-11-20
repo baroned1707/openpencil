@@ -700,6 +700,10 @@ pub fn lookup(key: &str) -> Option<&'static str> {
         "tooltip.topbar.revealInDock" => "Show in the file list",
         "settings.system.unavailable" => "Managed from source",
         "settings.system.unavailableDescription" => "Updates come from building this fork from source or from its own release channel.",
+        "dialog.saveConflictTitle" => "File changed on disk",
+        "dialog.saveConflictChangedBody" => "\"{{name}}\" was changed outside the editor since you opened or last saved it. Saving now replaces that version; a copy of it is kept in the editor's version history.\n\nYes = Overwrite · No = Save a copy · Cancel = Don't save.",
+        "dialog.saveConflictUnknownBody" => "The editor cannot confirm that \"{{name}}\" is unchanged on disk (it was recovered, or its state was never recorded). Saving now replaces the file; a copy of the old version is kept in the editor's version history.\n\nYes = Overwrite · No = Save a copy · Cancel = Don't save.",
+        "dialog.autosaveChangedOnDisk" => "Not saved: \"{{name}}\" changed on disk. Press Save to choose what to do.",
         _ => return None,
     })
 }

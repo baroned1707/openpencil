@@ -39,7 +39,12 @@ pub(super) fn rebuild_registry(
     register_tool!("open_document", open_document_snapshot(doc));
     register_tool!(
         "save_document",
-        op_mcp::save_document_snapshot_with_writer(doc, super::atomic_bytes::write_atomically)
+        op_mcp::save_document_snapshot_with_writer(doc, |path, bytes| {
+            use crate::doc_io::version_backup::{with_default_origin, WrittenBy};
+            with_default_origin(WrittenBy::Mcp, || {
+                super::atomic_bytes::write_atomically(path, bytes)
+            })
+        })
     );
     register_tool!(
         "create_document",

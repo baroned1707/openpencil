@@ -346,6 +346,8 @@ impl ApplicationHandler<DesktopEvent> for DesktopApp {
         // session file they were bound to opens onto the recovered tab.
         // Opened project folders first, so every restored or recovered tab
         // groups under the project it belongs to.
+        // From here on a save keeps the bytes it replaces (`version_backup`).
+        op_host_services::doc_io::version_backup::enable_version_history();
         self.restore_open_projects();
         self.offer_recovery_at_startup();
 

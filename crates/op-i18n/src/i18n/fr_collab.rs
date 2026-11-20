@@ -660,6 +660,10 @@ pub fn lookup(key: &str) -> Option<&'static str> {
         "tooltip.topbar.revealInDock" => "Afficher dans la liste des fichiers",
         "settings.system.unavailable" => "Géré depuis les sources",
         "settings.system.unavailableDescription" => "Les mises à jour proviennent de la compilation de ce fork depuis les sources ou de son propre canal de versions.",
+        "dialog.saveConflictTitle" => "Fichier modifié sur le disque",
+        "dialog.saveConflictChangedBody" => "« {{name}} » a été modifié en dehors de l’éditeur depuis son ouverture ou sa dernière sauvegarde. Enregistrer maintenant remplace cette version ; une copie en est conservée dans l’historique des versions de l’éditeur.\n\nOui = Écraser · Non = Enregistrer une copie · Annuler = Ne pas enregistrer.",
+        "dialog.saveConflictUnknownBody" => "L’éditeur ne peut pas confirmer que « {{name}} » est inchangé sur le disque (document récupéré, ou état jamais enregistré). Enregistrer maintenant remplace le fichier ; une copie de l’ancienne version est conservée dans l’historique des versions de l’éditeur.\n\nOui = Écraser · Non = Enregistrer une copie · Annuler = Ne pas enregistrer.",
+        "dialog.autosaveChangedOnDisk" => "Non enregistré : « {{name}} » a changé sur le disque. Appuyez sur Enregistrer pour choisir.",
         _ => return None,
     })
 }

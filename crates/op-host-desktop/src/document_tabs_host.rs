@@ -14,6 +14,7 @@ use crate::DesktopApp;
 use op_editor_core::editor_toast::EditorToastLevel;
 use op_editor_core::{DocumentTabRequest, EditorState, FileAction};
 use op_host_native::widget_host::ParkedDocument;
+use op_host_services::disk_fingerprint::DiskFingerprint;
 use op_host_services::doc_io::{ActionOutcome, EmptyFileOutcome, ErrorKind};
 use std::path::PathBuf;
 
@@ -312,6 +313,8 @@ impl DesktopApp {
             return false;
         }
         let replaces_blank = self.active_document_is_pristine_untitled();
+        // Observed before the read: a write after this reads as a difference.
+        let before_load = DiskFingerprint::capture(&path).ok();
         let loaded = match persistence::load_document(&mut self.host, &path, false, true) {
             Ok(Some(loaded)) => loaded,
             Ok(None) => return false,
@@ -342,6 +345,7 @@ impl DesktopApp {
         if !self.install_new_document_tab(incoming, Some(bound_path.clone())) {
             return false;
         }
+        self.record_baseline_after_load(&path, &bound_path, before_load, empty_file.is_some());
         self.host.editor_state_mut().editor_ui.home.hide();
         if open_in_normal_mode {
             persistence::open_loaded_normal_workspace(&mut self.host);
@@ -438,6 +442,16 @@ impl DesktopApp {
             }
             FileAction::OpenRecent(index) => {
                 self.open_recent_document(index);
+                ActionOutcome::Noop
+            }
+            // File > Save from any caller is the guarded background save, never
+            // the synchronous `persistence::handle_save` residual (it checks
+            // nothing and records no baseline).
+            FileAction::Save => {
+                self.host.commit_variable_row_focus_if_any_pub();
+                // The save is acknowledged when its worker finishes
+                // (`apply_save_completion`), never here.
+                self.request_background_save();
                 ActionOutcome::Noop
             }
             other => persistence::run_action(

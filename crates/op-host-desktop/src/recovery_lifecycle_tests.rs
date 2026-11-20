@@ -266,8 +266,11 @@ fn startup_offers_recovery_and_reopens_dirty_tabs_bound_to_original_path() {
         app.host.editor_state().doc.name.as_deref(),
         Some("recovered-a")
     );
-    // Save writes the recovered content back to the original file.
-    assert!(app.request_background_save() && app.finish_background_saves());
+    // Save writes the recovered content back to the original file. The file's
+    // state when the edits were made is unknown, so the first save asks once.
+    let mut ui = crate::save_session::conflict::OverwritingConflictUi::default();
+    assert!(app.request_background_save_with(&mut ui) && app.finish_background_saves());
+    assert_eq!(ui.asked, 1, "a recovered document's first save asks");
     let on_disk =
         op_host_services::doc_io::load_editor_state(&original, op_editor_core::Locale::EnUs)
             .expect("saved file loads");

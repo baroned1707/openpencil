@@ -289,10 +289,23 @@ fn autosave_failure_toasts_and_keeps_document_dirty() {
         b"someone else's work",
         "the other change was not overwritten"
     );
+    // The toast names the real reason (the file changed on disk) and the file.
     assert_eq!(
         toast_key(&app).as_deref(),
-        Some("dialog.saveErrorTitle"),
+        Some("dialog.autosaveChangedOnDisk"),
         "a failed autosave is never silent"
+    );
+    let toast = app
+        .host
+        .editor_state()
+        .editor_ui
+        .editor_toast
+        .clone()
+        .unwrap();
+    assert_eq!(
+        toast.args,
+        vec![("name".to_string(), "a.op".to_string())],
+        "the toast carries the file name"
     );
     let _ = std::fs::remove_dir_all(dir);
 }

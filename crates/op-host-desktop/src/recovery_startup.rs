@@ -202,8 +202,16 @@ impl DesktopApp {
         let blank_index = self.documents.active_index();
         let open_in_normal_mode = self.host.home_visible() || self.host.workspace_visible();
         let incoming = ParkedDocument::from_state(state, thumbs);
-        if !self.install_new_document_tab(incoming, bind_to) {
+        if !self.install_new_document_tab(incoming, bind_to.clone()) {
             return false;
+        }
+        // A recovered document always carries edits the file does not have and
+        // the manifest records which version of the file they were made on, so
+        // the file's current state proves nothing: mark the baseline stale and
+        // the first save asks (Overwrite / Save a copy / Cancel) instead of
+        // trusting it.
+        if let Some(bound) = &bind_to {
+            self.disk_baselines.mark_stale(bound);
         }
         self.host.editor_state_mut().editor_ui.home.hide();
         if open_in_normal_mode {

@@ -10,7 +10,7 @@
 //! file, refuse a collaboration session that does not let this save happen,
 //! refuse when the file changed on disk since the editor last saw it (an
 //! agent's save must never silently replace someone else's change), then write
-//! through `doc_io::save_to_path` (serialise to a sibling temp file, fsync,
+//! through `doc_io::save_to_path` (serialise to a sibling temp file, no fsync,
 //! rename over the target, the same commit the Cmd+S worker uses) and only
 //! then mark the document saved. A failed write leaves the old file AND the
 //! dirty mark untouched.
@@ -202,9 +202,13 @@ pub fn save_in_place_with(
         },
     })?;
     let dirty_before = state.is_dirty();
-    write(state, path).map_err(|error| SaveInPlaceError::Write {
-        path: path.to_path_buf(),
-        detail: error.to_string(),
+    // An outer caller (the autosave) may already have named itself the origin.
+    use crate::doc_io::version_backup::{with_default_origin, WrittenBy};
+    with_default_origin(WrittenBy::Mcp, || write(state, path)).map_err(|error| {
+        SaveInPlaceError::Write {
+            path: path.to_path_buf(),
+            detail: error.to_string(),
+        }
     })?;
     // Written: now, and only now, the document is the file.
     state.mark_saved_revision();
@@ -215,7 +219,7 @@ pub fn save_in_place_with(
     let fingerprint = DiskFingerprint::capture(path).unwrap_or(DiskFingerprint::Missing);
     let bytes = match fingerprint {
         DiskFingerprint::Present { len, .. } => len,
-        DiskFingerprint::Missing => 0,
+        DiskFingerprint::Missing | DiskFingerprint::Stale => 0,
     };
     Ok(SavedInPlace {
         path: path.to_path_buf(),

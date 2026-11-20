@@ -660,6 +660,10 @@ pub fn lookup(key: &str) -> Option<&'static str> {
         "tooltip.topbar.revealInDock" => "Tampilkan di daftar file",
         "settings.system.unavailable" => "Dikelola dari kode sumber",
         "settings.system.unavailableDescription" => "Pembaruan didapat dengan membangun fork ini dari kode sumber atau lewat saluran rilisnya sendiri.",
+        "dialog.saveConflictTitle" => "File berubah di disk",
+        "dialog.saveConflictChangedBody" => "\"{{name}}\" diubah di luar editor sejak Anda membukanya atau terakhir menyimpannya. Menyimpan sekarang akan menggantikan versi itu; salinannya disimpan di riwayat versi editor.\n\nYa = Timpa · Tidak = Simpan salinan · Batal = Jangan simpan.",
+        "dialog.saveConflictUnknownBody" => "Editor tidak dapat memastikan bahwa \"{{name}}\" tidak berubah di disk (dokumen dipulihkan, atau statusnya tidak pernah dicatat). Menyimpan sekarang akan menggantikan file; salinan versi lama disimpan di riwayat versi editor.\n\nYa = Timpa · Tidak = Simpan salinan · Batal = Jangan simpan.",
+        "dialog.autosaveChangedOnDisk" => "Belum disimpan: \"{{name}}\" berubah di disk. Tekan Simpan untuk memilih tindakan.",
         _ => return None,
     })
 }

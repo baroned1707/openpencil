@@ -50,11 +50,12 @@ mod load;
 mod load_report;
 #[cfg(test)]
 mod load_report_tests;
+pub mod version_backup;
 #[cfg(test)]
 #[path = "doc_io/work_family_tests.rs"]
 mod work_family_tests;
 
-use atomic_file::{create_sibling_temp, replace_file};
+use atomic_file::{create_sibling_temp, replace_file_keeping_previous};
 pub use canonical_save::{
     canonical_document_bytes, write_canonical_document, CanonicalSaveSnapshot, StreamingSaveStats,
 };
@@ -209,7 +210,7 @@ pub fn commit_staged_document(
     staging_path: &std::path::Path,
     destination: &std::path::Path,
 ) -> Result<(), DocIoError> {
-    replace_file(staging_path, destination)?;
+    replace_file_keeping_previous(staging_path, destination)?;
     // Old builds wrote `<path>.opmeta`. New saves are single-file, so
     // remove any stale sidecar after the document write has committed.
     match std::fs::remove_file(sidecar_path(destination)) {

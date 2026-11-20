@@ -660,6 +660,10 @@ pub fn lookup(key: &str) -> Option<&'static str> {
         "tooltip.topbar.revealInDock" => "在文件列表中显示",
         "settings.system.unavailable" => "通过源码管理",
         "settings.system.unavailableDescription" => "更新方式：从源码构建此分支版本，或使用其自有发布渠道。",
+        "dialog.saveConflictTitle" => "文件已在磁盘上被修改",
+        "dialog.saveConflictChangedBody" => "“{{name}}”自你打开或上次保存后，已在编辑器之外被修改。现在保存将替换该版本；其副本会保存在编辑器的版本历史中。\n\n是 = 覆盖 · 否 = 另存副本 · 取消 = 不保存。",
+        "dialog.saveConflictUnknownBody" => "编辑器无法确认“{{name}}”在磁盘上是否未被修改（该文档是恢复的，或从未记录其状态）。现在保存将替换该文件；旧版本的副本会保存在编辑器的版本历史中。\n\n是 = 覆盖 · 否 = 另存副本 · 取消 = 不保存。",
+        "dialog.autosaveChangedOnDisk" => "未保存：“{{name}}”已在磁盘上被修改。请按保存并选择处理方式。",
         _ => return None,
     })
 }

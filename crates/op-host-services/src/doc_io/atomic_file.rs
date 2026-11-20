@@ -44,6 +44,14 @@ fn unique_sibling_temp_path(path: &Path) -> PathBuf {
     path.with_file_name(format!(".{file_name}.{pid}.{sequence}.tmp"))
 }
 
+/// [`replace_file`] after keeping the bytes of an existing `path` as a version
+/// (`version_backup`; best effort, never blocks the replacement). Every writer
+/// of a user's `.op` document uses this one.
+pub fn replace_file_keeping_previous(tmp: &Path, path: &Path) -> Result<(), DocIoError> {
+    super::version_backup::backup_before_replace(path);
+    replace_file(tmp, path)
+}
+
 #[cfg(not(windows))]
 pub fn replace_file(tmp: &Path, path: &Path) -> Result<(), DocIoError> {
     std::fs::rename(tmp, path).map_err(|error| DocIoError::Replace {
